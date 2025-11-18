@@ -1,0 +1,332 @@
+{
+  "카던&전선": {
+    "1580": [
+      {
+        "stage": "천공 1단계",
+        "rewards": [
+          {
+            "itemName": "정제된 파괴강석",
+            "quantity": 79
+          },
+          {
+            "itemName": "정제된 수호강석",
+            "quantity": 216.2
+          },
+          {
+            "itemName": "찬란한 명예의 돌파석",
+            "quantity": 6.2
+          },
+          {
+            "itemName": "1레벨 보석 (4T)",
+            "quantity": 21.6
+          },
+          {
+            "itemName": "파편",
+            "quantity": 19828
+          },
+          {
+            "itemName": "실링",
+            "quantity": 154182
+          },
+          {
+            "itemName": "에브니 큐브 (4금제)",
+            "quantity": 4
+          }
+        ]
+      }
+    ],
+    "1600": [
+      {
+        "stage": "천공 2단계",
+        "rewards": [
+          {
+            "itemName": "정제된 파괴강석",
+            "quantity": 85.6
+          },
+          {
+            "itemName": "정제된 수호강석",
+            "quantity": 246.8
+          },
+          {
+            "itemName": "찬란한 명예의 돌파석",
+            "quantity": 7.8
+          },
+          {
+            "itemName": "1레벨 보석 (4T)",
+            "quantity": 20.88
+          },
+          {
+            "itemName": "파편",
+            "quantity": 19356
+          },
+          {
+            "itemName": "실링",
+            "quantity": 157816
+          },
+          {
+            "itemName": "에브니 큐브 (4금제)",
+            "quantity": 4
+          }
+        ]
+      }
+    ],
+    "1610": [
+      {
+        "stage": "계몽 1단계",
+        "rewards": [
+          {
+            "itemName": "정제된 파괴강석",
+            "quantity": 116.8
+          },
+          {
+            "itemName": "정제된 수호강석",
+            "quantity": 334.4
+          },
+          {
+            "itemName": "찬란한 명예의 돌파석",
+            "quantity": 10.6
+          },
+          {
+            "itemName": "1레벨 보석 (4T)",
+            "quantity": 20.52
+          },
+          {
+            "itemName": "파편",
+            "quantity": 21354
+          },
+          {
+            "itemName": "실링",
+            "quantity": 183408
+          },
+          {
+            "itemName": "에브니 큐브 (5금제)",
+            "quantity": 5
+          }
+        ]
+      }
+    ],
+    "1630": [
+      {
+        "stage": "계몽 2단계",
+        "rewards": [
+          {
+            "itemName": "정제된 파괴강석",
+            "quantity": 192
+          },
+          {
+            "itemName": "정제된 수호강석",
+            "quantity": 550.8
+          },
+          {
+            "itemName": "찬란한 명예의 돌파석",
+            "quantity": 18.6
+          },
+          {
+            "itemName": "1레벨 보석 (4T)",
+            "quantity": 24.48
+          },
+          {
+            "itemName": "파편",
+            "quantity": 29030
+          },
+          {
+            "itemName": "실링",
+            "quantity": 195640
+          },
+          {
+            "itemName": "에브니 큐브 (5금제)",
+            "quantity": 5
+          }
+        ]
+      }
+    ],
+    "1640": [
+      {
+        "stage": "아비도스 1작전",
+        "rewards": [
+          {
+            "itemName": "정제된 파괴강석",
+            "quantity": 165.8
+          },
+          {
+            "itemName": "정제된 수호강석",
+            "quantity": 451.5
+          },
+          {
+            "itemName": "찬란한 명예의 돌파석",
+            "quantity": 10.9
+          },
+          {
+            "itemName": "1레벨 보석 (4T)",
+            "quantity": 2.6
+          },
+          {
+            "itemName": "파편",
+            "quantity": 21998.7
+          },
+          {
+            "itemName": "실링",
+            "quantity": 173817.8
+          },
+          {
+            "itemName": "에브니 큐브 (1해금)",
+            "quantity": 1
+          }
+        ]
+      }
+    ],
+    "1660": [
+      {
+        "stage": "아비도스 2작전",
+        "rewards": [
+          {
+            "itemName": "정제된 파괴강석",
+            "quantity": 175.6
+          },
+          {
+            "itemName": "정제된 수호강석",
+            "quantity": 510.3
+          },
+          {
+            "itemName": "찬란한 명예의 돌파석",
+            "quantity": 14
+          },
+          {
+            "itemName": "1레벨 보석 (4T)",
+            "quantity": 4.4
+          },
+          {
+            "itemName": "파편",
+            "quantity": 28867.2
+          },
+          {
+            "itemName": "실링",
+            "quantity": 188906.9
+          },
+          {
+            "itemName": "에브니 큐브 (1해금)",
+            "quantity": 1
+          }
+        ]
+      }
+    ],
+    "1680": [
+      {
+        "stage": "아비도스 3작전",
+        "rewards": [
+          {
+            "itemName": "정제된 파괴강석",
+            "quantity": 212.7
+          },
+          {
+            "itemName": "정제된 수호강석",
+            "quantity": 614.8
+          },
+          {
+            "itemName": "찬란한 명예의 돌파석",
+            "quantity": 17.9
+          },
+          {
+            "itemName": "1레벨 보석 (4T)",
+            "quantity": 4.6
+          },
+          {
+            "itemName": "파편",
+            "quantity": 31917.3
+          },
+          {
+            "itemName": "실링",
+            "quantity": 197704.5
+          },
+          {
+            "itemName": "에브니 큐브 (2해금)",
+            "quantity": 2
+          }
+        ]
+      }
+    ],
+    "1700": [
+      {
+        "stage": "네프타 1작전",
+        "rewards": [
+          {
+            "itemName": "정제된 파괴강석",
+            "quantity": 283.1
+          },
+          {
+            "itemName": "정제된 수호강석",
+            "quantity": 811.5
+          },
+          {
+            "itemName": "찬란한 명예의 돌파석",
+            "quantity": 21.8
+          },
+          {
+            "itemName": "1레벨 보석 (4T)",
+            "quantity": 4.9
+          },
+          {
+            "itemName": "파편",
+            "quantity": 33664
+          },
+          {
+            "itemName": "실링",
+            "quantity": 199084
+          },
+          {
+            "itemName": "에브니 큐브 (3해금)",
+            "quantity": 3
+          }
+        ]
+      }
+    ],
+    "1720": [
+      {
+        "stage": "네프타 2작전",
+        "rewards": [
+          {
+            "itemName": "정제된 파괴강석",
+            "quantity": 343
+          },
+          {
+            "itemName": "정제된 수호강석",
+            "quantity": 1075
+          },
+          {
+            "itemName": "찬란한 명예의 돌파석",
+            "quantity": 26.8
+          },
+          {
+            "itemName": "1레벨 보석 (4T)",
+            "quantity": 6.2
+          },
+          {
+            "itemName": "파편",
+            "quantity": 39012
+          },
+          {
+            "itemName": "실링",
+            "quantity": 202260
+          },
+          {
+            "itemName": "에브니 큐브 (4해금)",
+            "quantity": 4
+          },
+          {
+            "itemName": "영웅 젬",
+            "quantity": 0.03
+          },
+          {
+            "itemName": "희귀 젬",
+            "quantity": 0.36
+          },
+          {
+            "itemName": "고급 젬",
+            "quantity": 2.19
+          }
+        ]
+      }
+    ]
+  },
+  "에브니 큐브": {}
+}

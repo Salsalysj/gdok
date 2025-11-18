@@ -1,0 +1,14 @@
+{
+  "exchangeRates": [
+    {
+      "date": "2025-10-31",
+      "exchange": 10601,
+      "discord": 20
+    },
+    {
+      "date": "2025-11-13",
+      "exchange": 0,
+      "discord": 19
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "name": "lostark-market-search",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"next dev\" \"node scripts/cron-update-cache.js\" \"node scripts/cron-update-crystal-exchange.js\"",
+    "build": "next build",
+    "start": "concurrently \"next start\" \"node scripts/cron-update-cache.js\" \"node scripts/cron-update-crystal-exchange.js\"",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.78.0",
+    "chart.js": "^4.4.3",
+    "next": "^14.0.0",
+    "react": "^18.2.0",
+    "react-chartjs-2": "^5.2.0",
+    "react-dom": "^18.2.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "autoprefixer": "^10.4.16",
+    "concurrently": "^9.2.1",
+    "postcss": "^8.4.31",
+    "tailwindcss": "^3.3.5",
+    "typescript": "^5.2.2"
+  }
+}

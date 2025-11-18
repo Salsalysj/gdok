@@ -1,0 +1,315 @@
+{
+  "에브니 큐브": {
+    "티어3": [
+      {
+        "stage": "4금제",
+        "rewards": [
+          {
+            "itemName": "1레벨 보석 (3T)",
+            "quantity": 72
+          },
+          {
+            "itemName": "찬란한 명예의 돌파석",
+            "quantity": 14
+          },
+          {
+            "itemName": "태양의 은총",
+            "quantity": 12
+          },
+          {
+            "itemName": "태양의 축복",
+            "quantity": 7
+          },
+          {
+            "itemName": "태양의 가호",
+            "quantity": 3
+          },
+          {
+            "itemName": "카드 경험치",
+            "quantity": 13000
+          },
+          {
+            "itemName": "실링",
+            "quantity": 120000
+          }
+        ]
+      },
+      {
+        "stage": "5금제",
+        "rewards": [
+          {
+            "itemName": "1레벨 보석 (3T)",
+            "quantity": 81
+          },
+          {
+            "itemName": "찬란한 명예의 돌파석",
+            "quantity": 25
+          },
+          {
+            "itemName": "태양의 은총",
+            "quantity": 13
+          },
+          {
+            "itemName": "태양의 축복",
+            "quantity": 8
+          },
+          {
+            "itemName": "태양의 가호",
+            "quantity": 4
+          },
+          {
+            "itemName": "카드 경험치",
+            "quantity": 13500
+          },
+          {
+            "itemName": "실링",
+            "quantity": 130000
+          }
+        ]
+      }
+    ],
+    "티어4": [
+      {
+        "stage": "1해금",
+        "rewards": [
+          {
+            "itemName": "1레벨 보석 (4T)",
+            "quantity": 9
+          },
+          {
+            "itemName": "운명의 돌파석",
+            "quantity": 14
+          },
+          {
+            "itemName": "용암의 숨결",
+            "quantity": 4
+          },
+          {
+            "itemName": "빙하의 숨결",
+            "quantity": 4
+          },
+          {
+            "itemName": "카드 경험치",
+            "quantity": 14000
+          },
+          {
+            "itemName": "실링",
+            "quantity": 140000
+          }
+        ]
+      },
+      {
+        "stage": "2해금",
+        "rewards": [
+          {
+            "itemName": "1레벨 보석 (4T)",
+            "quantity": 18
+          },
+          {
+            "itemName": "운명의 돌파석",
+            "quantity": 25
+          },
+          {
+            "itemName": "용암의 숨결",
+            "quantity": 5
+          },
+          {
+            "itemName": "빙하의 숨결",
+            "quantity": 5
+          },
+          {
+            "itemName": "카드 경험치",
+            "quantity": 14500
+          },
+          {
+            "itemName": "실링",
+            "quantity": 150000
+          }
+        ]
+      },
+      {
+        "stage": "3해금",
+        "rewards": [
+          {
+            "itemName": "1레벨 보석 (4T)",
+            "quantity": 24
+          },
+          {
+            "itemName": "운명의 돌파석",
+            "quantity": 32
+          },
+          {
+            "itemName": "용암의 숨결",
+            "quantity": 6
+          },
+          {
+            "itemName": "빙하의 숨결",
+            "quantity": 6
+          },
+          {
+            "itemName": "카드 경험치",
+            "quantity": 15000
+          },
+          {
+            "itemName": "실링",
+            "quantity": 160000
+          }
+        ]
+      },
+      {
+        "stage": "4해금",
+        "rewards": [
+          {
+            "itemName": "1레벨 보석 (4T)",
+            "quantity": 33
+          },
+          {
+            "itemName": "운명의 돌파석",
+            "quantity": 41
+          },
+          {
+            "itemName": "용암의 숨결",
+            "quantity": 8
+          },
+          {
+            "itemName": "빙하의 숨결",
+            "quantity": 8
+          },
+          {
+            "itemName": "카드 경험치",
+            "quantity": 15500
+          },
+          {
+            "itemName": "실링",
+            "quantity": 180000
+          }
+        ]
+      }
+    ]
+  },
+  "가디언 토벌": {
+    "티어3": [
+      {
+        "stage": "소나벨",
+        "rewards": [
+          {
+            "itemName": "정제된 파괴강석",
+            "quantity": 68
+          },
+          {
+            "itemName": "정제된 수호강석",
+            "quantity": 204
+          },
+          {
+            "itemName": "찬란한 명예의 돌파석",
+            "quantity": 8
+          }
+        ]
+      },
+      {
+        "stage": "가르가디스",
+        "rewards": [
+          {
+            "itemName": "정제된 파괴강석",
+            "quantity": 103
+          },
+          {
+            "itemName": "정제된 수호강석",
+            "quantity": 301
+          },
+          {
+            "itemName": "찬란한 명예의 돌파석",
+            "quantity": 12
+          }
+        ]
+      },
+      {
+        "stage": "베스칼",
+        "rewards": [
+          {
+            "itemName": "정제된 파괴강석",
+            "quantity": 166
+          },
+          {
+            "itemName": "정제된 수호강석",
+            "quantity": 506
+          },
+          {
+            "itemName": "찬란한 명예의 돌파석",
+            "quantity": 24
+          }
+        ]
+      }
+    ],
+    "티어4": [
+      {
+        "stage": "아게오로스",
+        "rewards": [
+          {
+            "itemName": "운명의 파괴석",
+            "quantity": 96.2
+          },
+          {
+            "itemName": "운명의 수호석",
+            "quantity": 286.2
+          },
+          {
+            "itemName": "운명의 돌파석",
+            "quantity": 12.4
+          }
+        ]
+      },
+      {
+        "stage": "스콜라키아",
+        "rewards": [
+          {
+            "itemName": "운명의 파괴석",
+            "quantity": 148.5
+          },
+          {
+            "itemName": "운명의 수호석",
+            "quantity": 450
+          },
+          {
+            "itemName": "운명의 돌파석",
+            "quantity": 17.6
+          }
+        ]
+      },
+      {
+        "stage": "드랙탈라스",
+        "rewards": [
+          {
+            "itemName": "운명의 파괴석",
+            "quantity": 189.5
+          },
+          {
+            "itemName": "운명의 수호석",
+            "quantity": 569
+          },
+          {
+            "itemName": "운명의 돌파석",
+            "quantity": 20
+          }
+        ]
+      },
+      {
+        "stage": "크라티오스",
+        "rewards": [
+          {
+            "itemName": "운명의 파괴석",
+            "quantity": 353.1
+          },
+          {
+            "itemName": "운명의 수호석",
+            "quantity": 1108.6
+          },
+          {
+            "itemName": "운명의 돌파석",
+            "quantity": 35.3
+          }
+        ]
+      }
+    ]
+  }
+}
