@@ -35,8 +35,6 @@ export default function Navigation() {
   }, [lightMode]);
 
   const tabs = [
-    { name: '검색', href: '/' },
-    { name: '주요 아이템 시세', href: '/market' },
     { name: '컨텐츠 보상', href: '/content-rewards' },
     { name: '이벤트 효율', href: '/event-efficiency' },
     { name: '패키지 효율', href: '/package-efficiency' },
