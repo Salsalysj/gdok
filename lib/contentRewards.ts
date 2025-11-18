@@ -2,10 +2,10 @@
 
 import { readFile } from 'fs/promises';
 import path from 'path';
+import { getMarketCache } from './marketCache';
 
 const REWARDS_FILE = path.join(process.cwd(), 'data', 'content-rewards.json');
 const CSV_REWARDS_FILE = path.join(process.cwd(), 'data', 'csv-rewards.json');
-const CACHE_FILE = path.join(process.cwd(), 'data', 'cached-market-data.json');
 const RATES_FILE = path.join(process.cwd(), 'data', 'crystal-gold-rates.json');
 const ETC_LIST_FILE = path.join(process.cwd(), 'etc_list.csv');
 
@@ -129,7 +129,7 @@ async function getCSVRewards(): Promise<any> {
 }
 
 async function getMarketData(): Promise<any> {
-  const cached = await readJson<any>(CACHE_FILE);
+  const cached = await getMarketCache();
   return cached?.data ?? null;
 }
 
@@ -367,7 +367,16 @@ export type EnrichedContentRewardsResult = {
   rates: Rates;
 };
 
+// 결과 캐싱 (6시간)
+let cachedContentRewards: { result: EnrichedContentRewardsResult; timestamp: number } | null = null;
+const CACHE_DURATION = 6 * 60 * 60 * 1000; // 6시간
+
 export async function getContentRewardsData(): Promise<EnrichedContentRewardsResult> {
+  // 캐시가 유효하면 반환
+  if (cachedContentRewards && Date.now() - cachedContentRewards.timestamp < CACHE_DURATION) {
+    return cachedContentRewards.result;
+  }
+  
   const contentRewards = await getContentRewards();
   const csvRewards = await getCSVRewards();
   const marketData = await getMarketData();
@@ -476,7 +485,12 @@ export async function getContentRewardsData(): Promise<EnrichedContentRewardsRes
     enrichedData[contentType] = contentData;
   }
 
-  return { data: enrichedData, rates };
+  const result = { data: enrichedData, rates };
+  
+  // 결과 캐싱
+  cachedContentRewards = { result, timestamp: Date.now() };
+  
+  return result;
 }
 
 export type KurzanStageSummary = {
