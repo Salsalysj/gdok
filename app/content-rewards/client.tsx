@@ -176,14 +176,14 @@ export default function ContentRewardsClient({ data, rates }: { data: ContentRew
   }
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4 md:p-6 lg:p-8">
       <div className="max-w-6xl mx-auto">
-        <div className="mb-10">
-          <h1 className="text-4xl font-bold text-white mb-2">컨텐츠 보상 계산기</h1>
-          <p className="text-gray-400">컨텐츠별 보상과 골드 가치를 확인하세요.</p>
+        <div className="mb-6 md:mb-10">
+          <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-2">컨텐츠 보상 계산기</h1>
+          <p className="text-sm md:text-base text-gray-400">컨텐츠별 보상과 골드 가치를 확인하세요.</p>
         </div>
         {/* 글로벌 규칙 스위치: 모든 컨텐츠에 적용 */}
-        <div className="mb-6 flex flex-wrap gap-6">
+        <div className="mb-4 md:mb-6 flex flex-wrap gap-3 md:gap-6">
           <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer select-none">
             <span>나는 돌파석이 남아돈다</span>
             <span onClick={() => setSkipStones(v => !v)} className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors border ${skipStones ? 'bg-purple-600 border-purple-500' : 'bg-gray-600 border-gray-500'}`}>

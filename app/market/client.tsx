@@ -120,65 +120,70 @@ export default function MarketPageClient({
     otherItems;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4 md:p-6 lg:p-8">
       <div className="max-w-6xl mx-auto">
-        <div className="mb-10">
-          <h1 className="text-4xl font-bold text-white mb-2">주요 아이템 시세</h1>
-          <p className="text-gray-400">거래소 주요 품목의 현재 시세와 최근 추이를 확인하세요.</p>
+        <div className="mb-6 md:mb-10">
+          <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-2">주요 아이템 시세</h1>
+          <p className="text-sm md:text-base text-gray-400">거래소 주요 품목의 현재 시세와 최근 추이를 확인하세요.</p>
         </div>
 
 
         {/* 티어별 탭 */}
-        <div className="flex gap-2 mb-6">
+        <div className="flex flex-wrap gap-2 mb-6">
           <button
             onClick={() => setActiveTab('tier4')}
-            className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+            className={`px-3 md:px-6 py-2 md:py-3 text-sm md:text-base rounded-lg font-semibold transition-all ${
               activeTab === 'tier4'
                 ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg'
                 : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
             }`}
           >
-            티어4 ({tier4Items.length}개)
+            <span className="hidden sm:inline">티어4 ({tier4Items.length}개)</span>
+            <span className="sm:hidden">T4</span>
           </button>
           <button
             onClick={() => setActiveTab('tier3')}
-            className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+            className={`px-3 md:px-6 py-2 md:py-3 text-sm md:text-base rounded-lg font-semibold transition-all ${
               activeTab === 'tier3'
                 ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg'
                 : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
             }`}
           >
-            티어3 ({tier3Items.length}개)
+            <span className="hidden sm:inline">티어3 ({tier3Items.length}개)</span>
+            <span className="sm:hidden">T3</span>
           </button>
           <button
             onClick={() => setActiveTab('gem')}
-            className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+            className={`px-3 md:px-6 py-2 md:py-3 text-sm md:text-base rounded-lg font-semibold transition-all ${
               activeTab === 'gem'
                 ? 'bg-gradient-to-r from-yellow-600 to-yellow-700 text-white shadow-lg'
                 : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
             }`}
           >
-            보석 ({gemItems.length}개)
+            <span className="hidden sm:inline">보석 ({gemItems.length}개)</span>
+            <span className="sm:hidden">보석</span>
           </button>
           <button
             onClick={() => setActiveTab('relicEngraving')}
-            className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+            className={`px-3 md:px-6 py-2 md:py-3 text-sm md:text-base rounded-lg font-semibold transition-all ${
               activeTab === 'relicEngraving'
                 ? 'bg-gradient-to-r from-orange-600 to-orange-700 text-white shadow-lg'
                 : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
             }`}
           >
-            유물 각인서 ({relicEngravingItems.length}개)
+            <span className="hidden md:inline">유물 각인서 ({relicEngravingItems.length}개)</span>
+            <span className="md:hidden">각인</span>
           </button>
           <button
             onClick={() => setActiveTab('other')}
-            className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+            className={`px-3 md:px-6 py-2 md:py-3 text-sm md:text-base rounded-lg font-semibold transition-all ${
               activeTab === 'other'
                 ? 'bg-gradient-to-r from-gray-600 to-gray-700 text-white shadow-lg'
                 : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
             }`}
           >
-            기타 ({(etcListItems && etcListItems.length) || 0}개)
+            <span className="hidden sm:inline">기타 ({(etcListItems && etcListItems.length) || 0}개)</span>
+            <span className="sm:hidden">기타</span>
           </button>
         </div>
 

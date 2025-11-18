@@ -184,19 +184,19 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4 md:p-6 lg:p-8">
       <div className="max-w-6xl mx-auto">
         {/* 헤더 */}
-        <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold text-white mb-4 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+        <div className="text-center mb-8 md:mb-12">
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-3 md:mb-4 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
             아이템 검색
           </h1>
-          <p className="text-gray-400">거래소 아이템 시세를 확인하세요</p>
+          <p className="text-sm md:text-base text-gray-400">거래소 아이템 시세를 확인하세요</p>
         </div>
 
         {/* 검색 폼 */}
-        <form onSubmit={handleSearch} className="mb-8">
-          <div className="flex gap-4 relative">
+        <form onSubmit={handleSearch} className="mb-6 md:mb-8">
+          <div className="flex flex-col sm:flex-row gap-3 md:gap-4 relative">
             <div className="flex-1 relative">
               <input
                 ref={inputRef}
@@ -210,7 +210,7 @@ export default function Home() {
                   }
                 }}
                 placeholder="아이템 이름을 입력하세요 (예: 파괴강석)"
-                className="w-full px-6 py-4 bg-gray-800 text-white rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
+                className="w-full px-4 md:px-6 py-3 md:py-4 text-sm md:text-base bg-gray-800 text-white rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
                 disabled={loading}
               />
               
@@ -246,7 +246,7 @@ export default function Home() {
             <button
               type="submit"
               disabled={loading}
-              className="px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl"
+              className="w-full sm:w-auto px-6 md:px-8 py-3 md:py-4 text-sm md:text-base bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl"
             >
               {loading ? '검색 중...' : '검색'}
             </button>
@@ -267,12 +267,12 @@ export default function Home() {
               <table className="w-full">
                 <thead>
                   <tr className="bg-gray-900 border-b border-gray-700">
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">등급</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">아이템명</th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-gray-300">묶음 개수</th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-gray-300">최근 거래가</th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-gray-300">전일 평균가</th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-gray-300">현재 최저가</th>
+                    <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs md:text-sm font-semibold text-gray-300">등급</th>
+                    <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs md:text-sm font-semibold text-gray-300">아이템명</th>
+                    <th className="hidden sm:table-cell px-3 md:px-6 py-3 md:py-4 text-right text-xs md:text-sm font-semibold text-gray-300">묶음 개수</th>
+                    <th className="hidden md:table-cell px-3 md:px-6 py-3 md:py-4 text-right text-xs md:text-sm font-semibold text-gray-300">최근 거래가</th>
+                    <th className="hidden lg:table-cell px-3 md:px-6 py-3 md:py-4 text-right text-xs md:text-sm font-semibold text-gray-300">전일 평균가</th>
+                    <th className="px-3 md:px-6 py-3 md:py-4 text-right text-xs md:text-sm font-semibold text-gray-300">현재 최저가</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -281,25 +281,25 @@ export default function Home() {
                       key={item.Id}
                       className="border-b border-gray-700 hover:bg-gray-750 transition-colors"
                     >
-                      <td className={`px-6 py-4 text-sm font-semibold ${getGradeColor(item.Grade)}`}>
+                      <td className={`px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm font-semibold ${getGradeColor(item.Grade)}`}>
                         {item.Grade}
                       </td>
-                      <td className="px-6 py-4 text-sm text-white font-medium">
-                        <div className="flex items-center gap-3">
-                          <ItemIcon icon={item.Icon} name={item.Name} size="md" />
-                          <span>{item.Name}</span>
+                      <td className="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm text-white font-medium">
+                        <div className="flex items-center gap-2 md:gap-3">
+                          <ItemIcon icon={item.Icon} name={item.Name} size="sm" />
+                          <span className="line-clamp-2 md:line-clamp-none">{item.Name}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-300 text-right">
+                      <td className="hidden sm:table-cell px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm text-gray-300 text-right">
                         {item.BundleCount}개
                       </td>
-                      <td className="px-6 py-4 text-sm text-yellow-400 text-right font-semibold">
+                      <td className="hidden md:table-cell px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm text-yellow-400 text-right font-semibold">
                         {formatPrice(item.RecentPrice)}
                       </td>
-                      <td className="px-6 py-4 text-sm text-blue-400 text-right">
+                      <td className="hidden lg:table-cell px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm text-blue-400 text-right">
                         {formatPrice(item.YDayAvgPrice)}
                       </td>
-                      <td className="px-6 py-4 text-sm text-green-400 text-right font-semibold">
+                      <td className="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm text-green-400 text-right font-semibold">
                         {formatPrice(item.CurrentMinPrice)}
                       </td>
                     </tr>
