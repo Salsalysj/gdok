@@ -4,6 +4,12 @@ export const dynamic = 'force-dynamic';
 import { promises as fs } from 'fs';
 import path from 'path';
 import MarketPageClient from './client';
+import { getMarketCache, setMarketCache } from '@/lib/marketCache';
+
+const ITEM_SAMPLE_FILE = path.join(process.cwd(), 'item sample.csv');
+const MARKET_ITEMS_FILE = path.join(process.cwd(), 'data', 'market-items.json');
+const FEATURED_ITEMS_FILE = path.join(process.cwd(), 'data', 'featured-items.json');
+const ETC_LIST_FILE = path.join(process.cwd(), 'etc_list.csv');
 
 type ItemStats = {
   Date: string;
@@ -27,12 +33,6 @@ type ItemDetail = {
   tier?: string;
   grade?: string;
 };
-
-const MARKET_ITEMS_FILE = path.join(process.cwd(), 'data', 'market-items.json');
-const FEATURED_ITEMS_FILE = path.join(process.cwd(), 'data', 'featured-items.json');
-const CACHE_FILE = path.join(process.cwd(), 'data', 'cached-market-data.json');
-const ETC_LIST_FILE = path.join(process.cwd(), 'etc_list.csv');
-const ITEM_SAMPLE_FILE = path.join(process.cwd(), 'item sample.csv');
 
 type MarketItemConfig = {
   id: number;
@@ -892,14 +892,7 @@ type CachedMarketData = {
   };
 };
 
-async function readCache(): Promise<CachedMarketData | null> {
-  try {
-    const data = await fs.readFile(CACHE_FILE, 'utf-8');
-    return JSON.parse(data);
-  } catch (error) {
-    return null;
-  }
-}
+// readCache 함수는 getMarketCache로 대체됨
 
 export default async function MarketPage() {
   const apiKey = normalizeKey(process.env.LOSTARK_API_KEY);
@@ -912,7 +905,7 @@ export default async function MarketPage() {
   }
 
   // 캐시 확인
-  const cached = await readCache();
+  const cached = await getMarketCache();
   const now = new Date();
   let shouldUseCache = false;
 
@@ -1034,8 +1027,8 @@ export default async function MarketPage() {
         },
       };
 
-      // 캐시 저장은 비동기로 수행 (블로킹 안 함)
-      fs.writeFile(CACHE_FILE, JSON.stringify(cacheData, null, 2), 'utf-8').catch(console.error);
+      // 캐시 저장은 Supabase를 통해 비동기로 수행 (블로킹 안 함)
+      setMarketCache(cacheData).catch(console.error);
     }
 
     console.log('주요 아이템 시세 데이터 가져오기 완료');

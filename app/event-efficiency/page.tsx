@@ -6,9 +6,9 @@ import path from 'path';
 import { createClient } from '@supabase/supabase-js';
 import EventEfficiencyClient from './client';
 import { getKurzanStageSummaries } from '@/lib/contentRewards';
+import { getMarketCache } from '@/lib/marketCache';
 
 const ETC_LIST_FILE = path.join(process.cwd(), 'etc_list.csv');
-const CACHE_FILE = path.join(process.cwd(), 'data', 'cached-market-data.json');
 const CRYSTAL_GOLD_DATA_FILE = path.join(process.cwd(), 'data', 'crystal-gold-rates.json');
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -126,15 +126,7 @@ async function getLatestCrystalGoldRate(): Promise<number | null> {
   }
 }
 
-async function readMarketCache(): Promise<CachedMarketData | null> {
-  try {
-    const data = await fs.readFile(CACHE_FILE, 'utf-8');
-    return JSON.parse(data);
-  } catch (error) {
-    console.error('시장 캐시 읽기 실패:', error);
-    return null;
-  }
-}
+// readMarketCache는 getMarketCache로 대체됨
 
 type LocalCrystalGoldData = {
   exchangeRates?: {
@@ -160,7 +152,7 @@ async function getLatestDiscordRate(): Promise<number | null> {
 export default async function EventEfficiencyPage() {
   const crystalGoldRate = await getLatestCrystalGoldRate();
   const etcListItems = await parseEtcList(crystalGoldRate);
-  const marketCache = await readMarketCache();
+  const marketCache = await getMarketCache();
   const discordRate = await getLatestDiscordRate();
   const kurzanStages = await getKurzanStageSummaries();
   

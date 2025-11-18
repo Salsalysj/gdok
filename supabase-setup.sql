@@ -100,3 +100,35 @@ CREATE POLICY "모든 사용자 읽기 허용" ON crystal_exchange_rates
 -- 실제로는 API Route에서 서비스 키를 사용하므로 이 정책은 필요 없을 수 있음
 -- 하지만 안전을 위해 읽기만 허용
 
+-- 시장 아이템 캐시 테이블 생성
+CREATE TABLE IF NOT EXISTS market_cache (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  cache_key TEXT NOT NULL UNIQUE,
+  data JSONB NOT NULL,
+  last_updated TIMESTAMP WITH TIME ZONE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- cache_key 인덱스 생성 (빠른 조회)
+CREATE INDEX IF NOT EXISTS idx_market_cache_key ON market_cache(cache_key);
+CREATE INDEX IF NOT EXISTS idx_market_cache_updated ON market_cache(last_updated DESC);
+
+-- updated_at 자동 업데이트를 위한 트리거
+DROP TRIGGER IF EXISTS update_market_cache_updated_at ON market_cache;
+CREATE TRIGGER update_market_cache_updated_at
+BEFORE UPDATE ON market_cache
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
+-- RLS 정책 설정
+ALTER TABLE market_cache ENABLE ROW LEVEL SECURITY;
+
+-- 모든 사용자가 읽을 수 있도록 정책 설정
+DROP POLICY IF EXISTS "모든 사용자 읽기 허용" ON market_cache;
+CREATE POLICY "모든 사용자 읽기 허용" ON market_cache
+  FOR SELECT
+  USING (true);
+
+-- 서버(서비스 키)만 쓰기 가능하도록 설정 (삽입/업데이트는 API Route에서만)
+

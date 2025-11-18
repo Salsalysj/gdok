@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 import { promises as fs } from 'fs';
 import path from 'path';
 import PackageEfficiencyClient from './client';
-const MARKET_CACHE_FILE = path.join(process.cwd(), 'data', 'cached-market-data.json');
+import { getMarketCache } from '@/lib/marketCache';
 
 const P_LISTS_FILE = path.join(process.cwd(), 'p_lists.csv');
 const P_LIST_FILE_ALT = path.join(process.cwd(), 'p_list.csv'); // 호환: 단수 파일명도 지원
@@ -78,8 +78,7 @@ async function getLatestCrystalGoldRate(): Promise<number | null> {
 type MarketItem = { displayName?: string; Name?: string; CurrentMinPrice?: number; RecentPrice?: number };
 async function getMarketPriceMap(): Promise<Record<string, number>> {
   try {
-    const raw = await fs.readFile(MARKET_CACHE_FILE, 'utf-8');
-    const cached = JSON.parse(raw);
+    const cached = await getMarketCache();
     const data = cached?.data || {};
     const buckets: MarketItem[][] = [
       data.tier4Results || [],
@@ -107,9 +106,8 @@ async function getMarketPriceMap(): Promise<Record<string, number>> {
 
 async function getMarketData() {
   try {
-    const data = await fs.readFile(path.join(process.cwd(), 'data', 'cached-market-data.json'), 'utf-8');
-    const cached = JSON.parse(data);
-    return cached.data;
+    const cached = await getMarketCache();
+    return cached?.data || null;
   } catch (error) {
     return null;
   }

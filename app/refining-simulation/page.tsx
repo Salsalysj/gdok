@@ -4,10 +4,10 @@ export const dynamic = 'force-dynamic';
 import { promises as fs } from 'fs';
 import path from 'path';
 import RefiningSimulationClient from './client';
+import { getMarketCache } from '@/lib/marketCache';
 
 const UPGRADE_FILE_WEAPON = path.join(process.cwd(), 'upgrade1.csv');
 const UPGRADE_FILE_ARMOR = path.join(process.cwd(), 'upgrade2.csv');
-const MARKET_CACHE_FILE = path.join(process.cwd(), 'data', 'cached-market-data.json');
 
 // 무기용 상수
 const OPTIONAL_METALLURGY_ITEMS_WEAPON = [
@@ -86,9 +86,8 @@ async function parseUpgradeCsv(filePath: string, fileName: string) {
 
 async function getMarketInfoMap(): Promise<{ infoMap: Record<string, MarketItemInfo>; lastUpdated: string | null }> {
   try {
-    const raw = await fs.readFile(MARKET_CACHE_FILE, 'utf-8');
-    const parsed = JSON.parse(raw);
-    const cachedData = parsed?.data || {};
+    const cacheResult = await getMarketCache();
+    const cachedData = cacheResult?.data || {};
     const buckets = [
       cachedData.tier4Results || [],
       cachedData.tier3Results || [],
@@ -131,7 +130,7 @@ async function getMarketInfoMap(): Promise<{ infoMap: Record<string, MarketItemI
     infoMap[GOLD_ITEM] = { unitPrice: 1, icon: null };
     infoMap[SILVER_ITEM] = { unitPrice: 0, icon: null };
 
-    return { infoMap, lastUpdated: parsed?.lastUpdated || null };
+    return { infoMap, lastUpdated: cacheResult?.lastUpdated || null };
   } catch (error) {
     console.error('시장 캐시 데이터를 읽을 수 없습니다:', error);
     return { infoMap: { [GOLD_ITEM]: { unitPrice: 1, icon: null }, [SILVER_ITEM]: { unitPrice: 0, icon: null } }, lastUpdated: null };

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { getMarketCache, setMarketCache } from '@/lib/marketCache';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const CACHE_FILE = path.join(process.cwd(), 'data', 'cached-market-data.json');
 const ITEM_SAMPLE_FILE = path.join(process.cwd(), 'item sample.csv');
 
 type ItemStats = {
@@ -681,19 +681,16 @@ async function fetchSpecificEngraving(itemName: string, apiKey: string): Promise
   }
 }
 
+// readCache와 writeCache는 Supabase를 사용하도록 변경됨
 async function readCache(): Promise<CachedMarketData | null> {
-  try {
-    const data = await fs.readFile(CACHE_FILE, 'utf-8');
-    return JSON.parse(data);
-  } catch (error) {
-    return null;
-  }
+  return await getMarketCache();
 }
 
-async function writeCache(data: CachedMarketData): Promise<void> {
-  const dataDir = path.dirname(CACHE_FILE);
-  await fs.mkdir(dataDir, { recursive: true });
-  await fs.writeFile(CACHE_FILE, JSON.stringify(data, null, 2), 'utf-8');
+async function writeCache(cacheData: CachedMarketData): Promise<void> {
+  const success = await setMarketCache(cacheData);
+  if (!success) {
+    throw new Error('Failed to write cache to Supabase');
+  }
 }
 
 export async function GET(request: NextRequest) {
