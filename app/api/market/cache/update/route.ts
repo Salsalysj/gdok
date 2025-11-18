@@ -697,6 +697,17 @@ async function writeCache(data: CachedMarketData): Promise<void> {
 }
 
 export async function GET(request: NextRequest) {
+  // Vercel Cron 인증 체크
+  const cronSecret = request.headers.get('authorization');
+  const expectedSecret = process.env.CRON_SECRET;
+  
+  if (expectedSecret && cronSecret !== `Bearer ${expectedSecret}`) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401 }
+    );
+  }
+  
   // 먼저 기존 캐시 읽기 (실패해도 기존 데이터 유지하기 위해)
   const existingCache = await readCache();
   

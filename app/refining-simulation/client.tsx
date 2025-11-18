@@ -870,7 +870,6 @@ const FALLBACK_ICON: Record<string, string> = {
   [GOLD_ITEM]: '🪙',
   [SILVER_ITEM]: '💠',
   [BREATH_ITEM]: '🔥',
-  '용암의 숨결': '🔥',
   '빙하의 숨결': '❄️',
   '운명의 파괴석': '💎',
   '운명의 수호석': '🛡️',
@@ -976,8 +975,8 @@ function calculateOptimalStrategy(
       let currentMetallurgyCost = 0;
       let strategyLabel = '기본';
 
-      const useBreath = n <= breathUses && stage.breathMaterial;
-      const useMetallurgy = n <= metallurgyUses && stage.metallurgyMaterial;
+      const useBreath = !!(n <= breathUses && stage.breathMaterial);
+      const useMetallurgy = !!(n <= metallurgyUses && stage.metallurgyMaterial);
 
       // 최초 성공률이 0.5%인 경우 보조 재료 보너스는 +1.0% 고정
       const isLowRate = stage.baseSuccessRate === 0.5;

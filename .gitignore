@@ -38,3 +38,7 @@ next-env.d.ts
 # cached data
 data/cached-market-data.json
 
+# 개발 및 임시 파일
+cursor_.md
+calc.xlsx
+

@@ -133,7 +133,18 @@ async function saveExchangeToSupabase(exchange: number, timestamp: string): Prom
 }
 
 // POST: 크리스탈 환율 갱신 (스케줄러용)
-export async function POST() {
+export async function POST(request: Request) {
+  // Vercel Cron 인증 체크
+  const cronSecret = request.headers.get('authorization');
+  const expectedSecret = process.env.CRON_SECRET;
+  
+  if (expectedSecret && cronSecret !== `Bearer ${expectedSecret}`) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401 }
+    );
+  }
+  
   try {
     const fetched = await fetchLatestExchange();
     
