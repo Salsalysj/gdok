@@ -6,6 +6,13 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  if (!supabase) {
+    return NextResponse.json(
+      { error: 'Supabase가 설정되지 않았습니다.' },
+      { status: 503 }
+    );
+  }
+
   try {
     const body = await request.json();
     const { package_name, package_data } = body;
@@ -50,6 +57,13 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  if (!supabase) {
+    return NextResponse.json(
+      { error: 'Supabase가 설정되지 않았습니다.' },
+      { status: 503 }
+    );
+  }
+
   try {
     const { id } = params;
 

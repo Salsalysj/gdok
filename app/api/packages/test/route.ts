@@ -3,6 +3,13 @@ import { supabase } from '@/app/utils/supabase';
 
 // Supabase 연결 테스트용 엔드포인트
 export async function GET() {
+  if (!supabase) {
+    return NextResponse.json({
+      success: false,
+      message: 'Supabase가 설정되지 않았습니다.',
+    });
+  }
+
   try {
     // 간단한 쿼리로 연결 테스트
     const { data, error } = await supabase

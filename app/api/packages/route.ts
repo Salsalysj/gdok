@@ -3,6 +3,13 @@ import { supabase } from '@/app/utils/supabase';
 
 // GET: 저장된 패키지 목록 조회
 export async function GET() {
+  if (!supabase) {
+    return NextResponse.json(
+      { error: 'Supabase가 설정되지 않았습니다.' },
+      { status: 503 }
+    );
+  }
+
   try {
     const { data, error } = await supabase
       .from('saved_packages')
@@ -23,6 +30,13 @@ export async function GET() {
 
 // POST: 새 패키지 저장
 export async function POST(request: NextRequest) {
+  if (!supabase) {
+    return NextResponse.json(
+      { error: 'Supabase가 설정되지 않았습니다.' },
+      { status: 503 }
+    );
+  }
+
   try {
     const body = await request.json();
     const { package_name, package_data } = body;
