@@ -21,7 +21,6 @@ type ContentData = {
 };
 
 type ContentRewards = {
-  '카던&전선'?: ContentData;
   '에브니 큐브'?: ContentData;
   '가디언 토벌'?: ContentData;
   '카오스 던전'?: ContentData;
