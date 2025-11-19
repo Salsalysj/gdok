@@ -820,6 +820,27 @@ export async function GET(request: NextRequest) {
       await writeCache(cacheData);
       console.log('캐시 업데이트 완료');
 
+      // 순환 돌파석 효율표도 함께 갱신
+      try {
+        console.log('순환 돌파석 효율표 갱신 시작...');
+        const circularResponse = await fetch(`${request.nextUrl.origin}/api/refining/circular-breakthrough/calculate-and-save`, {
+          method: 'POST',
+          headers: {
+            'Authorization': request.headers.get('authorization') || '',
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (circularResponse.ok) {
+          console.log('순환 돌파석 효율표 갱신 완료');
+        } else {
+          console.error('순환 돌파석 효율표 갱신 실패:', circularResponse.status);
+        }
+      } catch (circularError) {
+        console.error('순환 돌파석 효율표 갱신 중 오류:', circularError);
+        // 순환 돌파석 갱신 실패해도 market_cache는 성공했으므로 계속 진행
+      }
+
       return NextResponse.json({
         message: '캐시 업데이트 완료',
         cached: false,
@@ -956,6 +977,28 @@ export async function POST(request: NextRequest) {
 
       await writeCache(cacheData);
       console.log('강제 캐시 업데이트 완료');
+
+      // 순환 돌파석 효율표도 함께 갱신
+      try {
+        console.log('순환 돌파석 효율표 갱신 시작...');
+        const cronSecret = process.env.CRON_SECRET;
+        const circularResponse = await fetch(`${request.nextUrl.origin}/api/refining/circular-breakthrough/calculate-and-save`, {
+          method: 'POST',
+          headers: {
+            'Authorization': cronSecret ? `Bearer ${cronSecret}` : '',
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (circularResponse.ok) {
+          console.log('순환 돌파석 효율표 갱신 완료');
+        } else {
+          console.error('순환 돌파석 효율표 갱신 실패:', circularResponse.status);
+        }
+      } catch (circularError) {
+        console.error('순환 돌파석 효율표 갱신 중 오류:', circularError);
+        // 순환 돌파석 갱신 실패해도 market_cache는 성공했으므로 계속 진행
+      }
 
       return NextResponse.json({
         message: '캐시 업데이트 완료',

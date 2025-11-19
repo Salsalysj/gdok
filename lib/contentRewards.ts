@@ -3,17 +3,20 @@
 import { readFile } from 'fs/promises';
 import path from 'path';
 import { getMarketCache } from './marketCache';
+import { getCircularBreakthroughValue } from './circularBreakthrough';
 
 const REWARDS_FILE = path.join(process.cwd(), 'data', 'content-rewards.json');
 const CSV_REWARDS_FILE = path.join(process.cwd(), 'data', 'csv-rewards.json');
 const RATES_FILE = path.join(process.cwd(), 'data', 'crystal-gold-rates.json');
 const ETC_LIST_FILE = path.join(process.cwd(), 'etc_list.csv');
+const HELL3_CSV_FILE = path.join(process.cwd(), 'hell3.csv');
 
 type RewardItem = {
   itemName: string;
   quantity: number;
   price?: number | null;
   cubeStageRewards?: RewardItem[];
+  category?: string; // 지옥3 카테고리
 };
 
 type EtcListItem = {
@@ -128,17 +131,97 @@ async function getCSVRewards(): Promise<any> {
   return (await readJson<any>(CSV_REWARDS_FILE)) || {};
 }
 
+async function parseHell3CSV(): Promise<{ '지옥3'?: Stage[] }> {
+  try {
+    const content = await readFile(HELL3_CSV_FILE, 'utf-8');
+    const lines = content.split('\n').map((line) => line.trim()).filter(Boolean);
+    if (lines.length < 2) return {};
+
+    // 헤더 파싱
+    const header = lines[0].split(',').map((col) => col.trim());
+    const stageColumns = header.slice(2); // 0단계, 1단계, ..., 10단계
+
+    // 각 단계별로 보상 수집
+    const stagesMap: { [stage: string]: RewardItem[] } = {};
+    stageColumns.forEach((stage) => {
+      stagesMap[stage] = [];
+    });
+
+    // 데이터 행 파싱
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(',').map((col) => col.trim());
+      if (cols.length < 3) continue;
+
+      const category = cols[0];
+      const itemName = cols[1];
+      
+      // 각 단계별 수량 파싱
+      stageColumns.forEach((stage, idx) => {
+        const quantityStr = cols[idx + 2] || '';
+        const quantity = quantityStr ? parseFloat(quantityStr) : 0;
+        
+        if (quantity > 0) {
+          if (!stagesMap[stage]) {
+            stagesMap[stage] = [];
+          }
+          stagesMap[stage].push({
+            itemName,
+            quantity,
+            category, // 카테고리 정보 추가
+          });
+        }
+      });
+    }
+
+    // Stage 배열로 변환
+    const stages: Stage[] = stageColumns.map((stage) => ({
+      stage,
+      rewards: stagesMap[stage] || [],
+    }));
+
+    return { '지옥3': stages };
+  } catch (error) {
+    console.error('Failed to parse hell3.csv:', error);
+    return {};
+  }
+}
+
 async function getMarketData(): Promise<any> {
   const cached = await getMarketCache();
   return cached?.data ?? null;
+}
+
+// 순환 돌파석 가치 계산: 재련 효율에서 단계 상관 없이 가장 높은 기대 가치 5개의 평균
+async function calculateCircularBreakthroughStoneValue(marketData: any): Promise<number | null> {
+  try {
+    const average = await getCircularBreakthroughValue();
+    // 단계 상관 없이 무기와 방어구 모든 값 중 상위 5개의 평균 반환
+    if (average > 0) {
+      return average;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error calculating circular breakthrough stone value:', error);
+    return null;
+  }
 }
 
 async function getLatestRates(): Promise<Rates> {
   const data = await readJson<{ exchangeRates?: { date: string; exchange: number; discord?: number }[] }>(RATES_FILE);
   const list = data?.exchangeRates || [];
   if (list.length === 0) return { exchange: null, discord: null };
-  const latest = [...list].sort((a, b) => b.date.localeCompare(a.date))[0];
-  return { exchange: latest?.exchange ?? null, discord: latest?.discord ?? null };
+  
+  // 날짜순 정렬
+  const sorted = [...list].sort((a, b) => b.date.localeCompare(a.date));
+  
+  // exchange가 0이 아닌 최신 데이터 찾기
+  const latestWithExchange = sorted.find(item => item.exchange && item.exchange > 0);
+  const latestWithDiscord = sorted.find(item => item.discord && item.discord > 0);
+  
+  return { 
+    exchange: latestWithExchange?.exchange ?? null, 
+    discord: latestWithDiscord?.discord ?? null 
+  };
 }
 
 function flattenMarketItems(marketData: any): MarketItem[] {
@@ -358,6 +441,65 @@ async function processRewardForKurzan(
     return { itemName: finalItemName, quantity: reward.quantity, price };
   }
 
+  // 고대 팔찌: 3000골드 고정
+  if (finalItemName === '고대 팔찌') {
+    return { itemName: finalItemName, quantity: reward.quantity, price: 3000 };
+  }
+
+  // 정련된 운명의 돌: 1000골드 고정
+  if (finalItemName === '정련된 운명의 돌') {
+    return { itemName: finalItemName, quantity: reward.quantity, price: 1000 };
+  }
+
+  // 희귀~영웅 젬 랜덤 상자: 희귀 평균 * 0.9 + 영웅 평균 * 0.1
+  if (finalItemName === '희귀~영웅 젬 상자' || finalItemName === '희귀~영웅 젬 랜덤 상자') {
+    const rareAvg = calculateGemPriceByGrade('희귀', marketData);
+    const heroicAvg = calculateGemPriceByGrade('영웅', marketData);
+    if (!rareAvg && !heroicAvg) {
+      return { itemName: finalItemName, quantity: reward.quantity, price: null };
+    }
+    const price = (rareAvg ?? 0) * 0.9 + (heroicAvg ?? 0) * 0.1;
+    return { itemName: finalItemName, quantity: reward.quantity, price };
+  }
+
+  // 희귀 젬 선택 상자: 희귀 등급의 젬 6개 중 가장 가격이 높은 젬
+  if (finalItemName === '희귀 젬 선택 상자') {
+    const allItems = flattenMarketItems(marketData);
+    const gemNames = [
+      '질서의 젬 : 불변',
+      '질서의 젬 : 견고',
+      '질서의 젬 : 안정',
+      '혼돈의 젬 : 침식',
+      '혼돈의 젬 : 왜곡',
+      '혼돈의 젬 : 붕괴',
+    ];
+    let maxPrice = 0;
+    let maxPriceGemName = '';
+    for (const gemName of gemNames) {
+      const gem = allItems.find((item) => (item.displayName || item.Name || '').trim() === gemName && item.Grade === '희귀');
+      if (gem) {
+        const price = gem.CurrentMinPrice || gem.RecentPrice || 0;
+        if (price > maxPrice) {
+          maxPrice = price;
+          maxPriceGemName = gemName;
+        }
+      }
+    }
+    if (maxPrice > 0) {
+      return { 
+        itemName: `${finalItemName} (${maxPriceGemName})`, 
+        quantity: reward.quantity, 
+        price: maxPrice 
+      };
+    }
+    return { itemName: finalItemName, quantity: reward.quantity, price: null };
+  }
+
+  // 귀속 골드: 골드와 1:1 동일한 가치
+  if (finalItemName === '귀속 골드') {
+    return { itemName: finalItemName, quantity: reward.quantity, price: 1 };
+  }
+
   const price = findItemPrice(finalItemName, marketData);
   return { itemName: finalItemName, quantity: reward.quantity, price };
 }
@@ -385,6 +527,245 @@ export async function getContentRewardsData(): Promise<EnrichedContentRewardsRes
   const enrichedData: ContentRewards = {};
   let chaosDungeonData: ContentData = {};
   let kurzanData: ContentData = {};
+
+  // 지옥 데이터 처리
+  const hellData = contentRewards['지옥'] || {};
+  const hell3CSVData = await parseHell3CSV();
+  
+  const processedHellData: { '지옥1'?: Stage[]; '지옥2'?: Stage[]; '지옥3'?: Stage[] } = {};
+  
+  // 지옥1, 지옥2는 content-rewards.json에서 읽기
+  for (const [hellType, stages] of Object.entries(hellData)) {
+    if (hellType === '지옥1' || hellType === '지옥2') {
+      processedHellData[hellType] = await Promise.all(
+        (stages as Stage[]).map(async (stage) => {
+          const processedRewards = await Promise.all(
+            stage.rewards.map(async (reward) => {
+              if (reward.itemName === '카드 경험치') {
+                const price = await calculateCardExpPrice(marketData, rates);
+                return { itemName: reward.itemName, quantity: reward.quantity, price };
+              }
+              // 고대 팔찌: 3000골드 고정
+              if (reward.itemName === '고대 팔찌') {
+                return { itemName: reward.itemName, quantity: reward.quantity, price: 3000 };
+              }
+              // 정련된 운명의 돌: 1000골드 고정
+              if (reward.itemName === '정련된 운명의 돌') {
+                return { itemName: reward.itemName, quantity: reward.quantity, price: 1000 };
+              }
+              // 희귀~영웅 젬 랜덤 상자: 희귀 평균 * 0.9 + 영웅 평균 * 0.1
+              if (reward.itemName === '희귀~영웅 젬 상자' || reward.itemName === '희귀~영웅 젬 랜덤 상자') {
+                const rareAvg = calculateGemPriceByGrade('희귀', marketData);
+                const heroicAvg = calculateGemPriceByGrade('영웅', marketData);
+                if (!rareAvg && !heroicAvg) {
+                  return { itemName: reward.itemName, quantity: reward.quantity, price: null };
+                }
+                const price = (rareAvg ?? 0) * 0.9 + (heroicAvg ?? 0) * 0.1;
+                return { itemName: reward.itemName, quantity: reward.quantity, price };
+              }
+              // 희귀 젬 선택 상자: 희귀 등급의 젬 6개 중 가장 가격이 높은 젬
+              if (reward.itemName === '희귀 젬 선택 상자') {
+                const allItems = flattenMarketItems(marketData);
+                const gemNames = [
+                  '질서의 젬 : 불변',
+                  '질서의 젬 : 견고',
+                  '질서의 젬 : 안정',
+                  '혼돈의 젬 : 침식',
+                  '혼돈의 젬 : 왜곡',
+                  '혼돈의 젬 : 붕괴',
+                ];
+                let maxPrice = 0;
+                let maxPriceGemName = '';
+                for (const gemName of gemNames) {
+                  const gem = allItems.find((item) => (item.displayName || item.Name || '').trim() === gemName && item.Grade === '희귀');
+                  if (gem) {
+                    const price = gem.CurrentMinPrice || gem.RecentPrice || 0;
+                    if (price > maxPrice) {
+                      maxPrice = price;
+                      maxPriceGemName = gemName;
+                    }
+                  }
+                }
+                if (maxPrice > 0) {
+                  return { 
+                    itemName: `${reward.itemName} (${maxPriceGemName})`, 
+                    quantity: reward.quantity, 
+                    price: maxPrice 
+                  };
+                }
+                return { itemName: reward.itemName, quantity: reward.quantity, price: null };
+              }
+              // 귀속 골드: 골드와 1:1 동일한 가치
+              if (reward.itemName === '귀속 골드') {
+                return { itemName: reward.itemName, quantity: reward.quantity, price: 1 };
+              }
+              const price = findItemPrice(reward.itemName, marketData);
+              return { itemName: reward.itemName, quantity: reward.quantity, price };
+            })
+          );
+          return { ...stage, rewards: processedRewards };
+        })
+      );
+    }
+  }
+  
+  // 지옥3은 hell3.csv에서 읽기
+  if (hell3CSVData['지옥3']) {
+    processedHellData['지옥3'] = await Promise.all(
+      hell3CSVData['지옥3'].map(async (stage) => {
+        const processedRewards = await Promise.all(
+          stage.rewards.map(async (reward) => {
+            if (reward.itemName === '카드 경험치') {
+              const price = await calculateCardExpPrice(marketData, rates);
+              return { 
+                itemName: reward.itemName, 
+                quantity: reward.quantity, 
+                price,
+                category: reward.category 
+              };
+            }
+            // 어빌리티 스톤 키트: 페온 9개(8.5크리스탈/개) + 100골드
+            if (reward.itemName === '어빌리티 스톤 키트' || reward.itemName.includes('어빌리티 스톤 키트')) {
+              let price: number | null = null;
+              // rates는 getContentRewardsData 함수에서 전달됨
+              if (rates && rates.exchange && rates.exchange > 0) {
+                // 페온 9개 = 9 * 8.5 = 76.5크리스탈
+                // 76.5크리스탈을 골드로 환산: (76.5 / 100) * exchange
+                // exchange는 100크리스탈당 골드이므로, 76.5크리스탈 = (76.5 / 100) * exchange 골드
+                const peonGoldValue = (76.5 / 100) * rates.exchange;
+                // 총 가격 = 페온 골드 가치 + 100골드
+                price = peonGoldValue + 100;
+              } else {
+                // rates.exchange가 없으면 기본값 사용 (디버깅용)
+                console.warn(`[어빌리티 스톤 키트] rates.exchange가 없습니다. rates:`, rates);
+              }
+              return { 
+                itemName: reward.itemName, 
+                quantity: reward.quantity, 
+                price,
+                category: reward.category 
+              };
+            }
+            // 운명의 파편: 운명의 파편 주머니(소) / 1000
+            if (reward.itemName === '운명의 파편') {
+              const price = calculateFragmentPrice('운명의 파편', marketData);
+              return { 
+                itemName: reward.itemName, 
+                quantity: reward.quantity, 
+                price,
+                category: reward.category 
+              };
+            }
+            // 순환 돌파석: Supabase에서 상위 5개 평균값 조회
+            if (reward.itemName === '순환 돌파석') {
+              const price = await calculateCircularBreakthroughStoneValue(marketData);
+              return { 
+                itemName: reward.itemName, 
+                quantity: reward.quantity, 
+                price,
+                category: reward.category 
+              };
+            }
+            // 고대 팔찌: 3000골드 고정
+            if (reward.itemName === '고대 팔찌') {
+              return { 
+                itemName: reward.itemName, 
+                quantity: reward.quantity, 
+                price: 3000,
+                category: reward.category 
+              };
+            }
+            // 정련된 운명의 돌: 1000골드 고정
+            if (reward.itemName === '정련된 운명의 돌') {
+              return { 
+                itemName: reward.itemName, 
+                quantity: reward.quantity, 
+                price: 1000,
+                category: reward.category 
+              };
+            }
+            // 희귀~영웅 젬 랜덤 상자: 희귀 평균 * 0.9 + 영웅 평균 * 0.1
+            if (reward.itemName === '희귀~영웅 젬 상자' || reward.itemName === '희귀~영웅 젬 랜덤 상자') {
+              const rareAvg = calculateGemPriceByGrade('희귀', marketData);
+              const heroicAvg = calculateGemPriceByGrade('영웅', marketData);
+              if (!rareAvg && !heroicAvg) {
+                return { 
+                  itemName: reward.itemName, 
+                  quantity: reward.quantity, 
+                  price: null,
+                  category: reward.category 
+                };
+              }
+              const price = (rareAvg ?? 0) * 0.9 + (heroicAvg ?? 0) * 0.1;
+              return { 
+                itemName: reward.itemName, 
+                quantity: reward.quantity, 
+                price,
+                category: reward.category 
+              };
+            }
+            // 희귀 젬 선택 상자: 희귀 등급의 젬 6개 중 가장 가격이 높은 젬
+            if (reward.itemName === '희귀 젬 선택 상자') {
+              const allItems = flattenMarketItems(marketData);
+              const gemNames = [
+                '질서의 젬 : 불변',
+                '질서의 젬 : 견고',
+                '질서의 젬 : 안정',
+                '혼돈의 젬 : 침식',
+                '혼돈의 젬 : 왜곡',
+                '혼돈의 젬 : 붕괴',
+              ];
+              let maxPrice = 0;
+              let maxPriceGemName = '';
+              for (const gemName of gemNames) {
+                const gem = allItems.find((item) => (item.displayName || item.Name || '').trim() === gemName && item.Grade === '희귀');
+                if (gem) {
+                  const price = gem.CurrentMinPrice || gem.RecentPrice || 0;
+                  if (price > maxPrice) {
+                    maxPrice = price;
+                    maxPriceGemName = gemName;
+                  }
+                }
+              }
+              if (maxPrice > 0) {
+                return { 
+                  itemName: `${reward.itemName} (${maxPriceGemName})`, 
+                  quantity: reward.quantity, 
+                  price: maxPrice,
+                  category: reward.category 
+                };
+              }
+              return { 
+                itemName: reward.itemName, 
+                quantity: reward.quantity, 
+                price: null,
+                category: reward.category 
+              };
+            }
+            // 귀속 골드: 골드와 1:1 동일한 가치
+            if (reward.itemName === '귀속 골드') {
+              return { 
+                itemName: reward.itemName, 
+                quantity: reward.quantity, 
+                price: 1,
+                category: reward.category 
+              };
+            }
+            const price = findItemPrice(reward.itemName, marketData);
+            return { 
+              itemName: reward.itemName, 
+              quantity: reward.quantity, 
+              price,
+              category: reward.category 
+            };
+          })
+        );
+        return { ...stage, rewards: processedRewards };
+      })
+    );
+  }
+  
+  (enrichedData as any)['지옥'] = processedHellData;
 
   const { totals: eponaCubeStageTotals, rewardsMap: eponaCubeRewardsMap } = await processCubeStages(csvRewards, marketData, rates);
 
@@ -472,6 +853,60 @@ export async function getContentRewardsData(): Promise<EnrichedContentRewardsRes
               if (reward.itemName === '카드 경험치') {
                 const price = await calculateCardExpPrice(marketData, rates);
                 return { itemName: reward.itemName, quantity: reward.quantity, price };
+              }
+              // 고대 팔찌: 3000골드 고정
+              if (reward.itemName === '고대 팔찌') {
+                return { itemName: reward.itemName, quantity: reward.quantity, price: 3000 };
+              }
+              // 정련된 운명의 돌: 1000골드 고정
+              if (reward.itemName === '정련된 운명의 돌') {
+                return { itemName: reward.itemName, quantity: reward.quantity, price: 1000 };
+              }
+              // 희귀~영웅 젬 랜덤 상자: 희귀 평균 * 0.9 + 영웅 평균 * 0.1
+              if (reward.itemName === '희귀~영웅 젬 상자' || reward.itemName === '희귀~영웅 젬 랜덤 상자') {
+                const rareAvg = calculateGemPriceByGrade('희귀', marketData);
+                const heroicAvg = calculateGemPriceByGrade('영웅', marketData);
+                if (!rareAvg && !heroicAvg) {
+                  return { itemName: reward.itemName, quantity: reward.quantity, price: null };
+                }
+                const price = (rareAvg ?? 0) * 0.9 + (heroicAvg ?? 0) * 0.1;
+                return { itemName: reward.itemName, quantity: reward.quantity, price };
+              }
+              // 희귀 젬 선택 상자: 희귀 등급의 젬 6개 중 가장 가격이 높은 젬
+              if (reward.itemName === '희귀 젬 선택 상자') {
+                const allItems = flattenMarketItems(marketData);
+                const gemNames = [
+                  '질서의 젬 : 불변',
+                  '질서의 젬 : 견고',
+                  '질서의 젬 : 안정',
+                  '혼돈의 젬 : 침식',
+                  '혼돈의 젬 : 왜곡',
+                  '혼돈의 젬 : 붕괴',
+                ];
+                let maxPrice = 0;
+                let maxPriceGemName = '';
+                for (const gemName of gemNames) {
+                  const gem = allItems.find((item) => (item.displayName || item.Name || '').trim() === gemName && item.Grade === '희귀');
+                  if (gem) {
+                    const price = gem.CurrentMinPrice || gem.RecentPrice || 0;
+                    if (price > maxPrice) {
+                      maxPrice = price;
+                      maxPriceGemName = gemName;
+                    }
+                  }
+                }
+                if (maxPrice > 0) {
+                  return { 
+                    itemName: `${reward.itemName} (${maxPriceGemName})`, 
+                    quantity: reward.quantity, 
+                    price: maxPrice 
+                  };
+                }
+                return { itemName: reward.itemName, quantity: reward.quantity, price: null };
+              }
+              // 귀속 골드: 골드와 1:1 동일한 가치
+              if (reward.itemName === '귀속 골드') {
+                return { itemName: reward.itemName, quantity: reward.quantity, price: 1 };
               }
               const price = findItemPrice(reward.itemName, marketData);
               return { itemName: reward.itemName, quantity: reward.quantity, price };

@@ -132,3 +132,40 @@ CREATE POLICY "모든 사용자 읽기 허용" ON market_cache
 
 -- 서버(서비스 키)만 쓰기 가능하도록 설정 (삽입/업데이트는 API Route에서만)
 
+-- 순환 돌파석 가치 테이블 생성
+CREATE TABLE IF NOT EXISTS circular_breakthrough_values (
+  id SERIAL PRIMARY KEY,
+  level INTEGER NOT NULL UNIQUE,
+  weapon_value NUMERIC,
+  armor_value NUMERIC,
+  last_updated TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 인덱스 생성
+CREATE INDEX IF NOT EXISTS idx_circular_breakthrough_level ON circular_breakthrough_values(level);
+
+-- RLS 정책 추가
+ALTER TABLE circular_breakthrough_values ENABLE ROW LEVEL SECURITY;
+
+-- 모든 사용자가 읽을 수 있도록 허용
+DROP POLICY IF EXISTS "모든 사용자 읽기 허용 circular" ON circular_breakthrough_values;
+CREATE POLICY "모든 사용자 읽기 허용 circular" ON circular_breakthrough_values
+  FOR SELECT
+  USING (true);
+
+-- 서버만 쓸 수 있도록 허용
+DROP POLICY IF EXISTS "서버 삽입 허용 circular" ON circular_breakthrough_values;
+CREATE POLICY "서버 삽입 허용 circular" ON circular_breakthrough_values
+  FOR INSERT
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "서버 업데이트 허용 circular" ON circular_breakthrough_values;
+CREATE POLICY "서버 업데이트 허용 circular" ON circular_breakthrough_values
+  FOR UPDATE
+  USING (true);
+
+DROP POLICY IF EXISTS "서버 삭제 허용 circular" ON circular_breakthrough_values;
+CREATE POLICY "서버 삭제 허용 circular" ON circular_breakthrough_values
+  FOR DELETE
+  USING (true);
+

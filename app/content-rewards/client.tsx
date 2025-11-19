@@ -9,6 +9,7 @@ type RewardItem = {
   quantity: number;
   price?: number | null;
   cubeStageRewards?: RewardItem[]; // 에브니 큐브 탭의 해당 단계 보상 정보
+  category?: string; // 카테고리 정보 (지옥3용)
 };
 
 type Stage = {
@@ -92,7 +93,8 @@ export default function ContentRewardsClient({ data, rates }: { data: ContentRew
     }
   }, [levels, activeLevel]);
   
-  const currentLevelData = activeLevel && contentData ? contentData[activeLevel] : [];
+  // 현재 표시할 데이터 결정
+  const currentLevelData: Stage[] = activeLevel && contentData ? contentData[activeLevel] : [];
 
   // 거래가능/귀속 색상 구분
   const tradableSet = useMemo(() => new Set<string>([
@@ -225,8 +227,6 @@ export default function ContentRewardsClient({ data, rates }: { data: ContentRew
           ))}
         </div>
 
-        {/* 합계 제외 스위치 영역: 제거됨 (요청에 따라 총 합계 옆으로 이동) */}
-        
         {/* 레벨 선택 (에브니 큐브, 가디언 토벌은 티어 선택) */}
         {levels.length > 0 && (
           <div className="mb-6">
@@ -249,9 +249,11 @@ export default function ContentRewardsClient({ data, rates }: { data: ContentRew
           {currentLevelData.map((stage, idx) => {
             // 가디언 토벌 탭이면 전부 거래가능 처리
             const isGuardianTab = activeContent === '가디언 토벌';
+            
             const totals = calculateStageTotals(stage, (name) => isGuardianTab || tradableSet.has(name), (name) => isExcludedForTotal(name));
             const cashValueTradable = goldToCashPerGold ? totals.tradable * goldToCashPerGold : null;
             const cashValueTotal = goldToCashPerGold ? totals.total * goldToCashPerGold : null;
+            
             return (
               <div key={idx} className="bg-gray-800/50 rounded-lg p-6 border border-gray-700">
                 <div className="flex items-center justify-between mb-4">
@@ -296,13 +298,13 @@ export default function ContentRewardsClient({ data, rates }: { data: ContentRew
                   )}
                 </div>
 
-                
+                {/* 보상 표시 */}
                 <div className={`grid gap-3 ${
                   activeContent === '카오스 던전' || activeContent === '쿠르잔 전선' || activeContent === '에브니 큐브' || activeContent === '가디언 토벌'
                     ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4' 
                     : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
                 }`}>
-                  {stage.rewards.map((reward, rewardIdx) => {
+                    {stage.rewards.map((reward, rewardIdx) => {
                     // 계산은 원본 데이터로 수행
                     const itemTotal = (reward.price || 0) * reward.quantity;
                     const isSimpleLayout = activeContent === '카오스 던전' || activeContent === '쿠르잔 전선' || activeContent === '에브니 큐브' || activeContent === '가디언 토벌';
@@ -397,7 +399,7 @@ export default function ContentRewardsClient({ data, rates }: { data: ContentRew
                                   <div className="text-yellow-400 text-sm">
                                     {formatNumberWithSignificantDigits(cubeUnitTotal || 0)}골드 × {quantityStr} = {formatNumberWithSignificantDigits((cubeUnitTotal || 0) * reward.quantity)}골드
                                   </div>
-                                  {(activeContent === '카오스 던전' || activeContent === '쿠르잔 전선') && reward.cubeStageRewards && reward.cubeStageRewards.length > 0 && (
+                                  {reward.cubeStageRewards && reward.cubeStageRewards.length > 0 && (
                                     <div className="text-xs text-gray-400 mt-2 pt-2 border-t border-gray-700">
                                       <div className="mb-1">보상: {reward.cubeStageRewards.map((r, idx) => (
                                         <span key={idx}>

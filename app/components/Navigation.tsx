@@ -36,6 +36,7 @@ export default function Navigation() {
 
   const tabs = [
     { name: '컨텐츠 보상', href: '/content-rewards' },
+    { name: '지옥', href: '/hell' },
     { name: '이벤트 효율', href: '/event-efficiency' },
     { name: '패키지 효율', href: '/package-efficiency' },
     { name: '재련 효율', href: '/refining-simulation' },
