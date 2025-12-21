@@ -8,6 +8,11 @@ export default function Home() {
       <div className="max-w-6xl mx-auto px-4 py-12 md:py-16">
         {/* 환영 문구 */}
         <div className="text-center mb-12 md:mb-16">
+          <div className="mb-4">
+            <span className="inline-block px-4 py-2 bg-blue-600/20 text-blue-400 border border-blue-500/50 rounded-lg text-sm font-medium">
+              Version : 0.3.0 (Open Beta)
+            </span>
+          </div>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4">
             <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
               껨산기

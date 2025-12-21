@@ -77,6 +77,9 @@ export default function Navigation() {
             <span className="text-xl md:text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
               껨산기
             </span>
+            <span className="text-xs px-2 py-0.5 bg-blue-600/20 text-blue-400 border border-blue-500/50 rounded text-xs font-medium">
+              오픈베타
+            </span>
             <span className="text-xs text-gray-400 hidden sm:inline">
               by 스누껨독
             </span>
