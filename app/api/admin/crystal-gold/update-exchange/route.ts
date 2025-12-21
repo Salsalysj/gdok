@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { revalidatePath } from 'next/cache';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -162,6 +163,19 @@ export async function POST(request: Request) {
         { error: 'Supabase에 저장할 수 없습니다.' },
         { status: 500 }
       );
+    }
+
+    // 가치계산DB가 사용되는 페이지들의 캐시 무효화
+    try {
+      revalidatePath('/value-db');
+      revalidatePath('/package-efficiency');
+      revalidatePath('/hell');
+      revalidatePath('/content-rewards');
+      revalidatePath('/'); // layout.tsx에서 ValueDBSidebar를 사용하므로 루트도 무효화
+      console.log('가치계산DB 관련 페이지 캐시 무효화 완료');
+    } catch (revalidateError) {
+      console.error('캐시 무효화 중 오류:', revalidateError);
+      // 캐시 무효화 실패해도 환율 업데이트는 성공했으므로 계속 진행
     }
 
     return NextResponse.json({

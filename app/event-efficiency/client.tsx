@@ -2,6 +2,8 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
+import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
+import { usePriceOverride } from '../contexts/PriceOverrideContext';
 
 type EventTab = {
   key: string;
@@ -115,6 +117,8 @@ type Props = {
 };
 
 export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, marketCache, discordRate, kurzanStages }: Props) {
+  const { adjustPrice } = usePriceAdjustment();
+  const { state: priceOverrideState } = usePriceOverride();
   const [activeTab, setActiveTab] = useState<EventTab>(eventTabs[0]);
   const [activeSubTab, setActiveSubTab] = useState<typeof eventSubTabs[number]>(eventSubTabs[0]);
   const [chaosStoneQuality, setChaosStoneQuality] = useState<90 | 95>(90);
@@ -275,7 +279,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
     [crystalGoldRate]
   );
 
-  const getItemPriceInfo = (itemName: string): PriceInfo => {
+  const getItemPriceInfo = useCallback((itemName: string): PriceInfo => {
     const defaultResult: PriceInfo = { unit: null, unitAmount: null, goldEquivalent: null, cashEquivalent: null, note: null };
 
     // 실링, 배틀 아이템은 제외
@@ -283,40 +287,80 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
       return defaultResult;
     }
 
+    // 가격 조정을 적용하는 헬퍼 함수
+    const applyPriceAdjustment = (priceInfo: PriceInfo): PriceInfo => {
+      // 먼저 아이템 이름으로 가격 조정 확인 (originalPrice가 null이어도 작동)
+      // 이는 카드경험치 미반영, 97돌 오우너, 풀유각 오우너 등을 처리
+      const nameBasedAdjustment = adjustPrice(itemName, null);
+      
+      // 아이템 이름 기반으로 0이 되면 모든 단위를 0으로 설정
+      if (nameBasedAdjustment === 0) {
+        return {
+          ...priceInfo,
+          unitAmount: 0,
+          goldEquivalent: 0,
+          cashEquivalent: priceInfo.cashEquivalent != null ? 0 : null,
+        };
+      }
+      
+      // goldEquivalent가 있는 경우 가격 조정 적용
+      if (priceInfo.goldEquivalent != null) {
+        const adjustedGold = adjustPrice(itemName, priceInfo.goldEquivalent);
+        if (adjustedGold === 0) {
+          return {
+            ...priceInfo,
+            unitAmount: 0,
+            goldEquivalent: 0,
+            cashEquivalent: priceInfo.cashEquivalent != null ? 0 : null,
+          };
+        }
+        return {
+          ...priceInfo,
+          goldEquivalent: adjustedGold,
+          unitAmount: priceInfo.unit === 'gold' ? adjustedGold : priceInfo.unitAmount,
+        };
+      }
+      
+      // 현금 단위인 경우: nameBasedAdjustment가 0이면 이미 위에서 처리됨
+      // 여기서는 nameBasedAdjustment가 0이 아닌 경우이므로 원래 가격 유지
+      
+      return priceInfo;
+    };
+
     // 1. etc_list에서 찾기
     if (itemName === '팔찌 효과 재변환권') {
       const value = braceletUnitPrice ?? 100;
-      return {
+      return applyPriceAdjustment({
         unit: 'gold',
         unitAmount: value,
         goldEquivalent: value,
         cashEquivalent: null,
         note: '사용자 입력 단가',
-      };
+      });
     }
 
     if (itemName === '전설 카드 선택팩' || itemName === '도약의 전설 카드 선택팩') {
       const value = legendaryCardSelectionUnitPrice;
-      return {
+      return applyPriceAdjustment({
         unit: 'gold',
         unitAmount: value,
         goldEquivalent: value,
         cashEquivalent: null,
         note: '사용자 입력 단가',
-      };
+      });
     }
 
     if (itemName === '전설 카드팩') {
       const unitAmount = 575;
       const goldEquivalent =
         crystalGoldRate && crystalGoldRate > 0 ? (unitAmount * crystalGoldRate) / 100 : null;
-      return {
+      return applyPriceAdjustment({
         unit: 'crystal',
         unitAmount,
         goldEquivalent,
         cashEquivalent: null,
         note: '크리스탈 시세 기준',
-      };
+      });
     }
 
     const etcItem = etcListItems.find(item => item.itemName === itemName);
@@ -325,46 +369,48 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
       const hasCrystalOnly = !hasOriginalGold && etcItem.originalCrystal !== null;
 
       if (hasCrystalOnly) {
-        return {
+        return applyPriceAdjustment({
           unit: 'crystal',
           unitAmount: etcItem.crystal ?? etcItem.originalCrystal,
           goldEquivalent: etcItem.gold,
           cashEquivalent: null,
           note: null,
-        };
+        });
       }
 
       if (etcItem.gold !== null) {
-        return {
+        return applyPriceAdjustment({
           unit: 'gold',
           unitAmount: etcItem.gold,
           goldEquivalent: etcItem.gold,
           cashEquivalent: null,
           note: null,
-        };
+        });
       }
 
       if (etcItem.cash !== null) {
-        return {
-          unit: 'cash',
+        // 현금 단위인 경우에도 가격 조정 적용
+        const priceInfo = {
+          unit: 'cash' as const,
           unitAmount: etcItem.cash,
           goldEquivalent: null,
           cashEquivalent: etcItem.cash,
           note: null,
         };
+        return applyPriceAdjustment(priceInfo);
       }
     }
 
     // 2. 시장 캐시에서 직접 찾기
     const marketPrice = getMarketPrice(itemName);
     if (marketPrice !== null) {
-      return {
+      return applyPriceAdjustment({
         unit: 'gold',
         unitAmount: marketPrice,
         goldEquivalent: marketPrice,
         cashEquivalent: null,
         note: null,
-      };
+      });
     }
 
     // 3. 계산식에 따라 가격 산정
@@ -399,7 +445,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
         if (price === null) return defaultResult;
         const perUnit = price / 100; // 100개 묶음 기준 → 1개 단가
         const value = perUnit * 75;
-        return { unit: 'gold', unitAmount: value, goldEquivalent: value, cashEquivalent: null };
+        return applyPriceAdjustment({ unit: 'gold', unitAmount: value, goldEquivalent: value, cashEquivalent: null });
       }
       
       case '운명의 파괴석 주머니': {
@@ -407,14 +453,14 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
         if (price === null) return defaultResult;
         const perUnit = price / 100;
         const value = perUnit * 75;
-        return { unit: 'gold', unitAmount: value, goldEquivalent: value, cashEquivalent: null };
+        return applyPriceAdjustment({ unit: 'gold', unitAmount: value, goldEquivalent: value, cashEquivalent: null });
       }
       
       case '재련 돌파석 선택 상자': {
         const price = getMarketPrice('운명의 돌파석');
         if (price === null) return defaultResult;
         const value = price * 5;
-        return { unit: 'gold', unitAmount: value, goldEquivalent: value, cashEquivalent: null };
+        return applyPriceAdjustment({ unit: 'gold', unitAmount: value, goldEquivalent: value, cashEquivalent: null });
       }
       
       case '고급~영웅 젬 상자': {
@@ -428,13 +474,13 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
           (advancedAvg ?? 0) * 0.8 +
           (rareAvg ?? 0) * 0.15 +
           (heroicAvg ?? 0) * 0.05;
-        return {
+        return applyPriceAdjustment({
           unit: 'gold',
           unitAmount: value,
           goldEquivalent: value,
           cashEquivalent: null,
           note: null,
-        };
+        });
       }
       
       case '재련 보조 선택 상자': {
@@ -452,20 +498,20 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
           value === lavaValue
             ? `용암의 숨결 기준 (3개)`
             : `빙하의 숨결 기준 (9개)`;
-        return {
+        return applyPriceAdjustment({
           unit: 'gold',
           unitAmount: value,
           goldEquivalent: value,
           cashEquivalent: null,
           note,
-        };
+        });
       }
       
       case '재련 파편 선택 상자': {
         const price = getMarketPrice('운명의 파편 주머니(소)');
         if (price === null) return defaultResult;
         const value = price * 2;
-        return { unit: 'gold', unitAmount: value, goldEquivalent: value, cashEquivalent: null };
+        return applyPriceAdjustment({ unit: 'gold', unitAmount: value, goldEquivalent: value, cashEquivalent: null });
       }
       
       case '[이벤트] 재봉술 선택 상자': {
@@ -491,7 +537,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
           '장인의 재봉술 : 1단계 ×2 기준',
         ];
         const note = noteMap[noteIndex] || null;
-        return { unit: 'gold', unitAmount: value, goldEquivalent: value, cashEquivalent: null, note };
+        return applyPriceAdjustment({ unit: 'gold', unitAmount: value, goldEquivalent: value, cashEquivalent: null, note });
       }
       
       case '[이벤트] 야금술 선택 상자': {
@@ -517,14 +563,14 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
           '장인의 야금술 : 1단계 ×2 기준',
         ];
         const note = noteMap[noteIndex] || null;
-        return { unit: 'gold', unitAmount: value, goldEquivalent: value, cashEquivalent: null, note };
+        return applyPriceAdjustment({ unit: 'gold', unitAmount: value, goldEquivalent: value, cashEquivalent: null, note });
       }
       
       case '재련 융화 재료 선택 상자': {
         const price = getMarketPrice('아비도스 융화 재료');
         if (price === null) return defaultResult;
         const value = price * 5;
-        return { unit: 'gold', unitAmount: value, goldEquivalent: value, cashEquivalent: null };
+        return applyPriceAdjustment({ unit: 'gold', unitAmount: value, goldEquivalent: value, cashEquivalent: null });
       }
       
       case '유물 각인서 선택 주머니': {
@@ -537,12 +583,12 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
           .filter((value) => value > 0);
         if (prices.length === 0) return defaultResult;
         const value = Math.max(...prices);
-        return { unit: 'gold', unitAmount: value, goldEquivalent: value, cashEquivalent: null };
+        return applyPriceAdjustment({ unit: 'gold', unitAmount: value, goldEquivalent: value, cashEquivalent: null });
       }
 
       case '정련된 운명의 돌': {
         const value = 1000;
-        return { unit: 'gold', unitAmount: value, goldEquivalent: value, cashEquivalent: null };
+        return applyPriceAdjustment({ unit: 'gold', unitAmount: value, goldEquivalent: value, cashEquivalent: null });
       }
       
       case '유물 각인서 랜덤 주머니': {
@@ -551,22 +597,22 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
         
         const total = relicEngravings.reduce((sum, e) => sum + (e.CurrentMinPrice || 0), 0);
         const value = total / relicEngravings.length;
-        return { unit: 'gold', unitAmount: value, goldEquivalent: value, cashEquivalent: null };
+        return applyPriceAdjustment({ unit: 'gold', unitAmount: value, goldEquivalent: value, cashEquivalent: null });
       }
       
       case '고결한 혼돈의 돌 선택 상자': {
         const value = chaosStoneQuality === 90 ? 117647 : 266667;
-        return { unit: 'gold', unitAmount: value, goldEquivalent: value, cashEquivalent: null };
+        return applyPriceAdjustment({ unit: 'gold', unitAmount: value, goldEquivalent: value, cashEquivalent: null });
       }
       
       case '고결한 혼돈의 돌 (무기)': {
         const value = chaosStoneQuality === 90 ? 117647 : 266667;
-        return { unit: 'gold', unitAmount: value, goldEquivalent: value, cashEquivalent: null };
+        return applyPriceAdjustment({ unit: 'gold', unitAmount: value, goldEquivalent: value, cashEquivalent: null });
       }
 
       case '고결한 혼돈의 돌 (방어구)': {
         const value = chaosStoneQuality === 90 ? 44118 : 100000;
-        return { unit: 'gold', unitAmount: value, goldEquivalent: value, cashEquivalent: null };
+        return applyPriceAdjustment({ unit: 'gold', unitAmount: value, goldEquivalent: value, cashEquivalent: null });
       }
 
       case '희귀~영웅 젬 상자': {
@@ -575,31 +621,31 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
 
         if (!rareAvg && !heroicAvg) return defaultResult;
         const value = (rareAvg ?? 0) * 0.9 + (heroicAvg ?? 0) * 0.1;
-        return {
+        return applyPriceAdjustment({
           unit: 'gold',
           unitAmount: value,
           goldEquivalent: value,
           cashEquivalent: null,
           note: null,
-        };
+        });
       }
 
       case '운명의 파편': {
         const fragmentPrice = getMarketPrice('운명의 파편 주머니(소)');
         if (fragmentPrice === null) return defaultResult;
         const perFragment = fragmentPrice / 1000;
-        return {
+        return applyPriceAdjustment({
           unit: 'gold',
           unitAmount: perFragment,
           goldEquivalent: perFragment,
           cashEquivalent: null,
-        };
+        });
       }
       
       default:
         return defaultResult;
     }
-  };
+  }, [adjustPrice, etcListItems, allMarketItems, getMarketPrice, crystalGoldRate, braceletUnitPrice, legendaryCardSelectionUnitPrice, chaosStoneQuality, priceOverrideState]);
 
   const formatCount = (value: number) => formatNumberWithSignificantDigits(value);
 

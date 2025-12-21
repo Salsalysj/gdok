@@ -3,6 +3,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import ItemIcon from '../components/ItemIcon';
 import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
+import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
+import type { ValueDbEntry } from '@/lib/valueDb';
+import type { RefiningStage, MarketItemInfo } from '../refining-simulation/page';
+import { calculateOptimalStrategy } from '../refining-simulation/client';
 
 type RewardItem = {
   itemName: string;
@@ -17,24 +21,29 @@ type Stage = {
 };
 
 type HellData = {
-  '지옥1'?: Stage[];
-  '지옥2'?: Stage[];
-  '지옥3'?: Stage[];
+  [key: string]: Stage[] | undefined;
 };
 
 type RatesProps = { exchange: number | null; discord: number | null };
 
-export default function HellClient({ data, rates }: { data: HellData | undefined, rates: RatesProps }) {
-  const hellTypes = ['지옥1', '지옥2', '지옥3'];
+export default function HellClient({ 
+  data, 
+  rates,
+  valueDbEntries = [],
+  weaponStages,
+  armorStages,
+  marketInfo,
+}: { 
+  data: HellData | undefined; 
+  rates: RatesProps;
+  valueDbEntries?: ValueDbEntry[];
+  weaponStages?: RefiningStage[];
+  armorStages?: RefiningStage[];
+  marketInfo?: Record<string, MarketItemInfo>;
+}) {
+  const hellTypes = ['지옥1', '지옥2', '지옥3', '나락1', '나락2', '나락3'];
   const [activeHellType, setActiveHellType] = useState<string>('지옥1');
   const [activeHellStage, setActiveHellStage] = useState<string>('0단계');
-  
-  // 지옥 보상 스위치 상태
-  const [has97Stone, setHas97Stone] = useState(false); // 97돌 있음
-  const [hasExtraFragments, setHasExtraFragments] = useState(false); // 파편 남아돌음
-  const [braceletGraduated, setBraceletGraduated] = useState(false); // 팔찌 졸업함
-  const [karmaGraduated, setKarmaGraduated] = useState(false); // 카르마 졸업함
-  const [arkgridGraduated, setArkgridGraduated] = useState(false); // 아크그리드 졸업함
   
   // 지옥3 카테고리 펼치기 상태
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
@@ -48,7 +57,7 @@ export default function HellClient({ data, rates }: { data: HellData | undefined
       setActiveHellStage('0단계');
     }
     if (activeHellType && data) {
-      const stages = data[activeHellType as '지옥1' | '지옥2' | '지옥3'];
+      const stages = data[activeHellType];
       if (stages && stages.length > 0) {
         const firstStage = stages.find(s => s.stage === activeHellStage) || stages[0];
         if (firstStage && firstStage.stage !== activeHellStage) {
@@ -59,9 +68,10 @@ export default function HellClient({ data, rates }: { data: HellData | undefined
   }, [activeHellType, activeHellStage, data]);
   
   // 현재 표시할 데이터 결정
+  const isPreparing = ['지옥1', '지옥2', '나락1', '나락2'].includes(activeHellType);
   let currentLevelData: Stage[] = [];
   if (activeHellType && data) {
-    const stages = data[activeHellType as '지옥1' | '지옥2' | '지옥3'];
+    const stages = data[activeHellType];
     if (stages) {
       if (activeHellStage) {
         const selectedStage = stages.find(s => s.stage === activeHellStage);
@@ -78,6 +88,8 @@ export default function HellClient({ data, rates }: { data: HellData | undefined
     }] : [];
   }
 
+  const isNarak = activeHellType.startsWith('나락');
+
   // 거래가능/귀속 색상 구분
   const tradableSet = useMemo(() => new Set<string>([
     '정제된 파괴강석',
@@ -88,8 +100,13 @@ export default function HellClient({ data, rates }: { data: HellData | undefined
     '운명의 수호석',
   ]), []);
 
-  const getTradeClass = (itemName: string) => {
-    const isTradable = tradableSet.has(itemName);
+  const getTradeClass = (itemName: string, category?: string) => {
+    // 기본 보상 상자 카테고리에 있는 아이템은 항상 귀속
+    // category에 "기본"이나 "보상 상자"가 포함되어 있으면 기본 보상 상자로 판단
+    const isBaseRewardItem = !isNarak && category && (category.includes('기본') || category.includes('보상 상자'));
+    
+    // 기본 보상 상자 아이템이면 항상 귀속, 아니면 tradableSet 확인
+    const isTradable = isBaseRewardItem ? false : tradableSet.has(itemName);
     return {
       isTradable,
       nameClass: isTradable ? 'text-green-300' : 'text-red-300',
@@ -100,40 +117,126 @@ export default function HellClient({ data, rates }: { data: HellData | undefined
     } as const;
   };
 
-  // 지옥 보상 가격 조정 함수
+  // 가격 조정 훅 사용
+  const { adjustPrice } = usePriceAdjustment();
+  
+  // 가치계산DB 엔트리 맵 생성
+  const valueDbEntryMap = useMemo(() => {
+    const map = new Map<string, ValueDbEntry>();
+    valueDbEntries.forEach(entry => {
+      map.set(entry.itemName, entry);
+    });
+    return map;
+  }, [valueDbEntries]);
+  
+  // 순환 돌파석 가치를 클라이언트에서 재계산 (가치계산DB 사이드바와 동일한 방식)
+  const circularBreakthroughValue = useMemo(() => {
+    // weaponStages, armorStages, marketInfo가 있으면 특수 재련 효율과 동일한 방식으로 계산
+    if (weaponStages && armorStages && marketInfo && weaponStages.length > 0 && armorStages.length > 0) {
+      // 가격 조정이 적용된 marketInfo 생성
+      const adjustedMarketInfo: Record<string, MarketItemInfo> = {};
+      for (const [name, info] of Object.entries(marketInfo)) {
+        adjustedMarketInfo[name] = {
+          ...info,
+          unitPrice: adjustPrice(name, info.unitPrice) ?? info.unitPrice,
+        };
+      }
+
+      // 순환 돌파석 소모 개수 계산
+      const getBreakthroughStoneCount = (level: number, type: 'weapon' | 'armor'): number => {
+        if (type === 'weapon') {
+          if (level >= 10 && level <= 12) return 30;
+          if (level >= 13 && level <= 16) return 40;
+          if (level >= 17 && level <= 25) return 50;
+        } else {
+          if (level >= 10 && level <= 12) return 12;
+          if (level >= 13 && level <= 16) return 16;
+          if (level >= 17 && level <= 25) return 20;
+        }
+        return 0;
+      };
+
+      // 모든 무기와 방어구 스테이지에서 순환 돌파석 가치 계산
+      const allBreakthroughValues: number[] = [];
+      
+      [...weaponStages, ...armorStages].forEach(stage => {
+        // calculateOptimalStrategy를 사용하여 최적 전략 계산
+        const { optimalStrategy } = calculateOptimalStrategy(stage, adjustedMarketInfo);
+        
+        // 경험치 재료 비용 계산
+        const expInfo = stage.expMaterial ? (adjustedMarketInfo[stage.expMaterial.name] || { unitPrice: 0 }) : null;
+        const expMaterialCost = stage.expMaterial && expInfo
+          ? expInfo.unitPrice * stage.expMaterial.quantity
+          : 0;
+        
+        // 재련 비용 = 전체 기대 비용 - 경험치 재료 비용
+        const refiningCost = optimalStrategy.expectedCost - expMaterialCost;
+        const baseSuccessRate = stage.baseSuccessRate / 100; // 퍼센트를 소수로 변환
+        
+        // 무기/방어구 구분
+        const type = stage.baseMaterials.some(m => m.name === '운명의 파괴석') ? 'weapon' : 'armor';
+        const stoneCount = getBreakthroughStoneCount(stage.level, type);
+        
+        // 순환 돌파석 1개당 가치 = (재련 비용 * 기본 성공률) / 순환 돌파석 개수
+        if (stoneCount > 0) {
+          const value = (refiningCost * baseSuccessRate) / stoneCount;
+          if (value > 0) {
+            allBreakthroughValues.push(value);
+          }
+        }
+      });
+
+      // 상위 5개의 평균 계산 (재련 효율 탭과 동일한 방식)
+      if (allBreakthroughValues.length > 0) {
+        const sorted = allBreakthroughValues.sort((a, b) => b - a);
+        const top5 = sorted.slice(0, 5);
+        return top5.reduce((sum, val) => sum + val, 0) / top5.length;
+      }
+    }
+    
+    // weaponStages, armorStages, marketInfo가 없으면 가치계산DB에서 가져온 값에 가격 조정만 적용
+    const entry = valueDbEntries.find(e => e.itemName === '순환 돌파석');
+    if (entry && entry.unitType === '골드' && entry.unitValue != null) {
+      // 가격 조정 적용 (돌파석 미반영, 파편 미반영 등)
+      return adjustPrice('순환 돌파석', entry.unitValue);
+    }
+    return null;
+  }, [valueDbEntries, adjustPrice, weaponStages, armorStages, marketInfo]);
+  
+  // 가치계산DB에서 아이템 가격 가져오기
+  const getValueDbPrice = (itemName: string): number | null => {
+    // 순환 돌파석은 클라이언트에서 재계산된 값 사용
+    if (itemName === '순환 돌파석') {
+      return circularBreakthroughValue;
+    }
+    
+    const entry = valueDbEntryMap.get(itemName);
+    if (entry && entry.unitType === '골드' && entry.unitValue != null) {
+      return entry.unitValue;
+    }
+    return null;
+  };
+  
+  // 지옥 보상 가격 조정 함수 (모든 아이템은 가치계산DB 우선 사용)
   const getAdjustedPrice = (itemName: string, originalPrice: number | null | undefined): number | null => {
-    // 97돌 있음: 어빌리티 스톤 키트 단가를 0골드로
-    if (has97Stone && (itemName === '어빌리티 스톤 키트' || itemName.includes('어빌리티 스톤 키트'))) {
-      return 0;
+    // 모든 아이템은 가치계산DB에서 가격 가져오기 (우선순위)
+    const valueDbPrice = getValueDbPrice(itemName);
+    if (valueDbPrice != null) {
+      // 순환 돌파석은 이미 adjustPrice가 적용된 값이므로 그대로 반환
+      if (itemName === '순환 돌파석') {
+        return valueDbPrice;
+      }
+      // 다른 아이템은 가격 조정 적용
+      return adjustPrice(itemName, valueDbPrice);
     }
     
-    // 파편 남아돌음: 운명의 파편 단가를 0골드로
-    if (hasExtraFragments && itemName === '운명의 파편') {
-      return 0;
+    // 가치계산DB에 없는 경우 기존 로직 사용 후 가격 조정 적용
+    let price = originalPrice ?? null;
+    if (price != null) {
+      price = adjustPrice(itemName, price);
     }
     
-    // 팔찌 졸업함: 고대 팔찌 단가를 0골드로
-    if (braceletGraduated && itemName === '고대 팔찌') {
-      return 0;
-    }
-    
-    // 카르마 졸업함: 정련된 운명의 돌 단가를 0골드로
-    if (karmaGraduated && itemName === '정련된 운명의 돌') {
-      return 0;
-    }
-    
-    // 아크그리드 졸업함: 젬 랜덤, 젬 선택 단가를 0골드로
-    if (arkgridGraduated && (
-      itemName === '희귀~영웅 젬 상자' || 
-      itemName === '희귀~영웅 젬 랜덤 상자' ||
-      itemName === '희귀 젬 선택 상자' ||
-      itemName.includes('젬 상자') ||
-      itemName.includes('젬 선택')
-    )) {
-      return 0;
-    }
-    
-    return originalPrice ?? null;
+    return price;
   };
 
   // 디코기준 스위치 상태 동기화 (전역 테마 스위치 사용)
@@ -198,7 +301,7 @@ export default function HellClient({ data, rates }: { data: HellData | undefined
                   setActiveHellType(hellType);
                   // 데이터가 있으면 첫 번째 단계로 설정, 없으면 0단계 유지
                   if (data) {
-                    const stages = data[hellType as '지옥1' | '지옥2' | '지옥3'];
+                    const stages = data[hellType];
                     if (stages && stages.length > 0) {
                       setActiveHellStage(stages[0].stage);
                     } else {
@@ -230,7 +333,7 @@ export default function HellClient({ data, rates }: { data: HellData | undefined
               {Array.from({ length: 11 }, (_, i) => {
                 const stageName = `${i}단계`;
                 // 데이터가 있으면 해당 단계가 있는지 확인
-                const hasData = data && data[activeHellType as '지옥1' | '지옥2' | '지옥3']?.some(s => s.stage === stageName);
+                const hasData = data && data[activeHellType]?.some(s => s.stage === stageName);
                 return (
                   <option key={stageName} value={stageName}>
                     {stageName} {hasData ? '' : '(데이터 없음)'}
@@ -238,73 +341,31 @@ export default function HellClient({ data, rates }: { data: HellData | undefined
                 );
               })}
             </select>
-            {data && !data[activeHellType as '지옥1' | '지옥2' | '지옥3'] && (
+            {data && !data[activeHellType] && (
               <p className="text-yellow-400 text-sm mt-2">
                 {activeHellType} 데이터가 없습니다. 데이터를 추가해주세요.
               </p>
             )}
           </div>
-          
-          {/* 지옥 보상 스위치 */}
-          <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
-            <div className="text-sm font-semibold text-white mb-3">보상 가치 조정</div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={has97Stone}
-                  onChange={(e) => setHas97Stone(e.target.checked)}
-                  className="w-4 h-4 text-red-600 bg-gray-700 border-gray-600 rounded focus:ring-red-500"
-                />
-                <span className="text-sm text-gray-300">97돌 있음</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={hasExtraFragments}
-                  onChange={(e) => setHasExtraFragments(e.target.checked)}
-                  className="w-4 h-4 text-red-600 bg-gray-700 border-gray-600 rounded focus:ring-red-500"
-                />
-                <span className="text-sm text-gray-300">파편 남아돌음</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={braceletGraduated}
-                  onChange={(e) => setBraceletGraduated(e.target.checked)}
-                  className="w-4 h-4 text-red-600 bg-gray-700 border-gray-600 rounded focus:ring-red-500"
-                />
-                <span className="text-sm text-gray-300">팔찌 졸업함</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={karmaGraduated}
-                  onChange={(e) => setKarmaGraduated(e.target.checked)}
-                  className="w-4 h-4 text-red-600 bg-gray-700 border-gray-600 rounded focus:ring-red-500"
-                />
-                <span className="text-sm text-gray-300">카르마 졸업함</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={arkgridGraduated}
-                  onChange={(e) => setArkgridGraduated(e.target.checked)}
-                  className="w-4 h-4 text-red-600 bg-gray-700 border-gray-600 rounded focus:ring-red-500"
-                />
-                <span className="text-sm text-gray-300">아크그리드 졸업함</span>
-              </label>
-            </div>
-          </div>
         </div>
         
         {/* 단계별 보상 표시 */}
         <div className="space-y-6">
-          {currentLevelData.map((stage, idx) => {
-            const isHell3 = activeHellType === '지옥3';
+          {isPreparing ? (
+            <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700">
+              <div className="text-center py-12">
+                <h3 className="text-2xl font-bold text-yellow-400 mb-2">준비중</h3>
+                <p className="text-gray-400">
+                  {activeHellType} 보상 데이터는 준비중입니다.
+                </p>
+              </div>
+            </div>
+          ) : (
+            currentLevelData.map((stage, idx) => {
+              const isSpecialStage = activeHellType === '지옥3' || activeHellType === '나락3';
             
             // 지옥3인 경우 카테고리별로 그룹화
-            const groupedByCategory = isHell3 && stage.rewards.some(r => r.category) 
+            const groupedByCategory = isSpecialStage && stage.rewards.some(r => r.category) 
               ? stage.rewards.reduce((acc, reward) => {
                   const category = reward.category || '기타';
                   if (!acc[category]) {
@@ -315,63 +376,107 @@ export default function HellClient({ data, rates }: { data: HellData | undefined
                 }, {} as { [category: string]: RewardItem[] })
               : null;
             
-            // 지옥 보상 기대값 계산
+            // 지옥/나락 보상 기대값 계산
             let hellExpectedValue: number | null = null;
             let baseRewardValue: number = 0;
-            if (isHell3 && groupedByCategory) {
+            if (isSpecialStage && groupedByCategory) {
               const categories = Object.keys(groupedByCategory);
-              // 기본 보상 상자 찾기 (첫 번째 카테고리 또는 "기본 보상" 이름의 카테고리)
-              const baseCategory = categories.find(cat => cat.includes('기본') || cat.includes('보상 상자')) || categories[0];
-              const otherCategories = categories.filter(cat => cat !== baseCategory);
               
-              // 기본 보상 가치 계산 (가격 조정 적용)
-              if (baseCategory && groupedByCategory[baseCategory]) {
-                baseRewardValue = groupedByCategory[baseCategory].reduce((sum, r) => {
-                  const adjustedPrice = getAdjustedPrice(r.itemName, r.price);
-                  return sum + ((adjustedPrice || 0) * r.quantity);
-                }, 0);
-              }
-              
-              // 선택 보상 기대값 계산: 나머지 카테고리 중 3개를 랜덤으로 선택하고 그 중 최고값을 선택
-              if (otherCategories.length >= 3) {
-                // 모든 3개 조합 생성
-                const combinations: string[][] = [];
-                for (let i = 0; i < otherCategories.length; i++) {
-                  for (let j = i + 1; j < otherCategories.length; j++) {
-                    for (let k = j + 1; k < otherCategories.length; k++) {
-                      combinations.push([otherCategories[i], otherCategories[j], otherCategories[k]]);
+              if (isNarak) {
+                // 나락: 기본 보상 없음, 모든 카테고리 중 3개를 랜덤 추출 후 최고가 선택
+                if (categories.length >= 3) {
+                  // 모든 3개 조합 생성
+                  const combinations: string[][] = [];
+                  for (let i = 0; i < categories.length; i++) {
+                    for (let j = i + 1; j < categories.length; j++) {
+                      for (let k = j + 1; k < categories.length; k++) {
+                        combinations.push([categories[i], categories[j], categories[k]]);
+                      }
                     }
                   }
-                }
-                
-                // 각 조합의 최고값 계산 (가격 조정 적용)
-                const maxValues: number[] = [];
-                combinations.forEach(combo => {
-                  const comboValues = combo.map(cat => {
+                  
+                  // 각 조합의 최고값 계산 (가격 조정 적용, 가치계산DB 우선 사용)
+                  const maxValues: number[] = [];
+                  combinations.forEach(combo => {
+                    const comboValues = combo.map(cat => {
+                      return groupedByCategory[cat].reduce((sum, r) => {
+                        const adjustedPrice = getAdjustedPrice(r.itemName, r.price); // 모든 아이템은 가치계산DB 우선 사용
+                        return sum + ((adjustedPrice || 0) * r.quantity);
+                      }, 0);
+                    });
+                    maxValues.push(Math.max(...comboValues));
+                  });
+                  
+                  // 기대값 = 모든 최고값의 평균
+                  hellExpectedValue = maxValues.reduce((sum, val) => sum + val, 0) / maxValues.length;
+                } else if (categories.length > 0) {
+                  // 카테고리가 3개 미만이면 모든 카테고리의 최고값 (가격 조정 적용, 가치계산DB 우선 사용)
+                  const categoryValues = categories.map(cat => {
                     return groupedByCategory[cat].reduce((sum, r) => {
-                      const adjustedPrice = getAdjustedPrice(r.itemName, r.price);
+                      const adjustedPrice = getAdjustedPrice(r.itemName, r.price); // 모든 아이템은 가치계산DB 우선 사용
                       return sum + ((adjustedPrice || 0) * r.quantity);
                     }, 0);
                   });
-                  maxValues.push(Math.max(...comboValues));
-                });
+                  hellExpectedValue = Math.max(...categoryValues);
+                }
+              } else {
+                // 지옥: 기본 보상 + 나머지 카테고리 중 3개를 랜덤으로 선택하고 그 중 최고값을 선택
+                // 기본 보상 상자 찾기 (첫 번째 카테고리 또는 "기본 보상" 이름의 카테고리)
+                const baseCategory = categories.find(cat => cat.includes('기본') || cat.includes('보상 상자')) || categories[0];
+                const otherCategories = categories.filter(cat => cat !== baseCategory);
                 
-                // 기대값 = 모든 최고값의 평균
-                const expectedSelectionValue = maxValues.reduce((sum, val) => sum + val, 0) / maxValues.length;
-                hellExpectedValue = baseRewardValue + expectedSelectionValue;
-              } else if (otherCategories.length > 0) {
-                // 카테고리가 3개 미만이면 모든 카테고리의 최고값 (가격 조정 적용)
-                const otherValues = otherCategories.map(cat => {
-                  return groupedByCategory[cat].reduce((sum, r) => {
-                    const adjustedPrice = getAdjustedPrice(r.itemName, r.price);
+                // 기본 보상 가치 계산 (가격 조정 적용, 가치계산DB 우선 사용)
+                // 풍요 시 10배 기대값 고려: 100% + 90% = 190%
+                if (baseCategory && groupedByCategory[baseCategory]) {
+                  const baseValue = groupedByCategory[baseCategory].reduce((sum, r) => {
+                    const adjustedPrice = getAdjustedPrice(r.itemName, r.price); // 모든 아이템은 가치계산DB 우선 사용
                     return sum + ((adjustedPrice || 0) * r.quantity);
                   }, 0);
-                });
-                const maxOtherValue = Math.max(...otherValues);
-                hellExpectedValue = baseRewardValue + maxOtherValue;
-              } else {
-                // 선택 보상이 없으면 기본 보상만
-                hellExpectedValue = baseRewardValue;
+                  // 기본 보상 상자는 190% 반영 (100% 기본 + 90% 풍요 기대값)
+                  baseRewardValue = baseValue * 1.9;
+                }
+                
+                // 선택 보상 기대값 계산: 나머지 카테고리 중 3개를 랜덤으로 선택하고 그 중 최고값을 선택
+                if (otherCategories.length >= 3) {
+                  // 모든 3개 조합 생성
+                  const combinations: string[][] = [];
+                  for (let i = 0; i < otherCategories.length; i++) {
+                    for (let j = i + 1; j < otherCategories.length; j++) {
+                      for (let k = j + 1; k < otherCategories.length; k++) {
+                        combinations.push([otherCategories[i], otherCategories[j], otherCategories[k]]);
+                      }
+                    }
+                  }
+                  
+                  // 각 조합의 최고값 계산 (가격 조정 적용, 가치계산DB 우선 사용)
+                  const maxValues: number[] = [];
+                  combinations.forEach(combo => {
+                    const comboValues = combo.map(cat => {
+                      return groupedByCategory[cat].reduce((sum, r) => {
+                        const adjustedPrice = getAdjustedPrice(r.itemName, r.price); // 모든 아이템은 가치계산DB 우선 사용
+                        return sum + ((adjustedPrice || 0) * r.quantity);
+                      }, 0);
+                    });
+                    maxValues.push(Math.max(...comboValues));
+                  });
+                  
+                  // 기대값 = 모든 최고값의 평균
+                  const expectedSelectionValue = maxValues.reduce((sum, val) => sum + val, 0) / maxValues.length;
+                  hellExpectedValue = baseRewardValue + expectedSelectionValue;
+                } else if (otherCategories.length > 0) {
+                  // 카테고리가 3개 미만이면 모든 카테고리의 최고값 (가격 조정 적용, 가치계산DB 우선 사용)
+                  const otherValues = otherCategories.map(cat => {
+                    return groupedByCategory[cat].reduce((sum, r) => {
+                      const adjustedPrice = getAdjustedPrice(r.itemName, r.price); // 모든 아이템은 가치계산DB 우선 사용
+                      return sum + ((adjustedPrice || 0) * r.quantity);
+                    }, 0);
+                  });
+                  const maxOtherValue = Math.max(...otherValues);
+                  hellExpectedValue = baseRewardValue + maxOtherValue;
+                } else {
+                  // 선택 보상이 없으면 기본 보상만
+                  hellExpectedValue = baseRewardValue;
+                }
               }
             }
             
@@ -379,15 +484,26 @@ export default function HellClient({ data, rates }: { data: HellData | undefined
               <div key={idx} className="bg-gray-800/50 rounded-lg p-6 border border-gray-700">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-2xl font-bold text-white">단계 {stage.stage}</h3>
-                  {isHell3 && hellExpectedValue !== null ? (
+                  {isSpecialStage && hellExpectedValue !== null ? (
                     <div className="text-right">
                       <div className="text-sm text-gray-400 mb-2">
-                        <div>기본 보상 상자: 100% 제공</div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          선택 보상: 나머지 카테고리 중 3개 랜덤 선택 → 최고값 선택
-                        </div>
+                        {isNarak ? (
+                          <div className="text-xs text-gray-500">
+                            모든 카테고리 중 3개 랜덤 선택 → 최고값 선택
+                          </div>
+                        ) : (
+                          <>
+                            <div>기본 보상 상자: 190% 반영</div>
+                            <div className="text-xs text-gray-400 mt-1">
+                              기본 보상 상자는 풍요 시 10배 기대값 고려.
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              선택 보상: 나머지 카테고리 중 3개 랜덤 선택 → 최고값 선택
+                            </div>
+                          </>
+                        )}
                       </div>
-                      <div className="text-sm text-gray-400">기대값 (기본 + 선택)</div>
+                      <div className="text-sm text-gray-400">기대값 {isNarak ? '' : '(기본 + 선택)'}</div>
                       <div className="text-3xl font-bold text-yellow-400">
                         {formatNumberWithSignificantDigits(hellExpectedValue)}골드
                       </div>
@@ -396,12 +512,19 @@ export default function HellClient({ data, rates }: { data: HellData | undefined
                 </div>
 
                 {/* 지옥3: 카테고리별 그룹화 표시 */}
-                {isHell3 && groupedByCategory ? (
+                {isSpecialStage && groupedByCategory ? (
                   <div className="space-y-3">
                     {Object.entries(groupedByCategory).map(([category, rewards]) => {
                       const isExpanded = expandedCategories.has(category);
+                      // 기본 보상 상자 카테고리 확인
+                      const categories = Object.keys(groupedByCategory);
+                      const baseCategory = !isNarak 
+                        ? (categories.find(cat => cat.includes('기본') || cat.includes('보상 상자')) || categories[0])
+                        : null;
+                      const isBaseRewardCategory = !isNarak && category === baseCategory;
+                      
                       const categoryTotal = rewards.reduce((sum, r) => {
-                        const adjustedPrice = getAdjustedPrice(r.itemName, r.price);
+                        const adjustedPrice = getAdjustedPrice(r.itemName, r.price); // 모든 아이템은 가치계산DB 우선 사용
                         return sum + ((adjustedPrice || 0) * r.quantity);
                       }, 0);
                       
@@ -442,6 +565,7 @@ export default function HellClient({ data, rates }: { data: HellData | undefined
                             <div className="px-4 pb-4 pt-2 border-t border-gray-700">
                               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-2">
                                 {rewards.map((reward, rewardIdx) => {
+                                  // 모든 아이템은 가치계산DB 우선 사용
                                   const adjustedPrice = getAdjustedPrice(reward.itemName, reward.price);
                                   const itemTotal = (adjustedPrice || 0) * reward.quantity;
                                   const quantityStr = formatNumberWithSignificantDigits(reward.quantity);
@@ -457,6 +581,11 @@ export default function HellClient({ data, rates }: { data: HellData | undefined
                                       <div className="flex items-center gap-2 mb-1">
                                         <span className={`font-medium ${tradeInfo.nameClass}`}>{reward.itemName}</span>
                                         <span className={`px-1.5 py-0.5 rounded text-[10px] ${tradeInfo.badgeClass}`}>{tradeInfo.badgeText}</span>
+                                        {isBaseRewardCategory && (
+                                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-blue-900/30 text-blue-300 border border-blue-600">
+                                            가치계산DB
+                                          </span>
+                                        )}
                                       </div>
                                       <div className="text-gray-400 text-sm mb-1">수량: {quantityStr}</div>
                                       {reward.itemName === '어빌리티 스톤 키트' || reward.itemName.includes('어빌리티 스톤 키트') ? (
@@ -494,12 +623,14 @@ export default function HellClient({ data, rates }: { data: HellData | undefined
                 ) : (
                   <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                     {stage.rewards.map((reward, rewardIdx) => {
+                      // 모든 아이템은 가치계산DB 우선 사용
                       const adjustedPrice: number | null = getAdjustedPrice(reward.itemName, reward.price);
                       const itemTotal = (adjustedPrice ?? 0) * reward.quantity;
                       const quantityStr = formatNumberWithSignificantDigits(reward.quantity);
                       const priceStr = adjustedPrice !== null ? formatNumberWithSignificantDigits(adjustedPrice) : '';
                       const itemTotalStr = formatNumberWithSignificantDigits(itemTotal);
-                      const tradeInfo = getTradeClass(reward.itemName);
+                      // 일반 보상 표시 (지옥3/나락3이 아닌 경우)에서는 카테고리 정보가 없으므로 null 전달
+                      const tradeInfo = getTradeClass(reward.itemName, reward.category);
                       
                       return (
                         <div
@@ -530,7 +661,8 @@ export default function HellClient({ data, rates }: { data: HellData | undefined
                 )}
               </div>
             );
-          })}
+            })
+          )}
         </div>
       </div>
     </div>

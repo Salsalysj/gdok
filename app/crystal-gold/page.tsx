@@ -180,6 +180,9 @@ export default function CrystalGoldPage() {
 
   // 1원당 x골드 계산: x = (100크리당 골드) / 2750
   const perWonGold = typeof displayExchange === 'number' ? (displayExchange / 2750) : undefined;
+  // 100원당 골드 계산
+  const per100WonGoldExchange = typeof displayExchange === 'number' ? (displayExchange * 100 / 2750) : undefined;
+  const per100WonGoldDiscord = typeof displayDiscord === 'number' ? (100 * 100 / displayDiscord) : undefined;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-8">
@@ -242,6 +245,11 @@ export default function CrystalGoldPage() {
                   {typeof perWonGold === 'number' && (
                     <div className={`text-sm ${labelText} mt-1`}>
                       1원당 {formatPrice(perWonGold)} 골드
+                    </div>
+                  )}
+                  {typeof per100WonGoldExchange === 'number' && (
+                    <div className={`text-sm ${labelText} mt-1`}>
+                      100원당 {formatPrice(per100WonGoldExchange)} 골드
                     </div>
                   )}
                 </div>
@@ -312,10 +320,15 @@ export default function CrystalGoldPage() {
                             </div>
                           )}
                           <div className={descText}>골드 : 현금 비율</div>
-                          {typeof perWonGold === 'number' && (
-                            <div className={`text-sm ${labelText} mt-1`}>
-                              1원당 {formatPrice(perWonGold)} 골드
-                            </div>
+                          {typeof displayDiscord === 'number' && displayDiscord > 0 && (
+                            <>
+                              <div className={`text-sm ${labelText} mt-1`}>
+                                1원당 {formatPrice(100 / displayDiscord)} 골드
+                              </div>
+                              <div className={`text-sm ${labelText} mt-1`}>
+                                100원당 {formatPrice(100 * 100 / displayDiscord)} 골드
+                              </div>
+                            </>
                           )}
                         </>
                       ) : (

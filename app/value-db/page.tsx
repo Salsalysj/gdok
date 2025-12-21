@@ -1,22 +1,23 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+import ValueDBClient from './client';
+import { getValueDbData } from '@/lib/valueDb';
 import { promises as fs } from 'fs';
 import path from 'path';
-import RefiningSimulationClient from './client';
 import { getMarketCache } from '@/lib/marketCache';
+import type { MarketItemInfo } from '../refining-simulation/page';
 
-const UPGRADE_FILE_WEAPON = path.join(process.cwd(), 'upgrade1.csv');
-const UPGRADE_FILE_ARMOR = path.join(process.cwd(), 'upgrade2.csv');
+export const UPGRADE_FILE_WEAPON = path.join(process.cwd(), 'upgrade1.csv');
+export const UPGRADE_FILE_ARMOR = path.join(process.cwd(), 'upgrade2.csv');
 
-// 무기용 상수
-const OPTIONAL_METALLURGY_ITEMS_WEAPON = [
+export const OPTIONAL_METALLURGY_ITEMS_WEAPON = [
   '야금술 : 업화 [11-14]',
   '야금술 : 업화 [15-18]',
   '야금술 : 업화 [19-20]',
 ];
 
-const BASE_MATERIALS_WEAPON = [
+export const BASE_MATERIALS_WEAPON = [
   '운명의 파괴석',
   '운명의 돌파석',
   '아비도스 융화 재료',
@@ -25,20 +26,19 @@ const BASE_MATERIALS_WEAPON = [
 ];
 
 const EXP_MATERIAL = '운명의 파편 (경험치)';
-const BREATH_ITEM_WEAPON = '용암의 숨결';
-const BREATH_ITEM_ARMOR = '빙하의 숨결';
+export const BREATH_ITEM_WEAPON = '용암의 숨결';
+export const BREATH_ITEM_ARMOR = '빙하의 숨결';
 const GOLD_ITEM = '골드';
 const SILVER_ITEM = '실링';
 const BASE_SUCCESS_RATE = '기본 성공률';
 
-// 방어구용 상수
-const OPTIONAL_METALLURGY_ITEMS_ARMOR = [
+export const OPTIONAL_METALLURGY_ITEMS_ARMOR = [
   '재봉술 : 업화 [11-14]',
   '재봉술 : 업화 [15-18]',
   '재봉술 : 업화 [19-20]',
 ];
 
-const BASE_MATERIALS_ARMOR = [
+export const BASE_MATERIALS_ARMOR = [
   '운명의 수호석',
   '운명의 돌파석',
   '아비도스 융화 재료',
@@ -46,18 +46,13 @@ const BASE_MATERIALS_ARMOR = [
   '실링',
 ];
 
-export type MarketItemInfo = {
-  unitPrice: number;
-  icon?: string | null;
-};
-
 function toNumber(value: string | undefined): number {
   if (!value) return 0;
   const num = Number(value.replace(/,/g, ''));
   return Number.isFinite(num) ? num : 0;
 }
 
-async function parseUpgradeCsv(filePath: string, fileName: string) {
+export async function parseUpgradeCsv(filePath: string, fileName: string) {
   const content = await fs.readFile(filePath, 'utf-8');
   const lines = content
     .split(/\r?\n/)
@@ -84,7 +79,7 @@ async function parseUpgradeCsv(filePath: string, fileName: string) {
   return { levels, rowMap };
 }
 
-async function getMarketInfoMap(): Promise<{ infoMap: Record<string, MarketItemInfo>; lastUpdated: string | null }> {
+export async function getMarketInfoMap(): Promise<Record<string, MarketItemInfo>> {
   try {
     const cacheResult = await getMarketCache();
     const cachedData = cacheResult?.data || {};
@@ -96,66 +91,63 @@ async function getMarketInfoMap(): Promise<{ infoMap: Record<string, MarketItemI
       cachedData.relicEngravingResults || [],
     ];
 
-    const infoMap: Record<string, MarketItemInfo> = {};
+  const infoMap: Record<string, MarketItemInfo> = {};
 
+  for (const bucket of buckets) {
+    for (const item of bucket) {
+      const name = item?.displayName || item?.Name;
+      const pricePerBundle = item?.CurrentMinPrice || item?.RecentPrice || 0;
+      const bundleCount = item?.BundleCount || 1;
+      if (!name || !pricePerBundle || pricePerBundle <= 0) continue;
+      const unitPrice = bundleCount > 0 ? pricePerBundle / bundleCount : pricePerBundle;
+      if (!(name in infoMap) || unitPrice < infoMap[name].unitPrice) {
+        infoMap[name] = {
+          unitPrice,
+          icon: item?.Icon ?? null,
+        };
+      }
+    }
+  }
+
+  if (infoMap['운명의 파편 주머니(소)']) {
+    const shardSource = infoMap['운명의 파편 주머니(소)'];
+    const shardUnit = shardSource.unitPrice / 1000;
+    infoMap['운명의 파편'] = {
+      unitPrice: shardUnit,
+      icon: shardSource.icon,
+    };
+    infoMap[EXP_MATERIAL] = {
+      unitPrice: shardUnit,
+      icon: shardSource.icon,
+    };
+  }
+
+  if (!infoMap['운명의 돌파석'] || infoMap['운명의 돌파석'].unitPrice === 0) {
+    let breakthroughIcon: string | null = null;
     for (const bucket of buckets) {
       for (const item of bucket) {
         const name = item?.displayName || item?.Name;
-        const pricePerBundle = item?.CurrentMinPrice || item?.RecentPrice || 0;
-        const bundleCount = item?.BundleCount || 1;
-        if (!name || !pricePerBundle || pricePerBundle <= 0) continue;
-        const unitPrice = bundleCount > 0 ? pricePerBundle / bundleCount : pricePerBundle;
-        if (!(name in infoMap) || unitPrice < infoMap[name].unitPrice) {
-          infoMap[name] = {
-            unitPrice,
-            icon: item?.Icon ?? null,
-          };
+        if (name === '운명의 돌파석') {
+          breakthroughIcon = item?.Icon ?? null;
+          break;
         }
       }
+      if (breakthroughIcon) break;
     }
+    
+    infoMap['운명의 돌파석'] = {
+      unitPrice: infoMap['운명의 돌파석']?.unitPrice ?? 0,
+      icon: breakthroughIcon,
+    };
+  }
 
-    if (infoMap['운명의 파편 주머니(소)']) {
-      const shardSource = infoMap['운명의 파편 주머니(소)'];
-      const shardUnit = shardSource.unitPrice / 1000;
-      infoMap['운명의 파편'] = {
-        unitPrice: shardUnit,
-        icon: shardSource.icon,
-      };
-      infoMap[EXP_MATERIAL] = {
-        unitPrice: shardUnit,
-        icon: shardSource.icon,
-      };
-    }
+  infoMap[GOLD_ITEM] = { unitPrice: 1, icon: null };
+  infoMap[SILVER_ITEM] = { unitPrice: 0, icon: null };
 
-    // 운명의 돌파석이 market_cache에 없거나 가격이 0인 경우 기본값 설정
-    if (!infoMap['운명의 돌파석'] || infoMap['운명의 돌파석'].unitPrice === 0) {
-      // market_cache에서 다시 찾아보기 (가격이 0이어도 아이콘은 가져올 수 있음)
-      let breakthroughIcon: string | null = null;
-      for (const bucket of buckets) {
-        for (const item of bucket) {
-          const name = item?.displayName || item?.Name;
-          if (name === '운명의 돌파석') {
-            breakthroughIcon = item?.Icon ?? null;
-            break;
-          }
-        }
-        if (breakthroughIcon) break;
-      }
-      
-      // 기본값 설정 (가격은 0이어도 아이콘은 표시)
-      infoMap['운명의 돌파석'] = {
-        unitPrice: infoMap['운명의 돌파석']?.unitPrice ?? 0,
-        icon: breakthroughIcon,
-      };
-    }
-
-    infoMap[GOLD_ITEM] = { unitPrice: 1, icon: null };
-    infoMap[SILVER_ITEM] = { unitPrice: 0, icon: null };
-
-    return { infoMap, lastUpdated: cacheResult?.lastUpdated || null };
+  return infoMap;
   } catch (error) {
     console.error('시장 캐시 데이터를 읽을 수 없습니다:', error);
-    return { infoMap: { [GOLD_ITEM]: { unitPrice: 1, icon: null }, [SILVER_ITEM]: { unitPrice: 0, icon: null } }, lastUpdated: null };
+    return { [GOLD_ITEM]: { unitPrice: 1, icon: null }, [SILVER_ITEM]: { unitPrice: 0, icon: null } };
   }
 }
 
@@ -170,7 +162,7 @@ export type RefiningStage = {
   baseSuccessRate: number;
 };
 
-function createStages(
+export function createStages(
   levels: number[],
   rowMap: Record<string, number[]>,
   baseMaterials: string[],
@@ -213,12 +205,14 @@ function createStages(
   });
 }
 
-export default async function RefiningSimulationPage() {
+export default async function ValueDBPage() {
   const [
+    valueDbData,
     weaponData,
     armorData,
-    { infoMap, lastUpdated }
+    marketInfo
   ] = await Promise.all([
+    getValueDbData(),
     parseUpgradeCsv(UPGRADE_FILE_WEAPON, 'upgrade1.csv'),
     parseUpgradeCsv(UPGRADE_FILE_ARMOR, 'upgrade2.csv'),
     getMarketInfoMap(),
@@ -241,11 +235,17 @@ export default async function RefiningSimulationPage() {
   );
 
   return (
-    <RefiningSimulationClient
+    <ValueDBClient
+      entries={valueDbData.entries}
+      cubeStageRewards={valueDbData.cubeStageRewards}
+      kurzanStageRewards={valueDbData.kurzanStageRewards}
+      marketPriceMap={valueDbData.marketPriceMap}
+      etcListData={valueDbData.etcListDataObj}
       weaponStages={weaponStages}
       armorStages={armorStages}
-      marketInfo={infoMap}
-      lastUpdated={lastUpdated}
+      marketInfo={marketInfo}
     />
   );
 }
+
+

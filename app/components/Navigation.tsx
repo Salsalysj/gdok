@@ -129,6 +129,7 @@ export default function Navigation() {
           </div>
         </div>
 
+
         {/* 모바일 드롭다운 메뉴 */}
         {mobileMenuOpen && (
           <div className="lg:hidden py-4 space-y-2 border-t border-gray-700">

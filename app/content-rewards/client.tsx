@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import ItemIcon from '../components/ItemIcon';
 import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
+import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
+import { usePriceOverride } from '../contexts/PriceOverrideContext';
 
 type RewardItem = {
   itemName: string;
@@ -32,7 +34,7 @@ type ContentType = keyof ContentRewards;
 
 type RatesProps = { exchange: number | null; discord: number | null };
 
-// 계산은 항상 원본 데이터로 수행 (유효숫자 규칙 적용 전)
+// 계산은 조정된 데이터로 수행 (유효숫자 규칙 적용 전)
 function calculateStageTotals(
   stage: Stage,
   isTradableFn: (name: string) => boolean,
@@ -66,44 +68,131 @@ function calculateStageTotals(
   return { tradable, total };
 }
 
-export default function ContentRewardsClient({ data, rates }: { data: ContentRewards, rates: RatesProps }) {
-  const contentTypes: ContentType[] = ['카오스 던전', '쿠르잔 전선', '에브니 큐브', '가디언 토벌'];
+type ValueDbEntryMap = Record<string, { itemName: string; unitType: '크리스탈' | '골드' | '현금' | null; unitValue: number | null; note?: string }>;
+
+export default function ContentRewardsClient({ 
+  data, 
+  rates,
+  valueDbEntryMap 
+}: { 
+  data: ContentRewards; 
+  rates: RatesProps;
+  valueDbEntryMap?: ValueDbEntryMap;
+}) {
+  const { adjustPrice } = usePriceAdjustment();
+  const { state: priceOverrideState } = usePriceOverride();
+  const [refreshKey, setRefreshKey] = useState(0);
+  const contentTypes: ContentType[] = ['쿠르잔 전선', '에브니 큐브', '가디언 토벌'];
   
-  // 사용 가능한 컨텐츠만 필터링
-  // 에브니 큐브는 데이터가 없어도 탭 표시
-  const availableContents = contentTypes.filter(type => {
-    if (type === '에브니 큐브') {
-      return data[type] !== undefined; // 에브니 큐브는 데이터가 없어도 탭 표시
-    }
-    return data[type] && Object.keys(data[type]!).length > 0;
-  });
+  // price-override-change 이벤트 리스너: 가격 조정이 변경되면 강제로 재계산
+  useEffect(() => {
+    const handlePriceOverrideChange = () => {
+      // 클라이언트 측에서만 재계산 (서버 재렌더링 불필요)
+      setRefreshKey(prev => prev + 1);
+    };
+    
+    window.addEventListener('price-override-change', handlePriceOverrideChange);
+    return () => {
+      window.removeEventListener('price-override-change', handlePriceOverrideChange);
+    };
+  }, []);
+  
+  // 사용 가능한 컨텐츠만 필터링 (useMemo로 감싸기)
+  const availableContents = useMemo(() => {
+    return contentTypes.filter(type => {
+      if (type === '에브니 큐브') {
+        return data[type] !== undefined; // 에브니 큐브는 데이터가 없어도 탭 표시
+      }
+      return data[type] && Object.keys(data[type]!).length > 0;
+    });
+  }, [data]);
   
   const [activeContent, setActiveContent] = useState<ContentType | null>(
     availableContents.length > 0 ? availableContents[0] : null
   );
+  
+  // data 변경 시 activeContent 동기화
+  useEffect(() => {
+    if (availableContents.length > 0) {
+      // 현재 선택된 컨텐츠가 더 이상 사용 불가능하면 첫 번째로 변경
+      setActiveContent(prev => {
+        if (!prev || !availableContents.includes(prev)) {
+          return availableContents[0];
+        }
+        return prev;
+      });
+    } else {
+      setActiveContent(null);
+    }
+  }, [availableContents]);
   
   const contentData = activeContent ? data[activeContent] : null;
   const levels = contentData ? Object.keys(contentData) : [];
   const [activeLevel, setActiveLevel] = useState<string>('');
   
   // 첫 로드 시 첫 번째 레벨 선택
-  useMemo(() => {
-    if (levels.length > 0 && !activeLevel) {
-      setActiveLevel(levels[0]);
+  useEffect(() => {
+    if (levels.length > 0) {
+      setActiveLevel(prev => {
+        if (!prev || !levels.includes(prev)) {
+          return levels[0];
+        }
+        return prev;
+      });
     }
-  }, [levels, activeLevel]);
+  }, [levels]);
+  
+  // 가격 조정된 데이터 생성
+  // refreshKey를 의존성에 추가하여 price-override-change 이벤트 발생 시 강제로 재계산
+  const adjustedData = useMemo(() => {
+    if (!contentData) return null;
+    const adjusted: ContentData = {};
+    for (const [level, stages] of Object.entries(contentData)) {
+      adjusted[level] = stages.map(stage => ({
+        ...stage,
+        rewards: stage.rewards.map(reward => {
+          // 카드 경험치인 경우 가치계산DB에서 가격 가져오기
+          let finalPrice = reward.price ?? null;
+          if (reward.itemName === '카드 경험치' && valueDbEntryMap) {
+            const cardExpEntry = valueDbEntryMap['카드경험치 1당'];
+            if (cardExpEntry && cardExpEntry.unitValue != null) {
+              // 가치계산DB의 '카드경험치 1당' 가격을 사용 (수량을 곱하지 않음, 수량은 나중에 곱함)
+              finalPrice = cardExpEntry.unitValue;
+            }
+          }
+          
+          return {
+            ...reward,
+            price: adjustPrice(reward.itemName, finalPrice),
+            cubeStageRewards: reward.cubeStageRewards?.map(r => {
+              // cubeStageRewards 내부의 카드 경험치도 동일하게 처리
+              let rPrice = r.price ?? null;
+              if (r.itemName === '카드 경험치' && valueDbEntryMap) {
+                const cardExpEntry = valueDbEntryMap['카드경험치 1당'];
+                if (cardExpEntry && cardExpEntry.unitValue != null) {
+                  rPrice = cardExpEntry.unitValue;
+                }
+              }
+              return {
+                ...r,
+                price: adjustPrice(r.itemName, rPrice),
+              };
+            }),
+          };
+        }),
+      }));
+    }
+    return adjusted;
+  }, [contentData, adjustPrice, valueDbEntryMap, refreshKey, priceOverrideState]);
   
   // 현재 표시할 데이터 결정
-  const currentLevelData: Stage[] = activeLevel && contentData ? contentData[activeLevel] : [];
+  const currentLevelData: Stage[] = activeLevel && adjustedData ? adjustedData[activeLevel] : [];
 
   // 거래가능/귀속 색상 구분
   const tradableSet = useMemo(() => new Set<string>([
-    '정제된 파괴강석',
-    '정제된 수호강석',
     '1레벨 보석 (3T)',
     '1레벨 보석 (4T)',
-    '운명의 파괴석',
-    '운명의 수호석',
+    // 운명의 파괴석, 운명의 수호석은 귀속 (쿠르잔 전선)
   ]), []);
 
   const getTradeClass = (itemName: string) => {
@@ -120,16 +209,11 @@ export default function ContentRewardsClient({ data, rates }: { data: ContentRew
     } as const;
   };
 
-  // 합계 제외 스위치 상태
-  const [skipStones, setSkipStones] = useState(false);
-  const [skipFragments, setSkipFragments] = useState(false);
-  const [skipCardExp, setSkipCardExp] = useState(false);
-
   const isExcludedForTotal = (name: string) => {
     if (activeContent === '가디언 토벌') return false;
-    if (skipStones && (name === '찬란한 명예의 돌파석' || name === '운명의 돌파석')) return true;
-    if (skipFragments && (name === '명예의 파편' || name === '운명의 파편')) return true;
-    if (skipCardExp && name === '카드 경험치') return true;
+    if (priceOverrideState.ignoreBreakthroughStone && (name === '찬란한 명예의 돌파석' || name === '운명의 돌파석')) return true;
+    if (priceOverrideState.ignoreFragment && (name === '명예의 파편' || name === '운명의 파편')) return true;
+    if (priceOverrideState.ignoreCardExp && name === '카드 경험치') return true;
     return false;
   };
 
@@ -184,27 +268,6 @@ export default function ContentRewardsClient({ data, rates }: { data: ContentRew
           <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-2">컨텐츠 보상 계산기</h1>
           <p className="text-sm md:text-base text-gray-400">컨텐츠별 보상과 골드 가치를 확인하세요.</p>
         </div>
-        {/* 글로벌 규칙 스위치: 모든 컨텐츠에 적용 */}
-        <div className="mb-4 md:mb-6 flex flex-wrap gap-3 md:gap-6">
-          <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer select-none">
-            <span>나는 돌파석이 남아돈다</span>
-            <span onClick={() => setSkipStones(v => !v)} className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors border ${skipStones ? 'bg-purple-600 border-purple-500' : 'bg-gray-600 border-gray-500'}`}>
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${skipStones ? 'translate-x-5' : 'translate-x-1'}`} />
-            </span>
-          </label>
-          <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer select-none">
-            <span>나는 파편이 남아돈다</span>
-            <span onClick={() => setSkipFragments(v => !v)} className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors border ${skipFragments ? 'bg-purple-600 border-purple-500' : 'bg-gray-600 border-gray-500'}`}>
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${skipFragments ? 'translate-x-5' : 'translate-x-1'}`} />
-            </span>
-          </label>
-          <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer select-none">
-            <span>나는 카드 경험치가 남아돈다</span>
-            <span onClick={() => setSkipCardExp(v => !v)} className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors border ${skipCardExp ? 'bg-purple-600 border-purple-500' : 'bg-gray-600 border-gray-500'}`}>
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${skipCardExp ? 'translate-x-5' : 'translate-x-1'}`} />
-            </span>
-          </label>
-        </div>
         
         {/* 컨텐츠 선택 (서브탭) */}
         <div className="flex gap-2 mb-6">
@@ -227,20 +290,40 @@ export default function ContentRewardsClient({ data, rates }: { data: ContentRew
           ))}
         </div>
 
-        {/* 레벨 선택 (에브니 큐브, 가디언 토벌은 티어 선택) */}
-        {levels.length > 0 && (
+        {/* 레벨 선택 */}
+        {levels.length > 0 && activeContent !== '에브니 큐브' && (
           <div className="mb-6">
-            <select
-              value={activeLevel}
-              onChange={(e) => setActiveLevel(e.target.value)}
-              className="px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
-            >
-              {levels.map(level => (
-                <option key={level} value={level}>
-                  {level === '티어3' ? '티어3' : level === '티어4' ? '티어4' : level}
-                </option>
-              ))}
-            </select>
+            {activeContent === '쿠르잔 전선' ? (
+              // 쿠르잔 전선: 버튼형 선택
+              <div className="flex flex-wrap gap-2">
+                {levels.map(level => (
+                  <button
+                    key={level}
+                    onClick={() => setActiveLevel(level)}
+                    className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                      activeLevel === level
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg'
+                        : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
+                    }`}
+                  >
+                    {level}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              // 가디언 토벌: 드롭다운 유지
+              <select
+                value={activeLevel}
+                onChange={(e) => setActiveLevel(e.target.value)}
+                className="px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+              >
+                {levels.map(level => (
+                  <option key={level} value={level}>
+                    {level}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
         )}
         

@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
+import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
+import type { ValueDbEntry } from '@/lib/valueDb';
 
 type ComponentItem = {
   itemName: string;
@@ -43,6 +45,18 @@ type MarketItem = {
   RecentPrice?: number;
 };
 
+type RewardItem = {
+  itemName: string;
+  quantity: number;
+  price?: number | null;
+  category?: string;
+};
+
+type Stage = {
+  stage: string;
+  rewards: RewardItem[];
+};
+
 export default function PackageEfficiencyClient({
   itemList,
   etcListData,
@@ -50,6 +64,10 @@ export default function PackageEfficiencyClient({
   marketPriceMap,
   marketData,
   cubeStageTotals,
+  cubeStageRewards,
+  valueDbMap,
+  hellStages,
+  narakStages,
 }: {
   itemList: string[];
   etcListData: { [key: string]: EtcListItem };
@@ -57,9 +75,28 @@ export default function PackageEfficiencyClient({
   marketPriceMap: Record<string, number>;
   marketData: any;
   cubeStageTotals: Record<string, number>;
+  cubeStageRewards: Record<string, { itemName: string; quantity: number }[]>;
+  valueDbMap: Record<string, ValueDbEntry>;
+  hellStages?: Stage[];
+  narakStages?: Stage[];
 }) {
+  const { adjustPrice, adjustRelicEngravingAverage } = usePriceAdjustment();
   const [lightMode, setLightMode] = useState<boolean>(false);
   const [discordRate, setDiscordRate] = useState<number | null>(null);
+  
+  // 가격 조정 스위치 변경 시 resolveUnitPrice 재계산을 위한 refresh key
+  const [refreshKey, setRefreshKey] = useState(0);
+  
+  useEffect(() => {
+    const handlePriceOverrideChange = () => {
+      setRefreshKey(prev => prev + 1);
+    };
+    
+    window.addEventListener('price-override-change', handlePriceOverrideChange);
+    return () => {
+      window.removeEventListener('price-override-change', handlePriceOverrideChange);
+    };
+  }, []);
 
   // 디코기준 스위치 동기화
   useEffect(() => {
@@ -179,37 +216,311 @@ export default function PackageEfficiencyClient({
   }
 
   // 구성요소 단가 해석: etc_list 우선, 없으면 캐시 골드, 없으면 null
-  function resolveUnitPrice(itemName: string): { unitType: '골드' | '크리스탈' | '현금'; unitPrice: number } | null {
-    // 에브니 큐브 입장권: 괄호 안 단계에 맞는 합계 사용
+  const resolveUnitPrice = useCallback((itemName: string): { unitType: '골드' | '크리스탈' | '현금'; unitPrice: number } | null => {
+    // 지옥/나락 열쇠: 클라이언트에서 재계산 (지옥 보상 계산기와 동일한 방식)
+    const isHellKey = itemName.includes('지옥 열쇠');
+    const isNarakKey = itemName.includes('나락의') && itemName.includes('열쇠');
+    
+    if ((isHellKey || isNarakKey) && hellStages && narakStages) {
+      // 가치계산DB에서 아이템 가격 가져오기 함수
+      const getValueDbPrice = (itemName: string): number | null => {
+        const entry = valueDbMap[itemName];
+        if (entry && entry.unitType === '골드' && entry.unitValue != null) {
+          return entry.unitValue;
+        }
+        return null;
+      };
+
+      // 지옥 보상 가격 조정 함수 (모든 아이템은 가치계산DB 우선 사용)
+      const getAdjustedPrice = (itemName: string, originalPrice: number | null | undefined): number | null => {
+        // 모든 아이템은 가치계산DB에서 가격 가져오기 (우선순위)
+        const valueDbPrice = getValueDbPrice(itemName);
+        if (valueDbPrice != null) {
+          // 가격 조정 적용
+          return adjustPrice(itemName, valueDbPrice);
+        }
+        
+        // 가치계산DB에 없는 경우 기존 로직 사용 후 가격 조정 적용
+        let price = originalPrice ?? null;
+        if (price != null) {
+          price = adjustPrice(itemName, price);
+        }
+        
+        return price;
+      };
+
+      // 지옥3 스테이지 기대값 계산
+      const calculateHellStageExpectedValue = (stage: Stage, isNarak: boolean = false): number | null => {
+        if (!stage || !stage.rewards || stage.rewards.length === 0) return null;
+        
+        // 카테고리별로 그룹화
+        const groupedByCategory: Record<string, RewardItem[]> = {};
+        stage.rewards.forEach((reward) => {
+          const category = reward.category || '기본';
+          if (!groupedByCategory[category]) {
+            groupedByCategory[category] = [];
+          }
+          groupedByCategory[category].push(reward);
+        });
+        
+        const categories = Object.keys(groupedByCategory);
+        if (categories.length === 0) return null;
+        
+        if (isNarak) {
+          // 나락: 기본 보상 없음, 모든 카테고리 중 3개를 랜덤 추출 후 최고가 선택
+          if (categories.length >= 3) {
+            // 모든 3개 조합 생성
+            const combinations: string[][] = [];
+            for (let i = 0; i < categories.length; i++) {
+              for (let j = i + 1; j < categories.length; j++) {
+                for (let k = j + 1; k < categories.length; k++) {
+                  combinations.push([categories[i], categories[j], categories[k]]);
+                }
+              }
+            }
+            
+            // 각 조합의 최고값 계산 (가격 조정 적용, 가치계산DB 우선 사용)
+            const maxValues: number[] = [];
+            combinations.forEach(combo => {
+              const comboValues = combo.map(cat => {
+                return groupedByCategory[cat].reduce((sum, r) => {
+                  const adjustedPrice = getAdjustedPrice(r.itemName, r.price);
+                  return sum + ((adjustedPrice || 0) * r.quantity);
+                }, 0);
+              });
+              maxValues.push(Math.max(...comboValues));
+            });
+            
+            // 기대값 = 모든 최고값의 평균
+            return maxValues.reduce((sum, val) => sum + val, 0) / maxValues.length;
+          } else if (categories.length > 0) {
+            // 카테고리가 3개 미만이면 모든 카테고리의 최고값
+            const categoryValues = categories.map(cat => {
+              return groupedByCategory[cat].reduce((sum, r) => {
+                const adjustedPrice = getAdjustedPrice(r.itemName, r.price);
+                return sum + ((adjustedPrice || 0) * r.quantity);
+              }, 0);
+            });
+            return Math.max(...categoryValues);
+          }
+          return null;
+        } else {
+          // 지옥: 기본 보상 + 나머지 카테고리 중 3개를 랜덤으로 선택하고 그 중 최고값을 선택
+          const baseCategory = categories.find(cat => cat.includes('기본') || cat.includes('보상 상자')) || categories[0];
+          const otherCategories = categories.filter(cat => cat !== baseCategory);
+          
+          // 기본 보상 가치 계산
+          // 풍요 시 10배 기대값 고려: 100% + 90% = 190%
+          let baseRewardValue = 0;
+          if (baseCategory && groupedByCategory[baseCategory]) {
+            const baseValue = groupedByCategory[baseCategory].reduce((sum, r) => {
+              const adjustedPrice = getAdjustedPrice(r.itemName, r.price);
+              return sum + ((adjustedPrice || 0) * r.quantity);
+            }, 0);
+            // 기본 보상 상자는 190% 반영 (100% 기본 + 90% 풍요 기대값)
+            baseRewardValue = baseValue * 1.9;
+          }
+          
+          if (otherCategories.length === 0) return baseRewardValue;
+          
+          // 선택 보상 기대값 계산
+          if (otherCategories.length >= 3) {
+            // 모든 3개 조합 생성
+            const combinations: string[][] = [];
+            for (let i = 0; i < otherCategories.length; i++) {
+              for (let j = i + 1; j < otherCategories.length; j++) {
+                for (let k = j + 1; k < otherCategories.length; k++) {
+                  combinations.push([otherCategories[i], otherCategories[j], otherCategories[k]]);
+                }
+              }
+            }
+            
+            // 각 조합의 최고값 계산
+            const maxValues: number[] = [];
+            combinations.forEach(combo => {
+              const comboValues = combo.map(cat => {
+                return groupedByCategory[cat].reduce((sum, r) => {
+                  const adjustedPrice = getAdjustedPrice(r.itemName, r.price);
+                  return sum + ((adjustedPrice || 0) * r.quantity);
+                }, 0);
+              });
+              maxValues.push(Math.max(...comboValues));
+            });
+            
+            // 기대값 = 모든 최고값의 평균
+            const expectedSelectionValue = maxValues.reduce((sum, val) => sum + val, 0) / maxValues.length;
+            return baseRewardValue + expectedSelectionValue;
+          } else if (otherCategories.length > 0) {
+            // 카테고리가 3개 미만이면 모든 카테고리의 최고값
+            const otherValues = otherCategories.map(cat => {
+              return groupedByCategory[cat].reduce((sum, r) => {
+                const adjustedPrice = getAdjustedPrice(r.itemName, r.price);
+                return sum + ((adjustedPrice || 0) * r.quantity);
+              }, 0);
+            });
+            const maxOtherValue = Math.max(...otherValues);
+            return baseRewardValue + maxOtherValue;
+          } else {
+            return baseRewardValue;
+          }
+        }
+      };
+
+      // 지옥 열쇠 처리
+      if (isHellKey) {
+        if (itemName === '전설 지옥 열쇠 III') {
+          const hell7Stage = hellStages.find(s => s.stage === '7단계');
+          if (hell7Stage) {
+            const value = calculateHellStageExpectedValue(hell7Stage, false);
+            if (value != null) {
+              return { unitType: '골드', unitPrice: value };
+            }
+          }
+        } else if (itemName === '영웅 지옥 열쇠 III') {
+          const hell6Stage = hellStages.find(s => s.stage === '6단계');
+          if (hell6Stage) {
+            const value = calculateHellStageExpectedValue(hell6Stage, false);
+            if (value != null) {
+              return { unitType: '골드', unitPrice: value };
+            }
+          }
+        } else if (itemName === '희귀 지옥 열쇠 III') {
+          const hell5Stage = hellStages.find(s => s.stage === '5단계');
+          if (hell5Stage) {
+            const value = calculateHellStageExpectedValue(hell5Stage, false);
+            if (value != null) {
+              return { unitType: '골드', unitPrice: value };
+            }
+          }
+        }
+      }
+      
+      // 나락 열쇠 처리
+      if (isNarakKey) {
+        if (itemName === '전설 나락의 화염 열쇠 III' || itemName === '전설 나락의 서리 열쇠 III') {
+          const narak2Stage = narakStages.find(s => s.stage === '2단계');
+          if (narak2Stage) {
+            const value = calculateHellStageExpectedValue(narak2Stage, true);
+            if (value != null) {
+              return { unitType: '골드', unitPrice: value };
+            }
+          }
+        }
+      }
+    }
+
+    // 에브니 큐브 입장권: cubeStageRewards를 사용하여 클라이언트에서 재계산 (카드경험치 미반영 반영)
     if (itemName.startsWith('에브니 큐브 입장권')) {
       const m = itemName.match(/\(([^)]+)\)/);
       const key = m ? m[1] : '';
-      if (key && cubeStageTotals[key] != null) {
-        return { unitType: '골드', unitPrice: cubeStageTotals[key] };
+      if (key && cubeStageRewards[key]) {
+        // cubeStageRewards를 사용하여 재계산
+        let sum = 0;
+        for (const reward of cubeStageRewards[key]) {
+          let originalPrice: number | null = null;
+          
+          if (reward.itemName === '카드 경험치') {
+            // 카드 경험치인 경우 가치계산DB의 '카드경험치 1당' 가격 사용
+            const cardExpEntry = Object.values(valueDbMap).find(e => e.itemName === '카드경험치 1당');
+            if (cardExpEntry && cardExpEntry.unitValue != null) {
+              originalPrice = cardExpEntry.unitValue;
+            } else {
+              const etc = etcListData[reward.itemName];
+              if (etc?.gold != null) {
+                originalPrice = etc.gold;
+              } else if (marketPriceMap[reward.itemName] != null) {
+                originalPrice = marketPriceMap[reward.itemName];
+              }
+            }
+          } else {
+            // 다른 보상의 경우 원본 가격 찾기
+            const etc = etcListData[reward.itemName];
+            if (etc?.gold != null) {
+              originalPrice = etc.gold;
+            } else if (marketPriceMap[reward.itemName] != null) {
+              originalPrice = marketPriceMap[reward.itemName];
+            }
+          }
+          
+          // adjustPrice로 가격 조정 (카드경험치 미반영, 돌파석 미반영, 파편 미반영 등)
+          const adjustedPrice = adjustPrice(reward.itemName, originalPrice);
+          if (adjustedPrice != null && adjustedPrice > 0) {
+            sum += adjustedPrice * reward.quantity;
+          }
+        }
+        return { unitType: '골드', unitPrice: sum };
       }
+      // cubeStageRewards에 없으면 valueDbMap에서 찾기 (fallback)
+      const valueDbEntry = valueDbMap[itemName];
+      if (valueDbEntry && valueDbEntry.unitType === '골드' && valueDbEntry.unitValue != null) {
+        const adjustedValue = adjustPrice(itemName, valueDbEntry.unitValue) ?? valueDbEntry.unitValue;
+        return { unitType: '골드', unitPrice: adjustedValue };
+      }
+      // cubeStageTotals fallback (하위 호환성)
+      if (key && cubeStageTotals[key] != null) {
+        const price = adjustPrice(itemName, cubeStageTotals[key]) ?? cubeStageTotals[key];
+        return { unitType: '골드', unitPrice: price };
+      }
+      return null;
+    }
+
+    const valueDbEntry = valueDbMap[itemName];
+    if (valueDbEntry && valueDbEntry.unitType && valueDbEntry.unitValue != null) {
+      let adjustedValue = valueDbEntry.unitValue;
+      // 골드 단위인 경우 가격 조정 적용
+      if (valueDbEntry.unitType === '골드') {
+        // 유물 각인서 랜덤의 경우 특별 처리
+        if (itemName === '유물 각인서 랜덤' || itemName === '유물 각인서 랜덤 주머니') {
+          adjustedValue = adjustRelicEngravingAverage(adjustedValue) ?? adjustedValue;
+        } else {
+          adjustedValue = adjustPrice(itemName, adjustedValue) ?? adjustedValue;
+        }
+      }
+      return {
+        unitType: valueDbEntry.unitType,
+        unitPrice: adjustedValue,
+      };
     }
     // 젬 아이템 처리
     if (itemName === '고급 젬') {
       const price = calculateGemPriceByGrade('고급');
-      if (price != null) return { unitType: '골드', unitPrice: price };
+      if (price != null) {
+        const adjusted = adjustPrice(itemName, price) ?? price;
+        return { unitType: '골드', unitPrice: adjusted };
+      }
     } else if (itemName === '희귀 젬') {
       const price = calculateGemPriceByGrade('희귀');
-      if (price != null) return { unitType: '골드', unitPrice: price };
+      if (price != null) {
+        const adjusted = adjustPrice(itemName, price) ?? price;
+        return { unitType: '골드', unitPrice: adjusted };
+      }
     } else if (itemName === '영웅 젬') {
       const price = calculateGemPriceByGrade('영웅');
-      if (price != null) return { unitType: '골드', unitPrice: price };
+      if (price != null) {
+        const adjusted = adjustPrice(itemName, price) ?? price;
+        return { unitType: '골드', unitPrice: adjusted };
+      }
     }
     
     const etc = etcListData[itemName];
     if (etc) {
-      if (etc.cash != null) return { unitType: '현금', unitPrice: etc.cash };
-      if (etc.gold != null) return { unitType: '골드', unitPrice: etc.gold };
+      if (etc.cash != null) {
+        const adjusted = adjustPrice(itemName, etc.cash) ?? etc.cash;
+        return { unitType: '현금', unitPrice: adjusted };
+      }
+      if (etc.gold != null) {
+        const adjusted = adjustPrice(itemName, etc.gold) ?? etc.gold;
+        return { unitType: '골드', unitPrice: adjusted };
+      }
       if (etc.crystal != null) return { unitType: '크리스탈', unitPrice: etc.crystal };
     }
     const market = marketPriceMap[itemName];
-    if (market != null && market > 0) return { unitType: '골드', unitPrice: market };
+    if (market != null && market > 0) {
+      const adjusted = adjustPrice(itemName, market) ?? market;
+      return { unitType: '골드', unitPrice: adjusted };
+    }
     return null;
-  }
+  }, [cubeStageRewards, valueDbMap, etcListData, marketPriceMap, cubeStageTotals, adjustPrice, adjustRelicEngravingAverage, calculateGemPriceByGrade, refreshKey, hellStages, narakStages]);
 
   // 아이템 가격 계산 함수
   const calculateItemPrice = (
@@ -307,7 +618,7 @@ export default function PackageEfficiencyClient({
       });
     });
     return total;
-  }, [packageData.items, packageData.priceType, etcListData, crystalGoldRate, goldToCashPerGold, marketPriceMap]);
+  }, [packageData.items, packageData.priceType, etcListData, crystalGoldRate, goldToCashPerGold, marketPriceMap, valueDbMap, resolveUnitPrice]);
 
   // 효율 계산 (배수)
   const efficiency = useMemo(() => {

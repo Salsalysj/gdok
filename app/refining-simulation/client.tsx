@@ -3,6 +3,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
 import type { RefiningStage, MarketItemInfo } from './page';
+import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
 
 type CharacterEquipment = {
   Type?: string;
@@ -56,9 +57,82 @@ function CharacterSimulation({ weaponStages, armorStages, marketInfo }: { weapon
       console.log('원정대 API 응답:', JSON.stringify(data, null, 2));
       
       if (res.ok && Array.isArray(data)) {
-        // 원정대 API 응답에서 직접 정보 추출 (추가 API 호출 없이)
-        const characters = data.map((char: any) => {
-          // 아이템 레벨 필드 찾기 (ItemAvgLevel 우선 사용)
+        // 각 캐릭터의 최신 아이템 레벨을 가져오기 위해 상세 정보 조회
+        const characterPromises = data.map(async (char: any) => {
+          const characterName = char.CharacterName || char.characterName;
+          if (!characterName) {
+            // 기본 정보만 사용
+            const itemLevel = char.ItemAvgLevel
+              || char.ItemLevel 
+              || char.ItemMaxLevel 
+              || char.itemAvgLevel
+              || char.itemLevel
+              || char.itemMaxLevel
+              || char.CharacterItemLevel
+              || char.characterItemLevel
+              || '?';
+            
+            return {
+              CharacterName: characterName,
+              CharacterClassName: char.CharacterClassName || char.characterClassName,
+              ItemAvgLevel: char.ItemAvgLevel || char.itemAvgLevel || itemLevel,
+              ItemLevel: char.ItemLevel || char.itemLevel || itemLevel,
+              ItemMaxLevel: char.ItemMaxLevel || char.itemMaxLevel,
+              ServerName: char.ServerName || char.serverName,
+            };
+          }
+          
+          // 각 캐릭터의 상세 정보 조회하여 최신 아이템 레벨 가져오기
+          try {
+            const detailRes = await fetch('/api/character/search', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ characterName }),
+            });
+            
+            if (detailRes.ok) {
+              const detailData = await detailRes.json();
+              
+              // ArmoryProfile에서 ItemAvgLevel 가져오기 (Lost Ark API의 실제 구조)
+              // Lost Ark API는 ArmoryProfile 객체 안에 ItemAvgLevel을 저장
+              const armoryProfile = detailData.ArmoryProfile || {};
+              
+              // 최신 아이템 레벨 우선순위: ArmoryProfile.ItemAvgLevel > ArmoryProfile.ItemLevel > 기타
+              const latestItemAvgLevel = armoryProfile.ItemAvgLevel 
+                || armoryProfile.ItemLevel
+                || detailData.ItemAvgLevel
+                || detailData.ItemLevel
+                || detailData.ItemMaxLevel
+                || detailData.itemAvgLevel
+                || detailData.itemLevel
+                || detailData.itemMaxLevel
+                || null;
+              
+              // 최신 아이템 레벨 필드 찾기 (fallback)
+              const itemLevel = latestItemAvgLevel
+                || char.ItemAvgLevel
+                || char.ItemLevel
+                || char.ItemMaxLevel
+                || char.itemAvgLevel
+                || char.itemLevel
+                || char.itemMaxLevel
+                || '?';
+              
+              // ItemAvgLevel과 ItemLevel 모두 저장 (드롭다운에서 ItemAvgLevel을 우선 사용)
+              return {
+                CharacterName: characterName,
+                CharacterClassName: char.CharacterClassName || char.characterClassName,
+                ItemAvgLevel: armoryProfile.ItemAvgLevel || latestItemAvgLevel || itemLevel,
+                ItemLevel: armoryProfile.ItemLevel || detailData.ItemLevel || detailData.itemLevel || itemLevel,
+                ItemMaxLevel: armoryProfile.ItemMaxLevel || detailData.ItemMaxLevel || detailData.itemMaxLevel,
+                ServerName: char.ServerName || char.serverName,
+              };
+            }
+          } catch (err) {
+            console.warn(`캐릭터 ${characterName} 상세 정보 조회 실패:`, err);
+          }
+          
+          // 상세 정보 조회 실패 시 기본 정보 사용
           const itemLevel = char.ItemAvgLevel
             || char.ItemLevel 
             || char.ItemMaxLevel 
@@ -70,13 +144,16 @@ function CharacterSimulation({ weaponStages, armorStages, marketInfo }: { weapon
             || '?';
           
           return {
-            CharacterName: char.CharacterName || char.characterName,
+            CharacterName: characterName,
             CharacterClassName: char.CharacterClassName || char.characterClassName,
-            ItemLevel: itemLevel,
+            ItemAvgLevel: char.ItemAvgLevel || char.itemAvgLevel || itemLevel,
+            ItemLevel: char.ItemLevel || char.itemLevel || itemLevel,
+            ItemMaxLevel: char.ItemMaxLevel || char.itemMaxLevel,
             ServerName: char.ServerName || char.serverName,
           };
         });
         
+        const characters = await Promise.all(characterPromises);
         setRosterCharacters(characters);
       } else {
         setRosterCharacters([]);
@@ -350,6 +427,35 @@ function CharacterSimulation({ weaponStages, armorStages, marketInfo }: { weapon
   }, [characterData]);
 
   // 각 장비의 가치 계산
+  // 가격 조정 훅 사용
+  const { adjustPrice } = usePriceAdjustment();
+
+  // 가격 조정이 적용된 marketInfo 생성
+  const adjustedMarketInfo = useMemo(() => {
+    const adjusted: Record<string, MarketItemInfo> = {};
+    for (const [name, info] of Object.entries(marketInfo)) {
+      adjusted[name] = {
+        ...info,
+        unitPrice: adjustPrice(name, info.unitPrice) ?? info.unitPrice,
+      };
+    }
+    return adjusted;
+  }, [marketInfo, adjustPrice]);
+
+  // 가격 조정 스위치 변경 시 equipmentWithValues 재계산을 위한 refresh key
+  const [refreshKey, setRefreshKey] = useState(0);
+  
+  useEffect(() => {
+    const handlePriceOverrideChange = () => {
+      setRefreshKey(prev => prev + 1);
+    };
+    
+    window.addEventListener('price-override-change', handlePriceOverrideChange);
+    return () => {
+      window.removeEventListener('price-override-change', handlePriceOverrideChange);
+    };
+  }, []);
+
   const equipmentWithValues = useMemo(() => {
     if (!sortedEquipment.length) return [];
     
@@ -370,22 +476,22 @@ function CharacterSimulation({ weaponStages, armorStages, marketInfo }: { weapon
         };
       }
 
-      // 최적 전략 계산
-      const { materialValueAnalysis } = calculateOptimalStrategy(stage, marketInfo);
+      // 최적 전략 계산 (가격 조정이 적용된 marketInfo 사용)
+      const { materialValueAnalysis } = calculateOptimalStrategy(stage, adjustedMarketInfo);
       
       // 야금/재봉 가치 및 아이템 정보
       const craftValue = materialValueAnalysis?.metallurgy?.actualValuePerItem ?? null;
       const craftItemName = stage.metallurgyMaterial?.name || null;
-      const craftMarketPrice = craftItemName ? (marketInfo[craftItemName]?.unitPrice ?? null) : null;
+      const craftMarketPrice = craftItemName ? (adjustedMarketInfo[craftItemName]?.unitPrice ?? null) : null;
       
       // 숨결 가치 및 아이템 정보
       const breathValue = materialValueAnalysis?.breath?.actualValuePerItem ?? null;
       const breathItemName = stage.breathMaterial?.name || null;
-      const breathMarketPrice = breathItemName ? (marketInfo[breathItemName]?.unitPrice ?? null) : null;
+      const breathMarketPrice = breathItemName ? (adjustedMarketInfo[breathItemName]?.unitPrice ?? null) : null;
       
-      // 순환 돌파석 가치 계산
-      const { optimalStrategy } = calculateOptimalStrategy(stage, marketInfo);
-      const expInfo = stage.expMaterial ? (marketInfo[stage.expMaterial.name] || { unitPrice: 0 }) : null;
+      // 순환 돌파석 가치 계산 (가격 조정이 적용된 marketInfo 사용)
+      const { optimalStrategy } = calculateOptimalStrategy(stage, adjustedMarketInfo);
+      const expInfo = stage.expMaterial ? (adjustedMarketInfo[stage.expMaterial.name] || { unitPrice: 0 }) : null;
       const expMaterialCost = stage.expMaterial && expInfo
         ? expInfo.unitPrice * stage.expMaterial.quantity
         : 0;
@@ -422,7 +528,7 @@ function CharacterSimulation({ weaponStages, armorStages, marketInfo }: { weapon
         targetLevel,
       };
     });
-  }, [sortedEquipment, weaponStages, armorStages, marketInfo]);
+  }, [sortedEquipment, weaponStages, armorStages, adjustedMarketInfo, refreshKey]);
 
   // 요약 정보 계산
   const summaryValues = useMemo(() => {
@@ -908,7 +1014,7 @@ type CostLine = {
   icon?: string | null;
 };
 
-function calculateOptimalStrategy(
+export function calculateOptimalStrategy(
   stage: RefiningStage,
   marketInfo: Record<string, MarketItemInfo>,
   maxAttempts: number = 500,
@@ -1370,10 +1476,30 @@ function calculateScenarioSummaries(
 
 function ItemIcon({ name, icon }: { name: string; icon?: string | null }) {
   const fallback = FALLBACK_ICON[name] || '📦';
-  return icon ? (
-    <img src={icon} alt={name} className="w-6 h-6 object-contain" />
-  ) : (
-    <span className="w-6 h-6 flex items-center justify-center text-lg">{fallback}</span>
+  // icon이 없거나 빈 문자열이면 fallback 사용
+  if (!icon || icon.trim() === '') {
+    return <span className="w-6 h-6 flex items-center justify-center text-lg">{fallback}</span>;
+  }
+  return (
+    <img 
+      src={icon} 
+      alt={name} 
+      className="w-6 h-6 object-contain" 
+      onError={(e) => {
+        // 이미지 로드 실패 시 fallback으로 교체
+        const target = e.target as HTMLImageElement;
+        const parent = target.parentElement;
+        if (parent) {
+          target.style.display = 'none';
+          if (!parent.querySelector('.fallback-icon')) {
+            const fallbackSpan = document.createElement('span');
+            fallbackSpan.className = 'w-6 h-6 flex items-center justify-center text-lg fallback-icon';
+            fallbackSpan.textContent = fallback;
+            parent.appendChild(fallbackSpan);
+          }
+        }
+      }} 
+    />
   );
 }
 
@@ -1383,14 +1509,28 @@ type StageCardProps = {
 };
 
 function StageCard({ stage, marketInfo }: StageCardProps) {
+  const { adjustPrice } = usePriceAdjustment();
+  
+  // 가격 조정이 적용된 marketInfo 생성
+  const adjustedMarketInfo = useMemo(() => {
+    const adjusted: Record<string, MarketItemInfo> = {};
+    for (const [name, info] of Object.entries(marketInfo)) {
+      adjusted[name] = {
+        ...info,
+        unitPrice: adjustPrice(name, info.unitPrice) ?? info.unitPrice,
+      };
+    }
+    return adjusted;
+  }, [marketInfo, adjustPrice]);
+
   const { scenarios, baseCostBreakdown, oneTimeCost, optionalCosts } = useMemo(
-    () => calculateScenarioSummaries(stage, marketInfo),
-    [stage, marketInfo]
+    () => calculateScenarioSummaries(stage, adjustedMarketInfo),
+    [stage, adjustedMarketInfo]
   );
 
   const { optimalStrategy, baseStrategy, fullBreathStrategy, fullMetallurgyStrategy, fullBothStrategy, materialValueAnalysis } = useMemo(
-    () => calculateOptimalStrategy(stage, marketInfo),
-    [stage, marketInfo]
+    () => calculateOptimalStrategy(stage, adjustedMarketInfo),
+    [stage, adjustedMarketInfo]
   );
 
   const [showOptimization, setShowOptimization] = useState(false);
@@ -1399,9 +1539,9 @@ function StageCard({ stage, marketInfo }: StageCardProps) {
   const goldLine: CostLine = {
     name: GOLD_ITEM,
     quantity: stage.goldCost,
-    unitPrice: marketInfo[GOLD_ITEM]?.unitPrice ?? 1,
-    totalPrice: stage.goldCost * (marketInfo[GOLD_ITEM]?.unitPrice ?? 1),
-    icon: marketInfo[GOLD_ITEM]?.icon,
+    unitPrice: adjustedMarketInfo[GOLD_ITEM]?.unitPrice ?? 1,
+    totalPrice: stage.goldCost * (adjustedMarketInfo[GOLD_ITEM]?.unitPrice ?? 1),
+    icon: adjustedMarketInfo[GOLD_ITEM]?.icon,
   };
 
   const essentialLeft = baseCostBreakdown.filter(item => item.name !== GOLD_ITEM && item.name !== SILVER_ITEM);
@@ -1785,6 +1925,20 @@ function MaterialLine({
 }
 
 export default function RefiningSimulationClient({ weaponStages, armorStages, marketInfo, lastUpdated }: Props) {
+  const { adjustPrice } = usePriceAdjustment();
+  
+  // 가격 조정이 적용된 marketInfo 생성 (요약표와 특수재련효율에서 사용)
+  const adjustedMarketInfo = useMemo(() => {
+    const adjusted: Record<string, MarketItemInfo> = {};
+    for (const [name, info] of Object.entries(marketInfo)) {
+      adjusted[name] = {
+        ...info,
+        unitPrice: adjustPrice(name, info.unitPrice) ?? info.unitPrice,
+      };
+    }
+    return adjusted;
+  }, [marketInfo, adjustPrice]);
+
   const [activeSubTab, setActiveSubTab] = useState<'simulation' | 'special' | 'character'>('simulation');
   const [activeSimulationTab, setActiveSimulationTab] = useState<'weapon' | 'armor' | 'summary'>('weapon');
   
@@ -1823,13 +1977,13 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
       let armorStrategy: string = '-';
       
       if (weaponStage) {
-        const { optimalStrategy } = calculateOptimalStrategy(weaponStage, marketInfo);
+        const { optimalStrategy } = calculateOptimalStrategy(weaponStage, adjustedMarketInfo);
         weaponCost = optimalStrategy.expectedCost;
         weaponStrategy = getDetailedStrategyLabel(optimalStrategy, weaponStage, 'weapon');
       }
       
       if (armorStage) {
-        const { optimalStrategy } = calculateOptimalStrategy(armorStage, marketInfo);
+        const { optimalStrategy } = calculateOptimalStrategy(armorStage, adjustedMarketInfo);
         armorCost = optimalStrategy.expectedCost;
         armorStrategy = getDetailedStrategyLabel(optimalStrategy, armorStage, 'armor');
       }
@@ -1847,7 +2001,73 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
         totalCost,
       };
     });
-  }, [weaponStages, armorStages, marketInfo]);
+  }, [weaponStages, armorStages, adjustedMarketInfo]);
+
+  // 특수재련효율 데이터 계산
+  const specialRefiningData = useMemo(() => {
+    const allLevels = Array.from(new Set([...weaponStages.map(s => s.level), ...armorStages.map(s => s.level)])).sort((a, b) => a - b);
+    
+    // 순환 돌파석 소모 개수 계산
+    const getBreakthroughStoneCount = (level: number, type: 'weapon' | 'armor'): number => {
+      if (type === 'weapon') {
+        if (level >= 10 && level <= 12) return 30;
+        if (level >= 13 && level <= 16) return 40;
+        if (level >= 17 && level <= 25) return 50;
+      } else {
+        if (level >= 10 && level <= 12) return 12;
+        if (level >= 13 && level <= 16) return 16;
+        if (level >= 17 && level <= 25) return 20;
+      }
+      return 0;
+    };
+    
+    return allLevels.map((level, idx) => {
+      const weaponStage = weaponStages.find(s => s.level === level);
+      const armorStage = armorStages.find(s => s.level === level);
+      
+      let weaponValue: number | null = null;
+      let armorValue: number | null = null;
+      
+      if (weaponStage) {
+        const { optimalStrategy } = calculateOptimalStrategy(weaponStage, adjustedMarketInfo);
+        const expInfo = weaponStage.expMaterial ? (adjustedMarketInfo[weaponStage.expMaterial.name] || { unitPrice: 0 }) : null;
+        const expMaterialCost = weaponStage.expMaterial && expInfo
+          ? expInfo.unitPrice * weaponStage.expMaterial.quantity
+          : 0;
+        
+        const refiningCost = optimalStrategy.expectedCost - expMaterialCost;
+        const baseSuccessRate = weaponStage.baseSuccessRate / 100; // 퍼센트를 소수로 변환
+        const stoneCount = getBreakthroughStoneCount(level, 'weapon');
+        
+        if (stoneCount > 0) {
+          weaponValue = (refiningCost * baseSuccessRate) / stoneCount;
+        }
+      }
+      
+      if (armorStage) {
+        const { optimalStrategy } = calculateOptimalStrategy(armorStage, adjustedMarketInfo);
+        const expInfo = armorStage.expMaterial ? (adjustedMarketInfo[armorStage.expMaterial.name] || { unitPrice: 0 }) : null;
+        const expMaterialCost = armorStage.expMaterial && expInfo
+          ? expInfo.unitPrice * armorStage.expMaterial.quantity
+          : 0;
+        
+        const refiningCost = optimalStrategy.expectedCost - expMaterialCost;
+        const baseSuccessRate = armorStage.baseSuccessRate / 100; // 퍼센트를 소수로 변환
+        const stoneCount = getBreakthroughStoneCount(level, 'armor');
+        
+        if (stoneCount > 0) {
+          armorValue = (refiningCost * baseSuccessRate) / stoneCount;
+        }
+      }
+      
+      return {
+        level,
+        idx,
+        weaponValue,
+        armorValue,
+      };
+    });
+  }, [weaponStages, armorStages, adjustedMarketInfo]);
 
   // 전략 라벨을 간단한 형태로 변환
   function getStrategyLabel(description: string, stage: RefiningStage): string {
@@ -2182,77 +2402,19 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
                     </tr>
                   </thead>
                   <tbody>
-                    {(() => {
-                      const allLevels = Array.from(new Set([...weaponStages.map(s => s.level), ...armorStages.map(s => s.level)])).sort((a, b) => a - b);
-                      
-                      return allLevels.map((level, idx) => {
-                        const weaponStage = weaponStages.find(s => s.level === level);
-                        const armorStage = armorStages.find(s => s.level === level);
-                        
-                        // 순환 돌파석 소모 개수 계산
-                        const getBreakthroughStoneCount = (level: number, type: 'weapon' | 'armor'): number => {
-                          if (type === 'weapon') {
-                            if (level >= 10 && level <= 12) return 30;
-                            if (level >= 13 && level <= 16) return 40;
-                            if (level >= 17 && level <= 25) return 50;
-                          } else {
-                            if (level >= 10 && level <= 12) return 12;
-                            if (level >= 13 && level <= 16) return 16;
-                            if (level >= 17 && level <= 25) return 20;
-                          }
-                          return 0;
-                        };
-                        
-                        let weaponValue: number | null = null;
-                        let armorValue: number | null = null;
-                        
-                        if (weaponStage) {
-                          const { optimalStrategy } = calculateOptimalStrategy(weaponStage, marketInfo);
-                          const expInfo = weaponStage.expMaterial ? (marketInfo[weaponStage.expMaterial.name] || { unitPrice: 0 }) : null;
-                          const expMaterialCost = weaponStage.expMaterial && expInfo
-                            ? expInfo.unitPrice * weaponStage.expMaterial.quantity
-                            : 0;
-                          
-                          const refiningCost = optimalStrategy.expectedCost - expMaterialCost;
-                          const baseSuccessRate = weaponStage.baseSuccessRate / 100; // 퍼센트를 소수로 변환
-                          const stoneCount = getBreakthroughStoneCount(level, 'weapon');
-                          
-                          if (stoneCount > 0) {
-                            weaponValue = (refiningCost * baseSuccessRate) / stoneCount;
-                          }
-                        }
-                        
-                        if (armorStage) {
-                          const { optimalStrategy } = calculateOptimalStrategy(armorStage, marketInfo);
-                          const expInfo = armorStage.expMaterial ? (marketInfo[armorStage.expMaterial.name] || { unitPrice: 0 }) : null;
-                          const expMaterialCost = armorStage.expMaterial && expInfo
-                            ? expInfo.unitPrice * armorStage.expMaterial.quantity
-                            : 0;
-                          
-                          const refiningCost = optimalStrategy.expectedCost - expMaterialCost;
-                          const baseSuccessRate = armorStage.baseSuccessRate / 100; // 퍼센트를 소수로 변환
-                          const stoneCount = getBreakthroughStoneCount(level, 'armor');
-                          
-                          if (stoneCount > 0) {
-                            armorValue = (refiningCost * baseSuccessRate) / stoneCount;
-                          }
-                        }
-                        
-                        return (
-                          <tr key={level} className={idx % 2 === 0 ? 'bg-gray-900/50' : 'bg-gray-800/50'}>
-                            <td className="px-4 py-3 text-white font-medium border-b border-gray-800">
-                              +{level}강
-                            </td>
-                            <td className="px-4 py-3 text-right text-blue-300 border-b border-gray-800">
-                              {weaponValue != null ? formatCost(weaponValue) : '-'}
-                            </td>
-                            <td className="px-4 py-3 text-right text-purple-300 border-b border-gray-800">
-                              {armorValue != null ? formatCost(armorValue) : '-'}
-                            </td>
-                          </tr>
-                        );
-                      });
-                    })()}
+                    {specialRefiningData.map(({ level, idx, weaponValue, armorValue }) => (
+                      <tr key={level} className={idx % 2 === 0 ? 'bg-gray-900/50' : 'bg-gray-800/50'}>
+                        <td className="px-4 py-3 text-white font-medium border-b border-gray-800">
+                          +{level}강
+                        </td>
+                        <td className="px-4 py-3 text-right text-blue-300 border-b border-gray-800">
+                          {weaponValue != null ? formatCost(weaponValue) : '-'}
+                        </td>
+                        <td className="px-4 py-3 text-right text-purple-300 border-b border-gray-800">
+                          {armorValue != null ? formatCost(armorValue) : '-'}
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
