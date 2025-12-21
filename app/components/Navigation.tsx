@@ -73,14 +73,14 @@ export default function Navigation() {
         {/* 상단 헤더 */}
         <div className="flex items-center justify-between h-14 md:h-16">
           {/* 로고 */}
-          <div className="flex items-center space-x-2">
+          <Link href="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
             <span className="text-xl md:text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
               껨산기
             </span>
             <span className="text-xs text-gray-400 hidden sm:inline">
               by 스누껨독
             </span>
-          </div>
+          </Link>
 
           {/* 모바일: 햄버거 버튼 + 테마 스위치 */}
           <div className="flex items-center gap-3 lg:hidden">

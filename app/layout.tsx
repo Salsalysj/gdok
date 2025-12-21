@@ -17,8 +17,8 @@ import {
 } from './value-db/page'
 
 export const metadata: Metadata = {
-  title: '로스트아크 시세 검색',
-  description: '로스트아크 거래소 아이템 시세 검색',
+  title: '껨산기 by 스누껨독',
+  description: '로스트아크 게임 내 아이템 가치를 정확하게 계산하고 효율을 분석하는 도구',
 }
 
 export default async function RootLayout({

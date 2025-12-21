@@ -165,6 +165,7 @@ export default function PackageEfficiencyClient({
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [savePackageName, setSavePackageName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [hasAdminAccess, setHasAdminAccess] = useState(false);
 
   // 젬 가격 계산 (등급별 평균)
   function calculateGemPriceByGrade(gemGrade: '영웅' | '희귀' | '고급'): number | null {
