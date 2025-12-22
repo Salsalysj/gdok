@@ -17,6 +17,7 @@ type ComponentItem = {
 type PackageItem = {
   itemName: string;
   itemType: '확정' | '확률' | '선택'; // 새로 추가
+  quantity: number; // 상위 항목 개수
   components: ComponentItem[];
 };
 
@@ -602,18 +603,21 @@ export default function PackageEfficiencyClient({
           }
         }
 
+        // 상위 항목 개수 적용
+        const itemQuantity = packageItem.quantity || 1;
+        
         // 타입별 처리
         if (packageItem.itemType === '확정') {
           // 확정: 모든 구성요소 가치 합산
-          total += componentValue;
+          total += componentValue * itemQuantity;
         } else if (packageItem.itemType === '확률') {
           // 확률: 가치 * 확률(0~1)로 기대값 합산
           const probability = component.probability || 0;
-          total += componentValue * probability;
+          total += componentValue * probability * itemQuantity;
         } else if (packageItem.itemType === '선택') {
           // 선택: 선택된 구성요소만 가치 합산
           if (component.selected) {
-            total += componentValue;
+            total += componentValue * itemQuantity;
           }
         }
       });
@@ -637,7 +641,7 @@ export default function PackageEfficiencyClient({
   const addPackageItem = () => {
     setPackageData((prev) => ({
       ...prev,
-      items: [...prev.items, { itemName: '', itemType: '확정', components: [] }],
+      items: [...prev.items, { itemName: '', itemType: '확정', quantity: 1, components: [] }],
     }));
   };
 
@@ -835,7 +839,15 @@ export default function PackageEfficiencyClient({
       if (data.packages) {
         const packageToLoad = data.packages.find((p: any) => p.id === packageId);
         if (packageToLoad && packageToLoad.package_data) {
-          setPackageData(packageToLoad.package_data);
+          // 기존 데이터 호환성: quantity 필드가 없으면 기본값 1로 설정
+          const loadedData = packageToLoad.package_data;
+          if (loadedData.items && Array.isArray(loadedData.items)) {
+            loadedData.items = loadedData.items.map((item: any) => ({
+              ...item,
+              quantity: item.quantity !== undefined ? item.quantity : 1,
+            }));
+          }
+          setPackageData(loadedData);
           setSelectedPackageId(packageId);
           alert('패키지가 불러와졌습니다.');
         } else {
@@ -1082,6 +1094,15 @@ export default function PackageEfficiencyClient({
                     onChange={(e) => updatePackageItem(itemIndex, 'itemName', e.target.value)}
                     className="flex-1 px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
                     placeholder="항목명"
+                  />
+                  <input
+                    type="number"
+                    value={packageItem.quantity || ''}
+                    onChange={(e) => updatePackageItem(itemIndex, 'quantity', parseFloat(e.target.value) || 1)}
+                    className="w-24 px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+                    placeholder="개수"
+                    min="1"
+                    step="1"
                   />
                   <select
                     value={packageItem.itemType}
