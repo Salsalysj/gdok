@@ -95,7 +95,7 @@ async function getLatestCrystalGoldRate(): Promise<number | null> {
   }
 }
 
-type MarketItem = { displayName?: string; Name?: string; CurrentMinPrice?: number; RecentPrice?: number; Grade?: string };
+type MarketItem = { displayName?: string; Name?: string; CurrentMinPrice?: number; RecentPrice?: number; Grade?: string; BundleCount?: number };
 async function getMarketPriceMap(): Promise<Record<string, number>> {
   try {
     const cached = await getMarketCache();
@@ -111,9 +111,19 @@ async function getMarketPriceMap(): Promise<Record<string, number>> {
     for (const bucket of buckets) {
       for (const it of bucket) {
         const name = (it as any).displayName || (it as any).Name;
-        const price = (it as any).CurrentMinPrice || (it as any).RecentPrice || 0;
-        if (!name || price <= 0) continue;
-        if (!(name in map) || price < map[name]) map[name] = price;
+        const bundlePrice = (it as any).CurrentMinPrice || (it as any).RecentPrice || 0;
+        if (!name || bundlePrice <= 0) continue;
+        
+        // 운명의 파괴석, 운명의 수호석은 100개 묶음이므로 단가로 변환
+        const bundleCount = (it as any).BundleCount || 1;
+        let unitPrice = bundlePrice;
+        if (name === '운명의 파괴석' || name === '운명의 수호석') {
+          unitPrice = bundleCount > 0 ? bundlePrice / bundleCount : bundlePrice;
+        } else {
+          unitPrice = bundlePrice;
+        }
+        
+        if (!(name in map) || unitPrice < map[name]) map[name] = unitPrice;
       }
     }
     return map;
