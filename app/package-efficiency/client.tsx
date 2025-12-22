@@ -1080,7 +1080,7 @@ export default function PackageEfficiencyClient({
               onClick={addPackageItem}
               className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
             >
-              항목 추가
+              묶음 항목 추가
             </button>
           </div>
 
@@ -1099,8 +1099,8 @@ export default function PackageEfficiencyClient({
                     type="number"
                     value={packageItem.quantity || ''}
                     onChange={(e) => updatePackageItem(itemIndex, 'quantity', parseFloat(e.target.value) || 1)}
-                    className="w-24 px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
-                    placeholder="개수"
+                    className="w-28 px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+                    placeholder="묶음 수량"
                     min="1"
                     step="1"
                   />
@@ -1296,6 +1296,16 @@ export default function PackageEfficiencyClient({
                             const probability = component.probability || 0;
                             expectedValue = primaryValue * probability;
                           }
+                          
+                          // 묶음 수량 적용
+                          const itemQuantity = packageItem.quantity || 1;
+                          primaryValue = primaryValue * itemQuantity;
+                          if (expectedValue > 0) {
+                            expectedValue = expectedValue * itemQuantity;
+                          }
+                          if (secondaryValue !== null && secondaryValue > 0) {
+                            secondaryValue = secondaryValue * itemQuantity;
+                          }
                         }
 
                         return (
@@ -1309,9 +1319,13 @@ export default function PackageEfficiencyClient({
                                 <span className="text-green-400 font-medium">✓ 선택됨</span>
                               )}
                               <br />
-                              수량: {formatNumberWithSignificantDigits(component.quantity || 0)} × 단가 = 
+                              수량: {formatNumberWithSignificantDigits(component.quantity || 0)} × 단가
+                              {packageItem.quantity && packageItem.quantity > 1 && (
+                                <span className="text-blue-400 ml-1">× 묶음 수량 {packageItem.quantity}</span>
+                              )}
                               {primaryValue > 0 && (
                                 <>
+                                  <span className="text-gray-400 mx-1">=</span>
                                   <span className="text-green-300 font-medium ml-1">
                                     {formatNumberWithSignificantDigits(primaryValue)} {primaryUnit}
                                   </span>
@@ -1418,6 +1432,9 @@ export default function PackageEfficiencyClient({
                     <div className="font-medium text-white mb-2">
                       {packageItem.itemName || `항목 ${itemIndex + 1}`} 
                       <span className="text-xs text-gray-400 ml-2">({packageItem.itemType})</span>
+                      {packageItem.quantity && (
+                        <span className="text-xs text-blue-400 ml-2">묶음 수량: {packageItem.quantity}</span>
+                      )}
                     </div>
                     <div className="space-y-1 pl-4">
                       {packageItem.components.map((component, compIndex) => {
@@ -1460,6 +1477,10 @@ export default function PackageEfficiencyClient({
                           } else if (packageItem.itemType === '선택' && !component.selected) {
                             itemValue = 0; // 선택되지 않은 항목은 0
                           }
+                          
+                          // 상위 항목 개수 적용
+                          const itemQuantity = packageItem.quantity || 1;
+                          itemValue = itemValue * itemQuantity;
                         }
 
                         const isIncluded = packageItem.itemType === '확정' || 
