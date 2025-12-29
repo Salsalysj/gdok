@@ -27,7 +27,8 @@ type PackageData = {
   category: '월간' | '주간' | '한정';
   priceType: '현금' | '크리스탈' | '골드';
   price: number;
-  is3Plus1: boolean;
+  packageType: '일반' | '3+1' | '보너스룸';
+  is3Plus1: boolean; // 3+1 타입일 때 요약 화면에서 체크 여부
   purchaseCount: number;
   endDate: string | null;
   items: PackageItem[];
@@ -69,7 +70,11 @@ export default function PackageEfficiencyClient({
   cubeStageRewards,
   valueDbMap,
   hellStages,
+  hell1Stages,
+  hell2Stages,
   narakStages,
+  narak1Stages,
+  narak2Stages,
 }: {
   itemList: string[];
   etcListData: { [key: string]: EtcListItem };
@@ -156,6 +161,7 @@ export default function PackageEfficiencyClient({
     category: '월간',
     priceType: '골드',
     price: 0,
+    packageType: '일반',
     is3Plus1: false,
     purchaseCount: 1,
     endDate: null,
@@ -234,7 +240,7 @@ export default function PackageEfficiencyClient({
     const isHellKey = itemName.includes('지옥 열쇠');
     const isNarakKey = itemName.includes('나락의') && itemName.includes('열쇠');
     
-    if ((isHellKey || isNarakKey) && hellStages && narakStages) {
+    if ((isHellKey || isNarakKey) && (hellStages || hell1Stages || hell2Stages) && (narakStages || narak1Stages || narak2Stages)) {
       // 가치계산DB에서 아이템 가격 가져오기 함수
       const getValueDbPrice = (itemName: string): number | null => {
         const entry = valueDbMap[itemName];
@@ -381,7 +387,60 @@ export default function PackageEfficiencyClient({
 
       // 지옥 열쇠 처리
       if (isHellKey) {
-        if (itemName === '전설 지옥 열쇠 III') {
+        // 지옥 열쇠 I: 지옥1
+        if (itemName === '전설 지옥 열쇠 I' && hell1Stages) {
+          const hell1_7Stage = hell1Stages.find(s => s.stage === '7단계');
+          if (hell1_7Stage) {
+            const value = calculateHellStageExpectedValue(hell1_7Stage, false);
+            if (value != null) {
+              return { unitType: '골드', unitPrice: value };
+            }
+          }
+        } else if (itemName === '영웅 지옥 열쇠 I' && hell1Stages) {
+          const hell1_6Stage = hell1Stages.find(s => s.stage === '6단계');
+          if (hell1_6Stage) {
+            const value = calculateHellStageExpectedValue(hell1_6Stage, false);
+            if (value != null) {
+              return { unitType: '골드', unitPrice: value };
+            }
+          }
+        } else if (itemName === '희귀 지옥 열쇠 I' && hell1Stages) {
+          const hell1_5Stage = hell1Stages.find(s => s.stage === '5단계');
+          if (hell1_5Stage) {
+            const value = calculateHellStageExpectedValue(hell1_5Stage, false);
+            if (value != null) {
+              return { unitType: '골드', unitPrice: value };
+            }
+          }
+        }
+        // 지옥 열쇠 II: 지옥2
+        else if (itemName === '전설 지옥 열쇠 II' && hell2Stages) {
+          const hell2_7Stage = hell2Stages.find(s => s.stage === '7단계');
+          if (hell2_7Stage) {
+            const value = calculateHellStageExpectedValue(hell2_7Stage, false);
+            if (value != null) {
+              return { unitType: '골드', unitPrice: value };
+            }
+          }
+        } else if (itemName === '영웅 지옥 열쇠 II' && hell2Stages) {
+          const hell2_6Stage = hell2Stages.find(s => s.stage === '6단계');
+          if (hell2_6Stage) {
+            const value = calculateHellStageExpectedValue(hell2_6Stage, false);
+            if (value != null) {
+              return { unitType: '골드', unitPrice: value };
+            }
+          }
+        } else if (itemName === '희귀 지옥 열쇠 II' && hell2Stages) {
+          const hell2_5Stage = hell2Stages.find(s => s.stage === '5단계');
+          if (hell2_5Stage) {
+            const value = calculateHellStageExpectedValue(hell2_5Stage, false);
+            if (value != null) {
+              return { unitType: '골드', unitPrice: value };
+            }
+          }
+        }
+        // 지옥 열쇠 III: 지옥3
+        else if (itemName === '전설 지옥 열쇠 III' && hellStages) {
           const hell7Stage = hellStages.find(s => s.stage === '7단계');
           if (hell7Stage) {
             const value = calculateHellStageExpectedValue(hell7Stage, false);
@@ -389,7 +448,7 @@ export default function PackageEfficiencyClient({
               return { unitType: '골드', unitPrice: value };
             }
           }
-        } else if (itemName === '영웅 지옥 열쇠 III') {
+        } else if (itemName === '영웅 지옥 열쇠 III' && hellStages) {
           const hell6Stage = hellStages.find(s => s.stage === '6단계');
           if (hell6Stage) {
             const value = calculateHellStageExpectedValue(hell6Stage, false);
@@ -397,7 +456,7 @@ export default function PackageEfficiencyClient({
               return { unitType: '골드', unitPrice: value };
             }
           }
-        } else if (itemName === '희귀 지옥 열쇠 III') {
+        } else if (itemName === '희귀 지옥 열쇠 III' && hellStages) {
           const hell5Stage = hellStages.find(s => s.stage === '5단계');
           if (hell5Stage) {
             const value = calculateHellStageExpectedValue(hell5Stage, false);
@@ -410,10 +469,31 @@ export default function PackageEfficiencyClient({
       
       // 나락 열쇠 처리
       if (isNarakKey) {
-        if (itemName === '전설 나락의 화염 열쇠 III' || itemName === '전설 나락의 서리 열쇠 III') {
-          const narak2Stage = narakStages.find(s => s.stage === '2단계');
-          if (narak2Stage) {
-            const value = calculateHellStageExpectedValue(narak2Stage, true);
+        // 나락 열쇠 I: 나락1
+        if ((itemName === '전설 나락의 화염 열쇠 I' || itemName === '전설 나락의 서리 열쇠 I') && narak1Stages) {
+          const narak1_2Stage = narak1Stages.find(s => s.stage === '2단계');
+          if (narak1_2Stage) {
+            const value = calculateHellStageExpectedValue(narak1_2Stage, true);
+            if (value != null) {
+              return { unitType: '골드', unitPrice: value };
+            }
+          }
+        }
+        // 나락 열쇠 II: 나락2
+        else if ((itemName === '전설 나락의 화염 열쇠 II' || itemName === '전설 나락의 서리 열쇠 II') && narak2Stages) {
+          const narak2_2Stage = narak2Stages.find(s => s.stage === '2단계');
+          if (narak2_2Stage) {
+            const value = calculateHellStageExpectedValue(narak2_2Stage, true);
+            if (value != null) {
+              return { unitType: '골드', unitPrice: value };
+            }
+          }
+        }
+        // 나락 열쇠 III: 나락3
+        else if ((itemName === '전설 나락의 화염 열쇠 III' || itemName === '전설 나락의 서리 열쇠 III') && narakStages) {
+          const narak3_2Stage = narakStages.find(s => s.stage === '2단계');
+          if (narak3_2Stage) {
+            const value = calculateHellStageExpectedValue(narak3_2Stage, true);
             if (value != null) {
               return { unitType: '골드', unitPrice: value };
             }
@@ -533,7 +613,7 @@ export default function PackageEfficiencyClient({
       return { unitType: '골드', unitPrice: adjusted };
     }
     return null;
-  }, [cubeStageRewards, valueDbMap, etcListData, marketPriceMap, cubeStageTotals, adjustPrice, adjustRelicEngravingAverage, calculateGemPriceByGrade, refreshKey, hellStages, narakStages, adjustedEntries]);
+  }, [cubeStageRewards, valueDbMap, etcListData, marketPriceMap, cubeStageTotals, adjustPrice, adjustRelicEngravingAverage, calculateGemPriceByGrade, refreshKey, hellStages, hell1Stages, hell2Stages, narakStages, narak1Stages, narak2Stages, adjustedEntries]);
 
   // 아이템 가격 계산 함수
   const calculateItemPrice = (
@@ -641,13 +721,13 @@ export default function PackageEfficiencyClient({
     if (packageData.price <= 0) return null;
     let effectivePrice = packageData.price;
     
-    // 3+1 적용 (4개 구매 시 3개 가격으로 계산)
-    if (packageData.is3Plus1) {
+    // 3+1 타입이고 3+1 적용 체크된 경우 (4개 구매 시 3개 가격으로 계산)
+    if (packageData.packageType === '3+1' && packageData.is3Plus1) {
       effectivePrice = (packageData.price * 3) / 4;
     }
     
     return totalValue / effectivePrice;
-  }, [totalValue, packageData.price, packageData.is3Plus1]);
+  }, [totalValue, packageData.price, packageData.packageType, packageData.is3Plus1]);
 
   const addPackageItem = () => {
     setPackageData((prev) => ({
@@ -754,6 +834,7 @@ export default function PackageEfficiencyClient({
       category: '월간',
       priceType: '골드',
       price: 0,
+      packageType: '일반',
       is3Plus1: false,
       purchaseCount: 1,
       endDate: null,
@@ -1070,15 +1151,42 @@ export default function PackageEfficiencyClient({
               />
             </div>
             <div className="md:col-span-2">
-              <label className="flex items-center gap-2 text-sm font-medium text-gray-300">
-                <input
-                  type="checkbox"
-                  checked={packageData.is3Plus1}
-                  onChange={(e) => setPackageData((prev) => ({ ...prev, is3Plus1: e.target.checked }))}
-                  className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
-                />
-                3+1 여부
-              </label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">패키지 유형</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="packageType"
+                    value="일반"
+                    checked={packageData.packageType === '일반'}
+                    onChange={(e) => setPackageData((prev) => ({ ...prev, packageType: '일반', is3Plus1: false }))}
+                    className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 focus:ring-purple-500"
+                  />
+                  <span className="text-sm text-gray-300">일반</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="packageType"
+                    value="3+1"
+                    checked={packageData.packageType === '3+1'}
+                    onChange={(e) => setPackageData((prev) => ({ ...prev, packageType: '3+1', is3Plus1: true }))}
+                    className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 focus:ring-purple-500"
+                  />
+                  <span className="text-sm text-gray-300">3+1</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="packageType"
+                    value="보너스룸"
+                    checked={packageData.packageType === '보너스룸'}
+                    onChange={(e) => setPackageData((prev) => ({ ...prev, packageType: '보너스룸', is3Plus1: false }))}
+                    className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 focus:ring-purple-500"
+                  />
+                  <span className="text-sm text-gray-300">보너스룸</span>
+                </label>
+              </div>
             </div>
           </div>
         </div>
@@ -1391,8 +1499,22 @@ export default function PackageEfficiencyClient({
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <div className="text-sm text-gray-400 mb-1">패키지명</div>
-                <div className="text-base font-medium text-white">
+                <div className="text-base font-medium text-white flex items-center gap-2">
                   {packageData.packageName || '(미입력)'}
+                  {packageData.endDate && (() => {
+                    const endDate = new Date(packageData.endDate);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    endDate.setHours(0, 0, 0, 0);
+                    if (endDate < today) {
+                      return (
+                        <span className="text-xs bg-red-600 text-white px-2 py-1 rounded font-semibold">
+                          판매종료
+                        </span>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               </div>
               <div>
@@ -1411,11 +1533,14 @@ export default function PackageEfficiencyClient({
                 <div className="text-sm text-gray-400 mb-1">패키지 가격</div>
                 <div className="text-lg font-bold text-white">
                   {formatNumberWithSignificantDigits(packageData.price)} {packageData.priceType}
-                  {packageData.is3Plus1 && (
+                  {packageData.packageType === '3+1' && packageData.is3Plus1 && (
                     <span className="text-xs text-gray-400 ml-2">
                       (3+1: {formatNumberWithSignificantDigits((packageData.price * 3) / 4)} {packageData.priceType})
                     </span>
                   )}
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  유형: {packageData.packageType}
                 </div>
               </div>
               <div>
@@ -1499,18 +1624,32 @@ export default function PackageEfficiencyClient({
                                          (packageItem.itemType === '선택' && component.selected);
 
                         return (
-                          <div key={compIndex} className={`text-sm ${isIncluded ? 'text-gray-300' : 'text-gray-500 line-through'}`}>
+                          <div key={compIndex} className={`text-sm ${isIncluded ? 'text-gray-300' : 'text-gray-500 line-through'} flex items-center gap-2 flex-wrap`}>
                             {packageItem.itemType === '선택' && (
-                              <span className={component.selected ? 'text-green-400' : 'text-gray-500'}>
-                                {component.selected ? '✓ ' : '○ '}
-                              </span>
+                              <label className="flex items-center cursor-pointer mr-2">
+                                <input
+                                  type="radio"
+                                  name={`selection-${itemIndex}`}
+                                  checked={component.selected || false}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      updateComponent(itemIndex, compIndex, 'selected', true);
+                                    }
+                                  }}
+                                  className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 focus:ring-blue-500 focus:ring-2"
+                                />
+                                <span className={`ml-2 ${component.selected ? 'text-green-400 font-medium' : 'text-gray-500'}`}>
+                                  {component.selected ? '✓ 선택됨' : '선택'}
+                                </span>
+                              </label>
                             )}
                             {packageItem.itemType === '확률' && component.probability !== undefined && (
-                              <span className="text-purple-400">
+                              <span className="text-purple-400 mr-2">
                                 [{(component.probability * 100).toFixed(1)}%] 
                               </span>
                             )}
-                            • {component.itemName || '(직접 입력)'} × {formatNumberWithSignificantDigits(component.quantity || 0)}
+                            <span className="text-gray-400">•</span>
+                            <span>{component.itemName || '(직접 입력)'} × {formatNumberWithSignificantDigits(component.quantity || 0)}</span>
                             {finalUnitPrice && (
                               <span className="text-gray-400 ml-2">
                                 ({isIncluded ? formatNumberWithSignificantDigits(itemValue) : '0'} {packageData.priceType}
@@ -1538,10 +1677,27 @@ export default function PackageEfficiencyClient({
               <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700">
                 <div className="text-sm text-gray-400 mb-2">패키지 가격</div>
                 <div className="text-2xl font-bold text-white">
-                  {formatNumberWithSignificantDigits(packageData.is3Plus1 ? (packageData.price * 3) / 4 : packageData.price)} {packageData.priceType}
+                  {formatNumberWithSignificantDigits(
+                    packageData.packageType === '3+1' && packageData.is3Plus1 
+                      ? (packageData.price * 3) / 4 
+                      : packageData.price
+                  )} {packageData.priceType}
                 </div>
-                {packageData.is3Plus1 && (
-                  <div className="text-xs text-gray-500 mt-1">3+1 적용</div>
+                {packageData.packageType === '3+1' && (
+                  <label className="flex items-center gap-2 mt-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={packageData.is3Plus1}
+                      onChange={(e) => setPackageData((prev) => ({ ...prev, is3Plus1: e.target.checked }))}
+                      className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
+                    />
+                    <span className="text-sm text-gray-300">3+1 적용</span>
+                  </label>
+                )}
+                {packageData.packageType !== '3+1' && (
+                  <div className="text-xs text-gray-500 mt-3">
+                    유형: {packageData.packageType}
+                  </div>
                 )}
               </div>
               <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700">

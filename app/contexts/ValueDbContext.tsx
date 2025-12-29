@@ -34,8 +34,12 @@ type ValueDbProviderProps = {
   weaponStages?: RefiningStage[];
   armorStages?: RefiningStage[];
   marketInfo?: Record<string, MarketItemInfo>;
-  hellStages?: Stage[];
-  narakStages?: Stage[];
+  hellStages?: Stage[]; // 지옥3 stages (기존 호환성 유지)
+  hell1Stages?: Stage[];
+  hell2Stages?: Stage[];
+  narakStages?: Stage[]; // 나락3 stages (기존 호환성 유지)
+  narak1Stages?: Stage[];
+  narak2Stages?: Stage[];
   valueDbEntryMap?: Map<string, ValueDbEntry>;
 };
 
@@ -50,7 +54,11 @@ export function ValueDbProvider({
   armorStages,
   marketInfo,
   hellStages,
+  hell1Stages,
+  hell2Stages,
   narakStages,
+  narak1Stages,
+  narak2Stages,
   valueDbEntryMap,
 }: ValueDbProviderProps) {
   const { adjustPrice, adjustRelicEngravingAverage } = usePriceAdjustment();
@@ -66,7 +74,11 @@ export function ValueDbProvider({
       armorStages,
       marketInfo,
       hellStages,
+      hell1Stages,
+      hell2Stages,
       narakStages,
+      narak1Stages,
+      narak2Stages,
       valueDbEntryMap,
       adjustPrice,
       adjustRelicEngravingAverage,
@@ -81,7 +93,11 @@ export function ValueDbProvider({
     armorStages,
     marketInfo,
     hellStages,
+    hell1Stages,
+    hell2Stages,
     narakStages,
+    narak1Stages,
+    narak2Stages,
     valueDbEntryMap,
     adjustPrice,
     adjustRelicEngravingAverage,

@@ -69,7 +69,11 @@ export default async function RootLayout({
             armorStages={armorStages}
             marketInfo={marketInfo}
             hellStages={valueDbData.hellStages}
+            hell1Stages={valueDbData.hell1Stages}
+            hell2Stages={valueDbData.hell2Stages}
             narakStages={valueDbData.narakStages}
+            narak1Stages={valueDbData.narak1Stages}
+            narak2Stages={valueDbData.narak2Stages}
             valueDbEntryMap={new Map(Object.entries(valueDbData.entryMap))}
           >
             <Navigation />

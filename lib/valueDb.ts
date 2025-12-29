@@ -304,28 +304,36 @@ function calculateGemPrice(gemType: '3T' | '4T', marketPriceMap: Record<string, 
   return tier4Unit / 9;
 }
 
-function buildStageValueOverrides(hellStages: Stage[], narakStages: Stage[]) {
+// 8레벨 보석 (4T) 가격 계산
+function calculateLevel8GemPrice(marketPriceMap: Record<string, number>): number | null {
+  const fearGem = marketPriceMap['8레벨 겁화의 보석'];
+  const fireGem = marketPriceMap['8레벨 작열의 보석'];
+  if (!fearGem || !fireGem) return null;
+  return (fearGem + fireGem) / 2;
+}
+
+function buildStageValueOverrides(hell1Stages: Stage[], hell2Stages: Stage[], hell3Stages: Stage[], narak1Stages: Stage[], narak2Stages: Stage[], narak3Stages: Stage[]) {
   const findStageValue = (stages: Stage[], stageName: string, isNarak: boolean = false) => {
     const stage = stages?.find((s) => s.stage === stageName);
     return stage ? computeStageExpectedValue(stage, isNarak) : null;
   };
 
   return {
-    '전설 지옥 열쇠 I': null,
-    '전설 지옥 열쇠 II': null,
-    '전설 지옥 열쇠 III': findStageValue(hellStages, '7단계', false),
-    '영웅 지옥 열쇠 I': null,
-    '영웅 지옥 열쇠 II': null,
-    '영웅 지옥 열쇠 III': findStageValue(hellStages, '6단계', false),
-    '희귀 지옥 열쇠 I': null,
-    '희귀 지옥 열쇠 II': null,
-    '희귀 지옥 열쇠 III': findStageValue(hellStages, '5단계', false),
-    '전설 나락의 화염 열쇠 I': null,
-    '전설 나락의 화염 열쇠 II': null,
-    '전설 나락의 화염 열쇠 III': findStageValue(narakStages, '2단계', true),
-    '전설 나락의 서리 열쇠 I': null,
-    '전설 나락의 서리 열쇠 II': null,
-    '전설 나락의 서리 열쇠 III': findStageValue(narakStages, '2단계', true),
+    '전설 지옥 열쇠 I': findStageValue(hell1Stages, '7단계', false),
+    '전설 지옥 열쇠 II': findStageValue(hell2Stages, '7단계', false),
+    '전설 지옥 열쇠 III': findStageValue(hell3Stages, '7단계', false),
+    '영웅 지옥 열쇠 I': findStageValue(hell1Stages, '6단계', false),
+    '영웅 지옥 열쇠 II': findStageValue(hell2Stages, '6단계', false),
+    '영웅 지옥 열쇠 III': findStageValue(hell3Stages, '6단계', false),
+    '희귀 지옥 열쇠 I': findStageValue(hell1Stages, '5단계', false),
+    '희귀 지옥 열쇠 II': findStageValue(hell2Stages, '5단계', false),
+    '희귀 지옥 열쇠 III': findStageValue(hell3Stages, '5단계', false),
+    '전설 나락의 화염 열쇠 I': findStageValue(narak1Stages, '2단계', true),
+    '전설 나락의 화염 열쇠 II': findStageValue(narak2Stages, '2단계', true),
+    '전설 나락의 화염 열쇠 III': findStageValue(narak3Stages, '2단계', true),
+    '전설 나락의 서리 열쇠 I': findStageValue(narak1Stages, '2단계', true),
+    '전설 나락의 서리 열쇠 II': findStageValue(narak2Stages, '2단계', true),
+    '전설 나락의 서리 열쇠 III': findStageValue(narak3Stages, '2단계', true),
   } as Record<string, number | null>;
 }
 
@@ -407,10 +415,20 @@ async function buildManualOverrides(
   }
 
   const stageNotes: Record<string, string> = {
+    '전설 지옥 열쇠 I': '지옥1 7단계 기대값',
+    '전설 지옥 열쇠 II': '지옥2 7단계 기대값',
     '전설 지옥 열쇠 III': '지옥3 7단계 기대값',
+    '영웅 지옥 열쇠 I': '지옥1 6단계 기대값',
+    '영웅 지옥 열쇠 II': '지옥2 6단계 기대값',
     '영웅 지옥 열쇠 III': '지옥3 6단계 기대값',
+    '희귀 지옥 열쇠 I': '지옥1 5단계 기대값',
+    '희귀 지옥 열쇠 II': '지옥2 5단계 기대값',
     '희귀 지옥 열쇠 III': '지옥3 5단계 기대값',
+    '전설 나락의 화염 열쇠 I': '나락1 2단계 기대값',
+    '전설 나락의 화염 열쇠 II': '나락2 2단계 기대값',
     '전설 나락의 화염 열쇠 III': '나락3 2단계 기대값',
+    '전설 나락의 서리 열쇠 I': '나락1 2단계 기대값',
+    '전설 나락의 서리 열쇠 II': '나락2 2단계 기대값',
     '전설 나락의 서리 열쇠 III': '나락3 2단계 기대값',
   };
 
@@ -471,7 +489,7 @@ async function buildManualOverrides(
   base['고대 팔찌 (지옥)'] = {
     itemName: '고대 팔찌 (지옥)',
     unitType: '골드',
-    unitValue: 3000,
+    unitValue: 1500,
   };
 
   // 유물 각인서 선택 (resolveEntry에서도 처리하지만 명시적으로 추가)
@@ -650,6 +668,19 @@ function resolveEntry(
     }
   }
 
+  // 8레벨 보석 (4T): 8레벨 겁화의 보석 + 8레벨 작열의 보석 / 2
+  if (itemName === '8레벨 보석 (4T)') {
+    const price = calculateLevel8GemPrice(marketPriceMap);
+    if (price != null) {
+      return { 
+        itemName, 
+        unitType: '골드', 
+        unitValue: price,
+        note: '8레벨 겁화의 보석 + 8레벨 작열의 보석 / 2'
+      };
+    }
+  }
+
   // 운명의 파편: 운명의 파편 주머니(소) 가치 / 1000
   if (itemName === '운명의 파편') {
     // 먼저 etcListDataObj에서 '운명의 파편 주머니(소)' 찾기
@@ -746,8 +777,12 @@ export type ValueDbData = {
   kurzanStageRewards: Record<string, { itemName: string; quantity: number; price?: number | null; cubeStageRewards?: { itemName: string; quantity: number; price?: number | null }[] }[]>; // 쿠르잔 단계별 원본 보상 데이터
   entries: ValueDbEntry[];
   entryMap: Record<string, ValueDbEntry>;
-  hellStages: Stage[];
-  narakStages: Stage[];
+  hellStages: Stage[]; // 지옥3 stages (기존 호환성 유지)
+  hell1Stages: Stage[];
+  hell2Stages: Stage[];
+  narakStages: Stage[]; // 나락3 stages (기존 호환성 유지)
+  narak1Stages: Stage[];
+  narak2Stages: Stage[];
 };
 
 export async function getValueDbData(): Promise<ValueDbData> {
@@ -759,9 +794,13 @@ export async function getValueDbData(): Promise<ValueDbData> {
   const marketData = await getMarketData();
   const { totals: cubeStageTotals, rewards: cubeStageRewards } = await getCubeStageTotals(etcListMap, marketPriceMap);
   const { data: contentRewards } = await getContentRewardsData(undefined); // 순환 참조 방지를 위해 undefined 전달
-  const hellStages = (contentRewards['지옥']?.['지옥3'] as Stage[]) || [];
-  const narakStages = (contentRewards['나락']?.['나락3'] as Stage[]) || [];
-  const stageValueOverrides = buildStageValueOverrides(hellStages, narakStages);
+  const hell1Stages = (contentRewards['지옥']?.['지옥1'] as Stage[]) || [];
+  const hell2Stages = (contentRewards['지옥']?.['지옥2'] as Stage[]) || [];
+  const hell3Stages = (contentRewards['지옥']?.['지옥3'] as Stage[]) || [];
+  const narak1Stages = (contentRewards['나락']?.['나락1'] as Stage[]) || [];
+  const narak2Stages = (contentRewards['나락']?.['나락2'] as Stage[]) || [];
+  const narak3Stages = (contentRewards['나락']?.['나락3'] as Stage[]) || [];
+  const stageValueOverrides = buildStageValueOverrides(hell1Stages, hell2Stages, hell3Stages, narak1Stages, narak2Stages, narak3Stages);
   const kurzanStages = contentRewards['쿠르잔 전선'] || {};
   const { totals: kurzanStageTotals, rewards: kurzanStageRewards } = buildKurzanStageTotals(kurzanStages as Record<string, Stage[] | undefined>);
   const manualOverrides = await buildManualOverrides(stageValueOverrides, kurzanStageTotals, crystalGoldRate, marketData, etcListDataObj, marketPriceMap);
@@ -823,7 +862,7 @@ export async function getValueDbData(): Promise<ValueDbData> {
     }, [])
     .sort((a, b) => {
       // 카테고리 정의
-      const currencyItems = ['크리스탈', '실링', '페온'];
+      const currencyItems = ['크리스탈', '실링', '페온', '1레벨 보석 (4T)', '8레벨 보석 (4T)'];
       const growthItems = ['운명의 파괴석', '운명의 수호석', '운명의 돌파석', '운명의 파편 주머니(소)', '운명의 파편 주머니(중)', '운명의 파편 주머니(대)', '운명의 파편 1개당', '아비도스 융화 재료', '용암의 숨결', '빙하의 숨결'];
       const cardItems = ['전설 카드팩 (확률)', '전설~고급 카드팩', '전설~영웅 카드팩', '전설~희귀 카드팩', '전체 카드팩', '전설 카드 선택팩', '메넬리크의 서', '영겁의 정수', '영혼의 잎사귀', '태초의 조각', '카드경험치 1당'];
 
@@ -907,8 +946,12 @@ export async function getValueDbData(): Promise<ValueDbData> {
     kurzanStageRewards,
     entries: uniqueEntries,
     entryMap,
-    hellStages,
-    narakStages,
+    hellStages: hell3Stages, // 기존 호환성을 위해 지옥3 stages 유지
+    hell1Stages,
+    hell2Stages,
+    narakStages: narak3Stages, // 기존 호환성을 위해 나락3 stages 유지
+    narak1Stages,
+    narak2Stages,
   };
 }
 

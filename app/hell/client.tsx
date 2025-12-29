@@ -13,6 +13,8 @@ type RewardItem = {
   quantity: number;
   price?: number | null;
   category?: string; // 카테고리 정보 (지옥3용)
+  selectionComponents?: { itemName: string; quantity: number; price: number | null; totalValue: number }[]; // 선택 상자 구성품
+  selectedComponent?: { itemName: string; quantity: number; price: number | null; totalValue: number }; // 선택된 구성품
 };
 
 type Stage = {
@@ -68,7 +70,6 @@ export default function HellClient({
   }, [activeHellType, activeHellStage, data]);
   
   // 현재 표시할 데이터 결정
-  const isPreparing = ['지옥1', '지옥2', '나락1', '나락2'].includes(activeHellType);
   let currentLevelData: Stage[] = [];
   if (activeHellType && data) {
     const stages = data[activeHellType];
@@ -105,8 +106,11 @@ export default function HellClient({
     // category에 "기본"이나 "보상 상자"가 포함되어 있으면 기본 보상 상자로 판단
     const isBaseRewardItem = !isNarak && category && (category.includes('기본') || category.includes('보상 상자'));
     
-    // 기본 보상 상자 아이템이면 항상 귀속, 아니면 tradableSet 확인
-    const isTradable = isBaseRewardItem ? false : tradableSet.has(itemName);
+    // 지옥 보상에서 운명의 파괴석, 운명의 수호석은 항상 귀속
+    const isHellBoundItem = !isNarak && (itemName === '운명의 파괴석' || itemName === '운명의 수호석');
+    
+    // 기본 보상 상자 아이템이거나 지옥 보상의 운명의 파괴석/수호석이면 항상 귀속, 아니면 tradableSet 확인
+    const isTradable = (isBaseRewardItem || isHellBoundItem) ? false : tradableSet.has(itemName);
     return {
       isTradable,
       nameClass: isTradable ? 'text-green-300' : 'text-red-300',
@@ -325,22 +329,31 @@ export default function HellClient({
           {/* 단계 선택 (0단계 ~ 10단계) */}
           <div>
             <label className="block text-sm text-gray-400 mb-2">단계 선택</label>
-            <select
-              value={activeHellStage}
-              onChange={(e) => setActiveHellStage(e.target.value)}
-              className="px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-red-500"
-            >
+            <div className="flex flex-wrap gap-2">
               {Array.from({ length: 11 }, (_, i) => {
                 const stageName = `${i}단계`;
+                const isActive = activeHellStage === stageName;
                 // 데이터가 있으면 해당 단계가 있는지 확인
                 const hasData = data && data[activeHellType]?.some(s => s.stage === stageName);
                 return (
-                  <option key={stageName} value={stageName}>
-                    {stageName} {hasData ? '' : '(데이터 없음)'}
-                  </option>
+                  <button
+                    key={stageName}
+                    onClick={() => setActiveHellStage(stageName)}
+                    className={`px-4 py-2 rounded-lg border transition-colors ${
+                      isActive
+                        ? 'bg-red-600 text-white border-red-500'
+                        : hasData
+                        ? 'bg-gray-800 text-gray-300 border-gray-700 hover:bg-gray-700 hover:border-gray-600'
+                        : 'bg-gray-800/50 text-gray-500 border-gray-700/50 cursor-not-allowed opacity-50'
+                    }`}
+                    disabled={!hasData}
+                    title={!hasData ? '데이터 없음' : ''}
+                  >
+                    {stageName}
+                  </button>
                 );
               })}
-            </select>
+            </div>
             {data && !data[activeHellType] && (
               <p className="text-yellow-400 text-sm mt-2">
                 {activeHellType} 데이터가 없습니다. 데이터를 추가해주세요.
@@ -351,20 +364,11 @@ export default function HellClient({
         
         {/* 단계별 보상 표시 */}
         <div className="space-y-6">
-          {isPreparing ? (
-            <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700">
-              <div className="text-center py-12">
-                <h3 className="text-2xl font-bold text-yellow-400 mb-2">준비중</h3>
-                <p className="text-gray-400">
-                  {activeHellType} 보상 데이터는 준비중입니다.
-                </p>
-              </div>
-            </div>
-          ) : (
-            currentLevelData.map((stage, idx) => {
-              const isSpecialStage = activeHellType === '지옥3' || activeHellType === '나락3';
+          {currentLevelData.map((stage, idx) => {
+              // 모든 지옥/나락 타입에서 카테고리별로 그룹화
+              const isSpecialStage = ['지옥1', '지옥2', '지옥3', '나락1', '나락2', '나락3'].includes(activeHellType);
             
-            // 지옥3인 경우 카테고리별로 그룹화
+            // 카테고리별로 그룹화
             const groupedByCategory = isSpecialStage && stage.rewards.some(r => r.category) 
               ? stage.rewards.reduce((acc, reward) => {
                   const category = reward.category || '기타';
@@ -511,7 +515,7 @@ export default function HellClient({
                   ) : null}
                 </div>
 
-                {/* 지옥3: 카테고리별 그룹화 표시 */}
+                {/* 카테고리별 그룹화 표시 */}
                 {isSpecialStage && groupedByCategory ? (
                   <div className="space-y-3">
                     {Object.entries(groupedByCategory).map(([category, rewards]) => {
@@ -610,6 +614,49 @@ export default function HellClient({
                                       ) : (
                                         <div className="text-gray-500 text-xs">가격 정보 없음</div>
                                       )}
+                                      
+                                      {/* 상급재련 보조 선택 상자 구성품 표시 */}
+                                      {reward.itemName === '상급재련 보조 선택 상자' && reward.selectionComponents && (
+                                        <div className="mt-2 pt-2 border-t border-gray-600">
+                                          <div className="text-[10px] text-gray-400 mb-1.5">구성품 (최고가 선택):</div>
+                                          <div className="space-y-1">
+                                            {reward.selectionComponents.map((component, compIdx) => {
+                                              const isSelected = reward.selectedComponent && 
+                                                component.itemName === reward.selectedComponent.itemName &&
+                                                component.quantity === reward.selectedComponent.quantity;
+                                              const componentPriceStr = component.price !== null ? formatNumberWithSignificantDigits(component.price) : '-';
+                                              const componentTotalStr = formatNumberWithSignificantDigits(component.totalValue);
+                                              
+                                              return (
+                                                <div
+                                                  key={compIdx}
+                                                  className={`text-[10px] p-1.5 rounded ${
+                                                    isSelected
+                                                      ? 'bg-yellow-900/30 border border-yellow-600'
+                                                      : 'bg-gray-800/50 border border-gray-600'
+                                                  }`}
+                                                >
+                                                  <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-1.5">
+                                                      <span className={isSelected ? 'text-yellow-400 font-semibold' : 'text-gray-300'}>
+                                                        {component.itemName}
+                                                      </span>
+                                                      {isSelected && (
+                                                        <span className="px-1 py-0.5 rounded text-[9px] bg-yellow-900/50 text-yellow-300 border border-yellow-600">
+                                                          선택
+                                                        </span>
+                                                      )}
+                                                    </div>
+                                                    <div className={`text-right ${isSelected ? 'text-yellow-400' : 'text-gray-400'}`}>
+                                                      {componentPriceStr}골드 × {component.quantity} = {componentTotalStr}골드
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        </div>
+                                      )}
                                     </div>
                                   );
                                 })}
@@ -632,28 +679,76 @@ export default function HellClient({
                       // 일반 보상 표시 (지옥3/나락3이 아닌 경우)에서는 카테고리 정보가 없으므로 null 전달
                       const tradeInfo = getTradeClass(reward.itemName, reward.category);
                       
+                      // 상급재련 보조 선택 상자 구성품 표시
+                      const isSelectionBox = reward.itemName === '상급재련 보조 선택 상자' && reward.selectionComponents;
+                      
                       return (
                         <div
                           key={rewardIdx}
-                          className="bg-gray-900/50 rounded-lg border border-gray-700 p-4 flex items-center gap-3"
+                          className="bg-gray-900/50 rounded-lg border border-gray-700 p-4"
                         >
-                          <ItemIcon name={reward.itemName} />
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className={`font-medium ${tradeInfo.nameClass}`}>{reward.itemName}</span>
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] ${tradeInfo.badgeClass}`}>{tradeInfo.badgeText}</span>
-                            </div>
-                            <div className="text-gray-400 text-sm">수량: {quantityStr}</div>
-                            {adjustedPrice !== null && adjustedPrice > 0 ? (
-                              <div className="text-yellow-400 text-sm">
-                                {priceStr}골드 × {quantityStr} = {itemTotalStr}골드
+                          <div className="flex items-center gap-3 mb-3">
+                            <ItemIcon name={reward.itemName} />
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className={`font-medium ${tradeInfo.nameClass}`}>{reward.itemName}</span>
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] ${tradeInfo.badgeClass}`}>{tradeInfo.badgeText}</span>
                               </div>
-                            ) : adjustedPrice === 0 ? (
-                              <div className="text-gray-500 text-xs">스위치로 인해 0골드로 처리됨</div>
-                            ) : (
-                              <div className="text-gray-500 text-xs">가격 정보 없음</div>
-                            )}
+                              <div className="text-gray-400 text-sm">수량: {quantityStr}</div>
+                              {adjustedPrice !== null && adjustedPrice > 0 ? (
+                                <div className="text-yellow-400 text-sm">
+                                  {priceStr}골드 × {quantityStr} = {itemTotalStr}골드
+                                </div>
+                              ) : adjustedPrice === 0 ? (
+                                <div className="text-gray-500 text-xs">스위치로 인해 0골드로 처리됨</div>
+                              ) : (
+                                <div className="text-gray-500 text-xs">가격 정보 없음</div>
+                              )}
+                            </div>
                           </div>
+                          
+                          {/* 상급재련 보조 선택 상자 구성품 표시 */}
+                          {isSelectionBox && reward.selectionComponents && (
+                            <div className="mt-3 pt-3 border-t border-gray-700">
+                              <div className="text-xs text-gray-400 mb-2">구성품 (최고가 선택):</div>
+                              <div className="space-y-2">
+                                {reward.selectionComponents.map((component, compIdx) => {
+                                  const isSelected = reward.selectedComponent && 
+                                    component.itemName === reward.selectedComponent.itemName &&
+                                    component.quantity === reward.selectedComponent.quantity;
+                                  const componentPriceStr = component.price !== null ? formatNumberWithSignificantDigits(component.price) : '-';
+                                  const componentTotalStr = formatNumberWithSignificantDigits(component.totalValue);
+                                  
+                                  return (
+                                    <div
+                                      key={compIdx}
+                                      className={`text-xs p-2 rounded ${
+                                        isSelected
+                                          ? 'bg-yellow-900/30 border border-yellow-600'
+                                          : 'bg-gray-800/50 border border-gray-700'
+                                      }`}
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                          <span className={isSelected ? 'text-yellow-400 font-semibold' : 'text-gray-300'}>
+                                            {component.itemName}
+                                          </span>
+                                          {isSelected && (
+                                            <span className="px-1.5 py-0.5 rounded text-[10px] bg-yellow-900/50 text-yellow-300 border border-yellow-600">
+                                              선택됨
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className={`text-right ${isSelected ? 'text-yellow-400' : 'text-gray-400'}`}>
+                                          {componentPriceStr}골드 × {component.quantity} = {componentTotalStr}골드
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -661,8 +756,7 @@ export default function HellClient({
                 )}
               </div>
             );
-            })
-          )}
+          })}
         </div>
       </div>
     </div>

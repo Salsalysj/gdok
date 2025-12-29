@@ -23,8 +23,12 @@ type CalculateAdjustedEntriesParams = {
   weaponStages?: RefiningStage[];
   armorStages?: RefiningStage[];
   marketInfo?: Record<string, MarketItemInfo>;
-  hellStages?: Stage[];
-  narakStages?: Stage[];
+  hellStages?: Stage[]; // 지옥3 stages (기존 호환성 유지)
+  hell1Stages?: Stage[];
+  hell2Stages?: Stage[];
+  narakStages?: Stage[]; // 나락3 stages (기존 호환성 유지)
+  narak1Stages?: Stage[];
+  narak2Stages?: Stage[];
   valueDbEntryMap?: Map<string, ValueDbEntry>;
   adjustPrice: (itemName: string, price: number | null) => number | null;
   adjustRelicEngravingAverage: (price: number | null) => number | null;
@@ -81,7 +85,11 @@ export function calculateAdjustedEntries(params: CalculateAdjustedEntriesParams)
     armorStages,
     marketInfo,
     hellStages,
+    hell1Stages,
+    hell2Stages,
     narakStages,
+    narak1Stages,
+    narak2Stages,
     valueDbEntryMap,
     adjustPrice,
     adjustRelicEngravingAverage,
@@ -192,7 +200,7 @@ export function calculateAdjustedEntries(params: CalculateAdjustedEntriesParams)
 
   // 지옥/나락 열쇠 가치 재계산 (지옥 보상 계산기와 동일한 방식)
   const hellKeyValues: Record<string, number | null> = {};
-  if (hellStages && narakStages && valueDbEntryMap) {
+  if (valueDbEntryMap && (hellStages || hell1Stages || hell2Stages || narakStages || narak1Stages || narak2Stages)) {
     // 가치계산DB에서 아이템 가격 가져오기 함수
     const getValueDbPrice = (itemName: string): number | null => {
       const entry = valueDbEntryMap.get(itemName);
@@ -337,30 +345,86 @@ export function calculateAdjustedEntries(params: CalculateAdjustedEntriesParams)
       }
     };
 
+    // 지옥 열쇠 I: 지옥1
+    if (hell1Stages) {
+      const hell1_7Stage = hell1Stages.find(s => s.stage === '7단계');
+      if (hell1_7Stage) {
+        hellKeyValues['전설 지옥 열쇠 I'] = calculateHellStageExpectedValue(hell1_7Stage, false);
+      }
+      const hell1_6Stage = hell1Stages.find(s => s.stage === '6단계');
+      if (hell1_6Stage) {
+        hellKeyValues['영웅 지옥 열쇠 I'] = calculateHellStageExpectedValue(hell1_6Stage, false);
+      }
+      const hell1_5Stage = hell1Stages.find(s => s.stage === '5단계');
+      if (hell1_5Stage) {
+        hellKeyValues['희귀 지옥 열쇠 I'] = calculateHellStageExpectedValue(hell1_5Stage, false);
+      }
+    }
+
+    // 지옥 열쇠 II: 지옥2
+    if (hell2Stages) {
+      const hell2_7Stage = hell2Stages.find(s => s.stage === '7단계');
+      if (hell2_7Stage) {
+        hellKeyValues['전설 지옥 열쇠 II'] = calculateHellStageExpectedValue(hell2_7Stage, false);
+      }
+      const hell2_6Stage = hell2Stages.find(s => s.stage === '6단계');
+      if (hell2_6Stage) {
+        hellKeyValues['영웅 지옥 열쇠 II'] = calculateHellStageExpectedValue(hell2_6Stage, false);
+      }
+      const hell2_5Stage = hell2Stages.find(s => s.stage === '5단계');
+      if (hell2_5Stage) {
+        hellKeyValues['희귀 지옥 열쇠 II'] = calculateHellStageExpectedValue(hell2_5Stage, false);
+      }
+    }
+
     // 전설 지옥 열쇠 III: 지옥3 7단계
-    const hell7Stage = hellStages.find(s => s.stage === '7단계');
-    if (hell7Stage) {
-      hellKeyValues['전설 지옥 열쇠 III'] = calculateHellStageExpectedValue(hell7Stage, false);
+    if (hellStages) {
+      const hell7Stage = hellStages.find(s => s.stage === '7단계');
+      if (hell7Stage) {
+        hellKeyValues['전설 지옥 열쇠 III'] = calculateHellStageExpectedValue(hell7Stage, false);
+      }
+
+      // 영웅 지옥 열쇠 III: 지옥3 6단계
+      const hell6Stage = hellStages.find(s => s.stage === '6단계');
+      if (hell6Stage) {
+        hellKeyValues['영웅 지옥 열쇠 III'] = calculateHellStageExpectedValue(hell6Stage, false);
+      }
+
+      // 희귀 지옥 열쇠 III: 지옥3 5단계
+      const hell5Stage = hellStages.find(s => s.stage === '5단계');
+      if (hell5Stage) {
+        hellKeyValues['희귀 지옥 열쇠 III'] = calculateHellStageExpectedValue(hell5Stage, false);
+      }
     }
 
-    // 영웅 지옥 열쇠 III: 지옥3 6단계
-    const hell6Stage = hellStages.find(s => s.stage === '6단계');
-    if (hell6Stage) {
-      hellKeyValues['영웅 지옥 열쇠 III'] = calculateHellStageExpectedValue(hell6Stage, false);
+    // 나락 열쇠 I: 나락1
+    if (narak1Stages) {
+      const narak1_2Stage = narak1Stages.find(s => s.stage === '2단계');
+      if (narak1_2Stage) {
+        const narakValue = calculateHellStageExpectedValue(narak1_2Stage, true);
+        hellKeyValues['전설 나락의 화염 열쇠 I'] = narakValue;
+        hellKeyValues['전설 나락의 서리 열쇠 I'] = narakValue;
+      }
     }
 
-    // 희귀 지옥 열쇠 III: 지옥3 5단계
-    const hell5Stage = hellStages.find(s => s.stage === '5단계');
-    if (hell5Stage) {
-      hellKeyValues['희귀 지옥 열쇠 III'] = calculateHellStageExpectedValue(hell5Stage, false);
+    // 나락 열쇠 II: 나락2
+    if (narak2Stages) {
+      const narak2_2Stage = narak2Stages.find(s => s.stage === '2단계');
+      if (narak2_2Stage) {
+        const narakValue = calculateHellStageExpectedValue(narak2_2Stage, true);
+        hellKeyValues['전설 나락의 화염 열쇠 II'] = narakValue;
+        hellKeyValues['전설 나락의 서리 열쇠 II'] = narakValue;
+      }
     }
 
     // 전설 나락의 화염 열쇠 III, 전설 나락의 서리 열쇠 III: 나락3 2단계
-    const narak2Stage = narakStages.find(s => s.stage === '2단계');
-    if (narak2Stage) {
-      const narakValue = calculateHellStageExpectedValue(narak2Stage, true);
-      hellKeyValues['전설 나락의 화염 열쇠 III'] = narakValue;
-      hellKeyValues['전설 나락의 서리 열쇠 III'] = narakValue;
+    if (narakStages) {
+      const narak3_2Stage = narakStages.find(s => s.stage === '2단계');
+      if (narak3_2Stage) {
+        const narakValue = calculateHellStageExpectedValue(narak3_2Stage, true);
+        hellKeyValues['전설 나락의 화염 열쇠 III'] = narakValue;
+        hellKeyValues['전설 나락의 서리 열쇠 III'] = narakValue;
+      }
     }
   }
 

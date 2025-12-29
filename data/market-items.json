@@ -153,6 +153,18 @@
       "type": "auction"
     },
     {
+      "id": 56,
+      "name": "8레벨 겁화의 보석",
+      "tier": "보석",
+      "type": "auction"
+    },
+    {
+      "id": 57,
+      "name": "8레벨 작열의 보석",
+      "tier": "보석",
+      "type": "auction"
+    },
+    {
       "id": 54,
       "name": "10레벨 겁화의 보석",
       "tier": "보석",
