@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
 import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
+import { useValueDb } from '../contexts/ValueDbContext';
 import type { ValueDbEntry } from '@/lib/valueDb';
 
 type ComponentItem = {
@@ -82,6 +83,7 @@ export default function PackageEfficiencyClient({
   narakStages?: Stage[];
 }) {
   const { adjustPrice, adjustRelicEngravingAverage } = usePriceAdjustment();
+  const { adjustedEntries } = useValueDb();
   const [lightMode, setLightMode] = useState<boolean>(false);
   const [discordRate, setDiscordRate] = useState<number | null>(null);
   
@@ -219,6 +221,15 @@ export default function PackageEfficiencyClient({
 
   // 구성요소 단가 해석: etc_list 우선, 없으면 캐시 골드, 없으면 null
   const resolveUnitPrice = useCallback((itemName: string): { unitType: '골드' | '크리스탈' | '현금'; unitPrice: number } | null => {
+    // 순환 돌파석: 가치계산DB Context에서 계산된 값 사용 (이미 가격조정 적용됨)
+    if (itemName === '순환 돌파석') {
+      const entry = adjustedEntries.find(e => e.itemName === itemName);
+      if (entry && entry.unitType === '골드' && entry.unitValue != null) {
+        return { unitType: '골드', unitPrice: entry.unitValue };
+      }
+      return null;
+    }
+
     // 지옥/나락 열쇠: 클라이언트에서 재계산 (지옥 보상 계산기와 동일한 방식)
     const isHellKey = itemName.includes('지옥 열쇠');
     const isNarakKey = itemName.includes('나락의') && itemName.includes('열쇠');
@@ -522,7 +533,7 @@ export default function PackageEfficiencyClient({
       return { unitType: '골드', unitPrice: adjusted };
     }
     return null;
-  }, [cubeStageRewards, valueDbMap, etcListData, marketPriceMap, cubeStageTotals, adjustPrice, adjustRelicEngravingAverage, calculateGemPriceByGrade, refreshKey, hellStages, narakStages]);
+  }, [cubeStageRewards, valueDbMap, etcListData, marketPriceMap, cubeStageTotals, adjustPrice, adjustRelicEngravingAverage, calculateGemPriceByGrade, refreshKey, hellStages, narakStages, adjustedEntries]);
 
   // 아이템 가격 계산 함수
   const calculateItemPrice = (

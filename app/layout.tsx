@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 import Navigation from './components/Navigation'
 import { PriceOverrideProvider } from './contexts/PriceOverrideContext'
+import { ValueDbProvider } from './contexts/ValueDbContext'
 import ValueDBSidebar from './components/ValueDBSidebar'
 import { getValueDbData } from '@/lib/valueDb'
 import { parseUpgradeCsv, getMarketInfoMap, createStages } from './value-db/page'
@@ -58,27 +59,29 @@ export default async function RootLayout({
     <html lang="ko" suppressHydrationWarning>
       <body suppressHydrationWarning>
         <PriceOverrideProvider>
-          <Navigation />
-          <div className="flex" style={{ height: 'calc(100vh - 4rem)' }}>
-            <div className="hidden lg:block w-96 flex-shrink-0">
-              <ValueDBSidebar
-                entries={valueDbData.entries}
-                cubeStageRewards={valueDbData.cubeStageRewards}
-                kurzanStageRewards={valueDbData.kurzanStageRewards}
-                marketPriceMap={valueDbData.marketPriceMap}
-                etcListData={valueDbData.etcListDataObj}
-                weaponStages={weaponStages}
-                armorStages={armorStages}
-                marketInfo={marketInfo}
-                hellStages={valueDbData.hellStages}
-                narakStages={valueDbData.narakStages}
-                valueDbEntryMap={new Map(Object.entries(valueDbData.entryMap))}
-              />
+          <ValueDbProvider
+            entries={valueDbData.entries}
+            cubeStageRewards={valueDbData.cubeStageRewards}
+            kurzanStageRewards={valueDbData.kurzanStageRewards}
+            marketPriceMap={valueDbData.marketPriceMap}
+            etcListData={valueDbData.etcListDataObj}
+            weaponStages={weaponStages}
+            armorStages={armorStages}
+            marketInfo={marketInfo}
+            hellStages={valueDbData.hellStages}
+            narakStages={valueDbData.narakStages}
+            valueDbEntryMap={new Map(Object.entries(valueDbData.entryMap))}
+          >
+            <Navigation />
+            <div className="flex" style={{ height: 'calc(100vh - 4rem)' }}>
+              <div className="hidden lg:block w-96 flex-shrink-0">
+                <ValueDBSidebar />
+              </div>
+              <div className="flex-1 overflow-y-auto min-w-0">
+                {children}
+              </div>
             </div>
-            <div className="flex-1 overflow-y-auto min-w-0">
-              {children}
-            </div>
-          </div>
+          </ValueDbProvider>
         </PriceOverrideProvider>
       </body>
     </html>

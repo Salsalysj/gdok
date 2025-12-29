@@ -196,9 +196,13 @@ export default function ContentRewardsClient({
   ]), []);
 
   const getTradeClass = (itemName: string) => {
-    // 가디언 토벌 탭에서는 모든 아이템을 거래가능으로 표시
-    const forceTradable = activeContent === '가디언 토벌';
-    const isTradable = forceTradable || tradableSet.has(itemName);
+    // 가디언 토벌 탭에서는 1레벨 보석 (4T)만 거래가능, 나머지는 귀속
+    let isTradable: boolean;
+    if (activeContent === '가디언 토벌') {
+      isTradable = itemName === '1레벨 보석 (4T)';
+    } else {
+      isTradable = tradableSet.has(itemName);
+    }
     return {
       isTradable,
       nameClass: isTradable ? 'text-green-300' : 'text-red-300',
@@ -293,25 +297,35 @@ export default function ContentRewardsClient({
         {/* 레벨 선택 */}
         {levels.length > 0 && activeContent !== '에브니 큐브' && (
           <div className="mb-6">
-            {activeContent === '쿠르잔 전선' ? (
-              // 쿠르잔 전선: 버튼형 선택
+            {activeContent === '쿠르잔 전선' || activeContent === '가디언 토벌' ? (
+              // 쿠르잔 전선, 가디언 토벌: 버튼형 선택
               <div className="flex flex-wrap gap-2">
-                {levels.map(level => (
-                  <button
-                    key={level}
-                    onClick={() => setActiveLevel(level)}
-                    className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-                      activeLevel === level
-                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg'
-                        : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
-                    }`}
-                  >
-                    {level}
-                  </button>
-                ))}
+                {levels.map(level => {
+                  // 가디언 토벌의 경우 스테이지 이름 표시
+                  let displayText = level;
+                  if (activeContent === '가디언 토벌' && data[activeContent]?.[level]) {
+                    const stage = data[activeContent]![level][0];
+                    if (stage) {
+                      displayText = `${stage.stage} (${level})`;
+                    }
+                  }
+                  return (
+                    <button
+                      key={level}
+                      onClick={() => setActiveLevel(level)}
+                      className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                        activeLevel === level
+                          ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg'
+                          : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
+                      }`}
+                    >
+                      {displayText}
+                    </button>
+                  );
+                })}
               </div>
             ) : (
-              // 가디언 토벌: 드롭다운 유지
+              // 기타: 드롭다운
               <select
                 value={activeLevel}
                 onChange={(e) => setActiveLevel(e.target.value)}
@@ -333,7 +347,14 @@ export default function ContentRewardsClient({
             // 가디언 토벌 탭이면 전부 거래가능 처리
             const isGuardianTab = activeContent === '가디언 토벌';
             
-            const totals = calculateStageTotals(stage, (name) => isGuardianTab || tradableSet.has(name), (name) => isExcludedForTotal(name));
+            // 가디언 토벌: 1레벨 보석 (4T)만 거래가능
+            const isTradableFn = (name: string) => {
+              if (isGuardianTab) {
+                return name === '1레벨 보석 (4T)';
+              }
+              return tradableSet.has(name);
+            };
+            const totals = calculateStageTotals(stage, isTradableFn, (name) => isExcludedForTotal(name));
             const cashValueTradable = goldToCashPerGold ? totals.tradable * goldToCashPerGold : null;
             const cashValueTotal = goldToCashPerGold ? totals.total * goldToCashPerGold : null;
             
@@ -341,44 +362,30 @@ export default function ContentRewardsClient({
               <div key={idx} className="bg-gray-800/50 rounded-lg p-6 border border-gray-700">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-2xl font-bold text-white">단계 {stage.stage}</h3>
-                  {isGuardianTab ? (
-                    <div className="text-right">
-                      <div className="text-sm text-gray-400">총 골드 가치</div>
-                      <div className="text-3xl font-bold text-yellow-400">
-                        {formatNumberWithSignificantDigits(totals.total)}골드
+                  <div className="flex flex-wrap items-end gap-4 justify-end text-right">
+                    <div>
+                      <div className="text-xs text-green-300 mb-1">거래가능 합계</div>
+                      <div className="text-2xl font-bold text-green-300">
+                        {formatNumberWithSignificantDigits(totals.tradable)}골드
                       </div>
-                      {cashValueTotal != null && (
-                        <div className="text-base text-blue-400 font-medium mt-2">
-                          현금 환산: ≈ {Math.round(cashValueTotal).toLocaleString('ko-KR')}원
+                      {cashValueTradable != null && (
+                        <div className="text-xs text-green-300/80 mt-1">
+                          ≈ {Math.round(cashValueTradable).toLocaleString('ko-KR')}원
                         </div>
                       )}
                     </div>
-                  ) : (
-                    <div className="flex flex-wrap items-end gap-4 justify-end text-right">
-                      <div>
-                        <div className="text-xs text-green-300 mb-1">거래가능 합계</div>
-                        <div className="text-2xl font-bold text-green-300">
-                          {formatNumberWithSignificantDigits(totals.tradable)}골드
-                        </div>
-                        {cashValueTradable != null && (
-                          <div className="text-xs text-green-300/80 mt-1">
-                            ≈ {Math.round(cashValueTradable).toLocaleString('ko-KR')}원
-                          </div>
-                        )}
+                    <div>
+                      <div className="text-xs text-yellow-300 mb-1">전체 합계(귀속 포함)</div>
+                      <div className="text-2xl font-bold text-yellow-400">
+                        {formatNumberWithSignificantDigits(totals.total)}골드
                       </div>
-                      <div>
-                        <div className="text-xs text-yellow-300 mb-1">전체 합계(귀속 포함)</div>
-                        <div className="text-2xl font-bold text-yellow-400">
-                          {formatNumberWithSignificantDigits(totals.total)}골드
+                      {cashValueTotal != null && (
+                        <div className="text-xs text-yellow-300/80 mt-1">
+                          ≈ {Math.round(cashValueTotal).toLocaleString('ko-KR')}원
                         </div>
-                        {cashValueTotal != null && (
-                          <div className="text-xs text-yellow-300/80 mt-1">
-                            ≈ {Math.round(cashValueTotal).toLocaleString('ko-KR')}원
-                          </div>
-                        )}
-                      </div>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
 
                 {/* 보상 표시 */}
@@ -407,7 +414,8 @@ export default function ContentRewardsClient({
                         const price = r.price || 0;
                         const qty = r.quantity || 0;
                         const amount = price * qty;
-                        const tradable = isGuardianTab || tradableSet.has(r.itemName);
+                        // 가디언 토벌: 1레벨 보석 (4T)만 거래가능
+                        const tradable = isGuardianTab ? r.itemName === '1레벨 보석 (4T)' : tradableSet.has(r.itemName);
                         return sum + (tradable ? amount : 0);
                       }, 0);
                       const totalSum = reward.cubeStageRewards!.reduce((sum, r) => {

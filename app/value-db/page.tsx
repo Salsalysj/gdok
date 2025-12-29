@@ -234,18 +234,7 @@ export default async function ValueDBPage() {
     OPTIONAL_METALLURGY_ITEMS_ARMOR
   );
 
-  return (
-    <ValueDBClient
-      entries={valueDbData.entries}
-      cubeStageRewards={valueDbData.cubeStageRewards}
-      kurzanStageRewards={valueDbData.kurzanStageRewards}
-      marketPriceMap={valueDbData.marketPriceMap}
-      etcListData={valueDbData.etcListDataObj}
-      weaponStages={weaponStages}
-      armorStages={armorStages}
-      marketInfo={marketInfo}
-    />
-  );
+  return <ValueDBClient />;
 }
 
 

@@ -1021,7 +1021,7 @@ export async function getContentRewardsData(
 
     if (contentType === '카던&전선') {
       // 비활성화된 레벨 목록 (업데이트 필요)
-      const disabledLevels = ['1640', '1660', '1680', '1700'];
+      const disabledLevels: string[] = [];
       
       for (const [level, stages] of Object.entries(levels)) {
         // 비활성화된 레벨은 건너뛰기
@@ -1109,6 +1109,18 @@ export async function getContentRewardsData(
               // 귀속 골드: 골드와 1:1 동일한 가치
               if (reward.itemName === '귀속 골드') {
                 return { itemName: reward.itemName, quantity: reward.quantity, price: 1 };
+              }
+              // 1레벨 보석 처리
+              if (reward.itemName === '1레벨 보석 (3T)' || reward.itemName === '1레벨 보석 (4T)') {
+                const gemType = reward.itemName.includes('4T') ? '4T' : '3T';
+                const price = calculateGemPrice(gemType as '3T' | '4T', marketData);
+                return { itemName: reward.itemName, quantity: reward.quantity, price };
+              }
+              // 젬 아이템 처리
+              if (reward.itemName === '영웅 젬' || reward.itemName === '희귀 젬' || reward.itemName === '고급 젬') {
+                const grade = reward.itemName.replace(' 젬', '') as '영웅' | '희귀' | '고급';
+                const price = calculateGemPriceByGrade(grade, marketData);
+                return { itemName: reward.itemName, quantity: reward.quantity, price };
               }
               const price = findItemPrice(reward.itemName, marketData);
               return { itemName: reward.itemName, quantity: reward.quantity, price };
