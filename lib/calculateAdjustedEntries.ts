@@ -26,8 +26,8 @@ type CalculateAdjustedEntriesParams = {
   hellStages?: Stage[];
   narakStages?: Stage[];
   valueDbEntryMap?: Map<string, ValueDbEntry>;
-  adjustPrice: (itemName: string, price: number | null | undefined) => number | null;
-  adjustRelicEngravingAverage: (price: number) => number;
+  adjustPrice: (itemName: string, price: number | null) => number | null;
+  adjustRelicEngravingAverage: (price: number | null) => number | null;
 };
 
 // 순환 돌파석 소모 개수 계산
@@ -163,14 +163,14 @@ export function calculateAdjustedEntries(params: CalculateAdjustedEntriesParams)
   // 순환 돌파석 가치 재계산 (특수 재련 효율과 동일한 방식)
   let circularBreakthroughValue: number | null = null;
   if (weaponStages && armorStages && marketInfo && weaponStages.length > 0 && armorStages.length > 0) {
-    // 가격 조정이 적용된 marketInfo 생성
-    const adjustedMarketInfo: Record<string, MarketItemInfo> = {};
-    for (const [name, info] of Object.entries(marketInfo)) {
-      adjustedMarketInfo[name] = {
-        ...info,
-        unitPrice: adjustPrice(name, info.unitPrice) ?? info.unitPrice,
-      };
-    }
+      // 가격 조정이 적용된 marketInfo 생성
+      const adjustedMarketInfo: Record<string, MarketItemInfo> = {};
+      for (const [name, info] of Object.entries(marketInfo)) {
+        adjustedMarketInfo[name] = {
+          ...info,
+          unitPrice: adjustPrice(name, info.unitPrice ?? null) ?? info.unitPrice ?? 0,
+        };
+      }
 
     // 모든 무기와 방어구 스테이지에서 순환 돌파석 가치 계산
     const allBreakthroughValues: number[] = [];
