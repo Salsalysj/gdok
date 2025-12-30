@@ -3351,7 +3351,7 @@ export default function PackageEfficiencyClient({
                                                         단가: {formatNumberWithSignificantDigits(nestedUnitPriceInPackageType)} {packageData.priceType}
                                                         <span className="text-gray-600 mx-0.5">×</span>
                                                         수량: {formatNumberWithSignificantDigits(nestedComp.quantity || 0)}
-                                                        {component.nestedItem.itemType === '확률' && nestedComp.probability !== undefined && (
+                                                        {nestedItem.itemType === '확률' && nestedComp.probability !== undefined && (
                                                           <span className="text-purple-400 ml-0.5">× {nestedComp.probability}%</span>
                                                         )}
                                                         {nestedItem.quantity && nestedItem.quantity > 1 && (
