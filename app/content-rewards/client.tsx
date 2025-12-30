@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import ItemIcon from '../components/ItemIcon';
 import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
 import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
@@ -81,6 +82,7 @@ export default function ContentRewardsClient({
 }) {
   const { adjustPrice } = usePriceAdjustment();
   const { state: priceOverrideState } = usePriceOverride();
+  const searchParams = useSearchParams();
   const [refreshKey, setRefreshKey] = useState(0);
   const contentTypes: ContentType[] = ['쿠르잔 전선', '에브니 큐브', '가디언 토벌'];
   
@@ -107,9 +109,23 @@ export default function ContentRewardsClient({
     });
   }, [data]);
   
-  const [activeContent, setActiveContent] = useState<ContentType | null>(
-    availableContents.length > 0 ? availableContents[0] : null
-  );
+  // URL 쿼리 파라미터에서 탭 읽기
+  const tabFromUrl = searchParams?.get('tab');
+  const initialContent = useMemo(() => {
+    if (tabFromUrl && contentTypes.includes(tabFromUrl as ContentType)) {
+      return tabFromUrl as ContentType;
+    }
+    return availableContents.length > 0 ? availableContents[0] : null;
+  }, [tabFromUrl, availableContents]);
+  
+  const [activeContent, setActiveContent] = useState<ContentType | null>(initialContent);
+  
+  // URL 쿼리 파라미터 변경 시 activeContent 동기화
+  useEffect(() => {
+    if (tabFromUrl && contentTypes.includes(tabFromUrl as ContentType)) {
+      setActiveContent(tabFromUrl as ContentType);
+    }
+  }, [tabFromUrl]);
   
   // data 변경 시 activeContent 동기화
   useEffect(() => {
@@ -130,17 +146,20 @@ export default function ContentRewardsClient({
   const levels = contentData ? Object.keys(contentData) : [];
   const [activeLevel, setActiveLevel] = useState<string>('');
   
-  // 첫 로드 시 첫 번째 레벨 선택
+  // 첫 로드 시 첫 번째 레벨 선택 (에브니 큐브 제외)
   useEffect(() => {
-    if (levels.length > 0) {
+    if (levels.length > 0 && activeContent !== '에브니 큐브') {
       setActiveLevel(prev => {
         if (!prev || !levels.includes(prev)) {
           return levels[0];
         }
         return prev;
       });
+    } else if (activeContent === '에브니 큐브') {
+      // 에브니 큐브는 레벨 선택이 없으므로 빈 문자열 유지
+      setActiveLevel('');
     }
-  }, [levels]);
+  }, [levels, activeContent]);
   
   // 가격 조정된 데이터 생성
   // refreshKey를 의존성에 추가하여 price-override-change 이벤트 발생 시 강제로 재계산
@@ -186,7 +205,25 @@ export default function ContentRewardsClient({
   }, [contentData, adjustPrice, valueDbEntryMap, refreshKey, priceOverrideState]);
   
   // 현재 표시할 데이터 결정
-  const currentLevelData: Stage[] = activeLevel && adjustedData ? adjustedData[activeLevel] : [];
+  const currentLevelData: Stage[] = useMemo(() => {
+    if (!adjustedData) return [];
+    if (activeContent === '에브니 큐브') {
+      // 에브니 큐브는 레벨 선택이 없으므로 모든 레벨 데이터를 합침
+      const allStages: Stage[] = [];
+      Object.keys(adjustedData).forEach(level => {
+        const levelStages = adjustedData[level];
+        if (Array.isArray(levelStages)) {
+          allStages.push(...levelStages);
+        }
+      });
+      return allStages;
+    }
+    if (activeLevel && adjustedData[activeLevel]) {
+      const levelData = adjustedData[activeLevel];
+      return Array.isArray(levelData) ? levelData : [];
+    }
+    return [];
+  }, [adjustedData, activeLevel, activeContent]);
 
   // 거래가능/귀속 색상 구분
   const tradableSet = useMemo(() => new Set<string>([
@@ -269,29 +306,10 @@ export default function ContentRewardsClient({
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4 md:p-6 lg:p-8">
       <div className="max-w-6xl mx-auto">
         <div className="mb-6 md:mb-10">
-          <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-2">컨텐츠 보상 계산기</h1>
+          <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-2">
+            {activeContent ? `${activeContent} 보상 계산기` : '컨텐츠 보상 계산기'}
+          </h1>
           <p className="text-sm md:text-base text-gray-400">컨텐츠별 보상과 골드 가치를 확인하세요.</p>
-        </div>
-        
-        {/* 컨텐츠 선택 (서브탭) */}
-        <div className="flex gap-2 mb-6">
-          {availableContents.map(content => (
-            <button
-              key={content}
-              onClick={() => {
-                setActiveContent(content);
-                const newLevels = data[content] ? Object.keys(data[content]!) : [];
-                setActiveLevel(newLevels[0] || '');
-              }}
-              className={`px-6 py-3 rounded-lg font-semibold transition-all ${
-                activeContent === content
-                  ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg'
-                  : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
-              }`}
-            >
-              {content}
-            </button>
-          ))}
         </div>
 
         {/* 레벨 선택 */}

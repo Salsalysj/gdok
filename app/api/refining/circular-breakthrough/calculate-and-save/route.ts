@@ -126,7 +126,7 @@ export async function POST(request: Request) {
     const { data: marketCacheData, error: marketError } = await supabase
       .from('market_cache')
       .select('data')
-      .eq('cache_key', 'market-data')
+      .eq('cache_key', 'main_market_data')
       .single();
 
     if (marketError || !marketCacheData) {

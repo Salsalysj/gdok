@@ -137,6 +137,30 @@
       "name": "장인의 재봉술 : 2단계",
       "tier": "티어4",
       "type": "market"
+    },
+    {
+      "id": 24,
+      "name": "장인의 야금술 : 3단계",
+      "tier": "티어4",
+      "type": "market"
+    },
+    {
+      "id": 25,
+      "name": "장인의 재봉술 : 3단계",
+      "tier": "티어4",
+      "type": "market"
+    },
+    {
+      "id": 26,
+      "name": "장인의 야금술 : 4단계",
+      "tier": "티어4",
+      "type": "market"
+    },
+    {
+      "id": 27,
+      "name": "장인의 재봉술 : 4단계",
+      "tier": "티어4",
+      "type": "market"
     }
   ],
   "gem": [

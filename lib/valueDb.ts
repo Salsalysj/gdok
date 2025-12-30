@@ -761,6 +761,98 @@ function resolveEntry(
     return { itemName, unitType: '골드', unitValue: market };
   }
 
+  // 장인의 야금술/재봉술 3단계, 4단계 계산 (API 데이터가 없을 때)
+  // 2단계 가치를 찾는 헬퍼 함수
+  const getStage2Price = (itemType: '야금술' | '재봉술'): number | null => {
+    const stage2ItemName = `장인의 ${itemType} : 2단계`;
+    // manualOverrides에서 확인
+    const stage2Manual = manualOverrides[stage2ItemName];
+    if (stage2Manual && stage2Manual.unitValue != null && stage2Manual.unitValue > 0) {
+      return stage2Manual.unitValue;
+    }
+    // marketPriceMap에서 확인
+    const stage2Market = marketPriceMap[stage2ItemName];
+    if (stage2Market != null && stage2Market > 0) {
+      return stage2Market;
+    }
+    // etcListDataObj에서 확인
+    const stage2Etc = etcListDataObj[stage2ItemName];
+    if (stage2Etc && stage2Etc.gold != null && stage2Etc.gold > 0) {
+      return stage2Etc.gold;
+    }
+    return null;
+  };
+
+  // 3단계 가치를 찾는 헬퍼 함수
+  const getStage3Price = (itemType: '야금술' | '재봉술'): number | null => {
+    const stage3ItemName = `장인의 ${itemType} : 3단계`;
+    // manualOverrides에서 확인
+    const stage3Manual = manualOverrides[stage3ItemName];
+    if (stage3Manual && stage3Manual.unitValue != null && stage3Manual.unitValue > 0) {
+      return stage3Manual.unitValue;
+    }
+    // marketPriceMap에서 확인
+    const stage3Market = marketPriceMap[stage3ItemName];
+    if (stage3Market != null && stage3Market > 0) {
+      return stage3Market;
+    }
+    // etcListDataObj에서 확인
+    const stage3Etc = etcListDataObj[stage3ItemName];
+    if (stage3Etc && stage3Etc.gold != null && stage3Etc.gold > 0) {
+      return stage3Etc.gold;
+    }
+    // 2단계로부터 계산
+    const stage2Price = getStage2Price(itemType);
+    if (stage2Price != null && stage2Price > 0) {
+      return stage2Price * 2.5;
+    }
+    return null;
+  };
+
+  if (itemName === '장인의 야금술 : 3단계') {
+    const stage3Price = getStage3Price('야금술');
+    if (stage3Price != null && stage3Price > 0) {
+      return { itemName, unitType: '골드', unitValue: stage3Price, note: '장인의 야금술 : 2단계 × 2.5' };
+    }
+  }
+
+  if (itemName === '장인의 야금술 : 4단계') {
+    // 먼저 3단계 가치 확인
+    const stage3Price = getStage3Price('야금술');
+    if (stage3Price != null && stage3Price > 0) {
+      const stage4Price = stage3Price * 2;
+      return { itemName, unitType: '골드', unitValue: stage4Price, note: '장인의 야금술 : 3단계 × 2' };
+    }
+    // 3단계가 없으면 2단계로부터 계산
+    const stage2Price = getStage2Price('야금술');
+    if (stage2Price != null && stage2Price > 0) {
+      const stage4Price = stage2Price * 2.5 * 2;
+      return { itemName, unitType: '골드', unitValue: stage4Price, note: '장인의 야금술 : 2단계 × 2.5 × 2' };
+    }
+  }
+
+  if (itemName === '장인의 재봉술 : 3단계') {
+    const stage3Price = getStage3Price('재봉술');
+    if (stage3Price != null && stage3Price > 0) {
+      return { itemName, unitType: '골드', unitValue: stage3Price, note: '장인의 재봉술 : 2단계 × 2.5' };
+    }
+  }
+
+  if (itemName === '장인의 재봉술 : 4단계') {
+    // 먼저 3단계 가치 확인
+    const stage3Price = getStage3Price('재봉술');
+    if (stage3Price != null && stage3Price > 0) {
+      const stage4Price = stage3Price * 2;
+      return { itemName, unitType: '골드', unitValue: stage4Price, note: '장인의 재봉술 : 3단계 × 2' };
+    }
+    // 3단계가 없으면 2단계로부터 계산
+    const stage2Price = getStage2Price('재봉술');
+    if (stage2Price != null && stage2Price > 0) {
+      const stage4Price = stage2Price * 2.5 * 2;
+      return { itemName, unitType: '골드', unitValue: stage4Price, note: '장인의 재봉술 : 2단계 × 2.5 × 2' };
+    }
+  }
+
   return { itemName, unitType: null, unitValue: null };
 }
 

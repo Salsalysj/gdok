@@ -34,7 +34,7 @@ export default function ValueDBClient() {
         <div className="mb-6 md:mb-10">
           <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-2">가치 계산 DB</h1>
           <p className="text-sm md:text-base text-gray-400 mb-4">
-            패키지 효율 탭에서 선택 가능한 아이템들의 기준 가치를 확인합니다. 크리스탈/골드/현금 항목은
+            과금 효율 탭에서 선택 가능한 아이템들의 기준 가치를 확인합니다. 크리스탈/골드/현금 항목은
             각 단위로 표시되며, 별도 정보가 없으면 시장가(골드 기준)가 사용됩니다.
           </p>
           

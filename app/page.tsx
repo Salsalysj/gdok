@@ -54,7 +54,7 @@ export default function Home() {
             <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700 hover:border-green-500 transition-all hover:shadow-lg hover:shadow-green-500/20">
               <div className="text-3xl mb-3">📦</div>
               <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-green-400 transition-colors">
-                패키지 효율
+                과금 효율
               </h3>
               <p className="text-gray-400 text-sm">
                 상점 패키지의 가성비를 분석하여 구매 효율을 판단합니다
