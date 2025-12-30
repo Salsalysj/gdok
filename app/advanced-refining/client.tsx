@@ -709,24 +709,12 @@ export default function AdvancedRefiningClient({
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                       {Object.entries(optimalResult.materialBreakdown)
                         .filter(([_, amount]) => amount > 0)
-                        .map(([name, amount]) => {
-                          // 상재2, 상재3, 상재4의 경우 야금술/재봉술 이름을 해당 레벨에 맞게 변환
-                          let displayName = name;
-                          if (activeSubTab === '상재2' || activeSubTab === '상재3' || activeSubTab === '상재4') {
-                            const craftsmanshipStage = activeSubTab === '상재2' ? '2단계' : activeSubTab === '상재3' ? '3단계' : '4단계';
-                            if (name.includes('장인의 야금술 : 1단계')) {
-                              displayName = name.replace('장인의 야금술 : 1단계', `장인의 야금술 : ${craftsmanshipStage}`);
-                            } else if (name.includes('장인의 재봉술 : 1단계')) {
-                              displayName = name.replace('장인의 재봉술 : 1단계', `장인의 재봉술 : ${craftsmanshipStage}`);
-                            }
-                          }
-                          return (
-                            <div key={name} className="bg-gray-900/50 rounded-lg p-3">
-                              <div className="text-xs text-gray-400 mb-1">{displayName}</div>
-                              <div className="text-lg font-bold text-white">{formatNumber(amount)}</div>
-                            </div>
-                          );
-                        })}
+                        .map(([name, amount]) => (
+                          <div key={name} className="bg-gray-900/50 rounded-lg p-3">
+                            <div className="text-xs text-gray-400 mb-1">{name}</div>
+                            <div className="text-lg font-bold text-white">{formatNumber(amount)}</div>
+                          </div>
+                        ))}
                     </div>
                   </div>
                 )}
