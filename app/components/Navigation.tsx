@@ -9,6 +9,7 @@ export default function Navigation() {
   const [lightMode, setLightMode] = useState<boolean>(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [contentRewardsOpen, setContentRewardsOpen] = useState<boolean>(false);
+  const [refiningOpen, setRefiningOpen] = useState<boolean>(false);
 
   // 로컬 스토리지와 동기화 & 이벤트 브로드캐스트
   useEffect(() => {
@@ -42,21 +43,24 @@ export default function Navigation() {
       if (contentRewardsOpen && !target.closest('.content-rewards-menu')) {
         setContentRewardsOpen(false);
       }
+      if (refiningOpen && !target.closest('.refining-menu')) {
+        setRefiningOpen(false);
+      }
     };
 
-    if (contentRewardsOpen) {
+    if (contentRewardsOpen || refiningOpen) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => {
         document.removeEventListener('mousedown', handleClickOutside);
       };
     }
-  }, [contentRewardsOpen]);
+  }, [contentRewardsOpen, refiningOpen]);
 
   const tabs = [
     { name: '컨텐츠 보상', href: '/content-rewards', hasSubmenu: true },
     { name: '이벤트 효율', href: '/event-efficiency' },
     { name: '과금 효율', href: '/package-efficiency' },
-    { name: '재련 효율', href: '/refining-simulation' },
+    { name: '재련 효율', href: '/refining-simulation', hasSubmenu: true },
     { name: '골드 환율', href: '/crystal-gold' },
     { name: '관리자', href: '/admin' },
   ];
@@ -66,6 +70,11 @@ export default function Navigation() {
     { name: '가디언 토벌', href: '/content-rewards?tab=가디언 토벌' },
     { name: '에브니 큐브', href: '/content-rewards?tab=에브니 큐브' },
     { name: '지옥', href: '/hell' },
+  ];
+
+  const refiningSubTabs = [
+    { name: '일반 재련', href: '/refining-simulation' },
+    { name: '상급 재련', href: '/advanced-refining' },
   ];
 
   // 디코기준 스위치 컴포넌트
@@ -136,13 +145,22 @@ export default function Navigation() {
               {tabs.map((tab) => {
                 if (tab.name === '관리자') return null;
                 
-                const isActive = pathname === tab.href || (tab.href === '/content-rewards' && pathname.startsWith('/content-rewards'));
+                const isActive = pathname === tab.href || 
+                  (tab.href === '/content-rewards' && pathname.startsWith('/content-rewards')) ||
+                  (tab.href === '/refining-simulation' && (pathname.startsWith('/refining-simulation') || pathname.startsWith('/advanced-refining')));
                 
                 if (tab.hasSubmenu) {
+                  const isContentRewards = tab.name === '컨텐츠 보상';
+                  const isRefining = tab.name === '재련 효율';
+                  const isOpen = isContentRewards ? contentRewardsOpen : (isRefining ? refiningOpen : false);
+                  const setIsOpen = isContentRewards ? setContentRewardsOpen : (isRefining ? setRefiningOpen : () => {});
+                  const subTabs = isContentRewards ? contentRewardsSubTabs : (isRefining ? refiningSubTabs : []);
+                  const menuClass = isContentRewards ? 'content-rewards-menu' : (isRefining ? 'refining-menu' : '');
+                  
                   return (
-                    <div key={tab.href} className="relative content-rewards-menu">
+                    <div key={tab.href} className={`relative ${menuClass}`}>
                       <button
-                        onClick={() => setContentRewardsOpen(!contentRewardsOpen)}
+                        onClick={() => setIsOpen(!isOpen)}
                         className={`px-4 xl:px-6 py-2 rounded-lg font-medium transition-all text-sm xl:text-base flex items-center gap-1 ${
                           isActive
                             ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
@@ -151,7 +169,7 @@ export default function Navigation() {
                       >
                         {tab.name}
                         <svg 
-                          className={`w-4 h-4 transition-transform ${contentRewardsOpen ? 'rotate-180' : ''}`}
+                          className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`}
                           fill="none" 
                           stroke="currentColor" 
                           viewBox="0 0 24 24"
@@ -159,13 +177,13 @@ export default function Navigation() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
                       </button>
-                      {contentRewardsOpen && (
+                      {isOpen && (
                         <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl min-w-[160px] z-50">
-                          {contentRewardsSubTabs.map((subTab) => (
+                          {subTabs.map((subTab) => (
                             <Link
                               key={subTab.href}
                               href={subTab.href}
-                              onClick={() => setContentRewardsOpen(false)}
+                              onClick={() => setIsOpen(false)}
                               className="block px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 transition-colors first:rounded-t-lg last:rounded-b-lg"
                             >
                               {subTab.name}
@@ -203,13 +221,21 @@ export default function Navigation() {
             {tabs.map((tab) => {
               if (tab.name === '관리자') return null;
               
-              const isActive = pathname === tab.href || (tab.href === '/content-rewards' && pathname.startsWith('/content-rewards'));
+              const isActive = pathname === tab.href || 
+                (tab.href === '/content-rewards' && pathname.startsWith('/content-rewards')) ||
+                (tab.href === '/refining-simulation' && (pathname.startsWith('/refining-simulation') || pathname.startsWith('/advanced-refining')));
               
               if (tab.hasSubmenu) {
+                const isContentRewards = tab.name === '컨텐츠 보상';
+                const isRefining = tab.name === '재련 효율';
+                const isOpen = isContentRewards ? contentRewardsOpen : (isRefining ? refiningOpen : false);
+                const setIsOpen = isContentRewards ? setContentRewardsOpen : (isRefining ? setRefiningOpen : () => {});
+                const subTabs = isContentRewards ? contentRewardsSubTabs : (isRefining ? refiningSubTabs : []);
+                
                 return (
                   <div key={tab.href}>
                     <button
-                      onClick={() => setContentRewardsOpen(!contentRewardsOpen)}
+                      onClick={() => setIsOpen(!isOpen)}
                       className={`w-full flex items-center justify-between px-4 py-3 rounded-lg font-medium transition-all ${
                         isActive
                           ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
@@ -218,7 +244,7 @@ export default function Navigation() {
                     >
                       {tab.name}
                       <svg 
-                        className={`w-4 h-4 transition-transform ${contentRewardsOpen ? 'rotate-180' : ''}`}
+                        className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`}
                         fill="none" 
                         stroke="currentColor" 
                         viewBox="0 0 24 24"
@@ -226,14 +252,14 @@ export default function Navigation() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
                     </button>
-                    {contentRewardsOpen && (
+                    {isOpen && (
                       <div className="pl-4 mt-1 space-y-1">
-                        {contentRewardsSubTabs.map((subTab) => (
+                        {subTabs.map((subTab) => (
                           <Link
                             key={subTab.href}
                             href={subTab.href}
                             onClick={() => {
-                              setContentRewardsOpen(false);
+                              setIsOpen(false);
                               setMobileMenuOpen(false);
                             }}
                             className="block px-4 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
