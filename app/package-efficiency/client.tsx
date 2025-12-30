@@ -813,10 +813,10 @@ export default function PackageEfficiencyClient({
   const bonusRoomEfficiencies = useMemo(() => {
     if (packageData.packageType !== '보너스룸' || !packageData.bonusRooms) return null;
     
-    return packageData.bonusRooms.map((room) => {
+    return packageData.bonusRooms.map((room, roomIndex) => {
       let roomValue = 0;
       let roomPrice = 0;
-      const itemEfficiencies = room.items.map((item) => {
+      const itemEfficiencies = room.items.map((item, itemIndex) => {
         const itemValue = calculateItemValue(item, item.priceType || '골드');
         const itemPrice = item.price || 0;
         const itemPriceType = item.priceType || '골드';
@@ -848,6 +848,54 @@ export default function PackageEfficiencyClient({
         
         const efficiency = convertedPrice > 0 ? convertedValue / convertedPrice : null;
         
+        // 구성요소 정보 수집 (가치 계산 내역용)
+        const componentDetails = item.components.map((component) => {
+          const isManual = component.itemName === '__manual__' || component.itemName === '';
+          const resolved = !isManual && component.itemName ? resolveUnitPrice(component.itemName) : null;
+          const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined && component.manualPrice > 0)
+            ? { unitType: (component.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: component.manualPrice }
+            : resolved;
+          
+          let componentValueInGold = 0;
+          if (finalUnitPrice) {
+            if (itemPriceType === '골드') {
+              if (finalUnitPrice.unitType === '골드') {
+                componentValueInGold = finalUnitPrice.unitPrice * (component.quantity || 0);
+              } else if (finalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
+                componentValueInGold = ((finalUnitPrice.unitPrice * crystalGoldRate) / 100) * (component.quantity || 0);
+              } else if (finalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
+                componentValueInGold = (finalUnitPrice.unitPrice / goldToCashPerGold) * (component.quantity || 0);
+              }
+            } else if (itemPriceType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
+              const crystalValue = calculateItemPrice(
+                component.itemName || '직접입력',
+                component.quantity || 0,
+                'crystal',
+                finalUnitPrice
+              );
+              componentValueInGold = (crystalValue * crystalGoldRate) / 100;
+            } else if (itemPriceType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
+              const cashValue = calculateItemPrice(
+                component.itemName || '직접입력',
+                component.quantity || 0,
+                'cash',
+                finalUnitPrice
+              );
+              componentValueInGold = cashValue / goldToCashPerGold;
+            }
+          }
+          
+          return {
+            itemName: component.itemName || '직접입력',
+            quantity: component.quantity || 0,
+            unitPrice: finalUnitPrice?.unitPrice || 0,
+            unitType: finalUnitPrice?.unitType || '골드',
+            valueInGold: componentValueInGold,
+            probability: component.probability,
+            selected: component.selected,
+          };
+        });
+        
         return {
           itemName: item.itemName || '미입력',
           itemType: item.itemType,
@@ -856,6 +904,10 @@ export default function PackageEfficiencyClient({
           originalPrice: itemPrice, // 원래 가격 저장
           priceType: itemPriceType,
           efficiency,
+          quantity: item.quantity || 1,
+          components: componentDetails,
+          roomIndex: roomIndex,
+          itemIndex: itemIndex,
         };
       });
       
@@ -869,7 +921,7 @@ export default function PackageEfficiencyClient({
         efficiency: roomEfficiency,
       };
     });
-  }, [packageData.packageType, packageData.bonusRooms, calculateItemValue, crystalGoldRate, goldToCashPerGold]);
+  }, [packageData.packageType, packageData.bonusRooms, calculateItemValue, crystalGoldRate, goldToCashPerGold, resolveUnitPrice, calculateItemPrice]);
 
   const addPackageItem = () => {
     setPackageData((prev) => ({
@@ -2197,6 +2249,94 @@ export default function PackageEfficiencyClient({
                             </div>
                             <div>가치: {formatNumberWithSignificantDigits(item.value)} 골드</div>
                           </div>
+                          
+                          {/* 가치 계산 내역 */}
+                          {item.components && item.components.length > 0 && (
+                            <div className="mt-2 pt-2 border-t border-gray-700">
+                              <div className="text-xs text-gray-400 mb-1">가치 계산 내역:</div>
+                              <div className="space-y-1 pl-2">
+                                {item.itemType === '선택' ? (
+                                  // 선택 타입: 라디오 버튼으로 선택 변경 가능
+                                  <div className="space-y-1">
+                                    {item.components.map((comp, compIndex) => (
+                                      <label key={compIndex} className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                          type="radio"
+                                          name={`bonus-room-${roomIndex}-item-${itemIndex}-selection`}
+                                          checked={comp.selected || false}
+                                          onChange={() => {
+                                            // 선택 변경
+                                            setPackageData((prev) => {
+                                              const newBonusRooms = [...(prev.bonusRooms || [])];
+                                              const targetItem = newBonusRooms[roomIndex].items[itemIndex];
+                                              const newComponents = targetItem.components.map((c, idx) => ({
+                                                ...c,
+                                                selected: idx === compIndex,
+                                              }));
+                                              newBonusRooms[roomIndex].items[itemIndex] = {
+                                                ...targetItem,
+                                                components: newComponents,
+                                              };
+                                              return { ...prev, bonusRooms: newBonusRooms };
+                                            });
+                                          }}
+                                          className="w-3 h-3 text-purple-600 bg-gray-700 border-gray-600 focus:ring-purple-500"
+                                        />
+                                        <div className={`flex-1 text-xs ${comp.selected ? 'text-yellow-300 font-medium' : 'text-gray-400'}`}>
+                                          {comp.selected && <span className="text-yellow-400 mr-1">✓</span>}
+                                          {comp.itemName} × {formatNumberWithSignificantDigits(comp.quantity)}
+                                          {comp.unitPrice > 0 && (
+                                            <> (단가: {formatNumberWithSignificantDigits(comp.unitPrice)} {comp.unitType})</>
+                                          )}
+                                          {comp.valueInGold > 0 && (
+                                            <> = {formatNumberWithSignificantDigits(comp.valueInGold)} 골드</>
+                                          )}
+                                          {item.quantity > 1 && comp.selected && (
+                                            <> × {item.quantity} (묶음) = {formatNumberWithSignificantDigits(comp.valueInGold * item.quantity)} 골드</>
+                                          )}
+                                        </div>
+                                      </label>
+                                    ))}
+                                  </div>
+                                ) : item.itemType === '확률' ? (
+                                  // 확률 타입: 확률과 기대값 표시
+                                  item.components.map((comp, compIndex) => (
+                                    <div key={compIndex} className="text-xs text-gray-400">
+                                      {comp.itemName} × {formatNumberWithSignificantDigits(comp.quantity)}
+                                      {comp.unitPrice > 0 && (
+                                        <> (단가: {formatNumberWithSignificantDigits(comp.unitPrice)} {comp.unitType})</>
+                                      )}
+                                      {comp.probability !== undefined && (
+                                        <> [{(comp.probability * 100).toFixed(1)}%]</>
+                                      )}
+                                      {comp.valueInGold > 0 && comp.probability !== undefined && (
+                                        <> = {formatNumberWithSignificantDigits(comp.valueInGold * (comp.probability || 0))} 골드 (기대값)</>
+                                      )}
+                                      {item.quantity > 1 && comp.probability !== undefined && (
+                                        <> × {item.quantity} (묶음) = {formatNumberWithSignificantDigits(comp.valueInGold * (comp.probability || 0) * item.quantity)} 골드</>
+                                      )}
+                                    </div>
+                                  ))
+                                ) : (
+                                  // 확정 타입: 모든 구성요소 표시
+                                  item.components.map((comp, compIndex) => (
+                                    <div key={compIndex} className="text-xs text-gray-400">
+                                      {comp.itemName} × {formatNumberWithSignificantDigits(comp.quantity)}
+                                      {comp.unitPrice > 0 && (
+                                        <> (단가: {formatNumberWithSignificantDigits(comp.unitPrice)} {comp.unitType})</>
+                                      )}
+                                      {comp.valueInGold > 0 && (
+                                        <> = {formatNumberWithSignificantDigits(comp.valueInGold)} 골드</>
+                                      )}
+                                      {item.quantity > 1 && (
+                                        <> × {item.quantity} (묶음) = {formatNumberWithSignificantDigits(comp.valueInGold * item.quantity)} 골드</>
+                                      )}
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
