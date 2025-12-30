@@ -900,7 +900,9 @@ export default function PackageEfficiencyClient({
     packageItem.components.forEach((component) => {
       // 중첩된 묶음 항목 처리
       if (component.itemName === '__nested__' && component.nestedItem) {
-        const nestedValue = calculateNestedItemValue(component.nestedItem, itemPriceType);
+        // '보너스' 타입은 '골드'로 변환하여 처리
+        const priceTypeForNested = itemPriceType === '보너스' ? '골드' : itemPriceType;
+        const nestedValue = calculateNestedItemValue(component.nestedItem, priceTypeForNested);
         const itemQuantity = packageItem.quantity || 1;
         
         if (packageItem.itemType === '확정') {
