@@ -3227,59 +3227,61 @@ export default function PackageEfficiencyClient({
                                       ) : null;
                                     })()}
                                     {/* 중첩된 묶음 항목의 구성요소 표시 */}
-                                    {component.nestedItem && component.nestedItem.components.length > 0 && (
-                                      <div className="pl-4 border-l-2 border-blue-500/50 space-y-1.5 mt-2">
-                                        {component.nestedItem.components.map((nestedComp, nestedCompIndex) => {
-                                          const isNestedManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
-                                          const nestedResolved = !isNestedManual && nestedComp.itemName ? resolveUnitPrice(nestedComp.itemName) : null;
-                                          const nestedFinalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined && nestedComp.manualPrice > 0)
-                                            ? { unitType: (nestedComp.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: nestedComp.manualPrice }
-                                            : nestedResolved;
-                                          
-                                          let nestedItemValue = 0;
-                                          if (nestedFinalUnitPrice) {
-                                            if (packageData.priceType === '현금') {
-                                              nestedItemValue = calculateItemPrice(
-                                                nestedComp.itemName || '직접입력',
-                                                nestedComp.quantity || 0,
-                                                'cash',
-                                                nestedFinalUnitPrice
-                                              );
-                                            } else if (packageData.priceType === '크리스탈') {
-                                              nestedItemValue = calculateItemPrice(
-                                                nestedComp.itemName || '직접입력',
-                                                nestedComp.quantity || 0,
-                                                'crystal',
-                                                nestedFinalUnitPrice
-                                              );
-                                            } else if (packageData.priceType === '골드') {
-                                              if (nestedFinalUnitPrice.unitType === '골드') {
-                                                nestedItemValue = nestedFinalUnitPrice.unitPrice * (nestedComp.quantity || 0);
-                                              } else if (nestedFinalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
-                                                nestedItemValue = ((nestedFinalUnitPrice.unitPrice * crystalGoldRate) / 100) * (nestedComp.quantity || 0);
-                                              } else if (nestedFinalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
-                                                nestedItemValue = (nestedFinalUnitPrice.unitPrice / goldToCashPerGold) * (nestedComp.quantity || 0);
+                                    {component.nestedItem && component.nestedItem.components.length > 0 && (() => {
+                                      const nestedItem = component.nestedItem!;
+                                      return (
+                                        <div className="pl-4 border-l-2 border-blue-500/50 space-y-1.5 mt-2">
+                                          {nestedItem.components.map((nestedComp, nestedCompIndex) => {
+                                            const isNestedManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
+                                            const nestedResolved = !isNestedManual && nestedComp.itemName ? resolveUnitPrice(nestedComp.itemName) : null;
+                                            const nestedFinalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined && nestedComp.manualPrice > 0)
+                                              ? { unitType: (nestedComp.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: nestedComp.manualPrice }
+                                              : nestedResolved;
+                                            
+                                            let nestedItemValue = 0;
+                                            if (nestedFinalUnitPrice) {
+                                              if (packageData.priceType === '현금') {
+                                                nestedItemValue = calculateItemPrice(
+                                                  nestedComp.itemName || '직접입력',
+                                                  nestedComp.quantity || 0,
+                                                  'cash',
+                                                  nestedFinalUnitPrice
+                                                );
+                                              } else if (packageData.priceType === '크리스탈') {
+                                                nestedItemValue = calculateItemPrice(
+                                                  nestedComp.itemName || '직접입력',
+                                                  nestedComp.quantity || 0,
+                                                  'crystal',
+                                                  nestedFinalUnitPrice
+                                                );
+                                              } else if (packageData.priceType === '골드') {
+                                                if (nestedFinalUnitPrice.unitType === '골드') {
+                                                  nestedItemValue = nestedFinalUnitPrice.unitPrice * (nestedComp.quantity || 0);
+                                                } else if (nestedFinalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
+                                                  nestedItemValue = ((nestedFinalUnitPrice.unitPrice * crystalGoldRate) / 100) * (nestedComp.quantity || 0);
+                                                } else if (nestedFinalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
+                                                  nestedItemValue = (nestedFinalUnitPrice.unitPrice / goldToCashPerGold) * (nestedComp.quantity || 0);
+                                                }
                                               }
+                                              
+                                              if (nestedItem.itemType === '확률') {
+                                                const nestedProbability = nestedComp.probability || 0;
+                                                nestedItemValue = nestedItemValue * nestedProbability;
+                                              } else if (nestedItem.itemType === '선택' && !nestedComp.selected) {
+                                                nestedItemValue = 0;
+                                              }
+                                              
+                                              nestedItemValue = nestedItemValue * (nestedItem.quantity || 1);
                                             }
                                             
-                                            if (component.nestedItem.itemType === '확률') {
-                                              const nestedProbability = nestedComp.probability || 0;
-                                              nestedItemValue = nestedItemValue * nestedProbability;
-                                            } else if (component.nestedItem.itemType === '선택' && !nestedComp.selected) {
-                                              nestedItemValue = 0;
-                                            }
-                                            
-                                            nestedItemValue = nestedItemValue * (component.nestedItem.quantity || 1);
-                                          }
-                                          
-                                          const nestedIsIncluded = component.nestedItem.itemType === '확정' || 
-                                                                   (component.nestedItem.itemType === '확률') ||
-                                                                   (component.nestedItem.itemType === '선택' && nestedComp.selected);
+                                            const nestedIsIncluded = nestedItem.itemType === '확정' || 
+                                                                     (nestedItem.itemType === '확률') ||
+                                                                     (nestedItem.itemType === '선택' && nestedComp.selected);
                                           
                                           return (
                                             <div key={nestedCompIndex} className="text-xs">
                                               {/* 선택 타입일 때 라디오 버튼 */}
-                                              {component.nestedItem.itemType === '선택' && (
+                                              {nestedItem.itemType === '선택' && (
                                                 <label className="flex items-center gap-1.5 mb-1 cursor-pointer group">
                                                   <input
                                                     type="radio"
@@ -3287,12 +3289,12 @@ export default function PackageEfficiencyClient({
                                                     checked={nestedComp.selected || false}
                                                     onChange={(e) => {
                                                       if (e.target.checked) {
-                                                        const nestedComponents = component.nestedItem!.components.map((c, idx) => ({
+                                                        const nestedComponents = nestedItem.components.map((c, idx) => ({
                                                           ...c,
                                                           selected: idx === nestedCompIndex,
                                                         }));
-                                                        const nestedItem = { ...component.nestedItem!, components: nestedComponents };
-                                                        updateComponent(itemIndex, compIndex, 'nestedItem', nestedItem);
+                                                        const updatedNestedItem = { ...nestedItem, components: nestedComponents };
+                                                        updateComponent(itemIndex, compIndex, 'nestedItem', updatedNestedItem);
                                                       }
                                                     }}
                                                     className="w-3 h-3 text-yellow-500 bg-gray-700 border-gray-600 focus:ring-yellow-500 focus:ring-1"
@@ -3306,12 +3308,12 @@ export default function PackageEfficiencyClient({
                                                 <span className={`${nestedIsIncluded ? 'text-gray-300' : 'text-gray-500 line-through'}`}>
                                                   • {nestedComp.itemName || '(직접 입력)'}
                                                 </span>
-                                                {component.nestedItem.itemType === '확률' && nestedComp.probability !== undefined && (
+                                                {nestedItem.itemType === '확률' && nestedComp.probability !== undefined && (
                                                   <span className="text-purple-400 text-[10px]">
                                                     [{(nestedComp.probability * 100).toFixed(1)}%]
                                                   </span>
                                                 )}
-                                                {component.nestedItem.itemType === '선택' && nestedComp.selected && !component.nestedItem.itemType && (
+                                                {nestedItem.itemType === '선택' && nestedComp.selected && (
                                                   <span className="text-yellow-400 text-[10px]">✓</span>
                                                 )}
                                               </div>
@@ -3352,8 +3354,8 @@ export default function PackageEfficiencyClient({
                                                         {component.nestedItem.itemType === '확률' && nestedComp.probability !== undefined && (
                                                           <span className="text-purple-400 ml-0.5">× {nestedComp.probability}%</span>
                                                         )}
-                                                        {component.nestedItem.quantity && component.nestedItem.quantity > 1 && (
-                                                          <span className="text-blue-400 ml-0.5">× {component.nestedItem.quantity}</span>
+                                                        {nestedItem.quantity && nestedItem.quantity > 1 && (
+                                                          <span className="text-blue-400 ml-0.5">× {nestedItem.quantity}</span>
                                                         )}
                                                         <span className="text-gray-600 mx-0.5">=</span>
                                                         {nestedIsIncluded ? (
@@ -3378,8 +3380,9 @@ export default function PackageEfficiencyClient({
                                             </div>
                                           );
                                         })}
-                                      </div>
-                                    )}
+                                        </div>
+                                      );
+                                    })()}
                                   </div>
                                 ) : (
                                   // 일반 구성요소 표시
