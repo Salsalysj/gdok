@@ -981,7 +981,6 @@ export default function AdvancedRefiningClient({
                           </tbody>
                         </table>
                       </div>
-                    )}
                   </div>
                 )}
               </>
