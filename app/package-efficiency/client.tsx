@@ -3168,8 +3168,10 @@ export default function PackageEfficiencyClient({
                                     </div>
                                     {/* 중첩된 묶음 항목의 전체 가치 계산 */}
                                     {(() => {
+                                      if (!component.nestedItem) return null;
+                                      const nestedItem = component.nestedItem;
                                       let totalNestedValue = 0;
-                                      component.nestedItem.components.forEach((nestedComp) => {
+                                      nestedItem.components.forEach((nestedComp) => {
                                         const isNestedManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
                                         const nestedResolved = !isNestedManual && nestedComp.itemName ? resolveUnitPrice(nestedComp.itemName) : null;
                                         const nestedFinalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined && nestedComp.manualPrice > 0)
@@ -3202,21 +3204,21 @@ export default function PackageEfficiencyClient({
                                             }
                                           }
                                           
-                                          if (component.nestedItem.itemType === '확률') {
+                                          if (nestedItem.itemType === '확률') {
                                             const nestedProbability = nestedComp.probability || 0;
                                             nestedCompValue = nestedCompValue * nestedProbability;
-                                          } else if (component.nestedItem.itemType === '선택' && !nestedComp.selected) {
+                                          } else if (nestedItem.itemType === '선택' && !nestedComp.selected) {
                                             nestedCompValue = 0;
                                           }
                                           
-                                          nestedCompValue = nestedCompValue * (component.nestedItem.quantity || 1);
+                                          nestedCompValue = nestedCompValue * (nestedItem.quantity || 1);
                                           totalNestedValue += nestedCompValue;
                                         }
                                       });
                                       
-                                      const nestedIsIncluded = component.nestedItem.itemType === '확정' || 
-                                                               (component.nestedItem.itemType === '확률') ||
-                                                               (component.nestedItem.itemType === '선택' && component.nestedItem.components.some(c => c.selected));
+                                      const nestedIsIncluded = nestedItem.itemType === '확정' || 
+                                                               (nestedItem.itemType === '확률') ||
+                                                               (nestedItem.itemType === '선택' && nestedItem.components.some(c => c.selected));
                                       
                                       return totalNestedValue > 0 && nestedIsIncluded ? (
                                         <div className="text-xs text-blue-400">
@@ -3225,7 +3227,7 @@ export default function PackageEfficiencyClient({
                                       ) : null;
                                     })()}
                                     {/* 중첩된 묶음 항목의 구성요소 표시 */}
-                                    {component.nestedItem.components.length > 0 && (
+                                    {component.nestedItem && component.nestedItem.components.length > 0 && (
                                       <div className="pl-4 border-l-2 border-blue-500/50 space-y-1.5 mt-2">
                                         {component.nestedItem.components.map((nestedComp, nestedCompIndex) => {
                                           const isNestedManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
