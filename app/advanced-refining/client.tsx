@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   getMaterialsForLevel,
   type GearType,
@@ -24,7 +24,6 @@ export default function AdvancedRefiningClient({
   valueDbMap?: Record<string, ValueDbEntry>;
 }) {
   const searchParams = useSearchParams();
-  const router = useRouter();
   
   const [activeSubTab, setActiveSubTab] = useState<SubTab>('상재1');
   const [activeSubSubTab, setActiveSubSubTab] = useState<SubSubTab>('무기');
@@ -43,10 +42,12 @@ export default function AdvancedRefiningClient({
     };
   }>>([]);
 
-  // URL 쿼리 파라미터에서 초기값 읽기
+  // URL 쿼리 파라미터에서 초기값 읽기 (마운트 시에만 실행)
   useEffect(() => {
-    const tabFromUrl = searchParams?.get('tab') as SubTab | null;
-    const subTabFromUrl = searchParams?.get('subtab') as SubSubTab | null;
+    if (!searchParams) return;
+    
+    const tabFromUrl = searchParams.get('tab') as SubTab | null;
+    const subTabFromUrl = searchParams.get('subtab') as SubSubTab | null;
     
     if (tabFromUrl && ['상재1', '상재2', '상재3', '상재4'].includes(tabFromUrl)) {
       setActiveSubTab(tabFromUrl);
@@ -55,7 +56,8 @@ export default function AdvancedRefiningClient({
     if (subTabFromUrl && ['무기', '방어구'].includes(subTabFromUrl)) {
       setActiveSubSubTab(subTabFromUrl);
     }
-  }, [searchParams]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // 마운트 시에만 실행
 
   const subTabs: { key: SubTab; label: string; range: string }[] = [
     { key: '상재1', label: '상재1', range: '0~10단계' },
@@ -68,12 +70,12 @@ export default function AdvancedRefiningClient({
 
   const handleSubTabChange = (tab: SubTab) => {
     setActiveSubTab(tab);
-    router.push(`/advanced-refining?tab=${tab}&subtab=${activeSubSubTab}`);
+    // URL 업데이트는 하지 않고 상태만 업데이트하여 다른 라우팅을 방해하지 않도록 함
   };
 
   const handleSubSubTabChange = (subTab: SubSubTab) => {
     setActiveSubSubTab(subTab);
-    router.push(`/advanced-refining?tab=${activeSubTab}&subtab=${subTab}`);
+    // URL 업데이트는 하지 않고 상태만 업데이트하여 다른 라우팅을 방해하지 않도록 함
   };
 
   // 현재 선택된 재료 목록
@@ -273,7 +275,7 @@ export default function AdvancedRefiningClient({
   }, [currentMaterials, materialValues]);
 
   // 보조재료 비용 계산 (보조재료 투입 여부에 따라)
-  const calculateAuxiliaryCost = (useBreath: boolean, useCraftsmanship: boolean): number => {
+  const calculateAuxiliaryCost = useCallback((useBreath: boolean, useCraftsmanship: boolean): number => {
     return currentMaterials
       .filter(m => m.isOptional)
       .reduce((sum, mat) => {
@@ -282,10 +284,10 @@ export default function AdvancedRefiningClient({
         const value = materialValues[mat.name]?.totalValue;
         return sum + (value != null ? value : 0);
       }, 0);
-  };
+  }, [currentMaterials, materialValues]);
 
   // 시뮬레이션 결과에 총 비용 계산 (상세 정보 포함)
-  const calculateTotalCost = (
+  const calculateTotalCost = useCallback((
     result: SimulationResult,
     useBreathNormal: boolean,
     useCraftsmanshipNormal: boolean,
@@ -317,7 +319,7 @@ export default function AdvancedRefiningClient({
       ancestorTurnTotal,
       freeTurnTotal,
     };
-  };
+  }, [requiredMaterialsTotal, calculateAuxiliaryCost]);
 
   // 비용 계산 및 결과 처리 (시뮬레이션 결과, 시세, 가격 조정 상태가 변경될 때마다 실행)
   useEffect(() => {
@@ -509,7 +511,7 @@ export default function AdvancedRefiningClient({
     } else {
       setCraftsmanshipAnalysis(null);
     }
-  }, [simulationResults, valueDbMap, activeSubSubTab, materialValues, getMaterialValue, priceOverrideState, calculateTotalCost, activeSubTab, currentMaterials]);
+  }, [simulationResults, valueDbMap, activeSubSubTab, materialValues, getMaterialValue, priceOverrideState, calculateTotalCost, activeSubTab, currentMaterials, requiredMaterialsTotal]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4 md:p-6 lg:p-8">

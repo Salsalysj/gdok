@@ -40,6 +40,10 @@ export default function Navigation() {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
+      // 링크 클릭은 허용 (라우팅 방해 방지)
+      if (target.closest('a')) {
+        return;
+      }
       if (contentRewardsOpen && !target.closest('.content-rewards-menu')) {
         setContentRewardsOpen(false);
       }
@@ -277,7 +281,10 @@ export default function Navigation() {
                 <Link
                   key={tab.href}
                   href={tab.href}
-                  onClick={() => setMobileMenuOpen(false)}
+                  onClick={(e) => {
+                    // 링크 클릭은 정상적으로 처리되도록 함
+                    setMobileMenuOpen(false);
+                  }}
                   className={`block px-4 py-3 rounded-lg font-medium transition-all ${
                     isActive
                       ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
