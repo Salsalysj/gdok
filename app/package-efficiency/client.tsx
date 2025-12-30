@@ -2197,9 +2197,10 @@ export default function PackageEfficiencyClient({
                                               <select
                                                 value={nestedComp.itemName}
                                                 onChange={(e) => {
-                                                  const nestedComponents = [...component.nestedItem!.components];
+                                                  if (!component.nestedItem) return;
+                                                  const nestedComponents = [...component.nestedItem.components];
                                                   nestedComponents[nestedCompIndex] = { ...nestedComponents[nestedCompIndex], itemName: e.target.value };
-                                                  const nestedItem = { ...component.nestedItem!, components: nestedComponents };
+                                                  const nestedItem = { ...component.nestedItem, components: nestedComponents };
                                                   updateBonusRoomComponent(roomIndex, itemIndex, compIndex, 'nestedItem', nestedItem);
                                                 }}
                                                 className="flex-1 px-1 py-0.5 bg-gray-600 text-white rounded border border-gray-500 text-[10px]"
@@ -2214,39 +2215,42 @@ export default function PackageEfficiencyClient({
                                                 type="number"
                                                 value={nestedComp.quantity || ''}
                                                 onChange={(e) => {
-                                                  const nestedComponents = [...component.nestedItem!.components];
+                                                  if (!component.nestedItem) return;
+                                                  const nestedComponents = [...component.nestedItem.components];
                                                   nestedComponents[nestedCompIndex] = { ...nestedComponents[nestedCompIndex], quantity: parseFloat(e.target.value) || 0 };
-                                                  const nestedItem = { ...component.nestedItem!, components: nestedComponents };
+                                                  const nestedItem = { ...component.nestedItem, components: nestedComponents };
                                                   updateBonusRoomComponent(roomIndex, itemIndex, compIndex, 'nestedItem', nestedItem);
                                                 }}
                                                 className="w-16 px-1 py-0.5 bg-gray-600 text-white rounded border border-gray-500 text-[10px]"
                                                 placeholder="수량"
                                                 min="0"
                                               />
-                                              {component.nestedItem.itemType === '선택' && (
+                                              {component.nestedItem?.itemType === '선택' && (
                                                 <input
                                                   type="radio"
                                                   name={`bonus-nested-${roomIndex}-${itemIndex}-${compIndex}-selection`}
                                                   checked={nestedComp.selected || false}
                                                   onChange={(e) => {
-                                                    const nestedComponents = component.nestedItem!.components.map((c, idx) => ({
+                                                    if (!component.nestedItem) return;
+                                                    const nestedComponents = component.nestedItem.components.map((c, idx) => ({
                                                       ...c,
                                                       selected: idx === nestedCompIndex,
                                                     }));
-                                                    const nestedItem = { ...component.nestedItem!, components: nestedComponents };
+                                                    const nestedItem = { ...component.nestedItem, components: nestedComponents };
                                                     updateBonusRoomComponent(roomIndex, itemIndex, compIndex, 'nestedItem', nestedItem);
                                                   }}
                                                   className="w-3 h-3"
                                                 />
                                               )}
-                                              {component.nestedItem.itemType === '확률' && (
+                                              {component.nestedItem?.itemType === '확률' && (
                                                 <input
                                                   type="number"
                                                   value={nestedComp.probability !== undefined ? (nestedComp.probability * 100) : ''}
                                                   onChange={(e) => {
-                                                    const nestedComponents = [...component.nestedItem!.components];
+                                                    if (!component.nestedItem) return;
+                                                    const nestedComponents = [...component.nestedItem.components];
                                                     nestedComponents[nestedCompIndex] = { ...nestedComponents[nestedCompIndex], probability: (parseFloat(e.target.value) || 0) / 100 };
-                                                    const nestedItem = { ...component.nestedItem!, components: nestedComponents };
+                                                    const nestedItem = { ...component.nestedItem, components: nestedComponents };
                                                     updateBonusRoomComponent(roomIndex, itemIndex, compIndex, 'nestedItem', nestedItem);
                                                   }}
                                                   className="w-12 px-1 py-0.5 bg-gray-600 text-white rounded border border-gray-500 text-[10px]"
@@ -2257,8 +2261,9 @@ export default function PackageEfficiencyClient({
                                               )}
                                               <button
                                                 onClick={() => {
-                                                  const nestedComponents = component.nestedItem!.components.filter((_, idx) => idx !== nestedCompIndex);
-                                                  const nestedItem = { ...component.nestedItem!, components: nestedComponents };
+                                                  if (!component.nestedItem) return;
+                                                  const nestedComponents = component.nestedItem.components.filter((_, idx) => idx !== nestedCompIndex);
+                                                  const nestedItem = { ...component.nestedItem, components: nestedComponents };
                                                   updateBonusRoomComponent(roomIndex, itemIndex, compIndex, 'nestedItem', nestedItem);
                                                 }}
                                                 className="px-1.5 py-0.5 bg-red-600 text-white rounded hover:bg-red-700 transition-colors text-[10px]"
