@@ -11,7 +11,9 @@ import {
   type OptimalStrategy,
 } from '@/lib/advancedRefining';
 import type { ValueDbEntry } from '@/lib/valueDb';
-import simulationData from '@/lib/advancedRefiningData.json';
+import simulationDataLevel1_2 from '@/lib/advancedRefiningData.json';
+import simulationDataLevel3 from '@/lib/advancedRefiningData-level3.json';
+import simulationDataLevel4 from '@/lib/advancedRefiningData-level4.json';
 import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
 import { usePriceOverride } from '../contexts/PriceOverrideContext';
 
@@ -140,13 +142,26 @@ export default function AdvancedRefiningClient({
     } | null;
   } | null>(null);
 
-  // 하드코딩된 시뮬레이션 데이터에서 결과 가져오기 (상재1~4 모두 동일한 시뮬레이션 결과 사용)
+  // 하드코딩된 시뮬레이션 데이터에서 결과 가져오기
   const simulationResults = useMemo(() => {
     if (activeSubTab !== '상재1' && activeSubTab !== '상재2' && activeSubTab !== '상재3' && activeSubTab !== '상재4') {
       return null;
     }
 
     const gearType: GearType = activeSubSubTab;
+    
+    // 상재 레벨에 따라 다른 데이터 파일 사용
+    let simulationData: any;
+    if (activeSubTab === '상재3') {
+      simulationData = simulationDataLevel3;
+    } else if (activeSubTab === '상재4') {
+      simulationData = simulationDataLevel4;
+    } else {
+      simulationData = simulationDataLevel1_2;
+    }
+    
+    // 상재3, 4의 경우 enhancedAncestor 관련 필드가 있음
+    const isLevel3Or4 = activeSubTab === '상재3' || activeSubTab === '상재4';
     
     // 하드코딩된 데이터에서 해당 gearType의 결과만 필터링
     const filteredData = (simulationData as unknown as {
@@ -159,11 +174,14 @@ export default function AdvancedRefiningClient({
           normalCraft: boolean;
           ancestorBreath: boolean;
           ancestorCraft: boolean;
+          enhancedAncestorBreath?: boolean;
+          enhancedAncestorCraft?: boolean;
         };
         result: {
           expectedAttempts: number;
           normalTurns: number;
           ancestorTurns: number;
+          enhancedAncestorTurns?: number;
           freeTurns: number;
           materialBreakdown: { [key: string]: number };
         };
@@ -181,11 +199,18 @@ export default function AdvancedRefiningClient({
           useBreath: item.strategy.ancestorBreath,
           useCraftsmanship: item.strategy.ancestorCraft,
         },
+        ...(isLevel3Or4 && {
+          enhancedAncestorTurn: {
+            useBreath: item.strategy.enhancedAncestorBreath || false,
+            useCraftsmanship: item.strategy.enhancedAncestorCraft || false,
+          },
+        }),
       },
       result: {
         expectedAttempts: item.result.expectedAttempts,
         normalTurns: item.result.normalTurns,
         ancestorTurns: item.result.ancestorTurns,
+        ...(isLevel3Or4 && { enhancedAncestorTurns: item.result.enhancedAncestorTurns || 0 }),
         freeTurns: item.result.freeTurns,
         totalCost: 0, // 비용은 나중에 계산
         materialBreakdown: item.result.materialBreakdown,
@@ -292,14 +317,18 @@ export default function AdvancedRefiningClient({
     useBreathNormal: boolean,
     useCraftsmanshipNormal: boolean,
     useBreathAncestor: boolean,
-    useCraftsmanshipAncestor: boolean
+    useCraftsmanshipAncestor: boolean,
+    useBreathEnhancedAncestor?: boolean,
+    useCraftsmanshipEnhancedAncestor?: boolean
   ): {
     totalCost: number;
     normalTurnCost: number;
     ancestorTurnCost: number;
+    enhancedAncestorTurnCost?: number;
     freeTurnCost: number;
     normalTurnTotal: number;
     ancestorTurnTotal: number;
+    enhancedAncestorTurnTotal?: number;
     freeTurnTotal: number;
   } => {
     const normalTurnCost = requiredMaterialsTotal + calculateAuxiliaryCost(useBreathNormal, useCraftsmanshipNormal);
@@ -310,13 +339,25 @@ export default function AdvancedRefiningClient({
     const ancestorTurnTotal = result.ancestorTurns * ancestorTurnCost;
     const freeTurnTotal = result.freeTurns * freeTurnCost;
     
+    // 강화선조턴이 있는 경우 (상재3, 4)
+    let enhancedAncestorTurnCost: number | undefined;
+    let enhancedAncestorTurnTotal: number | undefined;
+    if (result.enhancedAncestorTurns !== undefined && useBreathEnhancedAncestor !== undefined && useCraftsmanshipEnhancedAncestor !== undefined) {
+      enhancedAncestorTurnCost = requiredMaterialsTotal + calculateAuxiliaryCost(useBreathEnhancedAncestor, useCraftsmanshipEnhancedAncestor);
+      enhancedAncestorTurnTotal = result.enhancedAncestorTurns * enhancedAncestorTurnCost;
+    }
+    
+    const totalCost = normalTurnTotal + ancestorTurnTotal + freeTurnTotal + (enhancedAncestorTurnTotal || 0);
+    
     return {
-      totalCost: normalTurnTotal + ancestorTurnTotal + freeTurnTotal,
+      totalCost,
       normalTurnCost,
       ancestorTurnCost,
+      ...(enhancedAncestorTurnCost !== undefined && { enhancedAncestorTurnCost }),
       freeTurnCost,
       normalTurnTotal,
       ancestorTurnTotal,
+      ...(enhancedAncestorTurnTotal !== undefined && { enhancedAncestorTurnTotal }),
       freeTurnTotal,
     };
   }, [requiredMaterialsTotal, calculateAuxiliaryCost]);
@@ -334,7 +375,9 @@ export default function AdvancedRefiningClient({
         simResult.strategy.normalTurn.useBreath,
         simResult.strategy.normalTurn.useCraftsmanship,
         simResult.strategy.ancestorTurn.useBreath,
-        simResult.strategy.ancestorTurn.useCraftsmanship
+        simResult.strategy.ancestorTurn.useCraftsmanship,
+        simResult.strategy.enhancedAncestorTurn?.useBreath,
+        simResult.strategy.enhancedAncestorTurn?.useCraftsmanship
       );
       return {
         ...simResult,
@@ -343,52 +386,60 @@ export default function AdvancedRefiningClient({
     });
 
     // 최적 전략 찾기 (총 비용이 가장 낮은 것)
-    // 상재3, 상재4의 경우 야금술/재봉술이 투입되지 않은 시나리오만 고려
-    let candidatesForOptimal = allResults;
-    if (activeSubTab === '상재3' || activeSubTab === '상재4') {
-      candidatesForOptimal = allResults.filter(
-        (r) => !r.strategy.normalTurn.useCraftsmanship && !r.strategy.ancestorTurn.useCraftsmanship
-      );
-    }
+    // 모든 레벨에서 야금술/재봉술이 투입되지 않은 시나리오만 고려
+    let candidatesForOptimal = allResults.filter((r) => {
+      const noNormalCraft = !r.strategy.normalTurn.useCraftsmanship;
+      const noAncestorCraft = !r.strategy.ancestorTurn.useCraftsmanship;
+      const noEnhancedAncestorCraft = !r.strategy.enhancedAncestorTurn?.useCraftsmanship;
+      return noNormalCraft && noAncestorCraft && noEnhancedAncestorCraft;
+    });
     
     const optimal = candidatesForOptimal.reduce((best, current) => {
       return current.costBreakdown.totalCost < best.costBreakdown.totalCost ? current : best;
     }, candidatesForOptimal[0]);
 
-    // 보조재료 미투입 시나리오 찾기 (일반턴/선조턴 모두 미투입)
+    // 보조재료 미투입 시나리오 찾기 (모든 턴에서 미투입)
     const noAux = allResults.find(
       (r) => 
         !r.strategy.normalTurn.useBreath && 
         !r.strategy.normalTurn.useCraftsmanship &&
         !r.strategy.ancestorTurn.useBreath && 
-        !r.strategy.ancestorTurn.useCraftsmanship
+        !r.strategy.ancestorTurn.useCraftsmanship &&
+        !r.strategy.enhancedAncestorTurn?.useBreath &&
+        !r.strategy.enhancedAncestorTurn?.useCraftsmanship
     );
 
-    // 보조재료 전부투입 시나리오 찾기 (일반턴/선조턴 모두 투입)
+    // 보조재료 전부투입 시나리오 찾기 (일반턴/선조턴 모두 투입, 상재1~2 전용)
     const fullAux = allResults.find(
       (r) => 
         r.strategy.normalTurn.useBreath && 
         r.strategy.normalTurn.useCraftsmanship &&
         r.strategy.ancestorTurn.useBreath && 
-        r.strategy.ancestorTurn.useCraftsmanship
+        r.strategy.ancestorTurn.useCraftsmanship &&
+        (!r.strategy.enhancedAncestorTurn || 
+          (r.strategy.enhancedAncestorTurn.useBreath && r.strategy.enhancedAncestorTurn.useCraftsmanship))
     );
 
-    // 선조턴에만 야금술/재봉술 투입 시나리오 찾기
+    // 선조턴에만 야금술/재봉술 투입 시나리오 찾기 (상재1~2 전용)
     const ancestorOnlyCraft = allResults.find(
       (r) => 
         !r.strategy.normalTurn.useBreath && 
         !r.strategy.normalTurn.useCraftsmanship &&
         !r.strategy.ancestorTurn.useBreath && 
-        r.strategy.ancestorTurn.useCraftsmanship
+        r.strategy.ancestorTurn.useCraftsmanship &&
+        !r.strategy.enhancedAncestorTurn?.useBreath &&
+        !r.strategy.enhancedAncestorTurn?.useCraftsmanship
     );
 
-    // 일반턴과 선조턴 모두에 야금술/재봉술 투입 시나리오 찾기
+    // 일반턴과 선조턴 모두에 야금술/재봉술 투입 시나리오 찾기 (상재1~2 전용)
     const bothTurnsCraft = allResults.find(
       (r) => 
         !r.strategy.normalTurn.useBreath && 
         r.strategy.normalTurn.useCraftsmanship &&
         !r.strategy.ancestorTurn.useBreath && 
-        r.strategy.ancestorTurn.useCraftsmanship
+        r.strategy.ancestorTurn.useCraftsmanship &&
+        !r.strategy.enhancedAncestorTurn?.useBreath &&
+        !r.strategy.enhancedAncestorTurn?.useCraftsmanship
     );
 
     // 선조턴에만 숨결 투입 시나리오 찾기
@@ -397,7 +448,43 @@ export default function AdvancedRefiningClient({
         !r.strategy.normalTurn.useBreath && 
         !r.strategy.normalTurn.useCraftsmanship &&
         r.strategy.ancestorTurn.useBreath && 
-        !r.strategy.ancestorTurn.useCraftsmanship
+        !r.strategy.ancestorTurn.useCraftsmanship &&
+        !r.strategy.enhancedAncestorTurn?.useBreath &&
+        !r.strategy.enhancedAncestorTurn?.useCraftsmanship
+    );
+
+    // 상재3, 4 전용 시나리오들
+    // 강화선조턴에만 야금술/재봉술 투입
+    const enhancedAncestorOnlyCraft = allResults.find(
+      (r) => 
+        !r.strategy.normalTurn.useBreath && 
+        !r.strategy.normalTurn.useCraftsmanship &&
+        !r.strategy.ancestorTurn.useBreath && 
+        !r.strategy.ancestorTurn.useCraftsmanship &&
+        !r.strategy.enhancedAncestorTurn?.useBreath &&
+        r.strategy.enhancedAncestorTurn?.useCraftsmanship
+    );
+
+    // 선조턴 + 강화선조턴에 야금술/재봉술 투입
+    const ancestorAndEnhancedCraft = allResults.find(
+      (r) => 
+        !r.strategy.normalTurn.useBreath && 
+        !r.strategy.normalTurn.useCraftsmanship &&
+        !r.strategy.ancestorTurn.useBreath && 
+        r.strategy.ancestorTurn.useCraftsmanship &&
+        !r.strategy.enhancedAncestorTurn?.useBreath &&
+        r.strategy.enhancedAncestorTurn?.useCraftsmanship
+    );
+
+    // 일반턴 + 선조턴 + 강화선조턴에 야금술/재봉술 투입
+    const allTurnsCraft = allResults.find(
+      (r) => 
+        !r.strategy.normalTurn.useBreath && 
+        r.strategy.normalTurn.useCraftsmanship &&
+        !r.strategy.ancestorTurn.useBreath && 
+        r.strategy.ancestorTurn.useCraftsmanship &&
+        !r.strategy.enhancedAncestorTurn?.useBreath &&
+        r.strategy.enhancedAncestorTurn?.useCraftsmanship
     );
 
     // 일반턴과 선조턴 모두에 숨결 투입 시나리오 찾기
@@ -406,7 +493,9 @@ export default function AdvancedRefiningClient({
         r.strategy.normalTurn.useBreath && 
         !r.strategy.normalTurn.useCraftsmanship &&
         r.strategy.ancestorTurn.useBreath && 
-        !r.strategy.ancestorTurn.useCraftsmanship
+        !r.strategy.ancestorTurn.useCraftsmanship &&
+        !r.strategy.enhancedAncestorTurn?.useBreath &&
+        !r.strategy.enhancedAncestorTurn?.useCraftsmanship
     );
 
     // 결과 설정
@@ -427,13 +516,16 @@ export default function AdvancedRefiningClient({
     const craftsmanshipItemName = activeSubSubTab === '무기' ? `장인의 야금술 : ${craftsmanshipStage}` : `장인의 재봉술 : ${craftsmanshipStage}`;
     const craftsmanshipMarketPrice = getMaterialValue(craftsmanshipItemName) || 0;
     
+    // materialBreakdown에서는 항상 "1단계"로 저장되어 있으므로, 찾을 때는 "1단계"를 사용
+    const craftsmanshipItemNameInBreakdown = activeSubSubTab === '무기' ? '장인의 야금술 : 1단계' : '장인의 재봉술 : 1단계';
+    
     let ancestorOnlyCraftAnalysis = null;
     let bothTurnsCraftAnalysis = null;
     
     // 선조턴에만 야금술/재봉술 투입 시 실제 가치
     if (noAux && ancestorOnlyCraft) {
       const additionalValue = noAux.costBreakdown.totalCost - ancestorOnlyCraft.costBreakdown.totalCost;
-      const craftsmanshipAmount = ancestorOnlyCraft.result.materialBreakdown[craftsmanshipItemName] || 0;
+      const craftsmanshipAmount = ancestorOnlyCraft.result.materialBreakdown[craftsmanshipItemNameInBreakdown] || 0;
       const craftsmanshipUnitValue = craftsmanshipAmount > 0 ? additionalValue / craftsmanshipAmount : 0;
       const craftsmanshipRealValue = craftsmanshipUnitValue + craftsmanshipMarketPrice;
       
@@ -448,7 +540,7 @@ export default function AdvancedRefiningClient({
     // 일반턴+선조턴 모두 야금술/재봉술 투입 시 실제 가치
     if (noAux && bothTurnsCraft) {
       const additionalValue = noAux.costBreakdown.totalCost - bothTurnsCraft.costBreakdown.totalCost;
-      const craftsmanshipAmount = bothTurnsCraft.result.materialBreakdown[craftsmanshipItemName] || 0;
+      const craftsmanshipAmount = bothTurnsCraft.result.materialBreakdown[craftsmanshipItemNameInBreakdown] || 0;
       const craftsmanshipUnitValue = craftsmanshipAmount > 0 ? additionalValue / craftsmanshipAmount : 0;
       const craftsmanshipRealValue = craftsmanshipUnitValue + craftsmanshipMarketPrice;
       
@@ -686,6 +778,25 @@ export default function AdvancedRefiningClient({
                           </div>
                         </div>
                       </div>
+                      {optimalStrategy.enhancedAncestorTurn && (activeSubTab === '상재3' || activeSubTab === '상재4') && (
+                        <div className="bg-gray-900/50 rounded-lg p-4">
+                          <h3 className="text-sm font-semibold text-orange-400 mb-3">강화 선조 턴</h3>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">숨결 투입</span>
+                              <span className={optimalStrategy.enhancedAncestorTurn.useBreath ? 'text-green-400 font-medium' : 'text-red-400'}>
+                                {optimalStrategy.enhancedAncestorTurn.useBreath ? 'Yes' : 'No'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">야금술/재봉술 투입</span>
+                              <span className={optimalStrategy.enhancedAncestorTurn.useCraftsmanship ? 'text-green-400 font-medium' : 'text-red-400'}>
+                                {optimalStrategy.enhancedAncestorTurn.useCraftsmanship ? 'Yes' : 'No'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <SimulationStats 
                       result={optimalResult} 
@@ -695,7 +806,9 @@ export default function AdvancedRefiningClient({
                         optimalStrategy.normalTurn.useBreath,
                         optimalStrategy.normalTurn.useCraftsmanship,
                         optimalStrategy.ancestorTurn.useBreath,
-                        optimalStrategy.ancestorTurn.useCraftsmanship
+                        optimalStrategy.ancestorTurn.useCraftsmanship,
+                        optimalStrategy.enhancedAncestorTurn?.useBreath,
+                        optimalStrategy.enhancedAncestorTurn?.useCraftsmanship
                       ) : null}
                     />
                   </div>
@@ -929,7 +1042,7 @@ export default function AdvancedRefiningClient({
                   <div className="bg-gradient-to-br from-gray-800 to-gray-800/50 rounded-xl border border-gray-700 p-6 shadow-lg">
                     <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                       <span className="text-2xl">📋</span>
-                      모든 시나리오 비교 (16가지)
+                      모든 시나리오 비교 ({allScenariosResults.length}가지)
                     </h2>
                      <div className="overflow-x-auto">
                         <table className="w-full text-sm">
@@ -937,9 +1050,15 @@ export default function AdvancedRefiningClient({
                             <tr className="border-b border-gray-700">
                               <th className="px-3 py-2 text-left text-gray-300">일반턴</th>
                               <th className="px-3 py-2 text-left text-gray-300">선조턴</th>
+                              {(activeSubTab === '상재3' || activeSubTab === '상재4') && (
+                                <th className="px-3 py-2 text-left text-gray-300">강화선조턴</th>
+                              )}
                               <th className="px-3 py-2 text-right text-gray-300">기대 횟수</th>
                               <th className="px-3 py-2 text-right text-gray-300">일반턴</th>
                               <th className="px-3 py-2 text-right text-gray-300">선조턴</th>
+                              {(activeSubTab === '상재3' || activeSubTab === '상재4') && (
+                                <th className="px-3 py-2 text-right text-gray-300">강화선조턴</th>
+                              )}
                               <th className="px-3 py-2 text-right text-gray-300">무료턴</th>
                               <th className="px-3 py-2 text-right text-yellow-400 font-bold">총 비용</th>
                             </tr>
@@ -954,7 +1073,10 @@ export default function AdvancedRefiningClient({
                                   optimalStrategy.normalTurn.useBreath === scenario.strategy.normalTurn.useBreath &&
                                   optimalStrategy.normalTurn.useCraftsmanship === scenario.strategy.normalTurn.useCraftsmanship &&
                                   optimalStrategy.ancestorTurn.useBreath === scenario.strategy.ancestorTurn.useBreath &&
-                                  optimalStrategy.ancestorTurn.useCraftsmanship === scenario.strategy.ancestorTurn.useCraftsmanship;
+                                  optimalStrategy.ancestorTurn.useCraftsmanship === scenario.strategy.ancestorTurn.useCraftsmanship &&
+                                  (!optimalStrategy.enhancedAncestorTurn || !scenario.strategy.enhancedAncestorTurn || 
+                                    (optimalStrategy.enhancedAncestorTurn.useBreath === scenario.strategy.enhancedAncestorTurn.useBreath &&
+                                     optimalStrategy.enhancedAncestorTurn.useCraftsmanship === scenario.strategy.enhancedAncestorTurn.useCraftsmanship));
 
                                 return (
                                   <tr 
@@ -969,9 +1091,24 @@ export default function AdvancedRefiningClient({
                                       숨결: {scenario.strategy.ancestorTurn.useBreath ? '✓' : '✗'}<br />
                                       야금술: {scenario.strategy.ancestorTurn.useCraftsmanship ? '✓' : '✗'}
                                     </td>
+                                    {(activeSubTab === '상재3' || activeSubTab === '상재4') && (
+                                      <td className="px-3 py-2 text-gray-300">
+                                        {scenario.strategy.enhancedAncestorTurn ? (
+                                          <>
+                                            숨결: {scenario.strategy.enhancedAncestorTurn.useBreath ? '✓' : '✗'}<br />
+                                            야금술: {scenario.strategy.enhancedAncestorTurn.useCraftsmanship ? '✓' : '✗'}
+                                          </>
+                                        ) : '-'}
+                                      </td>
+                                    )}
                                     <td className="px-3 py-2 text-right text-white">{formatDecimal(scenario.result.expectedAttempts)}</td>
                                     <td className="px-3 py-2 text-right text-white">{formatDecimal(scenario.result.normalTurns)}</td>
                                     <td className="px-3 py-2 text-right text-purple-400">{formatDecimal(scenario.result.ancestorTurns)}</td>
+                                    {(activeSubTab === '상재3' || activeSubTab === '상재4') && (
+                                      <td className="px-3 py-2 text-right text-orange-400">
+                                        {scenario.result.enhancedAncestorTurns !== undefined ? formatDecimal(scenario.result.enhancedAncestorTurns) : '-'}
+                                      </td>
+                                    )}
                                     <td className="px-3 py-2 text-right text-yellow-400">{formatDecimal(scenario.result.freeTurns)}</td>
                                     <td className="px-3 py-2 text-right text-yellow-400 font-bold">
                                       {formatNumber(scenario.costBreakdown.totalCost)} 골드
@@ -1047,9 +1184,11 @@ function SimulationStats({
     totalCost: number;
     normalTurnCost: number;
     ancestorTurnCost: number;
+    enhancedAncestorTurnCost?: number;
     freeTurnCost: number;
     normalTurnTotal: number;
     ancestorTurnTotal: number;
+    enhancedAncestorTurnTotal?: number;
     freeTurnTotal: number;
   } | null;
 }) {
@@ -1065,7 +1204,7 @@ function SimulationStats({
 
   return (
     <div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+      <div className={`grid gap-4 mb-4 ${result.enhancedAncestorTurns !== undefined ? 'grid-cols-2 md:grid-cols-5' : 'grid-cols-2 md:grid-cols-4'}`}>
         <div className="bg-gray-900/50 rounded-lg p-4">
           <div className="text-xs text-gray-400 mb-1">기대 횟수</div>
           <div className={`text-2xl font-bold ${colorClasses[color]}`}>
@@ -1080,6 +1219,12 @@ function SimulationStats({
           <div className="text-xs text-gray-400 mb-1">선조 턴</div>
           <div className="text-2xl font-bold text-purple-400">{formatDecimal(result.ancestorTurns)}</div>
         </div>
+        {result.enhancedAncestorTurns !== undefined && (
+          <div className="bg-gray-900/50 rounded-lg p-4">
+            <div className="text-xs text-gray-400 mb-1">강화 선조 턴</div>
+            <div className="text-2xl font-bold text-orange-400">{formatDecimal(result.enhancedAncestorTurns)}</div>
+          </div>
+        )}
         <div className="bg-gray-900/50 rounded-lg p-4">
           <div className="text-xs text-gray-400 mb-1">무료 턴</div>
           <div className="text-2xl font-bold text-yellow-400">{formatDecimal(result.freeTurns)}</div>
@@ -1101,6 +1246,14 @@ function SimulationStats({
                 {formatDecimalNumber(costBreakdown.ancestorTurnCost)} × {formatDecimal(result.ancestorTurns)} = {formatDecimalNumber(costBreakdown.ancestorTurnTotal)} 골드
               </span>
             </div>
+            {costBreakdown.enhancedAncestorTurnCost !== undefined && costBreakdown.enhancedAncestorTurnTotal !== undefined && result.enhancedAncestorTurns !== undefined && (
+              <div className="flex justify-between items-center">
+                <span className="text-gray-300">강화선조턴 비용 × 강화선조턴 횟수</span>
+                <span className="text-white font-medium">
+                  {formatDecimalNumber(costBreakdown.enhancedAncestorTurnCost)} × {formatDecimal(result.enhancedAncestorTurns)} = {formatDecimalNumber(costBreakdown.enhancedAncestorTurnTotal)} 골드
+                </span>
+              </div>
+            )}
             <div className="flex justify-between items-center">
               <span className="text-gray-300">무료턴 비용 × 무료턴 횟수</span>
               <span className="text-white font-medium">

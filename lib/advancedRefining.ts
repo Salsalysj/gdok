@@ -18,6 +18,7 @@ export interface SimulationResult {
   expectedAttempts: number;
   normalTurns: number;
   ancestorTurns: number;
+  enhancedAncestorTurns?: number; // 상재3, 4 전용
   freeTurns: number;
   totalCost: number;
   materialBreakdown: { [key: string]: number };
@@ -29,6 +30,10 @@ export interface OptimalStrategy {
     useCraftsmanship: boolean;
   };
   ancestorTurn: {
+    useBreath: boolean;
+    useCraftsmanship: boolean;
+  };
+  enhancedAncestorTurn?: {
     useBreath: boolean;
     useCraftsmanship: boolean;
   };
