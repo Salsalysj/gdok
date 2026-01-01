@@ -809,48 +809,13 @@ function resolveEntry(
     return null;
   };
 
-  if (itemName === '장인의 야금술 : 3단계') {
-    const stage3Price = getStage3Price('야금술');
-    if (stage3Price != null && stage3Price > 0) {
-      return { itemName, unitType: '골드', unitValue: stage3Price, note: '장인의 야금술 : 2단계 × 2.5' };
-    }
+  // 야금술/재봉술 3단계/4단계는 가치 계산하지 않음
+  if (itemName === '장인의 야금술 : 3단계' || itemName === '장인의 야금술 : 4단계') {
+    return { itemName, unitType: null, unitValue: null };
   }
 
-  if (itemName === '장인의 야금술 : 4단계') {
-    // 먼저 3단계 가치 확인
-    const stage3Price = getStage3Price('야금술');
-    if (stage3Price != null && stage3Price > 0) {
-      const stage4Price = stage3Price * 2;
-      return { itemName, unitType: '골드', unitValue: stage4Price, note: '장인의 야금술 : 3단계 × 2' };
-    }
-    // 3단계가 없으면 2단계로부터 계산
-    const stage2Price = getStage2Price('야금술');
-    if (stage2Price != null && stage2Price > 0) {
-      const stage4Price = stage2Price * 2.5 * 2;
-      return { itemName, unitType: '골드', unitValue: stage4Price, note: '장인의 야금술 : 2단계 × 2.5 × 2' };
-    }
-  }
-
-  if (itemName === '장인의 재봉술 : 3단계') {
-    const stage3Price = getStage3Price('재봉술');
-    if (stage3Price != null && stage3Price > 0) {
-      return { itemName, unitType: '골드', unitValue: stage3Price, note: '장인의 재봉술 : 2단계 × 2.5' };
-    }
-  }
-
-  if (itemName === '장인의 재봉술 : 4단계') {
-    // 먼저 3단계 가치 확인
-    const stage3Price = getStage3Price('재봉술');
-    if (stage3Price != null && stage3Price > 0) {
-      const stage4Price = stage3Price * 2;
-      return { itemName, unitType: '골드', unitValue: stage4Price, note: '장인의 재봉술 : 3단계 × 2' };
-    }
-    // 3단계가 없으면 2단계로부터 계산
-    const stage2Price = getStage2Price('재봉술');
-    if (stage2Price != null && stage2Price > 0) {
-      const stage4Price = stage2Price * 2.5 * 2;
-      return { itemName, unitType: '골드', unitValue: stage4Price, note: '장인의 재봉술 : 2단계 × 2.5 × 2' };
-    }
+  if (itemName === '장인의 재봉술 : 3단계' || itemName === '장인의 재봉술 : 4단계') {
+    return { itemName, unitType: null, unitValue: null };
   }
 
   return { itemName, unitType: null, unitValue: null };

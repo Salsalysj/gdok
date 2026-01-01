@@ -131,11 +131,33 @@ function selectAncestorEffect(isEnhanced: boolean): AncestorEffect {
 }
 
 // 기본 경험치 획득 (재련 1회당)
-function getBaseExp(): number {
+// useBreath: 숨결 사용 여부 (대성공 +15%, 대성공x2 +15%)
+// useCraftsmanship: 야금술/재봉술 사용 여부 (대성공 +30%, 대성공x2 +20%)
+function getBaseExp(useBreath: boolean = false, useCraftsmanship: boolean = false): number {
+  // 기본 확률
+  let prob10 = EXP_10_PROBABILITY; // 80%
+  let prob20 = EXP_20_PROBABILITY; // 15%
+  let prob40 = EXP_40_PROBABILITY; // 5%
+  
+  // 숨결 효과: 대성공 +15%, 대성공x2 +15%
+  if (useBreath) {
+    prob20 += 0.15;
+    prob40 += 0.15;
+  }
+  
+  // 야금술/재봉술 효과: 대성공 +30%, 대성공x2 +20%
+  if (useCraftsmanship) {
+    prob20 += 0.30;
+    prob40 += 0.20;
+  }
+  
+  // 일반 성공 확률 조정 (전체 확률이 100%가 되도록)
+  prob10 = 1.0 - prob20 - prob40;
+  
   const random = Math.random();
-  if (random < EXP_10_PROBABILITY) {
+  if (random < prob10) {
     return 10;
-  } else if (random < EXP_10_PROBABILITY + EXP_20_PROBABILITY) {
+  } else if (random < prob10 + prob20) {
     return 20;
   } else {
     return 40;
@@ -263,7 +285,7 @@ function simulateRefinement(
     
     if (currentTurnType === 'ancestor' || currentTurnType === 'enhancedAncestor') {
       // 선조의 가호 턴: 기본 경험치 획득 후 선조의 가호 효과 적용
-      const baseExp = getBaseExp();
+      const baseExp = getBaseExp(currentStrategy.useBreath, currentStrategy.useCraftsmanship);
       const effect = selectAncestorEffect(currentTurnType === 'enhancedAncestor');
       expGain = applyAncestorEffect(effect, currentTurnType === 'enhancedAncestor', baseExp);
       totalExp += expGain;
@@ -281,7 +303,7 @@ function simulateRefinement(
       }
     } else {
       // 일반 턴 또는 무료 턴: 기본 경험치만 획득
-      expGain = getBaseExp();
+      expGain = getBaseExp(currentStrategy.useBreath, currentStrategy.useCraftsmanship);
       totalExp += expGain;
     }
     

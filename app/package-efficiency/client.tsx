@@ -2244,50 +2244,50 @@ export default function PackageEfficiencyClient({
                                 </div>
                                 
                                 {/* 두 번째 줄: 묶음 항목 추가 선택 시 항목명과 타입 입력 필드 */}
-                                {component.itemName === '__nested__' && component.nestedItem && (
+                                  {component.itemName === '__nested__' && component.nestedItem && (
                                   <div className="flex gap-2 items-center">
-                                    <input
-                                      type="text"
-                                      value={component.nestedItem.itemName}
-                                      onChange={(e) => {
-                                        const nestedItem = { ...component.nestedItem!, itemName: e.target.value };
-                                        updateBonusRoomComponent(roomIndex, itemIndex, compIndex, 'nestedItem', nestedItem);
-                                      }}
-                                      className="flex-1 px-2 py-1 bg-gray-600 text-white rounded border border-gray-500 text-xs"
-                                      placeholder="묶음 항목명"
-                                    />
-                                    <select
-                                      value={component.nestedItem.itemType}
-                                      onChange={(e) => {
-                                        const nestedItem = { ...component.nestedItem!, itemType: e.target.value as '확정' | '확률' | '선택' };
-                                        updateBonusRoomComponent(roomIndex, itemIndex, compIndex, 'nestedItem', nestedItem);
-                                      }}
+                                      <input
+                                        type="text"
+                                        value={component.nestedItem.itemName}
+                                        onChange={(e) => {
+                                          const nestedItem = { ...component.nestedItem!, itemName: e.target.value };
+                                          updateBonusRoomComponent(roomIndex, itemIndex, compIndex, 'nestedItem', nestedItem);
+                                        }}
+                                        className="flex-1 px-2 py-1 bg-gray-600 text-white rounded border border-gray-500 text-xs"
+                                        placeholder="묶음 항목명"
+                                      />
+                                      <select
+                                        value={component.nestedItem.itemType}
+                                        onChange={(e) => {
+                                          const nestedItem = { ...component.nestedItem!, itemType: e.target.value as '확정' | '확률' | '선택' };
+                                          updateBonusRoomComponent(roomIndex, itemIndex, compIndex, 'nestedItem', nestedItem);
+                                        }}
                                       className="w-20 px-2 py-1 bg-gray-600 text-white rounded border border-gray-500 text-xs"
-                                    >
-                                      <option value="확정">확정</option>
-                                      <option value="확률">확률</option>
-                                      <option value="선택">선택</option>
-                                    </select>
-                                  </div>
-                                )}
+                                      >
+                                        <option value="확정">확정</option>
+                                        <option value="확률">확률</option>
+                                        <option value="선택">선택</option>
+                                      </select>
+                                    </div>
+                                  )}
                                 
-                                {/* 직접 입력 선택 시 이름 입력 필드 */}
-                                {(component.itemName === '__manual__' || (component.itemName && component.itemName !== '__nested__' && !itemList.includes(component.itemName))) && (
+                                  {/* 직접 입력 선택 시 이름 입력 필드 */}
+                                  {(component.itemName === '__manual__' || (component.itemName && component.itemName !== '__nested__' && !itemList.includes(component.itemName))) && (
                                   <div>
-                                    <input
-                                      type="text"
-                                      value={component.itemName === '__manual__' ? '' : component.itemName}
-                                      onChange={(e) => {
-                                        // 직접 입력 모드에서는 itemName을 사용자가 입력한 값으로 설정
-                                        // 빈 문자열이면 __manual__ 유지, 값이 있으면 입력한 값으로 설정
-                                        const value = e.target.value || '__manual__';
-                                        updateBonusRoomComponent(roomIndex, itemIndex, compIndex, 'itemName', value);
-                                      }}
-                                      className="w-full px-2 py-1 bg-gray-600 text-white rounded border border-gray-500 text-xs"
-                                      placeholder="아이템 이름을 입력하세요"
-                                    />
-                                  </div>
-                                )}
+                                      <input
+                                        type="text"
+                                        value={component.itemName === '__manual__' ? '' : component.itemName}
+                                        onChange={(e) => {
+                                          // 직접 입력 모드에서는 itemName을 사용자가 입력한 값으로 설정
+                                          // 빈 문자열이면 __manual__ 유지, 값이 있으면 입력한 값으로 설정
+                                          const value = e.target.value || '__manual__';
+                                          updateBonusRoomComponent(roomIndex, itemIndex, compIndex, 'itemName', value);
+                                        }}
+                                        className="w-full px-2 py-1 bg-gray-600 text-white rounded border border-gray-500 text-xs"
+                                        placeholder="아이템 이름을 입력하세요"
+                                      />
+                                    </div>
+                                  )}
                                 
                                 {/* 세 번째 줄: 수량, 확률, 삭제 버튼 */}
                                 <div className="flex gap-2 items-center flex-wrap">
@@ -2347,9 +2347,9 @@ export default function PackageEfficiencyClient({
                                           <div key={nestedCompIndex} className="bg-gray-700/50 rounded p-1.5 border border-gray-600">
                                             <div className="space-y-1">
                                               {/* 첫 번째 줄: 드롭다운 */}
-                                              <div className="flex gap-1 items-center">
+                                            <div className="flex gap-1 items-center">
                                                 <SearchableSelect
-                                                  value={nestedComp.itemName}
+                                                value={nestedComp.itemName}
                                                   onChange={(value) => {
                                                     if (!component.nestedItem) return;
                                                     const nestedComponents = [...component.nestedItem.components];
@@ -2384,14 +2384,14 @@ export default function PackageEfficiencyClient({
                                                 <input
                                                   type="text"
                                                   value={nestedComp.itemName === '__manual__' ? '' : nestedComp.itemName}
-                                                  onChange={(e) => {
-                                                    if (!component.nestedItem) return;
-                                                    const nestedComponents = [...component.nestedItem.components];
+                                                onChange={(e) => {
+                                                  if (!component.nestedItem) return;
+                                                  const nestedComponents = [...component.nestedItem.components];
                                                     const value = e.target.value || '__manual__';
                                                     nestedComponents[nestedCompIndex] = { ...nestedComponents[nestedCompIndex], itemName: value };
-                                                    const nestedItem = { ...component.nestedItem, components: nestedComponents };
-                                                    updateBonusRoomComponent(roomIndex, itemIndex, compIndex, 'nestedItem', nestedItem);
-                                                  }}
+                                                  const nestedItem = { ...component.nestedItem, components: nestedComponents };
+                                                  updateBonusRoomComponent(roomIndex, itemIndex, compIndex, 'nestedItem', nestedItem);
+                                                }}
                                                   className="w-full px-1 py-0.5 bg-gray-600 text-white rounded border border-gray-500 text-[10px]"
                                                   placeholder="아이템 이름 입력"
                                                 />
@@ -2399,65 +2399,65 @@ export default function PackageEfficiencyClient({
                                               
                                               {/* 두 번째 줄: 수량, 확률/선택, 삭제 */}
                                               <div className="flex gap-1 items-center">
+                                              <input
+                                                type="number"
+                                                value={nestedComp.quantity || ''}
+                                                onChange={(e) => {
+                                                  if (!component.nestedItem) return;
+                                                  const nestedComponents = [...component.nestedItem.components];
+                                                  nestedComponents[nestedCompIndex] = { ...nestedComponents[nestedCompIndex], quantity: parseFloat(e.target.value) || 0 };
+                                                  const nestedItem = { ...component.nestedItem, components: nestedComponents };
+                                                  updateBonusRoomComponent(roomIndex, itemIndex, compIndex, 'nestedItem', nestedItem);
+                                                }}
+                                                className="w-16 px-1 py-0.5 bg-gray-600 text-white rounded border border-gray-500 text-[10px]"
+                                                placeholder="수량"
+                                                min="0"
+                                              />
+                                              {component.nestedItem?.itemType === '선택' && (
+                                                <input
+                                                  type="radio"
+                                                  name={`bonus-nested-${roomIndex}-${itemIndex}-${compIndex}-selection`}
+                                                  checked={nestedComp.selected || false}
+                                                  onChange={(e) => {
+                                                    if (!component.nestedItem) return;
+                                                    const nestedComponents = component.nestedItem.components.map((c, idx) => ({
+                                                      ...c,
+                                                      selected: idx === nestedCompIndex,
+                                                    }));
+                                                    const nestedItem = { ...component.nestedItem, components: nestedComponents };
+                                                    updateBonusRoomComponent(roomIndex, itemIndex, compIndex, 'nestedItem', nestedItem);
+                                                  }}
+                                                  className="w-3 h-3"
+                                                />
+                                              )}
+                                              {component.nestedItem?.itemType === '확률' && (
                                                 <input
                                                   type="number"
-                                                  value={nestedComp.quantity || ''}
+                                                  value={nestedComp.probability !== undefined ? (nestedComp.probability * 100) : ''}
                                                   onChange={(e) => {
                                                     if (!component.nestedItem) return;
                                                     const nestedComponents = [...component.nestedItem.components];
-                                                    nestedComponents[nestedCompIndex] = { ...nestedComponents[nestedCompIndex], quantity: parseFloat(e.target.value) || 0 };
+                                                    nestedComponents[nestedCompIndex] = { ...nestedComponents[nestedCompIndex], probability: (parseFloat(e.target.value) || 0) / 100 };
                                                     const nestedItem = { ...component.nestedItem, components: nestedComponents };
                                                     updateBonusRoomComponent(roomIndex, itemIndex, compIndex, 'nestedItem', nestedItem);
                                                   }}
-                                                  className="w-16 px-1 py-0.5 bg-gray-600 text-white rounded border border-gray-500 text-[10px]"
-                                                  placeholder="수량"
+                                                  className="w-12 px-1 py-0.5 bg-gray-600 text-white rounded border border-gray-500 text-[10px]"
+                                                  placeholder="%"
                                                   min="0"
+                                                  max="100"
                                                 />
-                                                {component.nestedItem?.itemType === '선택' && (
-                                                  <input
-                                                    type="radio"
-                                                    name={`bonus-nested-${roomIndex}-${itemIndex}-${compIndex}-selection`}
-                                                    checked={nestedComp.selected || false}
-                                                    onChange={(e) => {
-                                                      if (!component.nestedItem) return;
-                                                      const nestedComponents = component.nestedItem.components.map((c, idx) => ({
-                                                        ...c,
-                                                        selected: idx === nestedCompIndex,
-                                                      }));
-                                                      const nestedItem = { ...component.nestedItem, components: nestedComponents };
-                                                      updateBonusRoomComponent(roomIndex, itemIndex, compIndex, 'nestedItem', nestedItem);
-                                                    }}
-                                                    className="w-3 h-3"
-                                                  />
-                                                )}
-                                                {component.nestedItem?.itemType === '확률' && (
-                                                  <input
-                                                    type="number"
-                                                    value={nestedComp.probability !== undefined ? (nestedComp.probability * 100) : ''}
-                                                    onChange={(e) => {
-                                                      if (!component.nestedItem) return;
-                                                      const nestedComponents = [...component.nestedItem.components];
-                                                      nestedComponents[nestedCompIndex] = { ...nestedComponents[nestedCompIndex], probability: (parseFloat(e.target.value) || 0) / 100 };
-                                                      const nestedItem = { ...component.nestedItem, components: nestedComponents };
-                                                      updateBonusRoomComponent(roomIndex, itemIndex, compIndex, 'nestedItem', nestedItem);
-                                                    }}
-                                                    className="w-12 px-1 py-0.5 bg-gray-600 text-white rounded border border-gray-500 text-[10px]"
-                                                    placeholder="%"
-                                                    min="0"
-                                                    max="100"
-                                                  />
-                                                )}
-                                                <button
-                                                  onClick={() => {
-                                                    if (!component.nestedItem) return;
-                                                    const nestedComponents = component.nestedItem.components.filter((_, idx) => idx !== nestedCompIndex);
-                                                    const nestedItem = { ...component.nestedItem, components: nestedComponents };
-                                                    updateBonusRoomComponent(roomIndex, itemIndex, compIndex, 'nestedItem', nestedItem);
-                                                  }}
-                                                  className="px-1.5 py-0.5 bg-red-600 text-white rounded hover:bg-red-700 transition-colors text-[10px]"
-                                                >
-                                                  삭제
-                                                </button>
+                                              )}
+                                              <button
+                                                onClick={() => {
+                                                  if (!component.nestedItem) return;
+                                                  const nestedComponents = component.nestedItem.components.filter((_, idx) => idx !== nestedCompIndex);
+                                                  const nestedItem = { ...component.nestedItem, components: nestedComponents };
+                                                  updateBonusRoomComponent(roomIndex, itemIndex, compIndex, 'nestedItem', nestedItem);
+                                                }}
+                                                className="px-1.5 py-0.5 bg-red-600 text-white rounded hover:bg-red-700 transition-colors text-[10px]"
+                                              >
+                                                삭제
+                                              </button>
                                               </div>
                                             </div>
                                           </div>
@@ -2544,37 +2544,37 @@ export default function PackageEfficiencyClient({
                       <div className="space-y-2">
                         {/* 첫 번째 줄: 라디오 버튼 + 드롭다운 */}
                         <div className="flex gap-2 items-center">
-                          {/* 선택 타입: 라디오 버튼 */}
-                          {packageItem.itemType === '선택' && (
-                            <input
-                              type="radio"
-                              name={`item-${itemIndex}-selection`}
-                              checked={component.selected || false}
-                              onChange={(e) => updateComponent(itemIndex, componentIndex, 'selected', e.target.checked)}
-                              className="mt-2"
-                            />
-                          )}
-                          
+                        {/* 선택 타입: 라디오 버튼 */}
+                        {packageItem.itemType === '선택' && (
+                          <input
+                            type="radio"
+                            name={`item-${itemIndex}-selection`}
+                            checked={component.selected || false}
+                            onChange={(e) => updateComponent(itemIndex, componentIndex, 'selected', e.target.checked)}
+                            className="mt-2"
+                          />
+                        )}
+                        
                           <SearchableSelect
-                            value={component.itemName}
+                          value={component.itemName}
                             onChange={(value) => {
-                              if (value === '__nested__') {
-                                // 묶음 항목 추가 선택 시 중첩된 묶음 항목 생성
-                                updateComponent(itemIndex, componentIndex, 'itemName', '__nested__');
-                                updateComponent(itemIndex, componentIndex, 'nestedItem', {
-                                  itemName: '',
-                                  itemType: '확정',
-                                  quantity: 1,
-                                  components: [],
-                                });
-                              } else {
-                                updateComponent(itemIndex, componentIndex, 'itemName', value);
-                                // 일반 아이템 선택 시 중첩 항목 제거
-                                if (value !== '__nested__') {
-                                  updateComponent(itemIndex, componentIndex, 'nestedItem', undefined);
-                                }
+                            if (value === '__nested__') {
+                              // 묶음 항목 추가 선택 시 중첩된 묶음 항목 생성
+                              updateComponent(itemIndex, componentIndex, 'itemName', '__nested__');
+                              updateComponent(itemIndex, componentIndex, 'nestedItem', {
+                                itemName: '',
+                                itemType: '확정',
+                                quantity: 1,
+                                components: [],
+                              });
+                            } else {
+                              updateComponent(itemIndex, componentIndex, 'itemName', value);
+                              // 일반 아이템 선택 시 중첩 항목 제거
+                              if (value !== '__nested__') {
+                                updateComponent(itemIndex, componentIndex, 'nestedItem', undefined);
                               }
-                            }}
+                            }
+                          }}
                             options={[
                               { value: '', label: '아이템 선택' },
                               { value: '__nested__', label: '묶음 항목 추가' },
@@ -2634,41 +2634,41 @@ export default function PackageEfficiencyClient({
                         
                         {/* 세 번째 줄: 수량, 확률, 삭제 버튼 */}
                         <div className="flex gap-2 items-center flex-wrap">
-                          <input
-                            type="number"
-                            value={component.quantity || ''}
-                            onChange={(e) => updateComponent(itemIndex, componentIndex, 'quantity', parseFloat(e.target.value) || 0)}
-                            className="w-28 px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
-                            placeholder="수량"
-                            min="0"
-                          />
-                          
-                          {/* 확률 타입: 확률 입력 필드 (백분율) */}
-                          {packageItem.itemType === '확률' && (
-                            <div className="flex items-center gap-1">
-                              <input
-                                type="number"
-                                value={component.probability !== undefined ? (component.probability * 100) : ''}
-                                onChange={(e) => {
-                                  const percentValue = parseFloat(e.target.value) || 0;
-                                  updateComponent(itemIndex, componentIndex, 'probability', percentValue / 100);
-                                }}
-                                className="w-20 px-2 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
-                                placeholder="확률"
-                                min="0"
-                                max="100"
-                                step="0.1"
-                              />
-                              <span className="text-gray-400 text-sm">%</span>
-                            </div>
-                          )}
-                          
-                          <button
-                            onClick={() => removeComponent(itemIndex, componentIndex)}
-                            className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                          >
-                            삭제
-                          </button>
+                        <input
+                          type="number"
+                          value={component.quantity || ''}
+                          onChange={(e) => updateComponent(itemIndex, componentIndex, 'quantity', parseFloat(e.target.value) || 0)}
+                          className="w-28 px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+                          placeholder="수량"
+                          min="0"
+                        />
+                        
+                        {/* 확률 타입: 확률 입력 필드 (백분율) */}
+                        {packageItem.itemType === '확률' && (
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="number"
+                              value={component.probability !== undefined ? (component.probability * 100) : ''}
+                              onChange={(e) => {
+                                const percentValue = parseFloat(e.target.value) || 0;
+                                updateComponent(itemIndex, componentIndex, 'probability', percentValue / 100);
+                              }}
+                              className="w-20 px-2 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+                              placeholder="확률"
+                              min="0"
+                              max="100"
+                              step="0.1"
+                            />
+                            <span className="text-gray-400 text-sm">%</span>
+                          </div>
+                        )}
+                        
+                        <button
+                          onClick={() => removeComponent(itemIndex, componentIndex)}
+                          className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                        >
+                          삭제
+                        </button>
                         </div>
                       </div>
 
@@ -2699,7 +2699,7 @@ export default function PackageEfficiencyClient({
                                     {/* 첫 번째 줄: 드롭다운 */}
                                     <div className="flex gap-2 items-center">
                                       <SearchableSelect
-                                        value={nestedComp.itemName}
+                                      value={nestedComp.itemName}
                                         onChange={(value) => {
                                           if (!component.nestedItem) return;
                                           const nestedComponents = [...component.nestedItem.components];
@@ -2734,14 +2734,14 @@ export default function PackageEfficiencyClient({
                                       <input
                                         type="text"
                                         value={nestedComp.itemName === '__manual__' ? '' : nestedComp.itemName}
-                                        onChange={(e) => {
-                                          if (!component.nestedItem) return;
-                                          const nestedComponents = [...component.nestedItem.components];
+                                      onChange={(e) => {
+                                        if (!component.nestedItem) return;
+                                        const nestedComponents = [...component.nestedItem.components];
                                           const value = e.target.value || '__manual__';
                                           nestedComponents[nestedCompIndex] = { ...nestedComponents[nestedCompIndex], itemName: value };
-                                          const nestedItem = { ...component.nestedItem, components: nestedComponents };
-                                          updateComponent(itemIndex, componentIndex, 'nestedItem', nestedItem);
-                                        }}
+                                        const nestedItem = { ...component.nestedItem, components: nestedComponents };
+                                        updateComponent(itemIndex, componentIndex, 'nestedItem', nestedItem);
+                                      }}
                                         className="w-full px-2 py-1 bg-gray-700 text-white rounded border border-gray-600 text-xs"
                                         placeholder="아이템 이름을 입력하세요"
                                       />
@@ -2749,65 +2749,65 @@ export default function PackageEfficiencyClient({
                                     
                                     {/* 두 번째 줄: 수량, 확률/선택, 삭제 */}
                                     <div className="flex gap-2 items-center">
+                                    <input
+                                      type="number"
+                                      value={nestedComp.quantity || ''}
+                                      onChange={(e) => {
+                                        if (!component.nestedItem) return;
+                                        const nestedComponents = [...component.nestedItem.components];
+                                        nestedComponents[nestedCompIndex] = { ...nestedComponents[nestedCompIndex], quantity: parseFloat(e.target.value) || 0 };
+                                        const nestedItem = { ...component.nestedItem, components: nestedComponents };
+                                        updateComponent(itemIndex, componentIndex, 'nestedItem', nestedItem);
+                                      }}
+                                      className="w-20 px-2 py-1 bg-gray-700 text-white rounded border border-gray-600 text-xs"
+                                      placeholder="수량"
+                                      min="0"
+                                    />
+                                    {component.nestedItem?.itemType === '선택' && (
+                                      <input
+                                        type="radio"
+                                        name={`nested-${itemIndex}-${componentIndex}-selection`}
+                                        checked={nestedComp.selected || false}
+                                        onChange={(e) => {
+                                          if (!component.nestedItem) return;
+                                          const nestedComponents = component.nestedItem.components.map((c, idx) => ({
+                                            ...c,
+                                            selected: idx === nestedCompIndex,
+                                          }));
+                                          const nestedItem = { ...component.nestedItem, components: nestedComponents };
+                                          updateComponent(itemIndex, componentIndex, 'nestedItem', nestedItem);
+                                        }}
+                                        className="w-3 h-3"
+                                      />
+                                    )}
+                                    {component.nestedItem?.itemType === '확률' && (
                                       <input
                                         type="number"
-                                        value={nestedComp.quantity || ''}
+                                        value={nestedComp.probability !== undefined ? (nestedComp.probability * 100) : ''}
                                         onChange={(e) => {
                                           if (!component.nestedItem) return;
                                           const nestedComponents = [...component.nestedItem.components];
-                                          nestedComponents[nestedCompIndex] = { ...nestedComponents[nestedCompIndex], quantity: parseFloat(e.target.value) || 0 };
+                                          nestedComponents[nestedCompIndex] = { ...nestedComponents[nestedCompIndex], probability: (parseFloat(e.target.value) || 0) / 100 };
                                           const nestedItem = { ...component.nestedItem, components: nestedComponents };
                                           updateComponent(itemIndex, componentIndex, 'nestedItem', nestedItem);
                                         }}
-                                        className="w-20 px-2 py-1 bg-gray-700 text-white rounded border border-gray-600 text-xs"
-                                        placeholder="수량"
+                                        className="w-16 px-2 py-1 bg-gray-700 text-white rounded border border-gray-600 text-xs"
+                                        placeholder="%"
                                         min="0"
+                                        max="100"
                                       />
-                                      {component.nestedItem?.itemType === '선택' && (
-                                        <input
-                                          type="radio"
-                                          name={`nested-${itemIndex}-${componentIndex}-selection`}
-                                          checked={nestedComp.selected || false}
-                                          onChange={(e) => {
-                                            if (!component.nestedItem) return;
-                                            const nestedComponents = component.nestedItem.components.map((c, idx) => ({
-                                              ...c,
-                                              selected: idx === nestedCompIndex,
-                                            }));
-                                            const nestedItem = { ...component.nestedItem, components: nestedComponents };
-                                            updateComponent(itemIndex, componentIndex, 'nestedItem', nestedItem);
-                                          }}
-                                          className="w-3 h-3"
-                                        />
-                                      )}
-                                      {component.nestedItem?.itemType === '확률' && (
-                                        <input
-                                          type="number"
-                                          value={nestedComp.probability !== undefined ? (nestedComp.probability * 100) : ''}
-                                          onChange={(e) => {
-                                            if (!component.nestedItem) return;
-                                            const nestedComponents = [...component.nestedItem.components];
-                                            nestedComponents[nestedCompIndex] = { ...nestedComponents[nestedCompIndex], probability: (parseFloat(e.target.value) || 0) / 100 };
-                                            const nestedItem = { ...component.nestedItem, components: nestedComponents };
-                                            updateComponent(itemIndex, componentIndex, 'nestedItem', nestedItem);
-                                          }}
-                                          className="w-16 px-2 py-1 bg-gray-700 text-white rounded border border-gray-600 text-xs"
-                                          placeholder="%"
-                                          min="0"
-                                          max="100"
-                                        />
-                                      )}
-                                      <button
-                                        onClick={() => {
-                                          if (!component.nestedItem) return;
-                                          const nestedComponents = component.nestedItem.components.filter((_, idx) => idx !== nestedCompIndex);
-                                          const nestedItem = { ...component.nestedItem, components: nestedComponents };
-                                          updateComponent(itemIndex, componentIndex, 'nestedItem', nestedItem);
-                                        }}
-                                        className="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition-colors text-xs"
-                                      >
-                                        삭제
-                                      </button>
+                                    )}
+                                    <button
+                                      onClick={() => {
+                                        if (!component.nestedItem) return;
+                                        const nestedComponents = component.nestedItem.components.filter((_, idx) => idx !== nestedCompIndex);
+                                        const nestedItem = { ...component.nestedItem, components: nestedComponents };
+                                        updateComponent(itemIndex, componentIndex, 'nestedItem', nestedItem);
+                                      }}
+                                      className="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition-colors text-xs"
+                                    >
+                                      삭제
+                                    </button>
                                     </div>
                                   </div>
                                 </div>

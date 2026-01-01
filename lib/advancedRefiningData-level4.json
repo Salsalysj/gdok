@@ -1,7 +1,7 @@
 {
   "level": 4,
   "iterations": 100000,
-  "generatedAt": "2025-12-30T18:12:28.708Z",
+  "generatedAt": "2026-01-01T08:45:40.288Z",
   "data": [
     {
       "gearType": "무기",
@@ -14,18 +14,18 @@
         "enhancedAncestorCraft": false
       },
       "result": {
-        "expectedAttempts": 55.87482,
-        "normalTurns": 43.92973,
-        "ancestorTurns": 8.58885,
-        "enhancedAncestorTurns": 1.05906,
-        "freeTurns": 2.29718,
+        "expectedAttempts": 55.87226,
+        "normalTurns": 43.92965,
+        "ancestorTurns": 8.58122,
+        "enhancedAncestorTurns": 1.06239,
+        "freeTurns": 2.299,
         "materialBreakdown": {
-          "운명의 파괴석": 75008.696,
-          "운명의 돌파석": 1714.48448,
-          "아비도스 융화 재료": 1607.3292,
-          "운명의 파편": 696509.32,
-          "실링": 3750434.8,
-          "골드": 214310.56,
+          "운명의 파괴석": 75002.564,
+          "운명의 돌파석": 1714.34432,
+          "아비도스 융화 재료": 1607.1978,
+          "운명의 파편": 696452.38,
+          "실링": 3750128.2,
+          "골드": 214293.04,
           "용암의 숨결": 0,
           "장인의 야금술 : 1단계": 0
         }
@@ -42,19 +42,19 @@
         "enhancedAncestorCraft": false
       },
       "result": {
-        "expectedAttempts": 55.89629,
-        "normalTurns": 43.95395,
-        "ancestorTurns": 8.5865,
-        "enhancedAncestorTurns": 1.06216,
-        "freeTurns": 2.29368,
+        "expectedAttempts": 55.01928,
+        "normalTurns": 43.26775,
+        "ancestorTurns": 8.45185,
+        "enhancedAncestorTurns": 1.04182,
+        "freeTurns": 2.25786,
         "materialBreakdown": {
-          "운명의 파괴석": 75043.654,
-          "운명의 돌파석": 1715.28352,
-          "아비도스 융화 재료": 1608.0783,
-          "운명의 파편": 696833.93,
-          "실링": 3752182.7,
-          "골드": 214410.44,
-          "용암의 숨결": 21.2432,
+          "운명의 파괴석": 73865.988,
+          "운명의 돌파석": 1688.36544,
+          "아비도스 융화 재료": 1582.8426,
+          "운명의 파편": 685898.46,
+          "실링": 3693299.4,
+          "골드": 211045.68,
+          "용암의 숨결": 20.8364,
           "장인의 야금술 : 1단계": 0
         }
       }
@@ -70,19 +70,19 @@
         "enhancedAncestorCraft": false
       },
       "result": {
-        "expectedAttempts": 55.89774,
-        "normalTurns": 43.95116,
-        "ancestorTurns": 8.5876,
-        "enhancedAncestorTurns": 1.05518,
-        "freeTurns": 2.3038,
+        "expectedAttempts": 51.30934,
+        "normalTurns": 40.36356,
+        "ancestorTurns": 7.87827,
+        "enhancedAncestorTurns": 0.97101,
+        "freeTurns": 2.0965,
         "materialBreakdown": {
-          "운명의 파괴석": 75031.516,
-          "운명의 돌파석": 1715.00608,
-          "아비도스 융화 재료": 1607.8182,
-          "운명의 파편": 696721.22,
-          "실링": 3751575.8,
-          "골드": 214375.76,
-          "용암의 숨결": 171.752,
+          "운명의 파괴석": 68897.976,
+          "운명의 돌파석": 1574.81088,
+          "아비도스 융화 재료": 1476.3852,
+          "운명의 파편": 639766.92,
+          "실링": 3444898.8,
+          "골드": 196851.36,
+          "용암의 숨결": 157.5654,
           "장인의 야금술 : 1단계": 0
         }
       }
@@ -98,19 +98,19 @@
         "enhancedAncestorCraft": false
       },
       "result": {
-        "expectedAttempts": 55.85868,
-        "normalTurns": 43.92063,
-        "ancestorTurns": 8.58348,
-        "enhancedAncestorTurns": 1.05807,
-        "freeTurns": 2.2965,
+        "expectedAttempts": 50.56973,
+        "normalTurns": 39.78262,
+        "ancestorTurns": 7.76942,
+        "enhancedAncestorTurns": 0.95086,
+        "freeTurns": 2.06683,
         "materialBreakdown": {
-          "운명의 파괴석": 74987.052,
-          "운명의 돌파석": 1713.98976,
-          "아비도스 융화 재료": 1606.8654,
-          "운명의 파편": 696308.34,
-          "실링": 3749352.6,
-          "골드": 214248.72,
-          "용암의 숨결": 192.831,
+          "운명의 파괴석": 67904.06,
+          "운명의 돌파석": 1552.0928,
+          "아비도스 융화 재료": 1455.087,
+          "운명의 파편": 630537.7,
+          "실링": 3395203,
+          "골드": 194011.6,
+          "용암의 숨결": 174.4056,
           "장인의 야금술 : 1단계": 0
         }
       }
@@ -126,19 +126,19 @@
         "enhancedAncestorCraft": false
       },
       "result": {
-        "expectedAttempts": 55.90689,
-        "normalTurns": 43.9549,
-        "ancestorTurns": 8.59202,
-        "enhancedAncestorTurns": 1.05922,
-        "freeTurns": 2.30075,
+        "expectedAttempts": 44.0498,
+        "normalTurns": 34.79805,
+        "ancestorTurns": 6.65142,
+        "enhancedAncestorTurns": 0.82305,
+        "freeTurns": 1.77728,
         "materialBreakdown": {
-          "운명의 파괴석": 75048.596,
-          "운명의 돌파석": 1715.39648,
-          "아비도스 융화 재료": 1608.1842,
-          "운명의 파편": 696879.82,
-          "실링": 3752429.8,
-          "골드": 214424.56,
-          "용암의 숨결": 925.113,
+          "운명의 파괴석": 59181.528,
+          "운명의 돌파석": 1352.72064,
+          "아비도스 융화 재료": 1268.1756,
+          "운명의 파편": 549542.76,
+          "실링": 2959076.4,
+          "골드": 169090.08,
+          "용암의 숨결": 731.5066,
           "장인의 야금술 : 1단계": 0
         }
       }
@@ -154,19 +154,19 @@
         "enhancedAncestorCraft": false
       },
       "result": {
-        "expectedAttempts": 55.89123,
-        "normalTurns": 43.9417,
-        "ancestorTurns": 8.58765,
-        "enhancedAncestorTurns": 1.05899,
-        "freeTurns": 2.30289,
+        "expectedAttempts": 43.53829,
+        "normalTurns": 34.39238,
+        "ancestorTurns": 6.57275,
+        "enhancedAncestorTurns": 0.81551,
+        "freeTurns": 1.75765,
         "materialBreakdown": {
-          "운명의 파괴석": 75023.676,
-          "운명의 돌파석": 1714.82688,
-          "아비도스 융화 재료": 1607.6502,
-          "운명의 파편": 696648.42,
-          "실링": 3751183.8,
-          "골드": 214353.36,
-          "용암의 숨결": 946.0716,
+          "운명의 파괴석": 58492.896,
+          "운명의 돌파석": 1336.98048,
+          "아비도스 융화 재료": 1253.4192,
+          "운명의 파편": 543148.32,
+          "실링": 2924644.8,
+          "골드": 167122.56,
+          "용암의 숨결": 739.3108,
           "장인의 야금술 : 1단계": 0
         }
       }
@@ -182,19 +182,19 @@
         "enhancedAncestorCraft": false
       },
       "result": {
-        "expectedAttempts": 55.9052,
-        "normalTurns": 43.95282,
-        "ancestorTurns": 8.59071,
-        "enhancedAncestorTurns": 1.0569,
-        "freeTurns": 2.30477,
+        "expectedAttempts": 41.20871,
+        "normalTurns": 32.57894,
+        "ancestorTurns": 6.21589,
+        "enhancedAncestorTurns": 0.75926,
+        "freeTurns": 1.65462,
         "materialBreakdown": {
-          "운명의 파괴석": 75040.602,
-          "운명의 돌파석": 1715.21376,
-          "아비도스 융화 재료": 1608.0129,
-          "운명의 파편": 696805.59,
-          "실링": 3752030.1,
-          "골드": 214401.72,
-          "용암의 숨결": 1096.966,
+          "운명의 파괴석": 55375.726,
+          "운명의 돌파석": 1265.73088,
+          "아비도스 융화 재료": 1186.6227,
+          "운명의 파편": 514203.17,
+          "실링": 2768786.3,
+          "골드": 158216.36,
+          "용암의 숨결": 808.989,
           "장인의 야금술 : 1단계": 0
         }
       }
@@ -210,19 +210,19 @@
         "enhancedAncestorCraft": false
       },
       "result": {
-        "expectedAttempts": 55.88423,
-        "normalTurns": 43.9373,
-        "ancestorTurns": 8.58687,
-        "enhancedAncestorTurns": 1.05833,
-        "freeTurns": 2.30173,
+        "expectedAttempts": 40.7788,
+        "normalTurns": 32.23637,
+        "ancestorTurns": 6.15344,
+        "enhancedAncestorTurns": 0.75128,
+        "freeTurns": 1.63771,
         "materialBreakdown": {
-          "운명의 파괴석": 75015.5,
-          "운명의 돌파석": 1714.64,
-          "아비도스 융화 재료": 1607.475,
-          "운명의 파편": 696572.5,
-          "실링": 3750775,
-          "골드": 214330,
-          "용암의 숨결": 1117.6846,
+          "운명의 파괴석": 54797.526,
+          "운명의 돌파석": 1252.51488,
+          "아비도스 융화 재료": 1174.2327,
+          "운명의 파편": 508834.17,
+          "실링": 2739876.3,
+          "골드": 156564.36,
+          "용암의 숨결": 815.576,
           "장인의 야금술 : 1단계": 0
         }
       }
@@ -238,20 +238,20 @@
         "enhancedAncestorCraft": true
       },
       "result": {
-        "expectedAttempts": 55.8682,
-        "normalTurns": 43.92932,
-        "ancestorTurns": 8.58645,
-        "enhancedAncestorTurns": 1.05787,
-        "freeTurns": 2.29456,
+        "expectedAttempts": 54.57453,
+        "normalTurns": 42.89681,
+        "ancestorTurns": 8.39268,
+        "enhancedAncestorTurns": 1.03646,
+        "freeTurns": 2.24858,
         "materialBreakdown": {
-          "운명의 파괴석": 75003.096,
-          "운명의 돌파석": 1714.35648,
-          "아비도스 융화 재료": 1607.2092,
-          "운명의 파편": 696457.32,
-          "실링": 3750154.8,
-          "골드": 214294.56,
+          "운명의 파괴석": 73256.33,
+          "운명의 돌파석": 1674.4304,
+          "아비도스 융화 재료": 1569.7785,
+          "운명의 파편": 680237.35,
+          "실링": 3662816.5,
+          "골드": 209303.8,
           "용암의 숨결": 0,
-          "장인의 야금술 : 1단계": 1.05787
+          "장인의 야금술 : 1단계": 1.03646
         }
       }
     },
@@ -266,20 +266,20 @@
         "enhancedAncestorCraft": true
       },
       "result": {
-        "expectedAttempts": 55.88418,
-        "normalTurns": 43.94352,
-        "ancestorTurns": 8.58729,
-        "enhancedAncestorTurns": 1.05562,
-        "freeTurns": 2.29775,
+        "expectedAttempts": 48.2757,
+        "normalTurns": 38.00414,
+        "ancestorTurns": 7.4056,
+        "enhancedAncestorTurns": 0.90566,
+        "freeTurns": 1.9603,
         "materialBreakdown": {
-          "운명의 파괴석": 75021.002,
-          "운명의 돌파석": 1714.76576,
-          "아비도스 융화 재료": 1607.5929,
-          "운명의 파편": 696623.59,
-          "실링": 3751050.1,
-          "골드": 214345.72,
+          "운명의 파괴석": 64841.56,
+          "운명의 돌파석": 1482.0928,
+          "아비도스 융화 재료": 1389.462,
+          "운명의 파편": 602100.2,
+          "실링": 3242078,
+          "골드": 185261.6,
           "용암의 숨결": 0,
-          "장인의 야금술 : 1단계": 9.64291
+          "장인의 야금술 : 1단계": 8.31126
         }
       }
     },
@@ -294,20 +294,20 @@
         "enhancedAncestorCraft": true
       },
       "result": {
-        "expectedAttempts": 55.87358,
-        "normalTurns": 43.93624,
-        "ancestorTurns": 8.5822,
-        "enhancedAncestorTurns": 1.06045,
-        "freeTurns": 2.29469,
+        "expectedAttempts": 35.88693,
+        "normalTurns": 28.43704,
+        "ancestorTurns": 5.371,
+        "enhancedAncestorTurns": 0.65986,
+        "freeTurns": 1.41903,
         "materialBreakdown": {
-          "운명의 파괴석": 75010.446,
-          "운명의 돌파석": 1714.52448,
-          "아비도스 융화 재료": 1607.3667,
-          "운명의 파편": 696525.57,
-          "실링": 3750522.3,
-          "골드": 214315.56,
+          "운명의 파괴석": 48255.06,
+          "운명의 돌파석": 1102.9728,
+          "아비도스 융화 재료": 1034.037,
+          "운명의 파편": 448082.7,
+          "실링": 2412753,
+          "골드": 137871.6,
           "용암의 숨결": 0,
-          "장인의 야금술 : 1단계": 55.87358
+          "장인의 야금술 : 1단계": 35.88693
         }
       }
     },
@@ -322,18 +322,18 @@
         "enhancedAncestorCraft": false
       },
       "result": {
-        "expectedAttempts": 55.90513,
-        "normalTurns": 43.94744,
-        "ancestorTurns": 8.59429,
-        "enhancedAncestorTurns": 1.05969,
-        "freeTurns": 2.30371,
+        "expectedAttempts": 55.86045,
+        "normalTurns": 43.91944,
+        "ancestorTurns": 8.58181,
+        "enhancedAncestorTurns": 1.05889,
+        "freeTurns": 2.30031,
         "materialBreakdown": {
-          "운명의 수호석": 53601.42,
-          "운명의 돌파석": 964.82556,
-          "아비도스 융화 재료": 911.22414,
-          "운명의 파편": 375209.94,
-          "실링": 2358462.48,
-          "골드": 107202.84,
+          "운명의 수호석": 53560.14,
+          "운명의 돌파석": 964.08252,
+          "아비도스 융화 재료": 910.52238,
+          "운명의 파편": 374920.98,
+          "실링": 2356646.16,
+          "골드": 107120.28,
           "빙하의 숨결": 0,
           "장인의 재봉술 : 1단계": 0
         }
@@ -350,19 +350,19 @@
         "enhancedAncestorCraft": false
       },
       "result": {
-        "expectedAttempts": 55.90596,
-        "normalTurns": 43.95204,
-        "ancestorTurns": 8.58862,
-        "enhancedAncestorTurns": 1.06199,
-        "freeTurns": 2.30331,
+        "expectedAttempts": 55.03803,
+        "normalTurns": 43.27523,
+        "ancestorTurns": 8.45847,
+        "enhancedAncestorTurns": 1.03808,
+        "freeTurns": 2.26625,
         "materialBreakdown": {
-          "운명의 수호석": 53602.65,
-          "운명의 돌파석": 964.8477,
-          "아비도스 융화 재료": 911.24505,
-          "운명의 파편": 375218.55,
-          "실링": 2358516.6,
-          "골드": 107205.3,
-          "빙하의 숨결": 21.2398,
+          "운명의 수호석": 52771.78,
+          "운명의 돌파석": 949.89204,
+          "아비도스 융화 재료": 897.12026,
+          "운명의 파편": 369402.46,
+          "실링": 2321958.32,
+          "골드": 105543.56,
+          "빙하의 숨결": 20.7616,
           "장인의 재봉술 : 1단계": 0
         }
       }
@@ -378,19 +378,19 @@
         "enhancedAncestorCraft": false
       },
       "result": {
-        "expectedAttempts": 55.89195,
-        "normalTurns": 43.9369,
-        "ancestorTurns": 8.59241,
-        "enhancedAncestorTurns": 1.0593,
-        "freeTurns": 2.30334,
+        "expectedAttempts": 51.32563,
+        "normalTurns": 40.37649,
+        "ancestorTurns": 7.88489,
+        "enhancedAncestorTurns": 0.96606,
+        "freeTurns": 2.09819,
         "materialBreakdown": {
-          "운명의 수호석": 53588.61,
-          "운명의 돌파석": 964.59498,
-          "아비도스 융화 재료": 911.00637,
-          "운명의 파편": 375120.27,
-          "실링": 2357898.84,
-          "골드": 107177.22,
-          "빙하의 숨결": 171.8482,
+          "운명의 수호석": 49227.44,
+          "운명의 돌파석": 886.09392,
+          "아비도스 융화 재료": 836.86648,
+          "운명의 파편": 344592.08,
+          "실링": 2166007.36,
+          "골드": 98454.88,
+          "빙하의 숨결": 157.6978,
           "장인의 재봉술 : 1단계": 0
         }
       }
@@ -406,19 +406,19 @@
         "enhancedAncestorCraft": false
       },
       "result": {
-        "expectedAttempts": 55.89411,
-        "normalTurns": 43.94715,
-        "ancestorTurns": 8.59107,
-        "enhancedAncestorTurns": 1.05862,
-        "freeTurns": 2.29727,
+        "expectedAttempts": 50.57164,
+        "normalTurns": 39.79004,
+        "ancestorTurns": 7.76561,
+        "enhancedAncestorTurns": 0.95278,
+        "freeTurns": 2.06321,
         "materialBreakdown": {
-          "운명의 수호석": 53596.84,
-          "운명의 돌파석": 964.74312,
-          "아비도스 융화 재료": 911.14628,
-          "운명의 파편": 375177.88,
-          "실링": 2358260.96,
-          "골드": 107193.68,
-          "빙하의 숨결": 192.9938,
+          "운명의 수호석": 48508.43,
+          "운명의 돌파석": 873.15174,
+          "아비도스 융화 재료": 824.64331,
+          "운명의 파편": 339559.01,
+          "실링": 2134370.92,
+          "골드": 97016.86,
+          "빙하의 숨결": 174.3678,
           "장인의 재봉술 : 1단계": 0
         }
       }
@@ -434,19 +434,19 @@
         "enhancedAncestorCraft": false
       },
       "result": {
-        "expectedAttempts": 55.89822,
-        "normalTurns": 43.95011,
-        "ancestorTurns": 8.58653,
-        "enhancedAncestorTurns": 1.05461,
-        "freeTurns": 2.30697,
+        "expectedAttempts": 44.06617,
+        "normalTurns": 34.81598,
+        "ancestorTurns": 6.65192,
+        "enhancedAncestorTurns": 0.81823,
+        "freeTurns": 1.78004,
         "materialBreakdown": {
-          "운명의 수호석": 53591.25,
-          "운명의 돌파석": 964.6425,
-          "아비도스 융화 재료": 911.05125,
-          "운명의 파편": 375138.75,
-          "실링": 2358015,
-          "골드": 107182.5,
-          "빙하의 숨결": 925.1416,
+          "운명의 수호석": 42286.13,
+          "운명의 돌파석": 761.15034,
+          "아비도스 융화 재료": 718.86421,
+          "운명의 파편": 296002.91,
+          "실링": 1860589.72,
+          "골드": 84572.26,
+          "빙하의 숨결": 731.9204,
           "장인의 재봉술 : 1단계": 0
         }
       }
@@ -462,19 +462,19 @@
         "enhancedAncestorCraft": false
       },
       "result": {
-        "expectedAttempts": 55.87846,
-        "normalTurns": 43.93393,
-        "ancestorTurns": 8.58674,
-        "enhancedAncestorTurns": 1.05781,
-        "freeTurns": 2.29998,
+        "expectedAttempts": 43.51184,
+        "normalTurns": 34.38701,
+        "ancestorTurns": 6.56639,
+        "enhancedAncestorTurns": 0.81029,
+        "freeTurns": 1.74815,
         "materialBreakdown": {
-          "운명의 수호석": 53578.48,
-          "운명의 돌파석": 964.41264,
-          "아비도스 융화 재료": 910.83416,
-          "운명의 파편": 375049.36,
-          "실링": 2357453.12,
-          "골드": 107156.96,
-          "빙하의 숨결": 945.8344,
+          "운명의 수호석": 41763.69,
+          "운명의 돌파석": 751.74642,
+          "아비도스 융화 재료": 709.98273,
+          "운명의 파편": 292345.83,
+          "실링": 1837602.36,
+          "골드": 83527.38,
+          "빙하의 숨결": 738.909,
           "장인의 재봉술 : 1단계": 0
         }
       }
@@ -490,19 +490,19 @@
         "enhancedAncestorCraft": false
       },
       "result": {
-        "expectedAttempts": 55.91071,
-        "normalTurns": 43.97047,
-        "ancestorTurns": 8.58173,
-        "enhancedAncestorTurns": 1.05934,
-        "freeTurns": 2.29917,
+        "expectedAttempts": 41.19883,
+        "normalTurns": 32.56863,
+        "ancestorTurns": 6.22094,
+        "enhancedAncestorTurns": 0.75687,
+        "freeTurns": 1.65239,
         "materialBreakdown": {
-          "운명의 수호석": 53611.54,
-          "운명의 돌파석": 965.00772,
-          "아비도스 융화 재료": 911.39618,
-          "운명의 파편": 375280.78,
-          "실링": 2358907.76,
-          "골드": 107223.08,
-          "빙하의 숨결": 1097.0274,
+          "운명의 수호석": 39546.44,
+          "운명의 돌파석": 711.83592,
+          "아비도스 융화 재료": 672.28948,
+          "운명의 파편": 276825.08,
+          "실링": 1740043.36,
+          "골드": 79092.88,
+          "빙하의 숨결": 808.8392,
           "장인의 재봉술 : 1단계": 0
         }
       }
@@ -518,19 +518,19 @@
         "enhancedAncestorCraft": false
       },
       "result": {
-        "expectedAttempts": 55.84839,
-        "normalTurns": 43.91266,
-        "ancestorTurns": 8.58489,
-        "enhancedAncestorTurns": 1.05514,
-        "freeTurns": 2.2957,
+        "expectedAttempts": 40.74949,
+        "normalTurns": 32.21363,
+        "ancestorTurns": 6.1488,
+        "enhancedAncestorTurns": 0.7527,
+        "freeTurns": 1.63436,
         "materialBreakdown": {
-          "운명의 수호석": 53552.69,
-          "운명의 돌파석": 963.94842,
-          "아비도스 융화 재료": 910.39573,
-          "운명의 파편": 374868.83,
-          "실링": 2356318.36,
-          "골드": 107105.38,
-          "빙하의 숨결": 1116.9678,
+          "운명의 수호석": 39115.13,
+          "운명의 돌파석": 704.07234,
+          "아비도스 융화 재료": 664.95721,
+          "운명의 파편": 273805.91,
+          "실링": 1721065.72,
+          "골드": 78230.26,
+          "빙하의 숨결": 814.9898,
           "장인의 재봉술 : 1단계": 0
         }
       }
@@ -546,20 +546,20 @@
         "enhancedAncestorCraft": true
       },
       "result": {
-        "expectedAttempts": 55.82998,
-        "normalTurns": 43.89179,
-        "ancestorTurns": 8.58402,
-        "enhancedAncestorTurns": 1.0609,
-        "freeTurns": 2.29327,
+        "expectedAttempts": 54.6072,
+        "normalTurns": 42.93544,
+        "ancestorTurns": 8.39341,
+        "enhancedAncestorTurns": 1.03262,
+        "freeTurns": 2.24573,
         "materialBreakdown": {
-          "운명의 수호석": 53536.71,
-          "운명의 돌파석": 963.66078,
-          "아비도스 융화 재료": 910.12407,
-          "운명의 파편": 374756.97,
-          "실링": 2355615.24,
-          "골드": 107073.42,
+          "운명의 수호석": 52361.47,
+          "운명의 돌파석": 942.50646,
+          "아비도스 융화 재료": 890.14499,
+          "운명의 파편": 366530.29,
+          "실링": 2303904.68,
+          "골드": 104722.94,
           "빙하의 숨결": 0,
-          "장인의 재봉술 : 1단계": 1.0609
+          "장인의 재봉술 : 1단계": 1.03262
         }
       }
     },
@@ -574,20 +574,20 @@
         "enhancedAncestorCraft": true
       },
       "result": {
-        "expectedAttempts": 55.89693,
-        "normalTurns": 43.95957,
-        "ancestorTurns": 8.59103,
-        "enhancedAncestorTurns": 1.05339,
-        "freeTurns": 2.29294,
+        "expectedAttempts": 48.26361,
+        "normalTurns": 37.98093,
+        "ancestorTurns": 7.40894,
+        "enhancedAncestorTurns": 0.90615,
+        "freeTurns": 1.96759,
         "materialBreakdown": {
-          "운명의 수호석": 53603.99,
-          "운명의 돌파석": 964.87182,
-          "아비도스 융화 재료": 911.26783,
-          "운명의 파편": 375227.93,
-          "실링": 2358575.56,
-          "골드": 107207.98,
+          "운명의 수호석": 46296.02,
+          "운명의 돌파석": 833.32836,
+          "아비도스 융화 재료": 787.03234,
+          "운명의 파편": 324072.14,
+          "실링": 2037024.88,
+          "골드": 92592.04,
           "빙하의 숨결": 0,
-          "장인의 재봉술 : 1단계": 9.64442
+          "장인의 재봉술 : 1단계": 8.31509
         }
       }
     },
@@ -602,20 +602,20 @@
         "enhancedAncestorCraft": true
       },
       "result": {
-        "expectedAttempts": 55.89821,
-        "normalTurns": 43.93983,
-        "ancestorTurns": 8.58641,
-        "enhancedAncestorTurns": 1.06011,
-        "freeTurns": 2.31186,
+        "expectedAttempts": 35.88862,
+        "normalTurns": 28.44635,
+        "ancestorTurns": 5.36679,
+        "enhancedAncestorTurns": 0.65604,
+        "freeTurns": 1.41944,
         "materialBreakdown": {
-          "운명의 수호석": 53586.35,
-          "운명의 돌파석": 964.5543,
-          "아비도스 융화 재료": 910.96795,
-          "운명의 파편": 375104.45,
-          "실링": 2357799.4,
-          "골드": 107172.7,
+          "운명의 수호석": 34469.18,
+          "운명의 돌파석": 620.44524,
+          "아비도스 융화 재료": 585.97606,
+          "운명의 파편": 241284.26,
+          "실링": 1516643.92,
+          "골드": 68938.36,
           "빙하의 숨결": 0,
-          "장인의 재봉술 : 1단계": 55.89821
+          "장인의 재봉술 : 1단계": 35.88862
         }
       }
     }
