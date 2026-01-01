@@ -354,8 +354,8 @@ export default function PackageEfficiencyClient({
 
   // 구성요소 단가 해석: etc_list 우선, 없으면 캐시 골드, 없으면 null
   const resolveUnitPrice = useCallback((itemName: string): { unitType: '골드' | '크리스탈' | '현금'; unitPrice: number } | null => {
-    // 순환 돌파석: 가치계산DB Context에서 계산된 값 사용 (이미 가격조정 적용됨)
-    if (itemName === '순환 돌파석') {
+    // 순환 돌파석 또는 실제가치 항목: 가치계산DB Context에서 계산된 값 사용 (이미 가격조정 적용됨)
+    if (itemName === '순환 돌파석' || itemName.includes('(실제가치)')) {
       const entry = adjustedEntries.find(e => e.itemName === itemName);
       if (entry && entry.unitType === '골드' && entry.unitValue != null) {
         return { unitType: '골드', unitPrice: entry.unitValue };
@@ -741,6 +741,33 @@ export default function PackageEfficiencyClient({
     }
     return null;
   }, [cubeStageRewards, valueDbMap, etcListData, marketPriceMap, cubeStageTotals, adjustPrice, adjustRelicEngravingAverage, calculateGemPriceByGrade, refreshKey, hellStages, hell1Stages, hell2Stages, narakStages, narak1Stages, narak2Stages, adjustedEntries]);
+
+  // 드롭다운 옵션 목록 생성 (실제가치 항목 포함)
+  const componentOptions = useMemo(() => {
+    // 실제가치 항목들 필터링
+    const realValueItems = adjustedEntries
+      .filter(e => e.itemName.includes('(실제가치)'))
+      .map(e => e.itemName);
+    
+    // 기본 옵션 + itemList + 실제가치 항목들
+    return [
+      { value: '', label: '아이템 선택' },
+      { value: '__nested__', label: '묶음 항목 추가' },
+      { value: '__manual__', label: '(직접 입력)' },
+      ...itemList.map(item => ({ value: item, label: item })),
+      ...realValueItems.map(item => ({ value: item, label: item }))
+    ];
+  }, [itemList, adjustedEntries]);
+
+  // 드롭다운에 있는 항목 목록 (직접 입력 필드 표시 여부 확인용)
+  const availableItemNames = useMemo(() => {
+    return new Set([
+      ...itemList,
+      ...adjustedEntries
+        .filter(e => e.itemName.includes('(실제가치)'))
+        .map(e => e.itemName)
+    ]);
+  }, [itemList, adjustedEntries]);
 
   // 아이템 가격 계산 함수
   const calculateItemPrice = (
@@ -1473,48 +1500,6 @@ export default function PackageEfficiencyClient({
         const data = await res.json();
         if (data.packages) {
           setSavedPackages(data.packages);
-          
-          // 판매중인 패키지 중 첫 번째를 자동으로 선택
-          const activePackages = data.packages.filter((pkg: any) => {
-            const pkgData = pkg.package_data;
-            const endDate = pkgData?.endDate;
-            if (!endDate) return true; // 종료일이 없으면 활성
-            const end = new Date(endDate);
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            end.setHours(0, 0, 0, 0);
-            return end >= today;
-          });
-          
-          // 판매중인 패키지가 있고, 아직 선택된 패키지가 없으면 첫 번째 패키지 로드
-          if (activePackages.length > 0 && !selectedPackageId) {
-            const firstActivePackage = activePackages[0];
-            if (firstActivePackage.package_data) {
-              const loadedData = firstActivePackage.package_data;
-              // 기존 데이터 호환성: quantity 필드가 없으면 기본값 1로 설정
-              if (loadedData.items && Array.isArray(loadedData.items)) {
-                loadedData.items = loadedData.items.map((item: any) => ({
-                  ...item,
-                  quantity: item.quantity !== undefined ? item.quantity : 1,
-                }));
-              }
-              // 보너스룸 데이터가 없으면 초기화
-              if (!loadedData.bonusRooms) {
-                loadedData.bonusRooms = [
-                  { roomName: '보너스룸1', items: [] },
-                  { roomName: '보너스룸2', items: [] },
-                  { roomName: '보너스룸3', items: [] },
-                ];
-              }
-              // 패스 구분일 경우 패키지 유형을 '일반'으로 강제 설정
-              if (loadedData.category === '패스') {
-                loadedData.packageType = '일반';
-                loadedData.is3Plus1 = false;
-              }
-              setPackageData(loadedData);
-              setSelectedPackageId(firstActivePackage.id);
-            }
-          }
         }
       } catch (error) {
         console.error('저장된 패키지 목록 불러오기 실패:', error);
@@ -1765,6 +1750,10 @@ export default function PackageEfficiencyClient({
             return end >= today;
           }).length > 0 && (
             <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-4">
+              <div className="mb-3">
+                <h3 className="text-base font-semibold text-white">현재 판매중</h3>
+                <p className="text-xs text-gray-400 mt-1">버튼 클릭 시 확인 가능</p>
+              </div>
               <div className="grid grid-cols-3 gap-4">
                 {/* 한정 패키지 */}
                 <div>
@@ -2231,12 +2220,7 @@ export default function PackageEfficiencyClient({
                                         }
                                       }
                                     }}
-                                    options={[
-                                      { value: '', label: '아이템 선택' },
-                                      { value: '__nested__', label: '묶음 항목 추가' },
-                                      { value: '__manual__', label: '(직접 입력)' },
-                                      ...itemList.map(item => ({ value: item, label: item }))
-                                    ]}
+                                    options={componentOptions}
                                     placeholder="아이템 선택"
                                     className="flex-1 min-w-0"
                                     size="small"
@@ -2272,7 +2256,7 @@ export default function PackageEfficiencyClient({
                                   )}
                                 
                                   {/* 직접 입력 선택 시 이름 입력 필드 */}
-                                  {(component.itemName === '__manual__' || (component.itemName && component.itemName !== '__nested__' && !itemList.includes(component.itemName))) && (
+                                  {(component.itemName === '__manual__' || (component.itemName && component.itemName !== '__nested__' && !component.itemName.includes('(실제가치)') && !availableItemNames.has(component.itemName))) && (
                                   <div>
                                       <input
                                         type="text"
@@ -2368,11 +2352,7 @@ export default function PackageEfficiencyClient({
                                                     const nestedItem = { ...component.nestedItem, components: nestedComponents };
                                                     updateBonusRoomComponent(roomIndex, itemIndex, compIndex, 'nestedItem', nestedItem);
                                                   }}
-                                                  options={[
-                                                    { value: '', label: '아이템 선택' },
-                                                    { value: '__manual__', label: '(직접 입력)' },
-                                                    ...itemList.map(item => ({ value: item, label: item }))
-                                                  ]}
+                                                  options={componentOptions}
                                                   placeholder="아이템 선택"
                                                   className="flex-1"
                                                   size="small"
@@ -2380,7 +2360,7 @@ export default function PackageEfficiencyClient({
                                               </div>
                                               
                                               {/* 직접 입력 필드 */}
-                                              {(nestedComp.itemName === '__manual__' || (nestedComp.itemName && nestedComp.itemName !== '__nested__' && !itemList.includes(nestedComp.itemName))) && (
+                                              {(nestedComp.itemName === '__manual__' || (nestedComp.itemName && nestedComp.itemName !== '__nested__' && !nestedComp.itemName.includes('(실제가치)') && !availableItemNames.has(nestedComp.itemName))) && (
                                                 <input
                                                   type="text"
                                                   value={nestedComp.itemName === '__manual__' ? '' : nestedComp.itemName}
@@ -2575,12 +2555,7 @@ export default function PackageEfficiencyClient({
                               }
                             }
                           }}
-                            options={[
-                              { value: '', label: '아이템 선택' },
-                              { value: '__nested__', label: '묶음 항목 추가' },
-                              { value: '__manual__', label: '(직접 입력)' },
-                              ...itemList.map(item => ({ value: item, label: item }))
-                            ]}
+                            options={componentOptions}
                             placeholder="아이템 선택"
                             className="flex-1"
                           />
@@ -2615,7 +2590,7 @@ export default function PackageEfficiencyClient({
                         )}
                         
                         {/* 직접 입력 선택 시 이름 입력 필드 */}
-                        {(component.itemName === '__manual__' || (component.itemName && component.itemName !== '__nested__' && !itemList.includes(component.itemName))) && (
+                        {(component.itemName === '__manual__' || (component.itemName && component.itemName !== '__nested__' && !component.itemName.includes('(실제가치)') && !availableItemNames.has(component.itemName))) && (
                           <div>
                             <input
                               type="text"
@@ -2718,11 +2693,7 @@ export default function PackageEfficiencyClient({
                                           const nestedItem = { ...component.nestedItem, components: nestedComponents };
                                           updateComponent(itemIndex, componentIndex, 'nestedItem', nestedItem);
                                         }}
-                                        options={[
-                                          { value: '', label: '아이템 선택' },
-                                          { value: '__manual__', label: '(직접 입력)' },
-                                          ...itemList.map(item => ({ value: item, label: item }))
-                                        ]}
+                                        options={componentOptions}
                                         placeholder="아이템 선택"
                                         className="flex-1"
                                         size="small"
@@ -2730,7 +2701,7 @@ export default function PackageEfficiencyClient({
                                     </div>
                                     
                                     {/* 직접 입력 필드 */}
-                                    {(nestedComp.itemName === '__manual__' || (nestedComp.itemName && nestedComp.itemName !== '__nested__' && !itemList.includes(nestedComp.itemName))) && (
+                                    {(nestedComp.itemName === '__manual__' || (nestedComp.itemName && nestedComp.itemName !== '__nested__' && !nestedComp.itemName.includes('(실제가치)') && !availableItemNames.has(nestedComp.itemName))) && (
                                       <input
                                         type="text"
                                         value={nestedComp.itemName === '__manual__' ? '' : nestedComp.itemName}

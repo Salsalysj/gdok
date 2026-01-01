@@ -80,19 +80,19 @@ const MATERIALS_WEAPON_LEVEL4 = {
   fragment: 13000,
   silver: 70000,
   gold: 4000,
-  breath: 20,
+  breath: 25,
   craftsmanship: 1,
 };
 
 // 재료 수량 (상재4 방어구)
 const MATERIALS_ARMOR_LEVEL4 = {
-  guardianStone: 1000,
-  breakthroughStone: 18,
-  fusionMaterial: 17,
-  fragment: 7000,
-  silver: 44000,
-  gold: 2000,
-  breath: 20,
+  guardianStone: 1200,
+  breakthroughStone: 23,
+  fusionMaterial: 19,
+  fragment: 8000,
+  silver: 56000,
+  gold: 2400,
+  breath: 25,
   craftsmanship: 1,
 };
 
@@ -209,6 +209,11 @@ function simulateRefinement(
   } else {
     materials = gearType === '무기' ? MATERIALS_WEAPON_LEVEL4 : MATERIALS_ARMOR_LEVEL4;
   }
+  // 레벨에 따른 야금술/재봉술 단계 결정
+  const craftsmanshipName = gearType === '무기' 
+    ? `장인의 야금술 : ${level}단계` 
+    : `장인의 재봉술 : ${level}단계`;
+  
   const materialUsage: { [key: string]: number } = {
     [gearType === '무기' ? '운명의 파괴석' : '운명의 수호석']: 0,
     '운명의 돌파석': 0,
@@ -217,7 +222,7 @@ function simulateRefinement(
     '실링': 0,
     '골드': 0,
     [gearType === '무기' ? '용암의 숨결' : '빙하의 숨결']: 0,
-    [gearType === '무기' ? '장인의 야금술 : 1단계' : '장인의 재봉술 : 1단계']: 0,
+    [craftsmanshipName]: 0,
   };
   
   while (totalExp < targetExp && attempts < maxAttempts) {
@@ -273,11 +278,7 @@ function simulateRefinement(
       }
     }
     if (currentStrategy.useCraftsmanship) {
-      if (gearType === '무기') {
-        materialUsage['장인의 야금술 : 1단계'] += materials.craftsmanship;
-      } else {
-        materialUsage['장인의 재봉술 : 1단계'] += materials.craftsmanship;
-      }
+      materialUsage[craftsmanshipName] += materials.craftsmanship;
     }
     
     // 경험치 획득

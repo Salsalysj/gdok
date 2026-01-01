@@ -873,6 +873,10 @@ export async function getValueDbData(): Promise<ValueDbData> {
     '정련된 운명의 돌',
     '카드경험치 1당',
     '운명의 파편 1개당',
+    '장인의 야금술 : 3단계',
+    '장인의 재봉술 : 3단계',
+    '장인의 야금술 : 4단계',
+    '장인의 재봉술 : 4단계',
   ];
 
   const itemSet = new Set([...itemList, ...Object.keys(manualOverrides), ...additionalItems]);

@@ -287,9 +287,9 @@ export default function AdvancedRefiningClient({
         return 1; // 골드 1개 = 골드 1
       }
       
-      // 실링은 골드로 환산 (1 실링 = 0.01 골드, 가격 조정 불필요)
+      // 실링은 0골드로 처리
       if (itemName === '실링') {
-        return 0.01;
+        return 0;
       }
       
       let basePrice: number | null = null;
@@ -602,8 +602,8 @@ export default function AdvancedRefiningClient({
     const craftsmanshipItemName = activeSubSubTab === '무기' ? `장인의 야금술 : ${craftsmanshipStage}` : `장인의 재봉술 : ${craftsmanshipStage}`;
     const craftsmanshipMarketPrice = getMaterialValue(craftsmanshipItemName) || 0;
     
-    // materialBreakdown에서는 항상 "1단계"로 저장되어 있으므로, 찾을 때는 "1단계"를 사용
-    const craftsmanshipItemNameInBreakdown = activeSubSubTab === '무기' ? '장인의 야금술 : 1단계' : '장인의 재봉술 : 1단계';
+    // materialBreakdown에서도 동일한 단계 사용
+    const craftsmanshipItemNameInBreakdown = craftsmanshipItemName;
     
     let ancestorOnlyCraftAnalysis = null;
     let bothTurnsCraftAnalysis = null;
