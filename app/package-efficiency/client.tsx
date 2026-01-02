@@ -1495,11 +1495,8 @@ export default function PackageEfficiencyClient({
     setSelectedPackageId(null);
   };
 
-  // 저장된 패키지 목록 불러오기 (로컬에서만)
+  // 저장된 패키지 목록 불러오기 (모든 환경에서 가능)
   useEffect(() => {
-    if (!allowPackageSave) {
-      return; // 배포 환경에서는 패키지 목록을 불러오지 않음
-    }
     async function loadSavedPackages() {
       try {
         const res = await fetch('/api/packages');
@@ -1512,7 +1509,7 @@ export default function PackageEfficiencyClient({
       }
     }
     loadSavedPackages();
-  }, [allowPackageSave]);
+  }, []);
 
   // 패키지 저장
   const handleSavePackage = async () => {
