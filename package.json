@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "generate-refining-data": "tsx scripts/generate-advanced-refining-data.ts"
+    "generate-refining-data": "tsx scripts/generate-advanced-refining-data.ts",
+    "collect-avatar-prices": "tsx scripts/collect-legendary-avatar-prices.ts",
+    "revalidate-value-db": "node scripts/revalidate-value-db.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.78.0",

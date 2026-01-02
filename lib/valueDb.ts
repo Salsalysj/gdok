@@ -879,7 +879,10 @@ export async function getValueDbData(): Promise<ValueDbData> {
     '장인의 재봉술 : 4단계',
   ];
 
-  const itemSet = new Set([...itemList, ...Object.keys(manualOverrides), ...additionalItems]);
+  // etc_list.csv의 모든 항목도 포함
+  const etcListItemNames = Object.keys(etcListDataObj);
+
+  const itemSet = new Set([...itemList, ...Object.keys(manualOverrides), ...additionalItems, ...etcListItemNames]);
   itemSet.add('__manual__');
   const combinedItemList = Array.from(itemSet);
 
