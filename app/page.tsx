@@ -62,18 +62,6 @@ export default function Home() {
             </div>
           </Link>
 
-          <Link href="/event-efficiency" className="group">
-            <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700 hover:border-yellow-500 transition-all hover:shadow-lg hover:shadow-yellow-500/20">
-              <div className="text-3xl mb-3">🎁</div>
-              <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-yellow-400 transition-colors">
-                이벤트 효율
-              </h3>
-              <p className="text-gray-400 text-sm">
-                이벤트 보상의 가치를 계산하여 참여 여부를 결정합니다
-              </p>
-            </div>
-          </Link>
-
           <Link href="/refining-simulation" className="group">
             <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700 hover:border-red-500 transition-all hover:shadow-lg hover:shadow-red-500/20">
               <div className="text-3xl mb-3">⚙️</div>
@@ -82,6 +70,18 @@ export default function Home() {
               </h3>
               <p className="text-gray-400 text-sm">
                 장비 재련의 효율을 시뮬레이션하고 최적의 전략을 제시합니다
+              </p>
+            </div>
+          </Link>
+
+          <Link href="/event-efficiency" className="group">
+            <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700 hover:border-yellow-500 transition-all hover:shadow-lg hover:shadow-yellow-500/20">
+              <div className="text-3xl mb-3">🎁</div>
+              <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-yellow-400 transition-colors">
+                이벤트 효율
+              </h3>
+              <p className="text-gray-400 text-sm">
+                이벤트 보상의 가치를 계산하여 참여 여부를 결정합니다
               </p>
             </div>
           </Link>

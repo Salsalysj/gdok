@@ -100,6 +100,9 @@ export default function PackageEfficiencyClient({
   narak1Stages?: Stage[];
   narak2Stages?: Stage[];
 }) {
+  // 로컬 환경에서만 패키지 저장/업데이트 허용
+  const allowPackageSave = process.env.NEXT_PUBLIC_ALLOW_PACKAGE_SAVE === 'true' || process.env.NODE_ENV === 'development';
+  
   const { adjustPrice, adjustRelicEngravingAverage } = usePriceAdjustment();
   const { adjustedEntries } = useValueDb();
   const [lightMode, setLightMode] = useState<boolean>(false);
@@ -1492,8 +1495,11 @@ export default function PackageEfficiencyClient({
     setSelectedPackageId(null);
   };
 
-  // 저장된 패키지 목록 불러오기
+  // 저장된 패키지 목록 불러오기 (로컬에서만)
   useEffect(() => {
+    if (!allowPackageSave) {
+      return; // 배포 환경에서는 패키지 목록을 불러오지 않음
+    }
     async function loadSavedPackages() {
       try {
         const res = await fetch('/api/packages');
@@ -1506,7 +1512,7 @@ export default function PackageEfficiencyClient({
       }
     }
     loadSavedPackages();
-  }, []);
+  }, [allowPackageSave]);
 
   // 패키지 저장
   const handleSavePackage = async () => {
@@ -1680,7 +1686,7 @@ export default function PackageEfficiencyClient({
         </div>
 
         {/* 저장 모달 */}
-        {showSaveModal && (
+        {showSaveModal && allowPackageSave && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 max-w-md w-full mx-4">
               <h3 className="text-xl font-semibold text-white mb-4">
@@ -3940,18 +3946,20 @@ export default function PackageEfficiencyClient({
               </div>
               
               {/* 저장 버튼 */}
-              <div className="flex justify-center mt-6">
-                <button
-                  onClick={() => {
-                    setSavePackageName(packageData.packageName);
-                    setShowSaveModal(true);
-                  }}
-                  className="px-8 py-3 bg-purple-600 text-white text-lg font-semibold rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 shadow-lg"
-                  disabled={isLoading || !packageData.packageName.trim()}
-                >
-                  {selectedPackageId ? '📝 패키지 업데이트' : '💾 패키지 저장'}
-                </button>
-              </div>
+              {allowPackageSave && (
+                <div className="flex justify-center mt-6">
+                  <button
+                    onClick={() => {
+                      setSavePackageName(packageData.packageName);
+                      setShowSaveModal(true);
+                    }}
+                    className="px-8 py-3 bg-purple-600 text-white text-lg font-semibold rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 shadow-lg"
+                    disabled={isLoading || !packageData.packageName.trim()}
+                  >
+                    {selectedPackageId ? '📝 패키지 업데이트' : '💾 패키지 저장'}
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="relative bg-gradient-to-br from-gray-800/90 via-gray-800/70 to-gray-900/90 rounded-2xl border border-gray-700/50 shadow-xl p-8 overflow-hidden">
@@ -4082,34 +4090,36 @@ export default function PackageEfficiencyClient({
               </div>
               
               {/* 저장 버튼 */}
-              <div className="flex justify-center mt-8">
-                <button
-                  onClick={() => {
-                    setSavePackageName(packageData.packageName);
-                    setShowSaveModal(true);
-                  }}
-                  className="group relative px-10 py-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-lg font-bold rounded-xl hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50 shadow-2xl hover:shadow-purple-500/50 disabled:shadow-none transform hover:scale-105 disabled:hover:scale-100"
-                  disabled={isLoading || !packageData.packageName.trim()}
-                >
-                  <span className="flex items-center gap-2">
-                    {selectedPackageId ? (
-                      <>
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                        패키지 업데이트
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                        </svg>
-                        패키지 저장
-                      </>
-                    )}
-                  </span>
-                </button>
-              </div>
+              {allowPackageSave && (
+                <div className="flex justify-center mt-8">
+                  <button
+                    onClick={() => {
+                      setSavePackageName(packageData.packageName);
+                      setShowSaveModal(true);
+                    }}
+                    className="group relative px-10 py-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-lg font-bold rounded-xl hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50 shadow-2xl hover:shadow-purple-500/50 disabled:shadow-none transform hover:scale-105 disabled:hover:scale-100"
+                    disabled={isLoading || !packageData.packageName.trim()}
+                  >
+                    <span className="flex items-center gap-2">
+                      {selectedPackageId ? (
+                        <>
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                          패키지 업데이트
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                          </svg>
+                          패키지 저장
+                        </>
+                      )}
+                    </span>
+                  </button>
+                </div>
+              )}
             </div>
             </div>
           )}
@@ -4168,24 +4178,28 @@ export default function PackageEfficiencyClient({
                     >
                       불러오기
                     </button>
-                    <button
-                      onClick={() => {
-                        setSelectedPackageId(pkg.id);
-                        setPackageData((prev) => ({ ...prev, packageName: pkg.package_name }));
-                        setShowSaveModal(true);
-                      }}
-                      className="px-3 py-1 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
-                      disabled={isLoading}
-                    >
-                      수정
-                    </button>
-                    <button
-                      onClick={() => handleDeletePackage(pkg.id)}
-                      className="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
-                      disabled={isLoading}
-                    >
-                      삭제
-                    </button>
+                    {allowPackageSave && (
+                      <>
+                        <button
+                          onClick={() => {
+                            setSelectedPackageId(pkg.id);
+                            setPackageData((prev) => ({ ...prev, packageName: pkg.package_name }));
+                            setShowSaveModal(true);
+                          }}
+                          className="px-3 py-1 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
+                          disabled={isLoading}
+                        >
+                          수정
+                        </button>
+                        <button
+                          onClick={() => handleDeletePackage(pkg.id)}
+                          className="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
+                          disabled={isLoading}
+                        >
+                          삭제
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               ))}

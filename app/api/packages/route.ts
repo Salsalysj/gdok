@@ -30,6 +30,15 @@ export async function GET() {
 
 // POST: 새 패키지 저장
 export async function POST(request: NextRequest) {
+  // 로컬 환경에서만 허용
+  const isLocal = process.env.NODE_ENV === 'development' || process.env.ALLOW_PACKAGE_SAVE === 'true';
+  if (!isLocal) {
+    return NextResponse.json(
+      { error: '패키지 저장 기능은 로컬 환경에서만 사용할 수 있습니다.' },
+      { status: 403 }
+    );
+  }
+
   if (!supabase) {
     return NextResponse.json(
       { error: 'Supabase가 설정되지 않았습니다.' },
