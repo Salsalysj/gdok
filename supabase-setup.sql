@@ -169,3 +169,50 @@ CREATE POLICY "서버 삭제 허용 circular" ON circular_breakthrough_values
   FOR DELETE
   USING (true);
 
+-- PC방 이벤트 효율 저장 테이블 생성
+CREATE TABLE IF NOT EXISTS saved_event_efficiency (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  weekly_rewards JSONB NOT NULL,
+  cumulative_rewards JSONB NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- updated_at 자동 업데이트를 위한 트리거 생성
+DROP TRIGGER IF EXISTS update_saved_event_efficiency_updated_at ON saved_event_efficiency;
+CREATE TRIGGER update_saved_event_efficiency_updated_at
+BEFORE UPDATE ON saved_event_efficiency
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
+-- 인덱스 생성 (성능 최적화)
+CREATE INDEX IF NOT EXISTS idx_saved_event_efficiency_created_at ON saved_event_efficiency(created_at DESC);
+
+-- RLS (Row Level Security) 정책 설정
+ALTER TABLE saved_event_efficiency ENABLE ROW LEVEL SECURITY;
+
+-- 모든 사용자가 읽을 수 있도록 정책 설정
+DROP POLICY IF EXISTS "모든 사용자 읽기 허용 event" ON saved_event_efficiency;
+CREATE POLICY "모든 사용자 읽기 허용 event" ON saved_event_efficiency
+  FOR SELECT
+  USING (true);
+
+-- 모든 사용자가 삽입할 수 있도록 정책 설정
+DROP POLICY IF EXISTS "모든 사용자 삽입 허용 event" ON saved_event_efficiency;
+CREATE POLICY "모든 사용자 삽입 허용 event" ON saved_event_efficiency
+  FOR INSERT
+  WITH CHECK (true);
+
+-- 모든 사용자가 업데이트할 수 있도록 정책 설정
+DROP POLICY IF EXISTS "모든 사용자 업데이트 허용 event" ON saved_event_efficiency;
+CREATE POLICY "모든 사용자 업데이트 허용 event" ON saved_event_efficiency
+  FOR UPDATE
+  USING (true);
+
+-- 모든 사용자가 삭제할 수 있도록 정책 설정
+DROP POLICY IF EXISTS "모든 사용자 삭제 허용 event" ON saved_event_efficiency;
+CREATE POLICY "모든 사용자 삭제 허용 event" ON saved_event_efficiency
+  FOR DELETE
+  USING (true);
+

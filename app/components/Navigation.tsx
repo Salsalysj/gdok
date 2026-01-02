@@ -10,6 +10,7 @@ export default function Navigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [contentRewardsOpen, setContentRewardsOpen] = useState<boolean>(false);
   const [refiningOpen, setRefiningOpen] = useState<boolean>(false);
+  const [eventEfficiencyOpen, setEventEfficiencyOpen] = useState<boolean>(false);
 
   // 로컬 스토리지와 동기화 & 이벤트 브로드캐스트
   useEffect(() => {
@@ -36,6 +37,13 @@ export default function Navigation() {
     } catch {}
   }, [lightMode]);
 
+  // 경로 변경 시 드롭다운 닫기
+  useEffect(() => {
+    setContentRewardsOpen(false);
+    setRefiningOpen(false);
+    setEventEfficiencyOpen(false);
+  }, [pathname]);
+
   // 외부 클릭 시 서브탭 닫기
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -50,19 +58,22 @@ export default function Navigation() {
       if (refiningOpen && !target.closest('.refining-menu')) {
         setRefiningOpen(false);
       }
+      if (eventEfficiencyOpen && !target.closest('.event-efficiency-menu')) {
+        setEventEfficiencyOpen(false);
+      }
     };
 
-    if (contentRewardsOpen || refiningOpen) {
+    if (contentRewardsOpen || refiningOpen || eventEfficiencyOpen) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => {
         document.removeEventListener('mousedown', handleClickOutside);
       };
     }
-  }, [contentRewardsOpen, refiningOpen]);
+  }, [contentRewardsOpen, refiningOpen, eventEfficiencyOpen]);
 
   const tabs = [
     { name: '컨텐츠 보상', href: '/content-rewards', hasSubmenu: true },
-    { name: '이벤트 효율', href: '/event-efficiency' },
+    { name: '이벤트 효율', href: '/event-efficiency', hasSubmenu: true },
     { name: '과금 효율', href: '/package-efficiency' },
     { name: '재련 효율', href: '/refining-simulation', hasSubmenu: true },
     { name: '골드 환율', href: '/crystal-gold' },
@@ -79,6 +90,13 @@ export default function Navigation() {
   const refiningSubTabs = [
     { name: '일반 재련', href: '/refining-simulation' },
     { name: '상급 재련', href: '/advanced-refining' },
+  ];
+
+  const eventEfficiencySubTabs = [
+    { name: 'PC방 이벤트', href: '/event-efficiency/pc-room' },
+    { name: '아크패스 선택 가이드', href: '/event-efficiency/arkpass' },
+    { name: '이벤트 상점 교환', href: '/event-efficiency/event-shop' },
+    { name: '혈석 상점 교환', href: '/event-efficiency/bloodstone-shop' },
   ];
 
   // 디코기준 스위치 컴포넌트
@@ -151,15 +169,17 @@ export default function Navigation() {
                 
                 const isActive = pathname === tab.href || 
                   (tab.href === '/content-rewards' && pathname.startsWith('/content-rewards')) ||
-                  (tab.href === '/refining-simulation' && (pathname.startsWith('/refining-simulation') || pathname.startsWith('/advanced-refining')));
+                  (tab.href === '/refining-simulation' && (pathname.startsWith('/refining-simulation') || pathname.startsWith('/advanced-refining'))) ||
+                  (tab.href === '/event-efficiency' && pathname.startsWith('/event-efficiency'));
                 
                 if (tab.hasSubmenu) {
                   const isContentRewards = tab.name === '컨텐츠 보상';
                   const isRefining = tab.name === '재련 효율';
-                  const isOpen = isContentRewards ? contentRewardsOpen : (isRefining ? refiningOpen : false);
-                  const setIsOpen = isContentRewards ? setContentRewardsOpen : (isRefining ? setRefiningOpen : () => {});
-                  const subTabs = isContentRewards ? contentRewardsSubTabs : (isRefining ? refiningSubTabs : []);
-                  const menuClass = isContentRewards ? 'content-rewards-menu' : (isRefining ? 'refining-menu' : '');
+                  const isEventEfficiency = tab.name === '이벤트 효율';
+                  const isOpen = isContentRewards ? contentRewardsOpen : (isRefining ? refiningOpen : (isEventEfficiency ? eventEfficiencyOpen : false));
+                  const setIsOpen = isContentRewards ? setContentRewardsOpen : (isRefining ? setRefiningOpen : (isEventEfficiency ? setEventEfficiencyOpen : () => {}));
+                  const subTabs = isContentRewards ? contentRewardsSubTabs : (isRefining ? refiningSubTabs : (isEventEfficiency ? eventEfficiencySubTabs : []));
+                  const menuClass = isContentRewards ? 'content-rewards-menu' : (isRefining ? 'refining-menu' : (isEventEfficiency ? 'event-efficiency-menu' : ''));
                   
                   return (
                     <div key={tab.href} className={`relative ${menuClass}`}>
@@ -183,16 +203,26 @@ export default function Navigation() {
                       </button>
                       {isOpen && (
                         <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl min-w-[160px] z-50">
-                          {subTabs.map((subTab) => (
-                            <Link
-                              key={subTab.href}
-                              href={subTab.href}
-                              onClick={() => setIsOpen(false)}
-                              className="block px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 transition-colors first:rounded-t-lg last:rounded-b-lg"
-                            >
-                              {subTab.name}
-                            </Link>
-                          ))}
+                          {subTabs.map((subTab) => {
+                            const isSubActive = pathname === subTab.href || pathname.startsWith(subTab.href + '/');
+                            return (
+                              <Link
+                                key={subTab.href}
+                                href={subTab.href}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setIsOpen(false);
+                                }}
+                                className={`block px-4 py-2 text-sm transition-colors first:rounded-t-lg last:rounded-b-lg ${
+                                  isSubActive
+                                    ? 'text-white bg-gray-700'
+                                    : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                                }`}
+                              >
+                                {subTab.name}
+                              </Link>
+                            );
+                          })}
                         </div>
                       )}
                     </div>
@@ -227,14 +257,16 @@ export default function Navigation() {
               
               const isActive = pathname === tab.href || 
                 (tab.href === '/content-rewards' && pathname.startsWith('/content-rewards')) ||
-                (tab.href === '/refining-simulation' && (pathname.startsWith('/refining-simulation') || pathname.startsWith('/advanced-refining')));
+                (tab.href === '/refining-simulation' && (pathname.startsWith('/refining-simulation') || pathname.startsWith('/advanced-refining'))) ||
+                (tab.href === '/event-efficiency' && pathname.startsWith('/event-efficiency'));
               
               if (tab.hasSubmenu) {
                 const isContentRewards = tab.name === '컨텐츠 보상';
                 const isRefining = tab.name === '재련 효율';
-                const isOpen = isContentRewards ? contentRewardsOpen : (isRefining ? refiningOpen : false);
-                const setIsOpen = isContentRewards ? setContentRewardsOpen : (isRefining ? setRefiningOpen : () => {});
-                const subTabs = isContentRewards ? contentRewardsSubTabs : (isRefining ? refiningSubTabs : []);
+                const isEventEfficiency = tab.name === '이벤트 효율';
+                const isOpen = isContentRewards ? contentRewardsOpen : (isRefining ? refiningOpen : (isEventEfficiency ? eventEfficiencyOpen : false));
+                const setIsOpen = isContentRewards ? setContentRewardsOpen : (isRefining ? setRefiningOpen : (isEventEfficiency ? setEventEfficiencyOpen : () => {}));
+                const subTabs = isContentRewards ? contentRewardsSubTabs : (isRefining ? refiningSubTabs : (isEventEfficiency ? eventEfficiencySubTabs : []));
                 
                 return (
                   <div key={tab.href}>
@@ -258,19 +290,27 @@ export default function Navigation() {
                     </button>
                     {isOpen && (
                       <div className="pl-4 mt-1 space-y-1">
-                        {subTabs.map((subTab) => (
-                          <Link
-                            key={subTab.href}
-                            href={subTab.href}
-                            onClick={() => {
-                              setIsOpen(false);
-                              setMobileMenuOpen(false);
-                            }}
-                            className="block px-4 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
-                          >
-                            {subTab.name}
-                          </Link>
-                        ))}
+                        {subTabs.map((subTab) => {
+                          const isSubActive = pathname === subTab.href || pathname.startsWith(subTab.href + '/');
+                          return (
+                            <Link
+                              key={subTab.href}
+                              href={subTab.href}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setIsOpen(false);
+                                setMobileMenuOpen(false);
+                              }}
+                              className={`block px-4 py-2 rounded-lg text-sm transition-colors ${
+                                isSubActive
+                                  ? 'text-white bg-gray-800'
+                                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                              }`}
+                            >
+                              {subTab.name}
+                            </Link>
+                          );
+                        })}
                       </div>
                     )}
                   </div>

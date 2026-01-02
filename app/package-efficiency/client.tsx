@@ -84,6 +84,7 @@ export default function PackageEfficiencyClient({
   narakStages,
   narak1Stages,
   narak2Stages,
+  initialSavedPackages = [],
 }: {
   itemList: string[];
   etcListData: { [key: string]: EtcListItem };
@@ -99,6 +100,7 @@ export default function PackageEfficiencyClient({
   narakStages?: Stage[];
   narak1Stages?: Stage[];
   narak2Stages?: Stage[];
+  initialSavedPackages?: Array<{ id: string; package_name: string; created_at: string; updated_at: string; package_data?: any }>;
 }) {
   // 로컬 환경에서만 패키지 저장/업데이트 허용
   const allowPackageSave = process.env.NEXT_PUBLIC_ALLOW_PACKAGE_SAVE === 'true' || process.env.NODE_ENV === 'development';
@@ -298,8 +300,8 @@ export default function PackageEfficiencyClient({
     ],
   });
 
-  // 저장된 패키지 관련 상태
-  const [savedPackages, setSavedPackages] = useState<Array<{ id: string; package_name: string; created_at: string; updated_at: string }>>([]);
+  // 저장된 패키지 관련 상태 (서버에서 전달받은 초기값 사용)
+  const [savedPackages, setSavedPackages] = useState<Array<{ id: string; package_name: string; created_at: string; updated_at: string; package_data?: any }>>(initialSavedPackages);
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [savePackageName, setSavePackageName] = useState('');
@@ -1495,20 +1497,10 @@ export default function PackageEfficiencyClient({
     setSelectedPackageId(null);
   };
 
-  // 저장된 패키지 목록 불러오기 (모든 환경에서 가능)
+  // 저장된 패키지 목록 업데이트 (서버에서 이미 가져왔지만, 저장/수정/삭제 후 최신화를 위해)
   useEffect(() => {
-    async function loadSavedPackages() {
-      try {
-        const res = await fetch('/api/packages');
-        const data = await res.json();
-        if (data.packages) {
-          setSavedPackages(data.packages);
-        }
-      } catch (error) {
-        console.error('저장된 패키지 목록 불러오기 실패:', error);
-      }
-    }
-    loadSavedPackages();
+    // 서버에서 이미 초기값을 전달받았으므로, 클라이언트에서 다시 불러올 필요는 없음
+    // 단, 저장/수정/삭제 후에는 자동으로 업데이트됨
   }, []);
 
   // 패키지 저장

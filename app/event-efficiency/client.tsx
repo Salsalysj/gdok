@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
 import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
 import { usePriceOverride } from '../contexts/PriceOverrideContext';
+import { useValueDb } from '../contexts/ValueDbContext';
 
 type EventTab = {
   key: string;
@@ -47,12 +48,37 @@ type CachedMarketData = {
   };
 };
 
-type RewardItem = {
+// 구성 요소 타입 (과금 효율과 동일)
+type ComponentItem = {
+  itemName: string;
+  quantity: number;
+  manualPrice?: number | null;
+  manualUnitType?: '골드' | '크리스탈' | '현금' | null;
+  probability?: number; // 확률 타입용
+  selected?: boolean; // 선택 타입용
+  nestedItem?: RewardItemNew; // 중첩된 묶음 항목
+};
+
+// 새로운 보상 아이템 타입 (과금 효율의 PackageItem과 동일)
+type RewardItemNew = {
+  itemName: string;
+  itemType: '확정' | '확률' | '선택';
+  quantity: number;
+  components: ComponentItem[];
+  type?: 'kurzan';
+  excludeFromSummary?: boolean;
+};
+
+// 기존 호환성을 위한 단순 타입
+type RewardItemLegacy = {
   name: string;
   quantity: number;
   type?: 'kurzan';
   excludeFromSummary?: boolean;
 };
+
+// Union 타입으로 양쪽 모두 지원
+type RewardItem = RewardItemNew | RewardItemLegacy;
 
 type RewardGroup = {
   title: string;
@@ -74,6 +100,7 @@ type AggregatedReward = {
   quantity: number;
   perUnitNote?: string | null;
   isWeekly?: boolean;
+  category: 'weekly' | 'cumulative' | 'daily';
 };
 
 type PriceInfo = {
@@ -86,13 +113,7 @@ type PriceInfo = {
 
 const PC_BANG_LUCKY_SUMMARY_NAME = 'PC방 행운의 상자 (기대값)';
 
-const eventTabs: EventTab[] = [
-  {
-    key: 'pcbang',
-    label: 'PC방 이벤트',
-    period: '2025/11/5 ~ 2025/12/24',
-  },
-];
+const eventTabs: EventTab[] = [];
 
 const eventSubTabs = [
   { key: 'summary', label: '요약' },
@@ -114,24 +135,369 @@ type Props = {
     fragmentValue?: number;
     cardExpValue?: number;
   }[];
+  initialSavedEventEfficiency?: Array<{ id: string; name: string; created_at: string; updated_at: string; weekly_rewards?: any; cumulative_rewards?: any }>;
 };
 
-export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, marketCache, discordRate, kurzanStages }: Props) {
+export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, marketCache, discordRate, kurzanStages, initialSavedEventEfficiency = [] }: Props) {
   const { adjustPrice } = usePriceAdjustment();
   const { state: priceOverrideState } = usePriceOverride();
-  const [activeTab, setActiveTab] = useState<EventTab>(eventTabs[0]);
+  const { adjustedEntries } = useValueDb();
+  
+  // 로컬 환경에서만 이벤트 효율 저장/업데이트 허용
+  const allowEventEfficiencySave = process.env.NEXT_PUBLIC_ALLOW_PACKAGE_SAVE === 'true' || process.env.NODE_ENV === 'development';
+  
+  // 저장된 이벤트 효율 관련 상태
+  const [savedEventEfficiency, setSavedEventEfficiency] = useState<Array<{ id: string; name: string; created_at: string; updated_at: string; weekly_rewards?: any; cumulative_rewards?: any }>>(initialSavedEventEfficiency);
+  const [selectedEventEfficiencyId, setSelectedEventEfficiencyId] = useState<string | null>(null);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [saveEventEfficiencyName, setSaveEventEfficiencyName] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // 디버깅: adjustedEntries 확인
+  useEffect(() => {
+    console.log('[이벤트 효율] adjustedEntries 개수:', adjustedEntries?.length || 0);
+    if (adjustedEntries && adjustedEntries.length > 0) {
+      console.log('[이벤트 효율] 첫 5개 항목:', adjustedEntries.slice(0, 5).map(e => e.itemName));
+    }
+  }, [adjustedEntries]);
+  
+  // 타입 가드: 새 형식 RewardItem인지 확인
+  const isNewFormatItem = (item: RewardItem): item is RewardItemNew => {
+    return 'itemName' in item && 'components' in item;
+  };
+  
+  // 헬퍼: 아이템 이름 가져오기
+  const getItemName = (item: RewardItem): string => {
+    return isNewFormatItem(item) ? item.itemName : item.name;
+  };
+  
+  // 헬퍼: 아이템 수량 가져오기 (구성 요소의 총 수량)
+  const getItemTotalQuantity = (item: RewardItem): number => {
+    if (isNewFormatItem(item)) {
+      // components의 수량 합계 반환
+      return item.components.reduce((sum, comp) => {
+        if (comp.itemName === '__nested__' && comp.nestedItem) {
+          return sum + getItemTotalQuantity(comp.nestedItem) * comp.quantity;
+        }
+        return sum + comp.quantity;
+      }, 0);
+    }
+    return item.quantity;
+  };
+  
+  // SearchableSelect 컴포넌트 (과금 효율과 동일)
+  const SearchableSelect = ({ 
+    value, 
+    onChange, 
+    options, 
+    placeholder = "아이템 선택",
+    className = "",
+    size = "normal"
+  }: {
+    value: string;
+    onChange: (value: string) => void;
+    options: { value: string; label: string }[];
+    placeholder?: string;
+    className?: string;
+    size?: "normal" | "small";
+  }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
+    const selectRef = useRef<HTMLDivElement>(null);
+    
+    // 디버깅: options 확인
+    useEffect(() => {
+      if (isOpen) {
+        console.log('[이벤트 효율] SearchableSelect 열림, options 개수:', options.length);
+        console.log('[이벤트 효율] options 첫 10개:', options.slice(0, 10).map(o => o.label));
+      }
+    }, [isOpen, options]);
+    
+    const filteredOptions = useMemo(() => {
+      if (!searchQuery.trim()) {
+        console.log('[이벤트 효율] 필터링 없음, 전체 options:', options.length, '개');
+        return options;
+      }
+      const query = searchQuery.toLowerCase();
+      const filtered = options.filter(opt => opt.label.toLowerCase().includes(query));
+      console.log('[이벤트 효율] 검색어:', query, '필터링 결과:', filtered.length, '개');
+      return filtered;
+    }, [options, searchQuery]);
+    
+    const selectedLabel = options.find(opt => opt.value === value)?.label || placeholder;
+    
+    useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        if (selectRef.current && !selectRef.current.contains(event.target as Node)) {
+          setIsOpen(false);
+          setSearchQuery("");
+        }
+      };
+      
+      if (isOpen) {
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+      }
+    }, [isOpen]);
+    
+    const handleSelect = (optionValue: string) => {
+      onChange(optionValue);
+      setIsOpen(false);
+      setSearchQuery("");
+    };
+    
+    const sizeClasses = size === "small" 
+      ? "px-2 py-1 text-xs" 
+      : "px-4 py-2";
+    
+    const bgColor = size === "small" 
+      ? "bg-gray-600 border-gray-500" 
+      : "bg-gray-800 border-gray-700";
+    
+    return (
+      <div ref={selectRef} className={`relative ${className}`}>
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className={`w-full ${sizeClasses} ${bgColor} text-white rounded-lg border focus:outline-none focus:border-purple-500 text-left flex items-center justify-between`}
+        >
+          <span className={value ? "" : "text-gray-500"}>{selectedLabel}</span>
+          <svg className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        
+        {isOpen && (
+          <div className="absolute z-50 w-full mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl max-h-60 overflow-hidden">
+            <div className="p-2 border-b border-gray-700">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="검색..."
+                className="w-full px-3 py-2 bg-gray-900 text-white rounded border border-gray-600 focus:outline-none focus:border-purple-500 text-sm"
+                autoFocus
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+            <div className="overflow-y-auto max-h-48">
+              {filteredOptions.length > 0 ? (
+                filteredOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => handleSelect(option.value)}
+                    className={`w-full px-3 py-2 text-left hover:bg-gray-700 transition-colors ${
+                      value === option.value ? 'bg-purple-600/30 text-purple-300' : 'text-white'
+                    } ${size === "small" ? "text-xs" : "text-sm"}`}
+                  >
+                    {option.label}
+                  </button>
+                ))
+              ) : (
+                <div className="px-3 py-2 text-gray-400 text-sm text-center">검색 결과가 없습니다</div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+  const [activeTab, setActiveTab] = useState<EventTab | null>(null);
   const [activeSubTab, setActiveSubTab] = useState<typeof eventSubTabs[number]>(eventSubTabs[0]);
   const [chaosStoneQuality, setChaosStoneQuality] = useState<90 | 95>(90);
   const [lightMode, setLightMode] = useState<boolean>(false);
   const [enabledRewards, setEnabledRewards] = useState<Record<string, boolean>>({});
   const [braceletPriceInput, setBraceletPriceInput] = useState('100');
   const [totalDaysInput, setTotalDaysInput] = useState('7');
+  const [totalWeeksInput, setTotalWeeksInput] = useState('7');
+  const [totalHoursInput, setTotalHoursInput] = useState('70');
   const [legendaryCardSelectionPriceInput, setLegendaryCardSelectionPriceInput] = useState('50000');
   const [kurzanSwitches, setKurzanSwitches] = useState({
     breakthrough: true,
     fragment: true,
     cardExp: true,
   });
+  
+  // 아이템 드롭다운 옵션 (가치계산DB 우선, fallback으로 etc_list + 시세)
+  const itemDropdownOptions = useMemo(() => {
+    let itemNames: string[] = [];
+    
+    console.log('[이벤트 효율] itemDropdownOptions 재계산 시작');
+    console.log('[이벤트 효율] adjustedEntries:', adjustedEntries?.length || 0, '개');
+    console.log('[이벤트 효율] adjustedEntries 타입:', typeof adjustedEntries, Array.isArray(adjustedEntries));
+    
+    // 1. 가치계산DB에서 가져오기 (우선순위)
+    if (adjustedEntries && adjustedEntries.length > 0) {
+      itemNames = adjustedEntries
+        .map(entry => entry.itemName)
+        .filter((name): name is string => name != null && name !== '');
+      console.log('[이벤트 효율] 가치계산DB에서 아이템 로드:', itemNames.length, '개');
+      if (itemNames.length > 0) {
+        console.log('[이벤트 효율] 첫 10개 아이템명:', itemNames.slice(0, 10));
+      }
+    } else {
+      console.log('[이벤트 효율] adjustedEntries가 비어있어 fallback 사용');
+      // 2. fallback: etc_list + 시세 캐시
+      const etcItemNames = etcListItems.map(item => item.itemName);
+      const allMarketItems = [
+        ...(marketCache?.data?.tier4Results || []),
+        ...(marketCache?.data?.tier3Results || []),
+        ...(marketCache?.data?.gemResults || []),
+        ...(marketCache?.data?.otherResults || []),
+        ...(marketCache?.data?.relicEngravingResults || []),
+      ];
+      const marketItemNames = allMarketItems
+        .map(item => item.displayName || item.Name)
+        .filter((name): name is string => name != null);
+      
+      itemNames = Array.from(new Set([...etcItemNames, ...marketItemNames]));
+      console.log('[이벤트 효율] fallback에서 아이템 로드:', itemNames.length, '개');
+    }
+    
+    const options = [
+      { value: '', label: '아이템 선택' },
+      { value: '__nested__', label: '묶음 항목 추가' },
+      { value: '__manual__', label: '(직접 입력)' },
+      ...itemNames.map(item => ({ value: item, label: item }))
+    ];
+    
+    console.log('[이벤트 효율] 최종 드롭다운 옵션 개수:', options.length, '개');
+    
+    return options;
+  }, [adjustedEntries, etcListItems, marketCache]);
+  
+  // 아이템 단가 가져오기 (가치계산DB 우선 사용 - 가격 조정 자동 반영)
+  const getItemUnitPrice = useCallback((itemName: string): number | null => {
+    if (!itemName || itemName === '__nested__' || itemName === '__manual__') return null;
+    
+    // 1. 가치계산DB에서 찾기 (우선순위 - adjustedEntries는 가격 조정이 이미 적용된 데이터)
+    if (adjustedEntries && adjustedEntries.length > 0) {
+      const valueDbEntry = adjustedEntries.find(entry => entry.itemName === itemName);
+      if (valueDbEntry && valueDbEntry.unitType === '골드' && valueDbEntry.unitValue !== null) {
+        return valueDbEntry.unitValue;
+      }
+    }
+    
+    // 2. fallback: etc_list에서 찾기
+    const etcItem = etcListItems.find(item => item.itemName === itemName);
+    if (etcItem) {
+      if (etcItem.gold !== null) return etcItem.gold;
+      if (etcItem.crystal !== null && crystalGoldRate !== null) {
+        return (etcItem.crystal * crystalGoldRate) / 100;
+      }
+    }
+    
+    // 3. fallback: 시세 캐시에서 찾기
+    const allMarketItems = [
+      ...(marketCache?.data?.tier4Results || []),
+      ...(marketCache?.data?.tier3Results || []),
+      ...(marketCache?.data?.gemResults || []),
+      ...(marketCache?.data?.otherResults || []),
+      ...(marketCache?.data?.relicEngravingResults || []),
+    ];
+    
+    const marketItem = allMarketItems.find(item => 
+      (item.displayName || item.Name) === itemName
+    );
+    
+    if (marketItem) {
+      const price = marketItem.CurrentMinPrice || marketItem.RecentPrice || marketItem.YDayAvgPrice;
+      if (price) return adjustPrice(itemName, price);
+    }
+    
+    return null;
+  }, [adjustedEntries, etcListItems, marketCache, crystalGoldRate, adjustPrice]);
+  
+  // 초기 주간 보상 데이터 (새로 만들기용)
+  const initialWeeklyRewards: RewardGroup[] = [
+    {
+      title: '2시간 달성',
+      items: [
+        { itemName: '실링', itemType: '확정', quantity: 1, components: [{ itemName: '실링', quantity: 1000000 }] },
+        { itemName: '배틀 아이템 종합 상자', itemType: '확정', quantity: 1, components: [{ itemName: '배틀 아이템 종합 상자', quantity: 5 }] },
+      ],
+    },
+    {
+      title: '4시간 달성',
+      items: [
+        { itemName: '도약의 정수', itemType: '확정', quantity: 1, components: [{ itemName: '도약의 정수', quantity: 5 }] },
+        { itemName: '중급 생기 회복물약', itemType: '확정', quantity: 1, components: [{ itemName: '중급 생기 회복물약', quantity: 5 }] },
+      ],
+    },
+    {
+      title: '6시간 달성',
+      items: [
+        { itemName: '운명의 수호석 주머니', itemType: '확정', quantity: 1, components: [{ itemName: '운명의 수호석 주머니', quantity: 40 }] },
+        { itemName: '운명의 파괴석 주머니', itemType: '확정', quantity: 1, components: [{ itemName: '운명의 파괴석 주머니', quantity: 20 }] },
+      ],
+    },
+    {
+      title: '8시간 달성',
+      items: [
+        { itemName: '재련 돌파석 선택 상자', itemType: '확정', quantity: 1, components: [{ itemName: '재련 돌파석 선택 상자', quantity: 10 }] },
+        { itemName: '고급~영웅 젬 상자', itemType: '확정', quantity: 1, components: [{ itemName: '고급~영웅 젬 상자', quantity: 2 }] },
+      ],
+    },
+    {
+      title: '10시간 달성',
+      items: [
+        { itemName: '재련 보조 선택 상자', itemType: '확정', quantity: 1, components: [{ itemName: '재련 보조 선택 상자', quantity: 5 }] },
+        { itemName: '재련 파편 선택 상자', itemType: '확정', quantity: 1, components: [{ itemName: '재련 파편 선택 상자', quantity: 20 }] },
+      ],
+    },
+  ];
+  
+  // 초기 누적 보상 데이터 (새로 만들기용)
+  const initialCumulativeRewards: RewardGroup[] = [
+    {
+      title: '10시간 달성',
+      items: [
+        { itemName: '실링', itemType: '확정', quantity: 1, components: [{ itemName: '실링', quantity: 6000000 }] },
+        { itemName: '운명의 수호석 주머니', itemType: '확정', quantity: 1, components: [{ itemName: '운명의 수호석 주머니', quantity: 80 }] },
+        { itemName: '운명의 파괴석 주머니', itemType: '확정', quantity: 1, components: [{ itemName: '운명의 파괴석 주머니', quantity: 40 }] },
+        { itemName: '메넬리크의 서', itemType: '확정', quantity: 1, components: [{ itemName: '메넬리크의 서', quantity: 10 }] },
+        { itemName: '전설~희귀 카드팩', itemType: '확정', quantity: 1, components: [{ itemName: '전설~희귀 카드팩', quantity: 15 }] },
+      ],
+    },
+    {
+      title: '30시간 달성',
+      items: [
+        { itemName: '재련 파편 선택 상자', itemType: '확정', quantity: 1, components: [{ itemName: '재련 파편 선택 상자', quantity: 20 }] },
+        { itemName: '재련 돌파석 선택 상자', itemType: '확정', quantity: 1, components: [{ itemName: '재련 돌파석 선택 상자', quantity: 20 }] },
+        { itemName: '정련된 혼돈의(무기)', itemType: '확정', quantity: 1, components: [{ itemName: '정련된 혼돈의(무기)', quantity: 10 }] },
+        { itemName: '정련된 혼돈의(방어구)', itemType: '확정', quantity: 1, components: [{ itemName: '정련된 혼돈의(방어구)', quantity: 30 }] },
+        { itemName: '전설~영웅 카드팩', itemType: '확정', quantity: 1, components: [{ itemName: '전설~영웅 카드팩', quantity: 10 }] },
+      ],
+    },
+    {
+      title: '50시간 달성',
+      items: [
+        { itemName: '[이벤트] 재봉술 선택 상자', itemType: '확정', quantity: 1, components: [{ itemName: '[이벤트] 재봉술 선택 상자', quantity: 5 }] },
+        { itemName: '[이벤트] 야금술 선택 상자', itemType: '확정', quantity: 1, components: [{ itemName: '[이벤트] 야금술 선택 상자', quantity: 3 }] },
+        { itemName: '재련 융화 재료 선택 상자', itemType: '확정', quantity: 1, components: [{ itemName: '재련 융화 재료 선택 상자', quantity: 20 }] },
+        { itemName: '재련 보조 선택 상자', itemType: '확정', quantity: 1, components: [{ itemName: '재련 보조 선택 상자', quantity: 20 }] },
+        { itemName: '정련된 운명의 돌', itemType: '확정', quantity: 1, components: [{ itemName: '정련된 운명의 돌', quantity: 5 }] },
+      ],
+    },
+    {
+      title: '70시간 달성',
+      items: [
+        { itemName: '고결한 혼돈의 돌 선택 상자', itemType: '확정', quantity: 1, components: [{ itemName: '고결한 혼돈의 돌 선택 상자', quantity: 1 }] },
+        { itemName: '희귀~영웅 젬 상자', itemType: '확정', quantity: 1, components: [{ itemName: '희귀~영웅 젬 상자', quantity: 7 }] },
+        { itemName: '젬 가공 초기화권', itemType: '확정', quantity: 1, components: [{ itemName: '젬 가공 초기화권', quantity: 1 }] },
+        { itemName: '유물 각인서 랜덤 주머니', itemType: '확정', quantity: 1, components: [{ itemName: '유물 각인서 랜덤 주머니', quantity: 1 }] },
+        { itemName: '팔찌 효과 재변환권', itemType: '확정', quantity: 1, components: [{ itemName: '팔찌 효과 재변환권', quantity: 3 }] },
+      ],
+    },
+  ];
+  
+  // 주간 보상 상태 (직접 입력 가능) - 새 구조 적용
+  const [weeklyRewardsEditable, setWeeklyRewardsEditable] = useState<RewardGroup[]>(initialWeeklyRewards);
+  
+  // 누적 보상 상태 (직접 입력 가능) - 새 구조 적용
+  const [cumulativeRewardsEditable, setCumulativeRewardsEditable] = useState<RewardGroup[]>(initialCumulativeRewards);
+  
   const kurzanStageOptions = useMemo<KurzanStageOption[]>(() => {
     return kurzanStages.map((stage, idx) => ({
       key: `${stage.level}-${stage.stage}-${idx}`,
@@ -196,6 +562,18 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
     if (!Number.isNaN(val) && val > 0) return val;
     return null;
   }, [totalDaysInput]);
+
+  const totalWeeksNumber = useMemo(() => {
+    const val = parseFloat(totalWeeksInput);
+    if (!Number.isNaN(val) && val > 0) return val;
+    return 7; // 기본값 7주
+  }, [totalWeeksInput]);
+
+  const totalHoursNumber = useMemo(() => {
+    const val = parseFloat(totalHoursInput);
+    if (!Number.isNaN(val) && val > 0) return val;
+    return 70; // 기본값 70시간
+  }, [totalHoursInput]);
 
   const daysPerWeek = useMemo(() => {
     if (totalDaysNumber == null) return null;
@@ -719,87 +1097,9 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
     return `${formatted}원`;
   };
 
-  // PC방 이벤트 보상 데이터
-  const weeklyRewards: RewardGroup[] = [
-    {
-      title: '2시간 달성',
-      items: [
-        { name: '실링', quantity: 1000000 },
-        { name: '배틀 아이템 종합 상자', quantity: 5 },
-      ],
-    },
-    {
-      title: '4시간 달성',
-      items: [
-        { name: '도약의 정수', quantity: 5 },
-        { name: '중급 생기 회복물약', quantity: 5 },
-      ],
-    },
-    {
-      title: '6시간 달성',
-      items: [
-        { name: '운명의 수호석 주머니', quantity: 40 },
-        { name: '운명의 파괴석 주머니', quantity: 20 },
-      ],
-    },
-    {
-      title: '8시간 달성',
-      items: [
-        { name: '재련 돌파석 선택 상자', quantity: 10 },
-        { name: '고급~영웅 젬 상자', quantity: 2 },
-      ],
-    },
-    {
-      title: '10시간 달성',
-      items: [
-        { name: '재련 보조 선택 상자', quantity: 5 },
-        { name: '재련 파편 선택 상자', quantity: 20 },
-      ],
-    },
-  ];
-
-  const cumulativeRewards: RewardGroup[] = [
-    {
-      title: '10시간 달성',
-      items: [
-        { name: '실링', quantity: 6000000 },
-        { name: '운명의 수호석 주머니', quantity: 80 },
-        { name: '운명의 파괴석 주머니', quantity: 40 },
-        { name: '메넬리크의 서', quantity: 10 },
-        { name: '전설~희귀 카드팩', quantity: 15 },
-      ],
-    },
-    {
-      title: '30시간 달성',
-      items: [
-        { name: '재련 파편 선택 상자', quantity: 20 },
-        { name: '재련 돌파석 선택 상자', quantity: 20 },
-        { name: '정련된 혼돈의(무기)', quantity: 10 },
-        { name: '정련된 혼돈의(방어구)', quantity: 30 },
-        { name: '전설~영웅 카드팩', quantity: 10 },
-      ],
-    },
-    {
-      title: '50시간 달성',
-      items: [
-        { name: '[이벤트] 재봉술 선택 상자', quantity: 5 },
-        { name: '[이벤트] 야금술 선택 상자', quantity: 3 },
-        { name: '재련 융화 재료 선택 상자', quantity: 20 },
-        { name: '재련 보조 선택 상자', quantity: 20 },
-        { name: '정련된 운명의 돌', quantity: 5 },
-      ],
-    },
-    {
-      title: '70시간 달성',
-      items: [
-        { name: '고결한 혼돈의 돌 선택 상자', quantity: 1 },
-        { name: '희귀~영웅 젬 상자', quantity: 7 },
-        { name: '젬 가공 초기화권', quantity: 1 },
-        { name: '유물 각인서 랜덤 주머니', quantity: 1 },
-        { name: '팔찌 효과 재변환권', quantity: 3 },
-      ],
-    },
-  ];
+  // weeklyRewards와 cumulativeRewards는 이제 상태로 관리됨 (weeklyRewardsEditable, cumulativeRewardsEditable)
+  const weeklyRewards = weeklyRewardsEditable;
+  const cumulativeRewards = cumulativeRewardsEditable;
 
   const pcBangLuckyBoxDetails = useMemo(
     () => [
@@ -890,11 +1190,49 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
   ]);
 
   const aggregateRewards = useMemo(() => {
-    const weeklyFactor = 7; // 7주 동안 매주 주간 보상 수령
+    const weeklyFactor = totalWeeksNumber; // 주수 동안 매주 주간 보상 수령
     const dailyFactor = totalDaysNumber ?? 0;
     const aggregatedMap = new Map<string, AggregatedReward>();
 
-    const addItem = (item: RewardItem, multiplier: number, isWeekly: boolean) => {
+    // RewardItemNew 구조 처리: 각 컴포넌트를 개별 아이템으로 추가
+    const addItemNew = (item: RewardItemNew, multiplier: number, isWeekly: boolean, category: 'weekly' | 'cumulative' | 'daily') => {
+      if (item.excludeFromSummary) return;
+      
+      item.components.forEach(comp => {
+        if (!comp.itemName || comp.itemName === '__nested__' || comp.itemName === '__manual__' || comp.itemName === '') return;
+        
+        // 확정/확률/선택 타입에 따른 포함 여부 확인
+        const isIncluded = item.itemType === '확정' || 
+                          (item.itemType === '확률' && comp.probability !== undefined) ||
+                          (item.itemType === '선택' && comp.selected);
+        
+        if (!isIncluded) return;
+        
+        // 확률 타입일 경우 확률 적용
+        const probabilityMultiplier = item.itemType === '확률' && comp.probability !== undefined ? comp.probability : 1;
+        
+        // 수량 계산: 컴포넌트 수량 × 아이템 수량 × 주수(주간인 경우) × 확률
+        const quantity = comp.quantity * item.quantity * multiplier * probabilityMultiplier;
+        
+        const key = comp.itemName;
+        const existing = aggregatedMap.get(key);
+        
+        if (existing) {
+          existing.quantity += quantity;
+        } else {
+          aggregatedMap.set(key, {
+            name: comp.itemName,
+            quantity,
+            perUnitNote: null,
+            isWeekly,
+            category,
+          });
+        }
+      });
+    };
+
+    // 기존 RewardItemLegacy 구조 처리 (하위 호환성)
+    const addItemLegacy = (item: RewardItemLegacy, multiplier: number, isWeekly: boolean, category: 'weekly' | 'cumulative' | 'daily') => {
       if (item.excludeFromSummary) return;
       const key = item.name;
       const quantity = item.quantity * multiplier;
@@ -908,21 +1246,40 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
           quantity,
           perUnitNote: null,
           isWeekly,
+          category,
         });
       }
     };
 
     weeklyRewards.forEach(group => {
-      group.items.forEach(item => addItem(item, weeklyFactor, true));
+      group.items.forEach(item => {
+        if (isNewFormatItem(item)) {
+          addItemNew(item, weeklyFactor, true, 'weekly');
+        } else {
+          addItemLegacy(item, weeklyFactor, true, 'weekly');
+        }
+      });
     });
 
     cumulativeRewards.forEach(group => {
-      group.items.forEach(item => addItem(item, 1, false));
+      group.items.forEach(item => {
+        if (isNewFormatItem(item)) {
+          addItemNew(item, 1, false, 'cumulative');
+        } else {
+          addItemLegacy(item, 1, false, 'cumulative');
+        }
+      });
     });
 
     if (dailyFactor > 0) {
       dailyBenefits.forEach(group => {
-        group.items.forEach(item => addItem(item, dailyFactor, false));
+        group.items.forEach(item => {
+          if (isNewFormatItem(item)) {
+            addItemNew(item, dailyFactor, false, 'daily');
+          } else {
+            addItemLegacy(item, dailyFactor, false, 'daily');
+          }
+        });
       });
     }
 
@@ -934,11 +1291,12 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
         quantity: pcBangLuckyBoxQuantity,
         perUnitNote: '총 진행 일수 × 3개',
         isWeekly: false,
+        category: 'daily',
       });
     }
 
     return aggregatedList;
-  }, [weeklyRewards, cumulativeRewards, dailyBenefits, totalDaysNumber, pcBangLuckyBoxQuantity]);
+  }, [weeklyRewards, cumulativeRewards, dailyBenefits, totalDaysNumber, totalWeeksNumber, pcBangLuckyBoxQuantity]);
 
   useEffect(() => {
     setEnabledRewards((prev) => {
@@ -991,7 +1349,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
     }, 0);
 
     const goldToCash = goldToCashPerGold ? totalGold * goldToCashPerGold : null;
-    const hours = 70;
+    const hours = totalHoursNumber;
 
     return {
       totalGold,
@@ -999,9 +1357,355 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
       hourlyGold: hours > 0 ? totalGold / hours : null,
       hourlyCash: goldToCash && hours > 0 ? goldToCash / hours : null,
     };
-  }, [aggregateRewards, enabledRewards, getItemPriceInfo, goldToCashPerGold, adjustedKurzanValue, pcBangLuckyBoxExpectedGold]);
+  }, [aggregateRewards, enabledRewards, getItemPriceInfo, goldToCashPerGold, adjustedKurzanValue, pcBangLuckyBoxExpectedGold, totalHoursNumber]);
 
-  const renderRewardTable = (groups: RewardGroup[], sectionTitle: string, summaryLabel?: string) => {
+  // 주간/누적 보상 편집 핸들러 (과금 효율과 동일한 로직)
+  const handleAddRewardGroup = useCallback((type: 'weekly' | 'cumulative') => {
+    const newGroup: RewardGroup = {
+      title: '새로운 보상',
+      items: [],
+    };
+    if (type === 'weekly') {
+      setWeeklyRewardsEditable(prev => [...prev, newGroup]);
+    } else {
+      setCumulativeRewardsEditable(prev => [...prev, newGroup]);
+    }
+  }, []);
+
+  const handleRemoveRewardGroup = useCallback((type: 'weekly' | 'cumulative', groupIndex: number) => {
+    if (type === 'weekly') {
+      setWeeklyRewardsEditable(prev => prev.filter((_, idx) => idx !== groupIndex));
+    } else {
+      setCumulativeRewardsEditable(prev => prev.filter((_, idx) => idx !== groupIndex));
+    }
+  }, []);
+
+  const handleUpdateGroupTitle = useCallback((type: 'weekly' | 'cumulative', groupIndex: number, newTitle: string) => {
+    if (type === 'weekly') {
+      setWeeklyRewardsEditable(prev => prev.map((group, idx) => 
+        idx === groupIndex ? { ...group, title: newTitle } : group
+      ));
+    } else {
+      setCumulativeRewardsEditable(prev => prev.map((group, idx) => 
+        idx === groupIndex ? { ...group, title: newTitle } : group
+      ));
+    }
+  }, []);
+
+  // 묶음 항목 추가 (과금 효율과 동일)
+  const handleAddRewardItem = useCallback((type: 'weekly' | 'cumulative', groupIndex: number) => {
+    const newItem: RewardItemNew = {
+      itemName: '새 묶음 항목',
+      itemType: '확정',
+      quantity: 1,
+      components: [],
+    };
+    if (type === 'weekly') {
+      setWeeklyRewardsEditable(prev => prev.map((group, idx) => 
+        idx === groupIndex ? { ...group, items: [...group.items, newItem] } : group
+      ));
+    } else {
+      setCumulativeRewardsEditable(prev => prev.map((group, idx) => 
+        idx === groupIndex ? { ...group, items: [...group.items, newItem] } : group
+      ));
+    }
+  }, []);
+
+  // 묶음 항목 제거
+  const handleRemoveRewardItem = useCallback((type: 'weekly' | 'cumulative', groupIndex: number, itemIndex: number) => {
+    if (type === 'weekly') {
+      setWeeklyRewardsEditable(prev => prev.map((group, idx) => 
+        idx === groupIndex ? { ...group, items: group.items.filter((_, iIdx) => iIdx !== itemIndex) } : group
+      ));
+    } else {
+      setCumulativeRewardsEditable(prev => prev.map((group, idx) => 
+        idx === groupIndex ? { ...group, items: group.items.filter((_, iIdx) => iIdx !== itemIndex) } : group
+      ));
+    }
+  }, []);
+
+  // 묶음 항목 업데이트
+  const handleUpdateRewardItem = useCallback((type: 'weekly' | 'cumulative', groupIndex: number, itemIndex: number, field: keyof RewardItemNew, value: any) => {
+    if (type === 'weekly') {
+      setWeeklyRewardsEditable(prev => prev.map((group, idx) => 
+        idx === groupIndex 
+          ? { 
+              ...group, 
+              items: group.items.map((item, iIdx) => 
+                iIdx === itemIndex && isNewFormatItem(item) ? { ...item, [field]: value } : item
+              ) 
+            }
+          : group
+      ));
+    } else {
+      setCumulativeRewardsEditable(prev => prev.map((group, idx) => 
+        idx === groupIndex 
+          ? { 
+              ...group, 
+              items: group.items.map((item, iIdx) => 
+                iIdx === itemIndex && isNewFormatItem(item) ? { ...item, [field]: value } : item
+              ) 
+            }
+          : group
+      ));
+    }
+  }, []);
+
+  // 구성 요소 추가
+  const handleAddComponent = useCallback((type: 'weekly' | 'cumulative', groupIndex: number, itemIndex: number) => {
+    const newComponent: ComponentItem = {
+      itemName: '',
+      quantity: 1,
+    };
+    if (type === 'weekly') {
+      setWeeklyRewardsEditable(prev => prev.map((group, gIdx) => 
+        gIdx === groupIndex 
+          ? {
+              ...group,
+              items: group.items.map((item, iIdx) => 
+                iIdx === itemIndex && isNewFormatItem(item)
+                  ? { ...item, components: [...item.components, newComponent] }
+                  : item
+              )
+            }
+          : group
+      ));
+    } else {
+      setCumulativeRewardsEditable(prev => prev.map((group, gIdx) => 
+        gIdx === groupIndex 
+          ? {
+              ...group,
+              items: group.items.map((item, iIdx) => 
+                iIdx === itemIndex && isNewFormatItem(item)
+                  ? { ...item, components: [...item.components, newComponent] }
+                  : item
+              )
+            }
+          : group
+      ));
+    }
+  }, []);
+
+  // 구성 요소 제거
+  const handleRemoveComponent = useCallback((type: 'weekly' | 'cumulative', groupIndex: number, itemIndex: number, compIndex: number) => {
+    if (type === 'weekly') {
+      setWeeklyRewardsEditable(prev => prev.map((group, gIdx) => 
+        gIdx === groupIndex 
+          ? {
+              ...group,
+              items: group.items.map((item, iIdx) => 
+                iIdx === itemIndex && isNewFormatItem(item)
+                  ? { ...item, components: item.components.filter((_, cIdx) => cIdx !== compIndex) }
+                  : item
+              )
+            }
+          : group
+      ));
+    } else {
+      setCumulativeRewardsEditable(prev => prev.map((group, gIdx) => 
+        gIdx === groupIndex 
+          ? {
+              ...group,
+              items: group.items.map((item, iIdx) => 
+                iIdx === itemIndex && isNewFormatItem(item)
+                  ? { ...item, components: item.components.filter((_, cIdx) => cIdx !== compIndex) }
+                  : item
+              )
+            }
+          : group
+      ));
+    }
+  }, []);
+
+  // 구성 요소 업데이트
+  const handleUpdateComponent = useCallback((type: 'weekly' | 'cumulative', groupIndex: number, itemIndex: number, compIndex: number, field: keyof ComponentItem, value: any) => {
+    if (type === 'weekly') {
+      setWeeklyRewardsEditable(prev => prev.map((group, gIdx) => 
+        gIdx === groupIndex 
+          ? {
+              ...group,
+              items: group.items.map((item, iIdx) => 
+                iIdx === itemIndex && isNewFormatItem(item)
+                  ? { 
+                      ...item, 
+                      components: item.components.map((comp, cIdx) => 
+                        cIdx === compIndex ? { ...comp, [field]: value } : comp
+                      ) 
+                    }
+                  : item
+              )
+            }
+          : group
+      ));
+    } else {
+      setCumulativeRewardsEditable(prev => prev.map((group, gIdx) => 
+        gIdx === groupIndex 
+          ? {
+              ...group,
+              items: group.items.map((item, iIdx) => 
+                iIdx === itemIndex && isNewFormatItem(item)
+                  ? { 
+                      ...item, 
+                      components: item.components.map((comp, cIdx) => 
+                        cIdx === compIndex ? { ...comp, [field]: value } : comp
+                      ) 
+                    }
+                  : item
+              )
+            }
+          : group
+      ));
+    }
+  }, []);
+
+  // 이벤트 효율 저장
+  const handleSaveEventEfficiency = async () => {
+    if (!saveEventEfficiencyName.trim()) {
+      alert('이름을 입력해주세요.');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const name = saveEventEfficiencyName.trim();
+      
+      let res;
+      if (selectedEventEfficiencyId) {
+        // 업데이트
+        res = await fetch(`/api/event-efficiency/${selectedEventEfficiencyId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name,
+            weekly_rewards: weeklyRewardsEditable,
+            cumulative_rewards: cumulativeRewardsEditable,
+          }),
+        });
+      } else {
+        // 새로 저장
+        res = await fetch('/api/event-efficiency', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name,
+            weekly_rewards: weeklyRewardsEditable,
+            cumulative_rewards: cumulativeRewardsEditable,
+          }),
+        });
+      }
+
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || '저장에 실패했습니다.');
+      }
+
+      // 저장된 이벤트 효율 목록 다시 불러오기
+      const listRes = await fetch('/api/event-efficiency');
+      const listData = await listRes.json();
+      if (listData.items) {
+        setSavedEventEfficiency(listData.items);
+        if (data.item) {
+          setSelectedEventEfficiencyId(data.item.id);
+        }
+      }
+
+      setShowSaveModal(false);
+      setSaveEventEfficiencyName('');
+      alert(selectedEventEfficiencyId ? '이벤트 효율이 업데이트되었습니다.' : '이벤트 효율이 저장되었습니다.');
+    } catch (error: any) {
+      console.error('이벤트 효율 저장 실패:', error);
+      alert(error.message || '이벤트 효율 저장에 실패했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 저장된 이벤트 효율 불러오기
+  const handleLoadEventEfficiency = async (itemId: string) => {
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/event-efficiency');
+      const data = await res.json();
+      
+      if (data.items) {
+        const itemToLoad = data.items.find((item: any) => item.id === itemId);
+        if (itemToLoad) {
+          if (itemToLoad.weekly_rewards) {
+            setWeeklyRewardsEditable(itemToLoad.weekly_rewards);
+          }
+          if (itemToLoad.cumulative_rewards) {
+            setCumulativeRewardsEditable(itemToLoad.cumulative_rewards);
+          }
+          setSelectedEventEfficiencyId(itemId);
+          alert('이벤트 효율이 불러와졌습니다.');
+        } else {
+          throw new Error('이벤트 효율을 찾을 수 없습니다.');
+        }
+      }
+    } catch (error: any) {
+      console.error('이벤트 효율 불러오기 실패:', error);
+      alert(error.message || '이벤트 효율 불러오기에 실패했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 이벤트 효율 삭제
+  const handleDeleteEventEfficiency = async (itemId: string) => {
+    if (!confirm('이 이벤트 효율을 삭제하시겠습니까?')) {
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api/event-efficiency/${itemId}`, {
+        method: 'DELETE',
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || '삭제에 실패했습니다.');
+      }
+
+      // 저장된 이벤트 효율 목록 다시 불러오기
+      const listRes = await fetch('/api/event-efficiency');
+      const listData = await listRes.json();
+      if (listData.items) {
+        setSavedEventEfficiency(listData.items);
+      }
+
+      if (selectedEventEfficiencyId === itemId) {
+        setSelectedEventEfficiencyId(null);
+      }
+
+      alert('이벤트 효율이 삭제되었습니다.');
+    } catch (error: any) {
+      console.error('이벤트 효율 삭제 실패:', error);
+      alert(error.message || '이벤트 효율 삭제에 실패했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 새로 만들기 (초기화)
+  const handleNewEventEfficiency = () => {
+    const hasWeeklyData = weeklyRewardsEditable.length > 0;
+    const hasCumulativeData = cumulativeRewardsEditable.length > 0;
+    
+    if (hasWeeklyData || hasCumulativeData) {
+      if (!confirm('현재 작성 중인 내용이 있습니다. 새로 만들기를 하시겠습니까?')) {
+        return;
+      }
+    }
+    
+    // 빈 상태로 초기화 (과금 효율과 동일)
+    setWeeklyRewardsEditable([]);
+    setCumulativeRewardsEditable([]);
+    setSelectedEventEfficiencyId(null);
+  };
+
+  const renderEditableRewardTable = (groups: RewardGroup[], type: 'weekly' | 'cumulative', sectionTitle: string, summaryLabel?: string) => {
     const totalGold = groups.reduce((sumSection, group) => {
       return (
         sumSection +
@@ -1035,8 +1739,14 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
     return (
       <div className="space-y-6">
         {/* 섹션 제목 */}
-        <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 border border-purple-500/30 rounded-xl px-5 py-4 shadow-lg">
+        <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 border border-purple-500/30 rounded-xl px-5 py-4 shadow-lg flex justify-between items-center">
           <h3 className="text-xl font-bold text-white tracking-wide">{sectionTitle}</h3>
+          <button
+            onClick={() => handleAddRewardGroup(type)}
+            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
+          >
+            + 보상 그룹 추가
+          </button>
         </div>
         
         {/* 섹션 요약 */}
@@ -1067,7 +1777,24 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
           <div key={groupIdx} className="bg-gray-800/60 rounded-xl border border-gray-700 overflow-hidden shadow-lg hover:shadow-purple-500/20 transition-shadow duration-300">
             <div className="bg-gradient-to-r from-gray-900/70 to-gray-800/70 px-5 py-3 border-b border-gray-700/80 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <h4 className="text-lg font-bold text-purple-300">{group.title}</h4>
+                <input
+                  type="text"
+                  value={group.title}
+                  onChange={(e) => handleUpdateGroupTitle(type, groupIdx, e.target.value)}
+                  className="text-lg font-bold text-purple-300 bg-gray-700/50 border border-gray-600 rounded px-2 py-1 focus:outline-none focus:border-purple-500"
+                />
+                <button
+                  onClick={() => handleAddItemToGroup(type, groupIdx)}
+                  className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition-colors"
+                >
+                  + 아이템 추가
+                </button>
+                <button
+                  onClick={() => handleRemoveRewardGroup(type, groupIdx)}
+                  className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-medium transition-colors"
+                >
+                  그룹 삭제
+                </button>
                 
                 {/* PC방 행운의 상자 내역 보기 버튼 */}
                 {group.title === 'PC방 행운의 상자 (매일 최대 3개)' && (
@@ -1145,7 +1872,18 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                         <td className="px-4 py-3 text-white">
                           <div className="flex flex-col gap-2">
                             <div className="flex flex-wrap items-center gap-3">
-                              <span>{item.name}</span>
+                              <input
+                                type="text"
+                                value={item.name}
+                                onChange={(e) => handleUpdateItem(type, groupIdx, itemIdx, 'name', e.target.value)}
+                                className="bg-gray-700/50 border border-gray-600 rounded px-2 py-1 text-sm focus:outline-none focus:border-purple-500 flex-1 min-w-[200px]"
+                              />
+                              <button
+                                onClick={() => handleRemoveItemFromGroup(type, groupIdx, itemIdx)}
+                                className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-medium transition-colors"
+                              >
+                                삭제
+                              </button>
                               {isKurzanItem && kurzanStageOptions.length > 0 && (
                                 <select
                                   value={selectedKurzanKey}
@@ -1166,7 +1904,12 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                           </div>
                         </td>
                         <td className="px-4 py-3 text-right text-gray-300">
-                          <div>{formatNumberWithSignificantDigits(item.quantity)}</div>
+                          <input
+                            type="number"
+                            value={item.quantity}
+                            onChange={(e) => handleUpdateItem(type, groupIdx, itemIdx, 'quantity', Number(e.target.value))}
+                            className="bg-gray-700/50 border border-gray-600 rounded px-2 py-1 text-sm text-right focus:outline-none focus:border-purple-500 w-24"
+                          />
                           {isKurzanItem && selectedKurzanStage && (
                             <div className="text-xs text-gray-500 mt-1">
                               ({selectedKurzanStage.level} / {selectedKurzanStage.stage})
@@ -1405,34 +2148,871 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
     );
   };
 
+  // 새로운 편집 가능한 보상 테이블 (과금 효율과 동일한 UI)
+  const renderEditableRewardTableNew = (groups: RewardGroup[], type: 'weekly' | 'cumulative', sectionTitle: string) => {
+    // 총 가치 계산
+    const calculateTotalValue = () => {
+      let total = 0;
+      
+      groups.forEach(group => {
+        group.items.forEach(item => {
+          if (!isNewFormatItem(item)) return;
+          
+          item.components.forEach(comp => {
+            if (!comp.itemName || comp.itemName === '__nested__' || comp.itemName === '__manual__' || comp.itemName === '') return;
+            
+            const unitPrice = getItemUnitPrice(comp.itemName);
+            if (unitPrice === null || unitPrice <= 0) return;
+            
+            const isIncluded = item.itemType === '확정' || 
+                              (item.itemType === '확률') || 
+                              (item.itemType === '선택' && comp.selected);
+            
+            if (!isIncluded) return;
+            
+            let value = unitPrice * (comp.quantity || 0) * (item.quantity || 1);
+            
+            // 확률 타입일 경우 확률 적용
+            if (item.itemType === '확률' && comp.probability !== undefined) {
+              value *= comp.probability;
+            }
+            
+            total += value;
+          });
+        });
+      });
+      
+      return total;
+    };
+    
+    const totalValue = calculateTotalValue();
+    
+    return (
+      <div className="space-y-6">
+        {/* 요약 카드 */}
+        {totalValue > 0 && (
+          <div className="bg-gradient-to-br from-purple-900/40 to-blue-900/40 border-2 border-purple-500/40 rounded-2xl p-6 shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+              <h3 className="text-2xl font-bold text-white">요약</h3>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* 총 가치 */}
+              <div className="bg-gray-900/60 rounded-xl p-4 border border-purple-500/30">
+                <div className="text-sm text-gray-400 mb-1">총 가치</div>
+                <div className="text-3xl font-bold text-blue-400">
+                  {formatNumberWithSignificantDigits(totalValue)} 골드
+                </div>
+              </div>
+              
+              {/* 현금 환산 */}
+              {goldToCashPerGold && (
+                <div className="bg-gray-900/60 rounded-xl p-4 border border-green-500/30">
+                  <div className="text-sm text-gray-400 mb-1">현금 환산</div>
+                  <div className="text-3xl font-bold text-green-400">
+                    {formatNumberWithSignificantDigits(totalValue * goldToCashPerGold)} 원
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        
+        {/* 섹션 제목 및 그룹 추가 버튼 */}
+        <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 border border-purple-500/30 rounded-xl px-5 py-4 shadow-lg flex justify-between items-center">
+          <h3 className="text-xl font-bold text-white tracking-wide">{sectionTitle}</h3>
+          <button
+            onClick={() => handleAddRewardGroup(type)}
+            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
+          >
+            + 보상 그룹 추가
+          </button>
+        </div>
+        
+        {/* 빈 상태 안내 */}
+        {groups.length === 0 && (
+          <div className="bg-gray-800/50 rounded-xl border border-gray-700 p-8 text-center">
+            <p className="text-gray-400 mb-4">보상 그룹이 없습니다.</p>
+            <p className="text-sm text-gray-500">위의 "+ 보상 그룹 추가" 버튼을 클릭하여 보상을 추가하세요.</p>
+          </div>
+        )}
+        
+        {/* 각 보상 그룹 */}
+        {groups.map((group, groupIdx) => (
+          <div key={groupIdx} className="bg-gray-800/60 rounded-xl border border-gray-700 p-6 space-y-4">
+            {/* 그룹 제목 및 그룹 삭제 버튼 */}
+            <div className="flex items-center gap-3 mb-4">
+              <input
+                type="text"
+                value={group.title}
+                onChange={(e) => handleUpdateGroupTitle(type, groupIdx, e.target.value)}
+                className="flex-1 px-4 py-2 bg-gray-700 text-white rounded-lg border border-gray-600 focus:outline-none focus:border-purple-500 text-lg font-bold"
+                placeholder="그룹 제목"
+              />
+              <button
+                onClick={() => handleRemoveRewardGroup(type, groupIdx)}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                그룹 삭제
+              </button>
+            </div>
+            
+            {/* 묶음 항목 리스트 */}
+            <div className="space-y-4">
+              {group.items.map((item, itemIdx) => {
+                if (!isNewFormatItem(item)) return null; // 새 형식만 렌더링
+                
+                // 이 묶음 항목의 총 가치 계산
+                const itemTotalValue = item.components.reduce((sum, comp) => {
+                  if (!comp.itemName || comp.itemName === '__nested__' || comp.itemName === '__manual__' || comp.itemName === '') return sum;
+                  
+                  const unitPrice = getItemUnitPrice(comp.itemName);
+                  if (unitPrice === null || unitPrice <= 0) return sum;
+                  
+                  const isIncluded = item.itemType === '확정' || 
+                                    (item.itemType === '확률') || 
+                                    (item.itemType === '선택' && comp.selected);
+                  
+                  if (!isIncluded) return sum;
+                  
+                  let value = unitPrice * (comp.quantity || 0) * (item.quantity || 1);
+                  
+                  // 확률 타입일 경우 확률 적용
+                  if (item.itemType === '확률' && comp.probability !== undefined) {
+                    value *= comp.probability;
+                  }
+                  
+                  return sum + value;
+                }, 0);
+                
+                return (
+                  <div key={itemIdx} className="bg-gray-900/50 rounded-lg border border-gray-700 p-4">
+                    {/* 묶음 항목 헤더 */}
+                    <div className="flex items-center gap-3 mb-3">
+                      <input
+                        type="text"
+                        value={item.itemName}
+                        onChange={(e) => handleUpdateRewardItem(type, groupIdx, itemIdx, 'itemName', e.target.value)}
+                        className="flex-1 px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+                        placeholder="묶음 항목명"
+                      />
+                      <input
+                        type="number"
+                        value={item.quantity || ''}
+                        onChange={(e) => handleUpdateRewardItem(type, groupIdx, itemIdx, 'quantity', parseFloat(e.target.value) || 1)}
+                        className="w-28 px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+                        placeholder="묶음 수량"
+                        min="1"
+                        step="1"
+                      />
+                      <select
+                        value={item.itemType}
+                        onChange={(e) => handleUpdateRewardItem(type, groupIdx, itemIdx, 'itemType', e.target.value as '확정' | '확률' | '선택')}
+                        className="px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+                      >
+                        <option value="확정">확정</option>
+                        <option value="확률">확률</option>
+                        <option value="선택">선택</option>
+                      </select>
+                      {itemTotalValue > 0 && (
+                        <div className="px-4 py-2 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                          <div className="text-xs text-gray-400">가치</div>
+                          <div className="text-sm font-bold text-blue-400">
+                            {formatNumberWithSignificantDigits(itemTotalValue)}G
+                          </div>
+                        </div>
+                      )}
+                      <button
+                        onClick={() => handleRemoveRewardItem(type, groupIdx, itemIdx)}
+                        className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                      >
+                        삭제
+                      </button>
+                    </div>
+                    
+                    {/* 구성 요소 리스트 */}
+                    <div className="space-y-2 pl-4 border-l-2 border-gray-700">
+                      {/* 확률 타입일 때 확률 합계 경고 */}
+                      {item.itemType === '확률' && (() => {
+                        const totalProbability = item.components.reduce((sum, comp) => {
+                          return sum + (comp.probability || 0);
+                        }, 0);
+                        const isNot100Percent = Math.abs(totalProbability - 1) > 0.001;
+                        return isNot100Percent ? (
+                          <div className="text-red-400 text-sm font-medium bg-red-900/20 border border-red-700 rounded p-2 mb-2">
+                            ⚠ 확률 합계가 {(totalProbability * 100).toFixed(1)}%입니다. (100%가 되어야 합니다)
+                          </div>
+                        ) : null;
+                      })()}
+                      
+                      {item.components.map((component, compIdx) => (
+                        <div key={compIdx} className="bg-gray-900/40 rounded-lg p-3 border border-gray-700">
+                          <div className="space-y-2">
+                            {/* 첫 번째 줄: 라디오 버튼 + 드롭다운 + 삭제 버튼 */}
+                            <div className="flex gap-2 items-center">
+                              {/* 선택 타입: 라디오 버튼 */}
+                              {item.itemType === '선택' && (
+                                <input
+                                  type="radio"
+                                  name={`group-${groupIdx}-item-${itemIdx}-selection`}
+                                  checked={component.selected || false}
+                                  onChange={() => {
+                                    // 선택된 것만 true로 설정
+                                    const updatedComponents = item.components.map((c, idx) => ({
+                                      ...c,
+                                      selected: idx === compIdx
+                                    }));
+                                    handleUpdateRewardItem(type, groupIdx, itemIdx, 'components', updatedComponents);
+                                  }}
+                                  className="mt-2"
+                                />
+                              )}
+                              
+                              <SearchableSelect
+                                value={component.itemName}
+                                onChange={(value) => {
+                                  if (value === '__nested__') {
+                                    handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'itemName', '__nested__');
+                                    handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'nestedItem', {
+                                      itemName: '',
+                                      itemType: '확정',
+                                      quantity: 1,
+                                      components: [],
+                                    });
+                                  } else {
+                                    handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'itemName', value);
+                                    if (value !== '__nested__') {
+                                      handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'nestedItem', undefined);
+                                    }
+                                  }
+                                }}
+                                options={itemDropdownOptions}
+                                placeholder="아이템 선택"
+                                className="flex-1"
+                                size="small"
+                              />
+                              
+                              <button
+                                onClick={() => handleRemoveComponent(type, groupIdx, itemIdx, compIdx)}
+                                className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs transition-colors"
+                              >
+                                삭제
+                              </button>
+                            </div>
+                            
+                            {/* 중첩 묶음 항목 입력 */}
+                            {component.itemName === '__nested__' && component.nestedItem && (
+                              <div className="flex gap-2 items-center">
+                                <input
+                                  type="text"
+                                  value={component.nestedItem.itemName}
+                                  onChange={(e) => {
+                                    const nestedItem = { ...component.nestedItem!, itemName: e.target.value };
+                                    handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'nestedItem', nestedItem);
+                                  }}
+                                  className="flex-1 px-3 py-1.5 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500 text-sm"
+                                  placeholder="중첩 묶음 항목명"
+                                />
+                                <select
+                                  value={component.nestedItem.itemType}
+                                  onChange={(e) => {
+                                    const nestedItem = { ...component.nestedItem!, itemType: e.target.value as '확정' | '확률' | '선택' };
+                                    handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'nestedItem', nestedItem);
+                                  }}
+                                  className="w-20 px-2 py-1.5 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500 text-sm"
+                                >
+                                  <option value="확정">확정</option>
+                                  <option value="확률">확률</option>
+                                  <option value="선택">선택</option>
+                                </select>
+                              </div>
+                            )}
+                            
+                            {/* 두 번째 줄: 수량 및 확률/선택 입력 */}
+                            <div className="flex gap-2 items-center">
+                              <span className="text-sm text-gray-400 whitespace-nowrap">수량:</span>
+                              <input
+                                type="number"
+                                value={component.quantity || ''}
+                                onChange={(e) => handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'quantity', parseFloat(e.target.value) || 1)}
+                                className="w-24 px-3 py-1.5 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500 text-sm"
+                                placeholder="수량"
+                                min="1"
+                              />
+                              
+                              {/* 확률 타입: 확률 입력 */}
+                              {item.itemType === '확률' && (
+                                <>
+                                  <span className="text-sm text-gray-400 whitespace-nowrap">확률:</span>
+                                  <input
+                                    type="number"
+                                    value={(component.probability || 0) * 100}
+                                    onChange={(e) => handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'probability', parseFloat(e.target.value) / 100 || 0)}
+                                    className="w-24 px-3 py-1.5 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500 text-sm"
+                                    placeholder="0-100"
+                                    min="0"
+                                    max="100"
+                                    step="0.1"
+                                  />
+                                  <span className="text-sm text-gray-400">%</span>
+                                </>
+                              )}
+                            </div>
+                            
+                            {/* 가치 계산 표시 */}
+                            {component.itemName && component.itemName !== '__nested__' && component.itemName !== '__manual__' && component.itemName !== '' && (() => {
+                              const unitPrice = getItemUnitPrice(component.itemName);
+                              if (unitPrice !== null && unitPrice > 0) {
+                                const isIncluded = item.itemType === '확정' || 
+                                                  (item.itemType === '확률') || 
+                                                  (item.itemType === '선택' && component.selected);
+                                
+                                let value = unitPrice * (component.quantity || 0) * (item.quantity || 1);
+                                
+                                // 확률 타입일 경우 확률 적용
+                                if (item.itemType === '확률' && component.probability !== undefined) {
+                                  value *= component.probability;
+                                }
+                                
+                                return (
+                                  <div className={`text-xs ${isIncluded ? 'text-gray-300' : 'text-gray-600'}`}>
+                                    단가: <span className="font-semibold">{formatNumberWithSignificantDigits(unitPrice)}</span> 골드
+                                    <span className="text-gray-500 mx-1">×</span>
+                                    수량: <span className="font-semibold">{formatNumberWithSignificantDigits(component.quantity || 0)}</span>
+                                    {item.itemType === '확률' && component.probability !== undefined && (
+                                      <span className="text-purple-400 ml-1">× {component.probability}</span>
+                                    )}
+                                    {item.quantity && item.quantity > 1 && (
+                                      <span className="text-blue-400 ml-1">× 묶음 {item.quantity}</span>
+                                    )}
+                                    <span className="text-gray-500 mx-1">=</span>
+                                    <span className={`font-semibold ${isIncluded ? 'text-green-400' : 'text-gray-600'}`}>
+                                      {formatNumberWithSignificantDigits(value)} 골드
+                                    </span>
+                                    {item.itemType === '확률' && <span className="text-gray-500 ml-1">(기대값)</span>}
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </div>
+                        </div>
+                      ))}
+                      
+                      {/* 구성 요소 추가 버튼 */}
+                      <button
+                        onClick={() => handleAddComponent(type, groupIdx, itemIdx)}
+                        className="w-full px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors text-sm"
+                      >
+                        + 구성 요소 추가
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+              
+              {/* 묶음 항목 추가 버튼 */}
+              <button
+                onClick={() => handleAddRewardItem(type, groupIdx)}
+                className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                + 묶음 항목 추가
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // 읽기 전용 보상 테이블 (상시 혜택용)
+  const renderReadOnlyRewardTable = (groups: RewardGroup[], sectionTitle: string, summaryLabel?: string) => {
+    const totalGold = groups.reduce((sumSection, group) => {
+      return (
+        sumSection +
+        group.items.reduce((sum, item) => {
+          if (item.type === 'kurzan') {
+            const goldValue = adjustedKurzanValue;
+            return goldValue != null ? sum + goldValue * item.quantity : sum;
+          }
+          const isPcBangLuckyBox = item.name.startsWith('PC방 행운의 상자');
+          if (isPcBangLuckyBox) {
+            return pcBangLuckyBoxExpectedGold != null
+              ? sum + pcBangLuckyBoxExpectedGold * item.quantity
+              : sum;
+          }
+          const priceInfo = getItemPriceInfo(item.name);
+          let goldValue: number | null = null;
+          if (priceInfo.goldEquivalent !== null) {
+            goldValue = priceInfo.goldEquivalent;
+          } else if (priceInfo.cashEquivalent !== null) {
+            goldValue = convertCashToGold(priceInfo.cashEquivalent);
+          }
+          return goldValue != null ? sum + goldValue * item.quantity : sum;
+        }, 0)
+      );
+    }, 0);
+    const sectionTotals = {
+      totalGold,
+      totalCash: goldToCashPerGold ? totalGold * goldToCashPerGold : null,
+    };
+
+    return (
+      <div className="space-y-6">
+        {/* 섹션 제목 */}
+        <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 border border-purple-500/30 rounded-xl px-5 py-4 shadow-lg">
+          <h3 className="text-xl font-bold text-white tracking-wide">{sectionTitle}</h3>
+        </div>
+        
+        {/* 섹션 요약 */}
+        {summaryLabel && (
+          <div className="bg-gradient-to-r from-gray-900/80 to-gray-800/80 border-2 border-yellow-500/40 rounded-xl px-5 py-4 shadow-xl">
+            <div className="flex flex-wrap items-center gap-4">
+              <span className="font-bold text-lg text-white">{summaryLabel}</span>
+              <div className="flex flex-wrap items-center gap-4 text-sm">
+                <span className="flex items-center gap-2">
+                  <span className="text-gray-300">총합:</span>
+                  <span className="text-yellow-300 font-bold text-lg">
+                    {sectionTotals.totalGold > 0
+                      ? `${formatNumberWithSignificantDigits(sectionTotals.totalGold)}골드`
+                      : '-'}
+                  </span>
+                </span>
+                {sectionTotals.totalCash && (
+                  <span className="text-green-300 font-bold text-lg">
+                    ≈ {formatNumberWithSignificantDigits(sectionTotals.totalCash)}원
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {groups.map((group, groupIdx) => (
+          <div key={groupIdx} className="bg-gray-800/60 rounded-xl border border-gray-700 overflow-hidden shadow-lg hover:shadow-purple-500/20 transition-shadow duration-300">
+            <div className="bg-gradient-to-r from-gray-900/70 to-gray-800/70 px-5 py-3 border-b border-gray-700/80 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <h4 className="text-lg font-bold text-purple-300">{group.title}</h4>
+                
+                {/* PC방 행운의 상자 내역 보기 버튼 */}
+                {group.title === 'PC방 행운의 상자 (매일 최대 3개)' && (
+                  <button
+                    type="button"
+                    onClick={() => setShowPcBangBoxDetails((prev) => !prev)}
+                    className="px-3 py-1 text-xs rounded border border-purple-500/60 text-purple-200 hover:bg-purple-500/20 transition-colors"
+                  >
+                    {showPcBangBoxDetails ? '내역 닫기' : '내역 보기'}
+                  </button>
+                )}
+              </div>
+              
+              {/* 고결한 혼돈의 돌 품질 선택 */}
+              {group.items.some(item => item.name === '고결한 혼돈의 돌 선택 상자') && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-400">품질:</span>
+                  <select
+                    value={chaosStoneQuality}
+                    onChange={(e) => setChaosStoneQuality(Number(e.target.value) as 90 | 95)}
+                    className="bg-gray-700 text-white border border-gray-600 rounded px-2 py-1 text-sm"
+                  >
+                    <option value={90}>90</option>
+                    <option value={95}>95</option>
+                  </select>
+                </div>
+              )}
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-gradient-to-r from-gray-900/50 to-gray-800/50 border-b-2 border-gray-600/70">
+                    <th className="px-4 py-3 text-left text-sm font-bold text-gray-200">아이템명</th>
+                    <th className="px-4 py-3 text-right text-sm font-bold text-gray-200">수량</th>
+                    <th className="px-4 py-3 text-right text-sm font-bold text-gray-200">단가</th>
+                    <th className="px-4 py-3 text-right text-sm font-bold text-gray-200">총합</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {group.items.map((item, itemIdx) => {
+                    const isKurzanItem = item.type === 'kurzan';
+                    const isPcBangLuckyBox = item.name.startsWith('PC방 행운의 상자');
+                    const kurzanValue = adjustedKurzanValue;
+                    const priceInfo =
+                      isKurzanItem && kurzanValue != null
+                        ? {
+                            unit: 'gold' as const,
+                            unitAmount: kurzanValue,
+                            goldEquivalent: kurzanValue,
+                            cashEquivalent: null,
+                            note: null,
+                          }
+                        : isPcBangLuckyBox
+                          ? {
+                              unit: pcBangLuckyBoxExpectedGold != null ? ('gold' as const) : null,
+                              unitAmount: pcBangLuckyBoxExpectedGold,
+                              goldEquivalent: pcBangLuckyBoxExpectedGold,
+                              cashEquivalent: null,
+                              note: pcBangLuckyBoxExpectedGold != null ? '상세 구성 기대값' : null,
+                            }
+                          : getItemPriceInfo(item.name);
+                    const unitDisplay = isKurzanItem
+                      ? (kurzanValue != null ? `${formatNumberWithSignificantDigits(kurzanValue)}골드` : '-')
+                      : formatPriceDisplay(priceInfo.unitAmount, priceInfo.unit);
+                    const totalDisplay = isKurzanItem
+                      ? (kurzanValue != null ? `${formatNumberWithSignificantDigits(kurzanValue * item.quantity)}골드` : '-')
+                      : formatPriceDisplay(
+                          priceInfo.unitAmount !== null ? priceInfo.unitAmount * item.quantity : null,
+                          priceInfo.unit
+                        );
+                    const composition = getCompositionInfo(item.name, item.quantity);
+                    
+                    return (
+                      <tr key={itemIdx} className="border-b border-gray-700/50 hover:bg-gray-700/40 transition-colors duration-200">
+                        <td className="px-4 py-3 text-white">
+                          <div className="flex flex-col gap-2">
+                            <div className="flex flex-wrap items-center gap-3">
+                              <span>{item.name}</span>
+                              {isKurzanItem && kurzanStageOptions.length > 0 && (
+                                <select
+                                  value={selectedKurzanKey}
+                                  onChange={(e) => setSelectedKurzanKey(e.target.value)}
+                                  className="bg-gray-700 text-white border border-gray-600 rounded px-2 py-1 text-xs"
+                                >
+                                  {kurzanStageOptions.map((option) => (
+                                    <option key={option.key} value={option.key}>
+                                      {option.level} / {option.stage}
+                                    </option>
+                                  ))}
+                                </select>
+                              )}
+                            </div>
+                            {composition.perUnit && !isKurzanItem && !isPcBangLuckyBox && (
+                              <div className="text-xs text-gray-400 mt-1">1개당 {composition.perUnit}</div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-right text-gray-300">
+                          <div>{formatNumberWithSignificantDigits(item.quantity)}</div>
+                          {isKurzanItem && selectedKurzanStage && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              ({selectedKurzanStage.level} / {selectedKurzanStage.stage})
+                            </div>
+                          )}
+                          {composition.total && !isKurzanItem && !isPcBangLuckyBox && (
+                            <div className="text-xs text-gray-500 mt-1">({composition.total})</div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right text-gray-300">
+                          {unitDisplay}
+                        </td>
+                        <td className="px-4 py-3 text-right text-yellow-400 font-semibold">
+                          {totalDisplay}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  
+                  {/* 합계 행 */}
+                  <tr className="bg-gradient-to-r from-purple-900/30 to-blue-900/30 border-t-2 border-purple-500/60">
+                    <td className="px-4 py-4 text-white font-bold text-base">소계 (골드 환산)</td>
+                    <td className="px-4 py-4"></td>
+                    <td className="px-4 py-4"></td>
+                    <td className="px-4 py-4 text-right text-yellow-300 font-bold text-base">
+                      {(() => {
+                        const totalGold = group.items.reduce((sum, item) => {
+                          if (item.type === 'kurzan') {
+                            const goldValue = adjustedKurzanValue;
+                            return goldValue != null ? sum + goldValue * item.quantity : sum;
+                          }
+                          const isPcBangLuckyBox = item.name.startsWith('PC방 행운의 상자');
+                          if (isPcBangLuckyBox) {
+                            return pcBangLuckyBoxExpectedGold != null
+                              ? sum + pcBangLuckyBoxExpectedGold * item.quantity
+                              : sum;
+                          }
+                          const priceInfo = getItemPriceInfo(item.name);
+                          let goldValue: number | null = null;
+                          if (priceInfo.goldEquivalent !== null) {
+                            goldValue = priceInfo.goldEquivalent;
+                          } else if (priceInfo.cashEquivalent !== null) {
+                            goldValue = convertCashToGold(priceInfo.cashEquivalent);
+                          }
+                          return goldValue != null ? sum + goldValue * item.quantity : sum;
+                        }, 0);
+                        return totalGold > 0
+                          ? `${formatNumberWithSignificantDigits(totalGold)}골드`
+                          : '-';
+                      })()}
+                    </td>
+                  </tr>
+                  <tr className="bg-gradient-to-r from-green-900/20 to-emerald-900/20 border-t border-green-500/40">
+                    <td className="px-4 py-4 text-white font-bold text-base">소계 (현금 환산)</td>
+                    <td className="px-4 py-4"></td>
+                    <td className="px-4 py-4 text-xs text-gray-400 text-right">
+                      {goldToCashPerGold
+                        ? cashMode === 'discord'
+                          ? `디스코드: 100골드 ${discordRate ?? '-'}원`
+                          : `화폐거래소: 100크리 ${crystalGoldRate ?? '-'}골드`
+                        : '환산 불가'}
+                    </td>
+                    <td className="px-4 py-4 text-right text-green-300 font-bold text-base">
+                      {(() => {
+                        const totalGold = group.items.reduce((sum, item) => {
+                          if (item.type === 'kurzan') {
+                            const goldValue = adjustedKurzanValue;
+                            return goldValue != null ? sum + goldValue * item.quantity : sum;
+                          }
+                          const isPcBangLuckyBox = item.name.startsWith('PC방 행운의 상자');
+                          if (isPcBangLuckyBox) {
+                            return pcBangLuckyBoxExpectedGold != null
+                              ? sum + pcBangLuckyBoxExpectedGold * item.quantity
+                              : sum;
+                          }
+                          const priceInfo = getItemPriceInfo(item.name);
+                          let goldValue: number | null = null;
+                          if (priceInfo.goldEquivalent !== null) {
+                            goldValue = priceInfo.goldEquivalent;
+                          } else if (priceInfo.cashEquivalent !== null) {
+                            goldValue = convertCashToGold(priceInfo.cashEquivalent);
+                          }
+                          return goldValue != null ? sum + goldValue * item.quantity : sum;
+                        }, 0);
+                        if (!goldToCashPerGold || totalGold === 0) return '-';
+                        const cashValue = totalGold * goldToCashPerGold;
+                        return `${formatNumberWithSignificantDigits(cashValue)}원`;
+                      })()}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            
+            {/* PC방 행운의 상자 내역 */}
+            {group.title === 'PC방 행운의 상자 (매일 최대 3개)' && showPcBangBoxDetails && (
+              <div className="px-5 py-4 bg-gray-900/40">
+                <div className="bg-gray-900/60 border border-purple-500/30 rounded-lg overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-purple-900/30 text-gray-300 border-b border-purple-500/30">
+                        <th className="px-2 py-2 text-left">아이템</th>
+                        <th className="px-2 py-2 text-center">수량</th>
+                        <th className="px-2 py-2 text-center">확률</th>
+                        <th className="px-2 py-2 text-right">단가</th>
+                        <th className="px-2 py-2 text-right">기대값</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pcBangLuckyBoxDetails.map((detail) => {
+                        const priceInfo = getItemPriceInfo(detail.itemName);
+                        let goldValue: number | null = null;
+                        if (priceInfo.goldEquivalent !== null) {
+                          goldValue = priceInfo.goldEquivalent;
+                        } else if (priceInfo.cashEquivalent !== null) {
+                          goldValue = convertCashToGold(priceInfo.cashEquivalent);
+                        }
+                        const expectedValue = goldValue !== null ? goldValue * detail.probability * detail.quantity : null;
+                        return (
+                          <tr key={detail.displayName} className="border-b border-purple-500/20 hover:bg-purple-900/20">
+                            <td className="px-2 py-2 text-gray-200">
+                              <div className="flex items-center gap-2">
+                                <span>{detail.displayName}</span>
+                                {priceInfo.note && (
+                                  <span className="text-[10px] text-gray-400">({priceInfo.note})</span>
+                                )}
+                                {detail.itemName === '전설 카드 선택팩' && (
+                                  <input
+                                    type="number"
+                                    min="1000"
+                                    step="100"
+                                    value={legendaryCardSelectionPriceInput}
+                                    onChange={(e) => setLegendaryCardSelectionPriceInput(e.target.value)}
+                                    className="w-24 bg-gray-800 text-white border border-purple-500/40 rounded px-2 py-1 text-[11px]"
+                                    title="전설 카드 선택팩 단가(골드)"
+                                  />
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-2 py-2 text-center text-gray-300">
+                              {formatNumberWithSignificantDigits(detail.quantity)}
+                            </td>
+                            <td className="px-2 py-2 text-center text-purple-300 font-semibold">
+                              {detail.chanceText}
+                            </td>
+                            <td className="px-2 py-2 text-right text-gray-300">
+                              {priceInfo.unit === 'crystal' && priceInfo.unitAmount !== null ? (
+                                <div className="flex flex-col items-end">
+                                  <span className="text-blue-300">{formatNumberWithSignificantDigits(priceInfo.unitAmount)}크리</span>
+                                  {goldValue !== null && (
+                                    <span className="text-[10px] text-gray-400">
+                                      ({formatNumberWithSignificantDigits(goldValue)}골드)
+                                    </span>
+                                  )}
+                                </div>
+                              ) : goldValue !== null ? (
+                                `${formatNumberWithSignificantDigits(goldValue)}골드`
+                              ) : (
+                                '-'
+                              )}
+                            </td>
+                            <td className="px-2 py-2 text-right text-yellow-300 font-semibold">
+                              {expectedValue !== null
+                                ? `${formatNumberWithSignificantDigits(expectedValue)}골드`
+                                : '-'}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-gradient-to-r from-purple-900/40 to-blue-900/40 border-t-2 border-purple-500/60">
+                        <td colSpan={4} className="px-2 py-2 text-gray-200 font-bold">
+                          총 기대값 (1회)
+                        </td>
+                        <td className="px-2 py-2 text-right text-yellow-300 font-bold">
+                          {pcBangLuckyBoxExpectedGold !== null
+                            ? `${formatNumberWithSignificantDigits(pcBangLuckyBoxExpectedGold)}골드`
+                            : '-'}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
       <div className="bg-gray-900/70 border border-gray-700 rounded-2xl p-8">
         <div className="flex flex-col gap-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <h1 className="text-2xl font-bold text-white">이벤트 효율</h1>
+            <h1 className="text-2xl font-bold text-white">PC방 이벤트</h1>
             <div className="flex flex-wrap gap-2">
-              {eventTabs.map((tab) => {
-                const isActive = tab.key === activeTab.key;
+              {/* 저장 버튼 (로컬에서만 표시) */}
+              {allowEventEfficiencySave && (
+                <button
+                  onClick={() => {
+                    const selectedItem = savedEventEfficiency.find(item => item.id === selectedEventEfficiencyId);
+                    setSaveEventEfficiencyName(selectedItem?.name || '');
+                    setShowSaveModal(true);
+                  }}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors"
+                >
+                  저장
+                </button>
+              )}
+            </div>
+          </div>
+          
+          {/* 새로 만들기 버튼 */}
+          <div className="mb-3">
+            <button
+              onClick={handleNewEventEfficiency}
+              className="px-5 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all disabled:opacity-50 font-semibold shadow-md shadow-green-500/30 hover:shadow-lg hover:shadow-green-500/50 transform hover:scale-105 active:scale-95 border border-green-500/50"
+              disabled={isLoading}
+            >
+              <span className="flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                새로 만들기
+              </span>
+            </button>
+          </div>
+          
+          {/* 저장된 이벤트 효율 목록 (배포 버전에서도 보기 가능) */}
+          {savedEventEfficiency.length > 0 && (
+            <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-4">
+              <div className="mb-3">
+                <h3 className="text-base font-semibold text-white">저장된 이벤트 효율</h3>
+                <p className="text-xs text-gray-400 mt-1">버튼 클릭 시 불러오기 가능</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {savedEventEfficiency.map((item) => {
+                  const isSelected = selectedEventEfficiencyId === item.id;
                 return (
+                    <div key={item.id} className="flex items-center gap-2">
                   <button
-                    key={tab.key}
-                    onClick={() => setActiveTab(tab)}
-                    className={`px-4 py-2 rounded-xl border transition-all text-sm font-semibold ${
-                      isActive
-                        ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white border-transparent shadow-lg'
-                        : 'text-gray-300 border-gray-700 hover:border-gray-500 hover:text-white'
-                    }`}
-                  >
-                    <div className="flex flex-col leading-tight text-left">
-                      <span>{tab.label}</span>
-                      <span className="text-xs text-gray-300 font-normal">{tab.period}</span>
-                    </div>
+                        onClick={() => handleLoadEventEfficiency(item.id)}
+                        className={`group relative px-3 py-1.5 rounded-lg font-medium transition-all disabled:opacity-50 transform hover:scale-105 active:scale-95 text-xs ${
+                          isSelected
+                            ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg shadow-purple-500/50 ring-2 ring-purple-400 ring-offset-1 ring-offset-gray-800'
+                            : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white border border-gray-700'
+                        }`}
+                        disabled={isLoading}
+                      >
+                        <span className="flex items-center gap-1">
+                          {isSelected && (
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          )}
+                          {item.name}
+                        </span>
                   </button>
+                      {allowEventEfficiencySave && (
+                        <button
+                          onClick={() => handleDeleteEventEfficiency(item.id)}
+                          className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs transition-colors"
+                          disabled={isLoading}
+                        >
+                          삭제
+                        </button>
+                      )}
+                    </div>
                 );
               })}
             </div>
           </div>
+          )}
+          
+          {/* 저장 모달 */}
+          {showSaveModal && allowEventEfficiencySave && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+              <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 max-w-md w-full mx-4">
+                <h3 className="text-xl font-semibold text-white mb-4">
+                  {selectedEventEfficiencyId ? '이벤트 효율 업데이트' : '이벤트 효율 저장'}
+                </h3>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-300 mb-2">이름</label>
+                  <input
+                    type="text"
+                    value={saveEventEfficiencyName}
+                    onChange={(e) => setSaveEventEfficiencyName(e.target.value)}
+                    className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+                    placeholder="이름 입력"
+                    autoFocus
+                  />
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <button
+                    onClick={() => {
+                      setShowSaveModal(false);
+                      setSaveEventEfficiencyName('');
+                    }}
+                    className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                    disabled={isLoading}
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={handleSaveEventEfficiency}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+                    disabled={isLoading || !saveEventEfficiencyName.trim()}
+                  >
+                    {isLoading ? '처리 중...' : selectedEventEfficiencyId ? '업데이트' : '저장'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          
 
           <div className="flex flex-wrap gap-2">
             {eventSubTabs.map((subTab) => {
@@ -1456,29 +3036,56 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
           <div className="space-y-6">
             {activeSubTab.key === 'summary' && (
               <div className="bg-gradient-to-br from-gray-900/90 to-gray-800/90 border-2 border-purple-500/40 rounded-2xl p-6 space-y-6 shadow-2xl">
-              <div className="flex flex-col gap-2">
-                <h2 className="text-2xl font-bold text-white bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">7주 누적 요약</h2>
+              <div className="flex flex-col gap-4">
+                <h2 className="text-2xl font-bold text-white bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
+                  {totalWeeksNumber}주 누적 요약
+                </h2>
                 <p className="text-sm text-gray-300">
-                  7주 동안 매주 10시간씩 접속 (총 70시간 기준). 주간 보상 × 7회 + 누적 보상 × 1회 +
+                  {totalWeeksNumber}주 동안 매주 {totalWeeksNumber > 0 ? (totalHoursNumber / totalWeeksNumber).toFixed(1) : 0}시간씩 접속 (총 {totalHoursNumber}시간 기준). 주간 보상 × {totalWeeksNumber}회 + 누적 보상 × 1회 +
                   상시 혜택 × 총 진행 일수({totalDaysNumber ?? 0}일)을 합산한 수치입니다.
                 </p>
-                <div className="flex flex-wrap items-center gap-3 text-sm text-gray-200">
-                  <span>총 70시간 진행 일수</span>
+                <div className="flex flex-wrap items-center gap-4 text-sm text-gray-200 bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-300">총 주수:</span>
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      className="px-3 py-1 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500 w-24"
+                      value={totalWeeksInput}
+                      onChange={(e) => setTotalWeeksInput(e.target.value)}
+                    />
+                    <span className="text-gray-400">주</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-300">총 시간:</span>
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      className="px-3 py-1 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500 w-24"
+                      value={totalHoursInput}
+                      onChange={(e) => setTotalHoursInput(e.target.value)}
+                    />
+                    <span className="text-gray-400">시간</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-300">총 진행 일수:</span>
                   <input
                     type="number"
                     min="1"
                     step="0.5"
-                    className="px-3 py-1 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500 w-32"
+                      className="px-3 py-1 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500 w-24"
                     value={totalDaysInput}
                     onChange={(e) => setTotalDaysInput(e.target.value)}
                   />
+                    <span className="text-gray-400">일</span>
+                    {totalDaysNumber && daysPerWeek && (
                   <span className="text-gray-400">
-                    (
-                    {totalDaysNumber && daysPerWeek
-                      ? `주당 ${formatNumberWithSignificantDigits(daysPerWeek)}일`
-                      : '주당 계산 불가'}
-                    )
+                        (주당 {formatNumberWithSignificantDigits(daysPerWeek)}일)
                   </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -1517,10 +3124,17 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                 </div>
               </div>
 
-              <div className="overflow-x-auto rounded-xl border border-gray-700 shadow-lg">
+              {/* 주간보상 섹션 */}
+              {aggregateRewards.filter(item => item.category === 'weekly').length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-lg font-bold text-blue-400 flex items-center gap-2">
+                    <span className="w-1 h-6 bg-blue-500 rounded"></span>
+                    주간 보상 ({totalWeeksNumber}주 × {totalWeeksNumber}회)
+                  </h3>
+                  <div className="overflow-x-auto rounded-xl border border-blue-500/30 shadow-lg">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-gradient-to-r from-purple-900/40 to-blue-900/40 text-gray-200 border-b-2 border-purple-500/50">
+                        <tr className="bg-gradient-to-r from-blue-900/40 to-purple-900/40 text-gray-200 border-b-2 border-blue-500/50">
                       <th className="px-4 py-4 text-left font-bold">아이템명</th>
                       <th className="px-4 py-4 text-right font-bold">총 수량</th>
                       <th className="px-4 py-4 text-right font-bold">단가</th>
@@ -1528,7 +3142,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                     </tr>
                   </thead>
                   <tbody>
-                    {aggregateRewards.map((item, idx) => {
+                        {aggregateRewards.filter(item => item.category === 'weekly').map((item, idx) => {
                       const enabled = enabledRewards[item.name] ?? true;
                       const isKurzanSummaryItem = item.name === '쿠르잔 전선 보상 (휴식게이지 2배)';
                       const isPcBangLuckyBoxSummaryItem = item.name === PC_BANG_LUCKY_SUMMARY_NAME;
@@ -1684,6 +3298,362 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                   </tbody>
                 </table>
               </div>
+                </div>
+              )}
+
+              {/* 누적보상 섹션 */}
+              {aggregateRewards.filter(item => item.category === 'cumulative').length > 0 && (
+                <div className="space-y-3 mt-6">
+                  <h3 className="text-lg font-bold text-purple-400 flex items-center gap-2">
+                    <span className="w-1 h-6 bg-purple-500 rounded"></span>
+                    누적 보상 (1회)
+                  </h3>
+                  <div className="overflow-x-auto rounded-xl border border-purple-500/30 shadow-lg">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-gradient-to-r from-purple-900/40 to-pink-900/40 text-gray-200 border-b-2 border-purple-500/50">
+                          <th className="px-4 py-4 text-left font-bold">아이템명</th>
+                          <th className="px-4 py-4 text-right font-bold">총 수량</th>
+                          <th className="px-4 py-4 text-right font-bold">단가</th>
+                          <th className="px-4 py-4 text-right font-bold">총합</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {aggregateRewards.filter(item => item.category === 'cumulative').map((item, idx) => {
+                          const enabled = enabledRewards[item.name] ?? true;
+                          const isKurzanSummaryItem = item.name === '쿠르잔 전선 보상 (휴식게이지 2배)';
+                          const isPcBangLuckyBoxSummaryItem = item.name === PC_BANG_LUCKY_SUMMARY_NAME;
+                          const kurzanValue = adjustedKurzanValue;
+                          const priceInfo = isKurzanSummaryItem
+                            ? {
+                                unit: 'gold' as const,
+                                unitAmount: kurzanValue,
+                                goldEquivalent: kurzanValue,
+                                cashEquivalent: null,
+                                note: null,
+                              }
+                            : isPcBangLuckyBoxSummaryItem
+                              ? {
+                                  unit: pcBangLuckyBoxExpectedGold != null ? ('gold' as const) : null,
+                                  unitAmount: pcBangLuckyBoxExpectedGold,
+                                  goldEquivalent: pcBangLuckyBoxExpectedGold,
+                                  cashEquivalent: null,
+                                  note: pcBangLuckyBoxExpectedGold != null ? '상세 구성 기대값' : null,
+                                }
+                              : getItemPriceInfo(item.name);
+                          const unitDisplay = isKurzanSummaryItem
+                            ? kurzanValue != null
+                              ? `${formatNumberWithSignificantDigits(kurzanValue)}골드`
+                              : '-'
+                            : isPcBangLuckyBoxSummaryItem
+                              ? pcBangLuckyBoxExpectedGold != null
+                                ? `${formatNumberWithSignificantDigits(pcBangLuckyBoxExpectedGold)}골드`
+                                : '-'
+                              : formatPriceDisplay(priceInfo.unitAmount, priceInfo.unit);
+                          const totalDisplay = isKurzanSummaryItem
+                            ? kurzanValue != null
+                              ? `${formatNumberWithSignificantDigits(kurzanValue * item.quantity)}골드`
+                              : '-'
+                            : isPcBangLuckyBoxSummaryItem
+                              ? pcBangLuckyBoxExpectedGold != null
+                                ? `${formatNumberWithSignificantDigits(pcBangLuckyBoxExpectedGold * item.quantity)}골드`
+                                : '-'
+                              : formatPriceDisplay(
+                                  priceInfo.unitAmount !== null ? priceInfo.unitAmount * item.quantity : null,
+                                  priceInfo.unit
+                                );
+                          const composition = getCompositionInfo(item.name, item.quantity);
+
+                          return (
+                          <tr
+                            key={`cumulative-${item.name}-${idx}`}
+                            className={`border-b border-gray-800/70 hover:bg-gray-700/30 transition-colors duration-200 ${!enabled ? 'opacity-40' : ''}`}
+                          >
+                            <td className="px-4 py-3 text-white">
+                              <div className="flex items-center gap-3">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleReward(item.name)}
+                                  className={`w-10 h-5 rounded-full border transition-colors ${
+                                    enabled
+                                      ? 'bg-purple-600 border-purple-500'
+                                      : 'bg-gray-600 border-gray-500'
+                                  }`}
+                                  aria-label={`${item.name} 포함 여부`}
+                                >
+                                  <span
+                                    className={`inline-block w-4 h-4 rounded-full bg-white transform transition-transform ${
+                                      enabled ? 'translate-x-5' : 'translate-x-1'
+                                    }`}
+                                  />
+                                </button>
+                                <span>
+                                  {item.name}
+                                  {isKurzanSummaryItem && selectedKurzanStage && (
+                                    <span className="ml-2 text-xs text-gray-400">
+                                      ({selectedKurzanStage.level} / {selectedKurzanStage.stage})
+                                    </span>
+                                  )}
+                                </span>
+                                {item.name === '고결한 혼돈의 돌 선택 상자' && (
+                                  <select
+                                    value={chaosStoneQuality}
+                                    onChange={(e) => setChaosStoneQuality(Number(e.target.value) as 90 | 95)}
+                                    className="bg-gray-700 text-white border border-gray-600 rounded px-2 py-1 text-xs"
+                                  >
+                                    <option value={90}>품질 90</option>
+                                    <option value={95}>품질 95</option>
+                                  </select>
+                                )}
+                                {item.name === '팔찌 효과 재변환권' && (
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={braceletPriceInput}
+                                    onChange={(e) => setBraceletPriceInput(e.target.value)}
+                                    className="w-24 bg-gray-700 text-white border border-gray-600 rounded px-2 py-1 text-xs"
+                                  />
+                                )}
+                              </div>
+                              {composition.perUnit && (
+                                <div className="text-xs text-gray-400 mt-1">1개당 {composition.perUnit}</div>
+                              )}
+                              {isKurzanSummaryItem && (
+                                <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-300">
+                                  {([
+                                    { key: 'breakthrough', label: '돌파석', amount: selectedKurzanStage?.breakthroughValue ?? 0 },
+                                    { key: 'fragment', label: '파편', amount: selectedKurzanStage?.fragmentValue ?? 0 },
+                                    { key: 'cardExp', label: '카경', amount: selectedKurzanStage?.cardExpValue ?? 0 },
+                                  ] as const).map(({ key, label, amount }) => {
+                                    const active = kurzanSwitches[key];
+                                    const disabled = !selectedKurzanStage || amount <= 0;
+                                    return (
+                                      <div key={key} className={`flex items-center gap-2 ${disabled ? 'opacity-40' : ''}`}>
+                                        <span>{label}</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => !disabled && handleKurzanSwitchToggle(key)}
+                                          disabled={disabled}
+                                          className={`w-9 h-4 rounded-full border transition-colors duration-200 ${
+                                            active ? 'bg-purple-600 border-purple-400' : 'bg-gray-600 border-gray-500'
+                                          } ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                                          aria-label={`${label} 가치 포함 여부`}
+                                        >
+                                          <span
+                                            className={`inline-block w-4 h-4 rounded-full bg-white transform transition-transform ${
+                                              active ? 'translate-x-4' : 'translate-x-0'
+                                            }`}
+                                          />
+                                        </button>
+                                        <span className="text-gray-500">
+                                          {amount > 0 ? `${formatNumberWithSignificantDigits(amount)}골드` : '0골드'}
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-right text-gray-300">
+                              <div>{formatNumberWithSignificantDigits(item.quantity)}</div>
+                              {composition.total && (
+                                <div className="text-xs text-gray-500 mt-1">({composition.total})</div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-right text-gray-300">
+                              {unitDisplay}
+                              {priceInfo.note && (
+                                <div className="text-xs text-gray-500 mt-1">{priceInfo.note}</div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-right text-yellow-300 font-semibold">
+                              {totalDisplay}
+                            </td>
+                          </tr>
+                        );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* 상시혜택 섹션 */}
+              {aggregateRewards.filter(item => item.category === 'daily').length > 0 && (
+                <div className="space-y-3 mt-6">
+                  <h3 className="text-lg font-bold text-green-400 flex items-center gap-2">
+                    <span className="w-1 h-6 bg-green-500 rounded"></span>
+                    상시 혜택 (일일) ({totalDaysNumber ?? 0}일)
+                  </h3>
+                  <div className="overflow-x-auto rounded-xl border border-green-500/30 shadow-lg">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-gradient-to-r from-green-900/40 to-emerald-900/40 text-gray-200 border-b-2 border-green-500/50">
+                          <th className="px-4 py-4 text-left font-bold">아이템명</th>
+                          <th className="px-4 py-4 text-right font-bold">총 수량</th>
+                          <th className="px-4 py-4 text-right font-bold">단가</th>
+                          <th className="px-4 py-4 text-right font-bold">총합</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {aggregateRewards.filter(item => item.category === 'daily').map((item, idx) => {
+                          const enabled = enabledRewards[item.name] ?? true;
+                          const isKurzanSummaryItem = item.name === '쿠르잔 전선 보상 (휴식게이지 2배)';
+                          const isPcBangLuckyBoxSummaryItem = item.name === PC_BANG_LUCKY_SUMMARY_NAME;
+                          const kurzanValue = adjustedKurzanValue;
+                          const priceInfo = isKurzanSummaryItem
+                            ? {
+                                unit: 'gold' as const,
+                                unitAmount: kurzanValue,
+                                goldEquivalent: kurzanValue,
+                                cashEquivalent: null,
+                                note: null,
+                              }
+                            : isPcBangLuckyBoxSummaryItem
+                              ? {
+                                  unit: pcBangLuckyBoxExpectedGold != null ? ('gold' as const) : null,
+                                  unitAmount: pcBangLuckyBoxExpectedGold,
+                                  goldEquivalent: pcBangLuckyBoxExpectedGold,
+                                  cashEquivalent: null,
+                                  note: pcBangLuckyBoxExpectedGold != null ? '상세 구성 기대값' : null,
+                                }
+                              : getItemPriceInfo(item.name);
+                          const unitDisplay = isKurzanSummaryItem
+                            ? kurzanValue != null
+                              ? `${formatNumberWithSignificantDigits(kurzanValue)}골드`
+                              : '-'
+                            : isPcBangLuckyBoxSummaryItem
+                              ? pcBangLuckyBoxExpectedGold != null
+                                ? `${formatNumberWithSignificantDigits(pcBangLuckyBoxExpectedGold)}골드`
+                                : '-'
+                              : formatPriceDisplay(priceInfo.unitAmount, priceInfo.unit);
+                          const totalDisplay = isKurzanSummaryItem
+                            ? kurzanValue != null
+                              ? `${formatNumberWithSignificantDigits(kurzanValue * item.quantity)}골드`
+                              : '-'
+                            : isPcBangLuckyBoxSummaryItem
+                              ? pcBangLuckyBoxExpectedGold != null
+                                ? `${formatNumberWithSignificantDigits(pcBangLuckyBoxExpectedGold * item.quantity)}골드`
+                                : '-'
+                              : formatPriceDisplay(
+                                  priceInfo.unitAmount !== null ? priceInfo.unitAmount * item.quantity : null,
+                                  priceInfo.unit
+                                );
+                          const composition = getCompositionInfo(item.name, item.quantity);
+
+                          return (
+                          <tr
+                            key={`daily-${item.name}-${idx}`}
+                            className={`border-b border-gray-800/70 hover:bg-gray-700/30 transition-colors duration-200 ${!enabled ? 'opacity-40' : ''}`}
+                          >
+                            <td className="px-4 py-3 text-white">
+                              <div className="flex items-center gap-3">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleReward(item.name)}
+                                  className={`w-10 h-5 rounded-full border transition-colors ${
+                                    enabled
+                                      ? 'bg-purple-600 border-purple-500'
+                                      : 'bg-gray-600 border-gray-500'
+                                  }`}
+                                  aria-label={`${item.name} 포함 여부`}
+                                >
+                                  <span
+                                    className={`inline-block w-4 h-4 rounded-full bg-white transform transition-transform ${
+                                      enabled ? 'translate-x-5' : 'translate-x-1'
+                                    }`}
+                                  />
+                                </button>
+                                <span>
+                                  {item.name}
+                                  {isKurzanSummaryItem && selectedKurzanStage && (
+                                    <span className="ml-2 text-xs text-gray-400">
+                                      ({selectedKurzanStage.level} / {selectedKurzanStage.stage})
+                                    </span>
+                                  )}
+                                </span>
+                                {item.name === '고결한 혼돈의 돌 선택 상자' && (
+                                  <select
+                                    value={chaosStoneQuality}
+                                    onChange={(e) => setChaosStoneQuality(Number(e.target.value) as 90 | 95)}
+                                    className="bg-gray-700 text-white border border-gray-600 rounded px-2 py-1 text-xs"
+                                  >
+                                    <option value={90}>품질 90</option>
+                                    <option value={95}>품질 95</option>
+                                  </select>
+                                )}
+                                {item.name === '팔찌 효과 재변환권' && (
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={braceletPriceInput}
+                                    onChange={(e) => setBraceletPriceInput(e.target.value)}
+                                    className="w-24 bg-gray-700 text-white border border-gray-600 rounded px-2 py-1 text-xs"
+                                  />
+                                )}
+                              </div>
+                              {composition.perUnit && (
+                                <div className="text-xs text-gray-400 mt-1">1개당 {composition.perUnit}</div>
+                              )}
+                              {isKurzanSummaryItem && (
+                                <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-300">
+                                  {([
+                                    { key: 'breakthrough', label: '돌파석', amount: selectedKurzanStage?.breakthroughValue ?? 0 },
+                                    { key: 'fragment', label: '파편', amount: selectedKurzanStage?.fragmentValue ?? 0 },
+                                    { key: 'cardExp', label: '카경', amount: selectedKurzanStage?.cardExpValue ?? 0 },
+                                  ] as const).map(({ key, label, amount }) => {
+                                    const active = kurzanSwitches[key];
+                                    const disabled = !selectedKurzanStage || amount <= 0;
+                                    return (
+                                      <div key={key} className={`flex items-center gap-2 ${disabled ? 'opacity-40' : ''}`}>
+                                        <span>{label}</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => !disabled && handleKurzanSwitchToggle(key)}
+                                          disabled={disabled}
+                                          className={`w-9 h-4 rounded-full border transition-colors duration-200 ${
+                                            active ? 'bg-purple-600 border-purple-400' : 'bg-gray-600 border-gray-500'
+                                          } ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                                          aria-label={`${label} 가치 포함 여부`}
+                                        >
+                                          <span
+                                            className={`inline-block w-4 h-4 rounded-full bg-white transform transition-transform ${
+                                              active ? 'translate-x-4' : 'translate-x-0'
+                                            }`}
+                                          />
+                                        </button>
+                                        <span className="text-gray-500">
+                                          {amount > 0 ? `${formatNumberWithSignificantDigits(amount)}골드` : '0골드'}
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-right text-gray-300">
+                              <div>{formatNumberWithSignificantDigits(item.quantity)}</div>
+                              {composition.total && (
+                                <div className="text-xs text-gray-500 mt-1">({composition.total})</div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-right text-gray-300">
+                              {unitDisplay}
+                              {priceInfo.note && (
+                                <div className="text-xs text-gray-500 mt-1">{priceInfo.note}</div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-right text-yellow-300 font-semibold">
+                              {totalDisplay}
+                            </td>
+                          </tr>
+                        );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
             )}
 
@@ -1704,9 +3674,9 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
               </div>
             )}
 
-            {activeSubTab.key === 'weekly' && renderRewardTable(weeklyRewards, '주간 보상', '주간 보상 총합')}
-            {activeSubTab.key === 'cumulative' && renderRewardTable(cumulativeRewards, '누적 보상', '누적 보상 총합')}
-            {activeSubTab.key === 'daily' && renderRewardTable(dailyBenefits, '상시 혜택 (일일)', '상시 혜택 총합')}
+            {activeSubTab.key === 'weekly' && renderEditableRewardTableNew(weeklyRewards, 'weekly', '주간 보상')}
+            {activeSubTab.key === 'cumulative' && renderEditableRewardTableNew(cumulativeRewards, 'cumulative', '누적 보상')}
+            {activeSubTab.key === 'daily' && renderReadOnlyRewardTable(dailyBenefits, '상시 혜택 (일일)', '상시 혜택 총합')}
           </div>
         </div>
       </div>
