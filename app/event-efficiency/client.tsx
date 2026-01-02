@@ -56,7 +56,7 @@ type ComponentItem = {
   manualUnitType?: '골드' | '크리스탈' | '현금' | null;
   probability?: number; // 확률 타입용
   selected?: boolean; // 선택 타입용
-  nestedItem?: RewardItemNew; // 중첩된 묶음 항목
+  nestedItem?: RewardItemNew; // 하위 묶음 항목
 };
 
 // 새로운 보상 아이템 타입 (과금 효율의 PackageItem과 동일)
@@ -135,7 +135,7 @@ type Props = {
     fragmentValue?: number;
     cardExpValue?: number;
   }[];
-  initialSavedEventEfficiency?: Array<{ id: string; name: string; created_at: string; updated_at: string; weekly_rewards?: any; cumulative_rewards?: any }>;
+  initialSavedEventEfficiency?: Array<{ id: string; name: string; created_at: string; updated_at: string; weekly_rewards?: any; cumulative_rewards?: any; end_date?: string | null }>;
 };
 
 export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, marketCache, discordRate, kurzanStages, initialSavedEventEfficiency = [] }: Props) {
@@ -147,11 +147,30 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
   const allowEventEfficiencySave = process.env.NEXT_PUBLIC_ALLOW_PACKAGE_SAVE === 'true' || process.env.NODE_ENV === 'development';
   
   // 저장된 이벤트 효율 관련 상태
-  const [savedEventEfficiency, setSavedEventEfficiency] = useState<Array<{ id: string; name: string; created_at: string; updated_at: string; weekly_rewards?: any; cumulative_rewards?: any }>>(initialSavedEventEfficiency);
+  const [savedEventEfficiency, setSavedEventEfficiency] = useState<Array<{ id: string; name: string; created_at: string; updated_at: string; weekly_rewards?: any; cumulative_rewards?: any; end_date?: string | null }>>(initialSavedEventEfficiency);
   const [selectedEventEfficiencyId, setSelectedEventEfficiencyId] = useState<string | null>(null);
-  const [showSaveModal, setShowSaveModal] = useState(false);
-  const [saveEventEfficiencyName, setSaveEventEfficiencyName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  
+  // 초기 데이터 로드 시 최신 데이터 다시 불러오기
+  useEffect(() => {
+    console.log('[이벤트 효율] 초기 저장된 이벤트 효율:', initialSavedEventEfficiency.map(item => ({ id: item.id, name: item.name })));
+    
+    // 페이지 로드 시 서버에서 최신 데이터 다시 불러오기
+    const fetchLatestData = async () => {
+      try {
+        const res = await fetch('/api/event-efficiency');
+        const data = await res.json();
+        if (data.items) {
+          console.log('[이벤트 효율] 서버에서 불러온 최신 데이터:', data.items.map((item: any) => ({ id: item.id, name: item.name })));
+          setSavedEventEfficiency(data.items);
+        }
+      } catch (error) {
+        console.error('[이벤트 효율] 최신 데이터 불러오기 실패:', error);
+      }
+    };
+    
+    fetchLatestData();
+  }, []);
   
   // 디버깅: adjustedEntries 확인
   useEffect(() => {
@@ -313,6 +332,8 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
   const [totalWeeksInput, setTotalWeeksInput] = useState('7');
   const [totalHoursInput, setTotalHoursInput] = useState('70');
   const [legendaryCardSelectionPriceInput, setLegendaryCardSelectionPriceInput] = useState('50000');
+  const [eventName, setEventName] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [kurzanSwitches, setKurzanSwitches] = useState({
     breakthrough: true,
     fragment: true,
@@ -1560,14 +1581,17 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
 
   // 이벤트 효율 저장
   const handleSaveEventEfficiency = async () => {
-    if (!saveEventEfficiencyName.trim()) {
-      alert('이름을 입력해주세요.');
+    // eventName이 없으면 저장 불가
+    if (!eventName.trim()) {
+      alert('이벤트명을 입력해주세요.');
       return;
     }
 
     setIsLoading(true);
     try {
-      const name = saveEventEfficiencyName.trim();
+      const name = eventName.trim();
+      console.log('[이벤트 효율 저장] 저장할 이름:', name);
+      console.log('[이벤트 효율 저장] 선택된 ID:', selectedEventEfficiencyId);
       
       let res;
       if (selectedEventEfficiencyId) {
@@ -1579,6 +1603,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
             name,
             weekly_rewards: weeklyRewardsEditable,
             cumulative_rewards: cumulativeRewardsEditable,
+            end_date: endDate || null,
           }),
         });
       } else {
@@ -1590,6 +1615,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
             name,
             weekly_rewards: weeklyRewardsEditable,
             cumulative_rewards: cumulativeRewardsEditable,
+            end_date: endDate || null,
           }),
         });
       }
@@ -1604,14 +1630,13 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
       const listRes = await fetch('/api/event-efficiency');
       const listData = await listRes.json();
       if (listData.items) {
+        console.log('[이벤트 효율 저장] 불러온 목록:', listData.items.map((item: any) => ({ id: item.id, name: item.name })));
         setSavedEventEfficiency(listData.items);
         if (data.item) {
           setSelectedEventEfficiencyId(data.item.id);
         }
       }
 
-      setShowSaveModal(false);
-      setSaveEventEfficiencyName('');
       alert(selectedEventEfficiencyId ? '이벤트 효율이 업데이트되었습니다.' : '이벤트 효율이 저장되었습니다.');
     } catch (error: any) {
       console.error('이벤트 효율 저장 실패:', error);
@@ -1636,6 +1661,15 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
           }
           if (itemToLoad.cumulative_rewards) {
             setCumulativeRewardsEditable(itemToLoad.cumulative_rewards);
+          }
+          // 이벤트명과 종료일도 불러오기
+          if (itemToLoad.name) {
+            setEventName(itemToLoad.name);
+          }
+          if (itemToLoad.end_date) {
+            setEndDate(itemToLoad.end_date);
+          } else {
+            setEndDate('');
           }
           setSelectedEventEfficiencyId(itemId);
           alert('이벤트 효율이 불러와졌습니다.');
@@ -1703,6 +1737,8 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
     setWeeklyRewardsEditable([]);
     setCumulativeRewardsEditable([]);
     setSelectedEventEfficiencyId(null);
+    setEventName('');
+    setEndDate('');
   };
 
   // 레거시 함수 - 사용되지 않음 (renderEditableRewardTableNew 사용)
@@ -2192,6 +2228,90 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
     
     const totalValue = calculateTotalValue();
     
+    // 보상 그룹별 계산 과정 데이터 생성
+    const calculateGroupDetails = () => {
+      return groups.map((group, groupIdx) => {
+        let groupTotal = 0;
+        const items = group.items
+          .filter(item => isNewFormatItem(item))
+          .map(item => {
+            const itemDetails = item.components
+              .filter(comp => comp.itemName && comp.itemName !== '__nested__' && comp.itemName !== '__manual__' && comp.itemName !== '')
+              .map(comp => {
+                const unitPrice = getItemUnitPrice(comp.itemName);
+                if (unitPrice === null || unitPrice <= 0) return null;
+                
+                const isIncluded = item.itemType === '확정' || 
+                                  (item.itemType === '확률') || 
+                                  (item.itemType === '선택' && comp.selected);
+                
+                if (!isIncluded) return null;
+                
+                let value = unitPrice * (comp.quantity || 0) * (item.quantity || 1);
+                
+                // 확률 타입일 경우 확률 적용
+                if (item.itemType === '확률' && comp.probability !== undefined) {
+                  value *= comp.probability;
+                }
+                
+                // 하위 묶음 항목 수량 계산 (하위 묶음 항목이 포함된 구성 요소의 수량)
+                let nestedItemCount = 0;
+                if (comp.itemName === '__nested__' && comp.nestedItem) {
+                  // 하위 묶음 항목의 구성 요소 수량 합계
+                  nestedItemCount = comp.nestedItem.components
+                    .filter(nestedComp => nestedComp.itemName && nestedComp.itemName !== '__nested__' && nestedComp.itemName !== '__manual__' && nestedComp.itemName !== '')
+                    .reduce((sum, nestedComp) => {
+                      const isNestedIncluded = comp.nestedItem!.itemType === '확정' || 
+                                              (comp.nestedItem!.itemType === '확률') || 
+                                              (comp.nestedItem!.itemType === '선택' && nestedComp.selected);
+                      if (!isNestedIncluded) return sum;
+                      return sum + (nestedComp.quantity || 0);
+                    }, 0);
+                }
+                
+                groupTotal += value;
+                
+                return {
+                  itemName: comp.itemName,
+                  unitPrice,
+                  componentQuantity: comp.quantity || 0,
+                  bundleQuantity: item.quantity || 1,
+                  nestedItemCount,
+                  probability: item.itemType === '확률' ? comp.probability : undefined,
+                  value,
+                  isIncluded,
+                };
+              })
+              .filter((detail): detail is NonNullable<typeof detail> => detail !== null);
+            
+            const bundleItemCount = item.components.filter(comp => 
+              comp.itemName && comp.itemName !== '__nested__' && comp.itemName !== '__manual__' && comp.itemName !== ''
+            ).length;
+            
+            const nestedBundleCount = item.components.filter(comp => 
+              comp.itemName === '__nested__' && comp.nestedItem
+            ).length;
+            
+            return {
+              itemName: item.itemName,
+              itemType: item.itemType,
+              bundleQuantity: item.quantity || 1,
+              bundleItemCount,
+              nestedBundleCount,
+              details: itemDetails,
+            };
+          });
+        
+        return {
+          groupTitle: group.title,
+          groupTotal,
+          items,
+        };
+      });
+    };
+    
+    const groupDetails = calculateGroupDetails();
+    
     return (
       <div className="space-y-6">
         {/* 요약 카드 */}
@@ -2204,7 +2324,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
               <h3 className="text-2xl font-bold text-white">요약</h3>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               {/* 총 가치 */}
               <div className="bg-gray-900/60 rounded-xl p-4 border border-purple-500/30">
                 <div className="text-sm text-gray-400 mb-1">총 가치</div>
@@ -2222,6 +2342,81 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                   </div>
                 </div>
               )}
+            </div>
+            
+            {/* 계산 과정 상세 */}
+            <div className="space-y-4">
+              <h4 className="text-lg font-semibold text-white">계산 과정</h4>
+              {groupDetails.map((group, groupIdx) => (
+                <div key={groupIdx} className="bg-gray-900/60 rounded-xl p-4 border border-gray-700">
+                  <div className="flex items-center justify-between mb-3">
+                    <h5 className="text-base font-semibold text-purple-300">{group.groupTitle}</h5>
+                    <div className="text-sm text-gray-400">
+                      그룹 합계: <span className="text-yellow-400 font-bold">{formatNumberWithSignificantDigits(group.groupTotal)} 골드</span>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    {group.items.map((item, itemIdx) => (
+                      <div key={itemIdx} className="bg-gray-800/50 rounded-lg p-3 border border-gray-700">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-white">{item.itemName}</span>
+                            <span className="text-xs text-gray-400">({item.itemType})</span>
+                          </div>
+                          <div className="text-xs text-gray-400">
+                            묶음 수량: <span className="text-blue-400 font-semibold">{item.bundleQuantity}</span>
+                            {item.bundleItemCount > 0 && (
+                              <span className="ml-2">
+                                구성요소: <span className="text-green-400 font-semibold">{item.bundleItemCount}개</span>
+                              </span>
+                            )}
+                            {item.nestedBundleCount > 0 && (
+                              <span className="ml-2">
+                                하위 묶음: <span className="text-purple-400 font-semibold">{item.nestedBundleCount}개</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-1 pl-4 border-l-2 border-gray-700">
+                          {item.details.map((detail, detailIdx) => (
+                            <div key={detailIdx} className="text-xs text-gray-300">
+                              <span className="text-gray-400">• {detail.itemName}:</span>
+                              <span className="ml-1">단가 {formatNumberWithSignificantDigits(detail.unitPrice)}골드</span>
+                              <span className="text-gray-500 mx-1">×</span>
+                              <span>구성요소 수량 {formatNumberWithSignificantDigits(detail.componentQuantity)}</span>
+                              {detail.probability !== undefined && (
+                                <>
+                                  <span className="text-gray-500 mx-1">×</span>
+                                  <span className="text-purple-400">확률 {formatNumberWithSignificantDigits(detail.probability * 100)}%</span>
+                                </>
+                              )}
+                              {detail.bundleQuantity > 1 && (
+                                <>
+                                  <span className="text-gray-500 mx-1">×</span>
+                                  <span className="text-blue-400">묶음 수량 {detail.bundleQuantity}</span>
+                                </>
+                              )}
+                              {detail.nestedItemCount > 0 && (
+                                <>
+                                  <span className="text-gray-500 mx-1">×</span>
+                                  <span className="text-purple-400">하위 묶음 {detail.nestedItemCount}개</span>
+                                </>
+                              )}
+                              <span className="text-gray-500 mx-1">=</span>
+                              <span className={`font-semibold ${detail.isIncluded ? 'text-green-400' : 'text-gray-600'}`}>
+                                {formatNumberWithSignificantDigits(detail.value)} 골드
+                              </span>
+                              {!detail.isIncluded && <span className="text-gray-500 ml-1">(미포함)</span>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -2408,31 +2603,204 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                               </button>
                             </div>
                             
-                            {/* 중첩 묶음 항목 입력 */}
+                            {/* 하위 묶음 항목 입력 */}
                             {component.itemName === '__nested__' && component.nestedItem && (
-                              <div className="flex gap-2 items-center">
-                                <input
-                                  type="text"
-                                  value={component.nestedItem.itemName}
-                                  onChange={(e) => {
-                                    const nestedItem = { ...component.nestedItem!, itemName: e.target.value };
-                                    handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'nestedItem', nestedItem);
-                                  }}
-                                  className="flex-1 px-3 py-1.5 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500 text-sm"
-                                  placeholder="중첩 묶음 항목명"
-                                />
-                                <select
-                                  value={component.nestedItem.itemType}
-                                  onChange={(e) => {
-                                    const nestedItem = { ...component.nestedItem!, itemType: e.target.value as '확정' | '확률' | '선택' };
-                                    handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'nestedItem', nestedItem);
-                                  }}
-                                  className="w-20 px-2 py-1.5 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500 text-sm"
-                                >
-                                  <option value="확정">확정</option>
-                                  <option value="확률">확률</option>
-                                  <option value="선택">선택</option>
-                                </select>
+                              <div className="space-y-3 pl-4 border-l-2 border-purple-500/50 bg-gray-800/30 rounded-lg p-3">
+                                <div className="flex gap-2 items-center">
+                                  <input
+                                    type="text"
+                                    value={component.nestedItem.itemName}
+                                    onChange={(e) => {
+                                      const nestedItem = { ...component.nestedItem!, itemName: e.target.value };
+                                      handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'nestedItem', nestedItem);
+                                    }}
+                                    className="flex-1 px-3 py-1.5 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500 text-sm"
+                                    placeholder="하위 묶음 항목명"
+                                  />
+                                  <select
+                                    value={component.nestedItem.itemType}
+                                    onChange={(e) => {
+                                      const nestedItem = { ...component.nestedItem!, itemType: e.target.value as '확정' | '확률' | '선택' };
+                                      handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'nestedItem', nestedItem);
+                                    }}
+                                    className="w-20 px-2 py-1.5 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500 text-sm"
+                                  >
+                                    <option value="확정">확정</option>
+                                    <option value="확률">확률</option>
+                                    <option value="선택">선택</option>
+                                  </select>
+                                </div>
+                                
+                                {/* 하위 묶음 항목의 확률 타입일 때 확률 합계 경고 */}
+                                {component.nestedItem.itemType === '확률' && (() => {
+                                  const totalProbability = component.nestedItem.components.reduce((sum, nestedComp) => {
+                                    return sum + (nestedComp.probability || 0);
+                                  }, 0);
+                                  const isNot100Percent = Math.abs(totalProbability - 1) > 0.001;
+                                  return isNot100Percent ? (
+                                    <div className="text-red-400 text-xs font-medium bg-red-900/20 border border-red-700 rounded p-2">
+                                      ⚠ 확률 합계가 {(totalProbability * 100).toFixed(1)}%입니다. (100%가 되어야 합니다)
+                                    </div>
+                                  ) : null;
+                                })()}
+                                
+                                {/* 하위 묶음 항목의 구성 요소 리스트 */}
+                                <div className="space-y-2">
+                                  {component.nestedItem.components.map((nestedComp, nestedCompIdx) => (
+                                    <div key={nestedCompIdx} className="bg-gray-900/40 rounded-lg p-2 border border-gray-700">
+                                      <div className="space-y-2">
+                                        {/* 첫 번째 줄: 라디오 버튼 + 드롭다운 + 삭제 버튼 */}
+                                        <div className="flex gap-2 items-center">
+                                          {/* 선택 타입: 라디오 버튼 */}
+                                          {component.nestedItem!.itemType === '선택' && (
+                                            <input
+                                              type="radio"
+                                              name={`group-${groupIdx}-item-${itemIdx}-comp-${compIdx}-nested-selection`}
+                                              checked={nestedComp.selected || false}
+                                              onChange={() => {
+                                                const updatedNestedComponents = component.nestedItem!.components.map((c, idx) => ({
+                                                  ...c,
+                                                  selected: idx === nestedCompIdx
+                                                }));
+                                                const nestedItem = { ...component.nestedItem!, components: updatedNestedComponents };
+                                                handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'nestedItem', nestedItem);
+                                              }}
+                                              className="mt-1"
+                                            />
+                                          )}
+                                          
+                                          <SearchableSelect
+                                            value={nestedComp.itemName}
+                                            onChange={(value) => {
+                                              const updatedNestedComponents = component.nestedItem!.components.map((c, idx) => 
+                                                idx === nestedCompIdx ? { ...c, itemName: value } : c
+                                              );
+                                              const nestedItem = { ...component.nestedItem!, components: updatedNestedComponents };
+                                              handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'nestedItem', nestedItem);
+                                            }}
+                                            options={itemDropdownOptions}
+                                            placeholder="아이템 선택"
+                                            className="flex-1"
+                                            size="small"
+                                          />
+                                          
+                                          <button
+                                            onClick={() => {
+                                              const updatedNestedComponents = component.nestedItem!.components.filter((_, idx) => idx !== nestedCompIdx);
+                                              const nestedItem = { ...component.nestedItem!, components: updatedNestedComponents };
+                                              handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'nestedItem', nestedItem);
+                                            }}
+                                            className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs transition-colors"
+                                          >
+                                            삭제
+                                          </button>
+                                        </div>
+                                        
+                                        {/* 두 번째 줄: 수량 및 확률 입력 */}
+                                        <div className="flex gap-2 items-center">
+                                          <span className="text-xs text-gray-400 whitespace-nowrap">수량:</span>
+                                          <input
+                                            type="number"
+                                            value={nestedComp.quantity || ''}
+                                            onChange={(e) => {
+                                              const updatedNestedComponents = component.nestedItem!.components.map((c, idx) => 
+                                                idx === nestedCompIdx ? { ...c, quantity: parseFloat(e.target.value) || 1 } : c
+                                              );
+                                              const nestedItem = { ...component.nestedItem!, components: updatedNestedComponents };
+                                              handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'nestedItem', nestedItem);
+                                            }}
+                                            className="w-24 px-2 py-1 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500 text-xs"
+                                            placeholder="수량"
+                                            min="1"
+                                          />
+                                          
+                                          {/* 확률 타입: 확률 입력 */}
+                                          {component.nestedItem!.itemType === '확률' && (
+                                            <>
+                                              <span className="text-xs text-gray-400 whitespace-nowrap">확률:</span>
+                                              <input
+                                                type="number"
+                                                value={(nestedComp.probability || 0) * 100}
+                                                onChange={(e) => {
+                                                  const updatedNestedComponents = component.nestedItem!.components.map((c, idx) => 
+                                                    idx === nestedCompIdx ? { ...c, probability: parseFloat(e.target.value) / 100 || 0 } : c
+                                                  );
+                                                  const nestedItem = { ...component.nestedItem!, components: updatedNestedComponents };
+                                                  handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'nestedItem', nestedItem);
+                                                }}
+                                                className="w-24 px-2 py-1 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500 text-xs"
+                                                placeholder="0-100"
+                                                min="0"
+                                                max="100"
+                                                step="0.1"
+                                              />
+                                              <span className="text-xs text-gray-400">%</span>
+                                            </>
+                                          )}
+                                        </div>
+                                        
+                                        {/* 가치 계산 표시 */}
+                                        {nestedComp.itemName && nestedComp.itemName !== '__nested__' && nestedComp.itemName !== '__manual__' && nestedComp.itemName !== '' && (() => {
+                                          const unitPrice = getItemUnitPrice(nestedComp.itemName);
+                                          if (unitPrice !== null && unitPrice > 0) {
+                                            const isNestedIncluded = component.nestedItem!.itemType === '확정' || 
+                                                                    (component.nestedItem!.itemType === '확률') || 
+                                                                    (component.nestedItem!.itemType === '선택' && nestedComp.selected);
+                                            
+                                            let nestedValue = unitPrice * (nestedComp.quantity || 0) * (component.quantity || 1) * (item.quantity || 1);
+                                            
+                                            // 확률 타입일 경우 확률 적용
+                                            if (component.nestedItem!.itemType === '확률' && nestedComp.probability !== undefined) {
+                                              nestedValue *= nestedComp.probability;
+                                            }
+                                            
+                                            return (
+                                              <div className={`text-xs ${isNestedIncluded ? 'text-gray-300' : 'text-gray-600'}`}>
+                                                단가: <span className="font-semibold">{formatNumberWithSignificantDigits(unitPrice)}</span> 골드
+                                                <span className="text-gray-500 mx-1">×</span>
+                                                수량: <span className="font-semibold">{formatNumberWithSignificantDigits(nestedComp.quantity || 0)}</span>
+                                                {component.nestedItem!.itemType === '확률' && nestedComp.probability !== undefined && (
+                                                  <span className="text-purple-400 ml-1">× {nestedComp.probability}</span>
+                                                )}
+                                                <span className="text-gray-500 mx-1">×</span>
+                                                <span className="text-blue-400">하위 구성요소 수량 {component.quantity || 1}</span>
+                                                {item.quantity && item.quantity > 1 && (
+                                                  <>
+                                                    <span className="text-gray-500 mx-1">×</span>
+                                                    <span className="text-blue-400">묶음 {item.quantity}</span>
+                                                  </>
+                                                )}
+                                                <span className="text-gray-500 mx-1">=</span>
+                                                <span className={`font-semibold ${isNestedIncluded ? 'text-green-400' : 'text-gray-600'}`}>
+                                                  {formatNumberWithSignificantDigits(nestedValue)} 골드
+                                                </span>
+                                                {component.nestedItem!.itemType === '확률' && <span className="text-gray-500 ml-1">(기대값)</span>}
+                                                {!isNestedIncluded && <span className="text-gray-500 ml-1">(미포함)</span>}
+                                              </div>
+                                            );
+                                          }
+                                          return null;
+                                        })()}
+                                      </div>
+                                    </div>
+                                  ))}
+                                  
+                                  {/* 하위 묶음 항목에 구성 요소 추가 버튼 */}
+                                  <button
+                                    onClick={() => {
+                                      const newNestedComponent: ComponentItem = {
+                                        itemName: '',
+                                        quantity: 1,
+                                      };
+                                      const updatedNestedComponents = [...component.nestedItem!.components, newNestedComponent];
+                                      const nestedItem = { ...component.nestedItem!, components: updatedNestedComponents };
+                                      handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'nestedItem', nestedItem);
+                                    }}
+                                    className="w-full px-3 py-1.5 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors text-xs"
+                                  >
+                                    + 구성 요소 추가
+                                  </button>
+                                </div>
                               </div>
                             )}
                             
@@ -2895,6 +3263,26 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
     );
   };
 
+  // 종료일 체크 (배포 환경에서만)
+  const isEventExpired = useMemo(() => {
+    if (process.env.NODE_ENV === 'development') {
+      return false; // 개발 환경에서는 항상 표시
+    }
+    if (!endDate) {
+      return false; // 종료일이 설정되지 않았으면 표시
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+    return today > end;
+  }, [endDate]);
+
+  // 종료일이 지났으면 배포 버전에서 숨기기
+  if (isEventExpired) {
+    return null;
+  }
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
       <div className="bg-gray-900/70 border border-gray-700 rounded-2xl p-8">
@@ -2905,12 +3293,9 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
               {/* 저장 버튼 (로컬에서만 표시) */}
               {allowEventEfficiencySave && (
                 <button
-                  onClick={() => {
-                    const selectedItem = savedEventEfficiency.find(item => item.id === selectedEventEfficiencyId);
-                    setSaveEventEfficiencyName(selectedItem?.name || '');
-                    setShowSaveModal(true);
-                  }}
-                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors"
+                  onClick={handleSaveEventEfficiency}
+                  disabled={isLoading || !eventName.trim()}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
                 >
                   저장
                 </button>
@@ -2955,13 +3340,20 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                         }`}
                         disabled={isLoading}
                       >
-                        <span className="flex items-center gap-1">
-                          {isSelected && (
-                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                            </svg>
+                        <span className="flex flex-col items-start gap-0.5">
+                          <span className="flex items-center gap-1">
+                            {isSelected && (
+                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                            {item.name}
+                          </span>
+                          {item.end_date && (
+                            <span className="text-[10px] text-gray-400">
+                              종료일: {new Date(item.end_date).toLocaleDateString('ko-KR')}
+                            </span>
                           )}
-                          {item.name}
                         </span>
                   </button>
                       {allowEventEfficiencySave && (
@@ -2980,46 +3372,32 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
           </div>
           )}
           
-          {/* 저장 모달 */}
-          {showSaveModal && allowEventEfficiencySave && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-              <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 max-w-md w-full mx-4">
-                <h3 className="text-xl font-semibold text-white mb-4">
-                  {selectedEventEfficiencyId ? '이벤트 효율 업데이트' : '이벤트 효율 저장'}
-                </h3>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-300 mb-2">이름</label>
-                  <input
-                    type="text"
-                    value={saveEventEfficiencyName}
-                    onChange={(e) => setSaveEventEfficiencyName(e.target.value)}
-                    className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
-                    placeholder="이름 입력"
-                    autoFocus
-                  />
-                </div>
-                <div className="flex gap-2 justify-end">
-                  <button
-                    onClick={() => {
-                      setShowSaveModal(false);
-                      setSaveEventEfficiencyName('');
-                    }}
-                    className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
-                    disabled={isLoading}
-                  >
-                    취소
-                  </button>
-                  <button
-                    onClick={handleSaveEventEfficiency}
-                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
-                    disabled={isLoading || !saveEventEfficiencyName.trim()}
-                  >
-                    {isLoading ? '처리 중...' : selectedEventEfficiencyId ? '업데이트' : '저장'}
-                  </button>
-                </div>
+          {/* 기본정보 입력 카드 */}
+          <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-4">
+            <h3 className="text-base font-semibold text-white mb-4">기본정보</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">이벤트명</label>
+                <input
+                  type="text"
+                  value={eventName}
+                  onChange={(e) => setEventName(e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+                  placeholder="이벤트명을 입력하세요"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">종료일</label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+                />
               </div>
             </div>
-          )}
+          </div>
+          
           
 
           <div className="flex flex-wrap gap-2">

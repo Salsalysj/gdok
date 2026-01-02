@@ -175,6 +175,7 @@ CREATE TABLE IF NOT EXISTS saved_event_efficiency (
   name TEXT NOT NULL,
   weekly_rewards JSONB NOT NULL,
   cumulative_rewards JSONB NOT NULL,
+  end_date DATE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -215,6 +216,10 @@ DROP POLICY IF EXISTS "모든 사용자 삭제 허용 event" ON saved_event_effi
 CREATE POLICY "모든 사용자 삭제 허용 event" ON saved_event_efficiency
   FOR DELETE
   USING (true);
+
+-- saved_event_efficiency 테이블에 end_date 필드 추가 (기존 테이블 마이그레이션)
+ALTER TABLE saved_event_efficiency 
+ADD COLUMN IF NOT EXISTS end_date DATE;
 
 -- 아크패스 선택 가이드 저장 테이블 생성
 CREATE TABLE IF NOT EXISTS saved_arkpass_guides (

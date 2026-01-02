@@ -24,7 +24,7 @@ export async function PUT(
 
   try {
     const body = await request.json();
-    const { name, weekly_rewards, cumulative_rewards } = body;
+    const { name, weekly_rewards, cumulative_rewards, end_date } = body;
 
     if (!name || !weekly_rewards || !cumulative_rewards) {
       return NextResponse.json(
@@ -39,6 +39,7 @@ export async function PUT(
         name,
         weekly_rewards,
         cumulative_rewards,
+        end_date: end_date || null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', params.id)

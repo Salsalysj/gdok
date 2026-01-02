@@ -682,20 +682,20 @@ export default function AdvancedRefiningClient({
     } else {
       // 상재1, 2 전용 분석 - 각 턴의 순수 기여도 측정
       // 1. 선조턴 기준: 보조재료 미투입 vs 선조턴에만 투입
-      if (noAux && ancestorOnlyCraft) {
-        const additionalValue = noAux.costBreakdown.totalCost - ancestorOnlyCraft.costBreakdown.totalCost;
-        const craftsmanshipAmount = ancestorOnlyCraft.result.materialBreakdown[craftsmanshipItemNameInBreakdown] || 0;
-        const craftsmanshipUnitValue = craftsmanshipAmount > 0 ? additionalValue / craftsmanshipAmount : 0;
-        const craftsmanshipRealValue = craftsmanshipUnitValue + craftsmanshipMarketPrice;
-        
-        ancestorOnlyCraftAnalysis = {
-          additionalValue,
-          craftsmanshipAmount,
-          craftsmanshipUnitValue,
-          craftsmanshipRealValue,
-        };
-      }
+    if (noAux && ancestorOnlyCraft) {
+      const additionalValue = noAux.costBreakdown.totalCost - ancestorOnlyCraft.costBreakdown.totalCost;
+      const craftsmanshipAmount = ancestorOnlyCraft.result.materialBreakdown[craftsmanshipItemNameInBreakdown] || 0;
+      const craftsmanshipUnitValue = craftsmanshipAmount > 0 ? additionalValue / craftsmanshipAmount : 0;
+      const craftsmanshipRealValue = craftsmanshipUnitValue + craftsmanshipMarketPrice;
       
+      ancestorOnlyCraftAnalysis = {
+        additionalValue,
+        craftsmanshipAmount,
+        craftsmanshipUnitValue,
+        craftsmanshipRealValue,
+      };
+    }
+    
       // 2. 일반턴 기준: 선조턴에만 투입 vs 모든 턴에 투입
       if (ancestorOnlyCraft && bothTurnsCraft) {
         const additionalValue = ancestorOnlyCraft.costBreakdown.totalCost - bothTurnsCraft.costBreakdown.totalCost;
@@ -714,18 +714,18 @@ export default function AdvancedRefiningClient({
       }
       
       // 3. 전체 턴 평균: 보조재료 미반영 vs 모든 턴에 투입
-      if (noAux && bothTurnsCraft) {
-        const additionalValue = noAux.costBreakdown.totalCost - bothTurnsCraft.costBreakdown.totalCost;
-        const craftsmanshipAmount = bothTurnsCraft.result.materialBreakdown[craftsmanshipItemNameInBreakdown] || 0;
-        const craftsmanshipUnitValue = craftsmanshipAmount > 0 ? additionalValue / craftsmanshipAmount : 0;
-        const craftsmanshipRealValue = craftsmanshipUnitValue + craftsmanshipMarketPrice;
-        
+    if (noAux && bothTurnsCraft) {
+      const additionalValue = noAux.costBreakdown.totalCost - bothTurnsCraft.costBreakdown.totalCost;
+      const craftsmanshipAmount = bothTurnsCraft.result.materialBreakdown[craftsmanshipItemNameInBreakdown] || 0;
+      const craftsmanshipUnitValue = craftsmanshipAmount > 0 ? additionalValue / craftsmanshipAmount : 0;
+      const craftsmanshipRealValue = craftsmanshipUnitValue + craftsmanshipMarketPrice;
+      
         allTurnsAverageCraftAnalysis = {
-          additionalValue,
-          craftsmanshipAmount,
-          craftsmanshipUnitValue,
-          craftsmanshipRealValue,
-        };
+        additionalValue,
+        craftsmanshipAmount,
+        craftsmanshipUnitValue,
+        craftsmanshipRealValue,
+      };
       }
     }
     
@@ -808,20 +808,20 @@ export default function AdvancedRefiningClient({
     } else {
       // 상재1, 2 전용 분석 - 각 턴의 순수 기여도 측정
       // 1. 선조턴 기준: 보조재료 미투입 vs 선조턴에만 투입
-      if (noAux && ancestorOnlyBreath) {
-        const additionalValue = noAux.costBreakdown.totalCost - ancestorOnlyBreath.costBreakdown.totalCost;
-        const breathAmount = ancestorOnlyBreath.result.materialBreakdown[breathItemName] || 0;
-        const breathUnitValue = breathAmount > 0 ? additionalValue / breathAmount : 0;
-        const breathRealValue = breathUnitValue + breathMarketPrice;
-        
-        ancestorOnlyBreathAnalysis = {
-          additionalValue,
-          breathAmount,
-          breathUnitValue,
-          breathRealValue,
-        };
-      }
+    if (noAux && ancestorOnlyBreath) {
+      const additionalValue = noAux.costBreakdown.totalCost - ancestorOnlyBreath.costBreakdown.totalCost;
+      const breathAmount = ancestorOnlyBreath.result.materialBreakdown[breathItemName] || 0;
+      const breathUnitValue = breathAmount > 0 ? additionalValue / breathAmount : 0;
+      const breathRealValue = breathUnitValue + breathMarketPrice;
       
+      ancestorOnlyBreathAnalysis = {
+        additionalValue,
+        breathAmount,
+        breathUnitValue,
+        breathRealValue,
+      };
+    }
+    
       // 2. 일반턴 기준: 선조턴에만 투입 vs 모든 턴에 투입
       if (ancestorOnlyBreath && bothTurnsBreath) {
         const additionalValue = ancestorOnlyBreath.costBreakdown.totalCost - bothTurnsBreath.costBreakdown.totalCost;
@@ -840,19 +840,19 @@ export default function AdvancedRefiningClient({
       }
       
       // 3. 전체 턴 평균: 보조재료 미반영 vs 모든 턴에 투입
-      if (noAux && bothTurnsBreath) {
-        const additionalValue = noAux.costBreakdown.totalCost - bothTurnsBreath.costBreakdown.totalCost;
-        const breathAmount = bothTurnsBreath.result.materialBreakdown[breathItemName] || 0;
-        const breathUnitValue = breathAmount > 0 ? additionalValue / breathAmount : 0;
-        const breathRealValue = breathUnitValue + breathMarketPrice;
-        
+    if (noAux && bothTurnsBreath) {
+      const additionalValue = noAux.costBreakdown.totalCost - bothTurnsBreath.costBreakdown.totalCost;
+      const breathAmount = bothTurnsBreath.result.materialBreakdown[breathItemName] || 0;
+      const breathUnitValue = breathAmount > 0 ? additionalValue / breathAmount : 0;
+      const breathRealValue = breathUnitValue + breathMarketPrice;
+      
         allTurnsAverageBreathAnalysis = {
-          additionalValue,
-          breathAmount,
-          breathUnitValue,
-          breathRealValue,
-        };
-      }
+        additionalValue,
+        breathAmount,
+        breathUnitValue,
+        breathRealValue,
+      };
+    }
     }
     
     if (ancestorOnlyCraftAnalysis || bothTurnsCraftAnalysis || 
@@ -1308,7 +1308,7 @@ export default function AdvancedRefiningClient({
                                 <span className="text-white font-medium">
                                   {formatNumber(craftsmanshipAnalysis.craftsmanshipMarketPrice)} 골드
                                 </span>
-                              </div>
+                      </div>
                               <div className="pt-2 mt-2 border-t border-gray-700 flex justify-between items-center">
                                 <span className="text-cyan-300 font-semibold">실제 가치</span>
                                 <div className="flex items-center gap-2">
@@ -1538,7 +1538,7 @@ export default function AdvancedRefiningClient({
                                 <span className="text-white font-medium">
                                   {formatNumber(craftsmanshipAnalysis.breathMarketPrice)} 골드
                                 </span>
-                              </div>
+                      </div>
                               <div className="pt-2 mt-2 border-t border-gray-700 flex justify-between items-center">
                                 <span className="text-cyan-300 font-semibold">실제 가치</span>
                                 <div className="flex items-center gap-2">
