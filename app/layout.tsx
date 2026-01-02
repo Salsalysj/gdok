@@ -20,6 +20,9 @@ import {
 export const metadata: Metadata = {
   title: '껨산기 by 스누껨독',
   description: '로스트아크 게임 내 아이템 가치를 정확하게 계산하고 효율을 분석하는 도구',
+  other: {
+    'naver-site-verification': '8f08231fdf313560e91a3a0594db9fc420681267',
+  },
 }
 
 export default async function RootLayout({
