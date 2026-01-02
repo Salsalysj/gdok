@@ -1705,7 +1705,9 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
     setSelectedEventEfficiencyId(null);
   };
 
-  const renderEditableRewardTable = (groups: RewardGroup[], type: 'weekly' | 'cumulative', sectionTitle: string, summaryLabel?: string) => {
+  // 레거시 함수 - 사용되지 않음 (renderEditableRewardTableNew 사용)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _renderEditableRewardTable = (groups: RewardGroup[], type: 'weekly' | 'cumulative', sectionTitle: string, summaryLabel?: string) => {
     const totalGold = groups.reduce((sumSection, group) => {
       return (
         sumSection +
@@ -1714,13 +1716,14 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
             const goldValue = adjustedKurzanValue;
             return goldValue != null ? sum + goldValue * item.quantity : sum;
           }
-          const isPcBangLuckyBox = item.name.startsWith('PC방 행운의 상자');
+          const itemName = getItemName(item);
+          const isPcBangLuckyBox = itemName.startsWith('PC방 행운의 상자');
           if (isPcBangLuckyBox) {
             return pcBangLuckyBoxExpectedGold != null
               ? sum + pcBangLuckyBoxExpectedGold * item.quantity
               : sum;
           }
-          const priceInfo = getItemPriceInfo(item.name);
+          const priceInfo = getItemPriceInfo(itemName);
           let goldValue: number | null = null;
           if (priceInfo.goldEquivalent !== null) {
             goldValue = priceInfo.goldEquivalent;
@@ -1784,7 +1787,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                   className="text-lg font-bold text-purple-300 bg-gray-700/50 border border-gray-600 rounded px-2 py-1 focus:outline-none focus:border-purple-500"
                 />
                 <button
-                  onClick={() => handleAddItemToGroup(type, groupIdx)}
+                  onClick={() => {/* 레거시 함수 - 사용되지 않음 */}}
                   className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition-colors"
                 >
                   + 아이템 추가
@@ -1809,7 +1812,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
               </div>
               
               {/* 고결한 혼돈의 돌 품질 선택 */}
-              {group.items.some(item => item.name === '고결한 혼돈의 돌 선택 상자') && (
+              {group.items.some(item => getItemName(item) === '고결한 혼돈의 돌 선택 상자') && (
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-400">품질:</span>
                   <select
@@ -1836,7 +1839,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                 <tbody>
                   {group.items.map((item, itemIdx) => {
                     const isKurzanItem = item.type === 'kurzan';
-                    const isPcBangLuckyBox = item.name.startsWith('PC방 행운의 상자');
+                    const isPcBangLuckyBox = getItemName(item).startsWith('PC방 행운의 상자');
                     const kurzanValue = adjustedKurzanValue;
                     const priceInfo =
                       isKurzanItem && kurzanValue != null
@@ -1855,7 +1858,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                               cashEquivalent: null,
                               note: pcBangLuckyBoxExpectedGold != null ? '상세 구성 기대값' : null,
                             }
-                          : getItemPriceInfo(item.name);
+                          : getItemPriceInfo(getItemName(item));
                     const unitDisplay = isKurzanItem
                       ? (kurzanValue != null ? `${formatNumberWithSignificantDigits(kurzanValue)}골드` : '-')
                       : formatPriceDisplay(priceInfo.unitAmount, priceInfo.unit);
@@ -1865,7 +1868,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                           priceInfo.unitAmount !== null ? priceInfo.unitAmount * item.quantity : null,
                           priceInfo.unit
                         );
-                    const composition = getCompositionInfo(item.name, item.quantity);
+                    const composition = getCompositionInfo(getItemName(item), item.quantity);
                     
                     return (
                       <tr key={itemIdx} className="border-b border-gray-700/50 hover:bg-gray-700/40 transition-colors duration-200">
@@ -1874,12 +1877,12 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                             <div className="flex flex-wrap items-center gap-3">
                               <input
                                 type="text"
-                                value={item.name}
-                                onChange={(e) => handleUpdateItem(type, groupIdx, itemIdx, 'name', e.target.value)}
+                                value={getItemName(item)}
+                                onChange={(e) => {/* 레거시 함수 - 사용되지 않음 */}}
                                 className="bg-gray-700/50 border border-gray-600 rounded px-2 py-1 text-sm focus:outline-none focus:border-purple-500 flex-1 min-w-[200px]"
                               />
                               <button
-                                onClick={() => handleRemoveItemFromGroup(type, groupIdx, itemIdx)}
+                                onClick={() => {/* 레거시 함수 - 사용되지 않음 */}}
                                 className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-medium transition-colors"
                               >
                                 삭제
@@ -1907,7 +1910,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                           <input
                             type="number"
                             value={item.quantity}
-                            onChange={(e) => handleUpdateItem(type, groupIdx, itemIdx, 'quantity', Number(e.target.value))}
+                            onChange={(e) => {/* 레거시 함수 - 사용되지 않음 */}}
                             className="bg-gray-700/50 border border-gray-600 rounded px-2 py-1 text-sm text-right focus:outline-none focus:border-purple-500 w-24"
                           />
                           {isKurzanItem && selectedKurzanStage && (
@@ -1937,23 +1940,24 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                     <td className="px-4 py-4 text-right text-yellow-300 font-bold text-base">
                       {(() => {
                         const totalGold = group.items.reduce((sum, item) => {
-                          const enabled = enabledRewards[item.name] ?? true;
+                          const itemName = getItemName(item);
+                          const enabled = enabledRewards[itemName] ?? true;
                           if (!enabled) return sum;
                           if (item.type === 'kurzan') {
                             const goldValue = adjustedKurzanValue;
                             return goldValue != null ? sum + goldValue * item.quantity : sum;
                           }
-                          const isPcBangLuckyBox = item.name.startsWith('PC방 행운의 상자');
+                          const isPcBangLuckyBox = itemName.startsWith('PC방 행운의 상자');
                           if (isPcBangLuckyBox) {
                             return pcBangLuckyBoxExpectedGold != null
                               ? sum + pcBangLuckyBoxExpectedGold * item.quantity
                               : sum;
                           }
-                          if (item.name === '쿠르잔 전선 보상 (휴식게이지 2배)') {
+                          if (itemName === '쿠르잔 전선 보상 (휴식게이지 2배)') {
                             const kurzanValue = adjustedKurzanValue;
                             return kurzanValue != null ? sum + kurzanValue * item.quantity : sum;
                           }
-                          const priceInfo = getItemPriceInfo(item.name);
+                          const priceInfo = getItemPriceInfo(itemName);
                           let goldValue: number | null = null;
                           if (priceInfo.goldEquivalent !== null) {
                             goldValue = priceInfo.goldEquivalent;
@@ -1984,23 +1988,24 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                     <td className="px-4 py-4 text-right text-green-300 font-bold text-base">
                       {(() => {
                         const totalGold = group.items.reduce((sum, item) => {
-                          const enabled = enabledRewards[item.name] ?? true;
+                          const itemName = getItemName(item);
+                          const enabled = enabledRewards[itemName] ?? true;
                           if (!enabled) return sum;
                           if (item.type === 'kurzan') {
                             const goldValue = adjustedKurzanValue;
                             return goldValue != null ? sum + goldValue * item.quantity : sum;
                           }
-                          const isPcBangLuckyBox = item.name.startsWith('PC방 행운의 상자');
+                          const isPcBangLuckyBox = itemName.startsWith('PC방 행운의 상자');
                           if (isPcBangLuckyBox) {
                             return pcBangLuckyBoxExpectedGold != null
                               ? sum + pcBangLuckyBoxExpectedGold * item.quantity
                               : sum;
                           }
-                          if (item.name === '쿠르잔 전선 보상 (휴식게이지 2배)') {
+                          if (itemName === '쿠르잔 전선 보상 (휴식게이지 2배)') {
                             const kurzanValue = adjustedKurzanValue;
                             return kurzanValue != null ? sum + kurzanValue * item.quantity : sum;
                           }
-                          const priceInfo = getItemPriceInfo(item.name);
+                          const priceInfo = getItemPriceInfo(itemName);
                           let goldValue: number | null = null;
                           if (priceInfo.goldEquivalent !== null) {
                             goldValue = priceInfo.goldEquivalent;
@@ -2538,13 +2543,14 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
             const goldValue = adjustedKurzanValue;
             return goldValue != null ? sum + goldValue * item.quantity : sum;
           }
-          const isPcBangLuckyBox = item.name.startsWith('PC방 행운의 상자');
+          const itemName = getItemName(item);
+          const isPcBangLuckyBox = itemName.startsWith('PC방 행운의 상자');
           if (isPcBangLuckyBox) {
             return pcBangLuckyBoxExpectedGold != null
               ? sum + pcBangLuckyBoxExpectedGold * item.quantity
               : sum;
           }
-          const priceInfo = getItemPriceInfo(item.name);
+          const priceInfo = getItemPriceInfo(itemName);
           let goldValue: number | null = null;
           if (priceInfo.goldEquivalent !== null) {
             goldValue = priceInfo.goldEquivalent;
@@ -2610,7 +2616,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
               </div>
               
               {/* 고결한 혼돈의 돌 품질 선택 */}
-              {group.items.some(item => item.name === '고결한 혼돈의 돌 선택 상자') && (
+              {group.items.some(item => getItemName(item) === '고결한 혼돈의 돌 선택 상자') && (
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-400">품질:</span>
                   <select
@@ -2637,7 +2643,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                 <tbody>
                   {group.items.map((item, itemIdx) => {
                     const isKurzanItem = item.type === 'kurzan';
-                    const isPcBangLuckyBox = item.name.startsWith('PC방 행운의 상자');
+                    const isPcBangLuckyBox = getItemName(item).startsWith('PC방 행운의 상자');
                     const kurzanValue = adjustedKurzanValue;
                     const priceInfo =
                       isKurzanItem && kurzanValue != null
@@ -2656,7 +2662,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                               cashEquivalent: null,
                               note: pcBangLuckyBoxExpectedGold != null ? '상세 구성 기대값' : null,
                             }
-                          : getItemPriceInfo(item.name);
+                          : getItemPriceInfo(getItemName(item));
                     const unitDisplay = isKurzanItem
                       ? (kurzanValue != null ? `${formatNumberWithSignificantDigits(kurzanValue)}골드` : '-')
                       : formatPriceDisplay(priceInfo.unitAmount, priceInfo.unit);
@@ -2666,14 +2672,14 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                           priceInfo.unitAmount !== null ? priceInfo.unitAmount * item.quantity : null,
                           priceInfo.unit
                         );
-                    const composition = getCompositionInfo(item.name, item.quantity);
+                    const composition = getCompositionInfo(getItemName(item), item.quantity);
                     
                     return (
                       <tr key={itemIdx} className="border-b border-gray-700/50 hover:bg-gray-700/40 transition-colors duration-200">
                         <td className="px-4 py-3 text-white">
                           <div className="flex flex-col gap-2">
                             <div className="flex flex-wrap items-center gap-3">
-                              <span>{item.name}</span>
+                              <span>{getItemName(item)}</span>
                               {isKurzanItem && kurzanStageOptions.length > 0 && (
                                 <select
                                   value={selectedKurzanKey}
@@ -2726,13 +2732,14 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                             const goldValue = adjustedKurzanValue;
                             return goldValue != null ? sum + goldValue * item.quantity : sum;
                           }
-                          const isPcBangLuckyBox = item.name.startsWith('PC방 행운의 상자');
+                          const itemName = getItemName(item);
+                          const isPcBangLuckyBox = itemName.startsWith('PC방 행운의 상자');
                           if (isPcBangLuckyBox) {
                             return pcBangLuckyBoxExpectedGold != null
                               ? sum + pcBangLuckyBoxExpectedGold * item.quantity
                               : sum;
                           }
-                          const priceInfo = getItemPriceInfo(item.name);
+                          const priceInfo = getItemPriceInfo(itemName);
                           let goldValue: number | null = null;
                           if (priceInfo.goldEquivalent !== null) {
                             goldValue = priceInfo.goldEquivalent;
@@ -2764,13 +2771,14 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                             const goldValue = adjustedKurzanValue;
                             return goldValue != null ? sum + goldValue * item.quantity : sum;
                           }
-                          const isPcBangLuckyBox = item.name.startsWith('PC방 행운의 상자');
+                          const itemName = getItemName(item);
+                          const isPcBangLuckyBox = itemName.startsWith('PC방 행운의 상자');
                           if (isPcBangLuckyBox) {
                             return pcBangLuckyBoxExpectedGold != null
                               ? sum + pcBangLuckyBoxExpectedGold * item.quantity
                               : sum;
                           }
-                          const priceInfo = getItemPriceInfo(item.name);
+                          const priceInfo = getItemPriceInfo(itemName);
                           let goldValue: number | null = null;
                           if (priceInfo.goldEquivalent !== null) {
                             goldValue = priceInfo.goldEquivalent;
@@ -3163,7 +3171,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                               cashEquivalent: null,
                               note: pcBangLuckyBoxExpectedGold != null ? '상세 구성 기대값' : null,
                             }
-                          : getItemPriceInfo(item.name);
+                          : getItemPriceInfo(getItemName(item));
                       const unitDisplay = isKurzanSummaryItem
                         ? kurzanValue != null
                           ? `${formatNumberWithSignificantDigits(kurzanValue)}골드`
@@ -3185,7 +3193,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                               priceInfo.unitAmount !== null ? priceInfo.unitAmount * item.quantity : null,
                               priceInfo.unit
                             );
-                      const composition = getCompositionInfo(item.name, item.quantity);
+                      const composition = getCompositionInfo(getItemName(item), item.quantity);
 
                       return (
                       <tr
@@ -3218,7 +3226,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                   </span>
                                 )}
                               </span>
-                              {item.name === '고결한 혼돈의 돌 선택 상자' && (
+                              {getItemName(item) === '고결한 혼돈의 돌 선택 상자' && (
                                 <select
                                   value={chaosStoneQuality}
                                   onChange={(e) => setChaosStoneQuality(Number(e.target.value) as 90 | 95)}
@@ -3228,7 +3236,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                   <option value={95}>품질 95</option>
                                 </select>
                               )}
-                              {item.name === '팔찌 효과 재변환권' && (
+                              {getItemName(item) === '팔찌 효과 재변환권' && (
                                 <input
                                   type="number"
                                   min="1"
@@ -3340,7 +3348,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                   cashEquivalent: null,
                                   note: pcBangLuckyBoxExpectedGold != null ? '상세 구성 기대값' : null,
                                 }
-                              : getItemPriceInfo(item.name);
+                              : getItemPriceInfo(getItemName(item));
                           const unitDisplay = isKurzanSummaryItem
                             ? kurzanValue != null
                               ? `${formatNumberWithSignificantDigits(kurzanValue)}골드`
@@ -3362,7 +3370,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                   priceInfo.unitAmount !== null ? priceInfo.unitAmount * item.quantity : null,
                                   priceInfo.unit
                                 );
-                          const composition = getCompositionInfo(item.name, item.quantity);
+                          const composition = getCompositionInfo(getItemName(item), item.quantity);
 
                           return (
                           <tr
@@ -3395,7 +3403,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                     </span>
                                   )}
                                 </span>
-                                {item.name === '고결한 혼돈의 돌 선택 상자' && (
+                                {getItemName(item) === '고결한 혼돈의 돌 선택 상자' && (
                                   <select
                                     value={chaosStoneQuality}
                                     onChange={(e) => setChaosStoneQuality(Number(e.target.value) as 90 | 95)}
@@ -3405,7 +3413,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                     <option value={95}>품질 95</option>
                                   </select>
                                 )}
-                                {item.name === '팔찌 효과 재변환권' && (
+                                {getItemName(item) === '팔찌 효과 재변환권' && (
                                   <input
                                     type="number"
                                     min="1"
@@ -3517,7 +3525,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                   cashEquivalent: null,
                                   note: pcBangLuckyBoxExpectedGold != null ? '상세 구성 기대값' : null,
                                 }
-                              : getItemPriceInfo(item.name);
+                              : getItemPriceInfo(getItemName(item));
                           const unitDisplay = isKurzanSummaryItem
                             ? kurzanValue != null
                               ? `${formatNumberWithSignificantDigits(kurzanValue)}골드`
@@ -3539,7 +3547,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                   priceInfo.unitAmount !== null ? priceInfo.unitAmount * item.quantity : null,
                                   priceInfo.unit
                                 );
-                          const composition = getCompositionInfo(item.name, item.quantity);
+                          const composition = getCompositionInfo(getItemName(item), item.quantity);
 
                           return (
                           <tr
@@ -3572,7 +3580,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                     </span>
                                   )}
                                 </span>
-                                {item.name === '고결한 혼돈의 돌 선택 상자' && (
+                                {getItemName(item) === '고결한 혼돈의 돌 선택 상자' && (
                                   <select
                                     value={chaosStoneQuality}
                                     onChange={(e) => setChaosStoneQuality(Number(e.target.value) as 90 | 95)}
@@ -3582,7 +3590,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                     <option value={95}>품질 95</option>
                                   </select>
                                 )}
-                                {item.name === '팔찌 효과 재변환권' && (
+                                {getItemName(item) === '팔찌 효과 재변환권' && (
                                   <input
                                     type="number"
                                     min="1"
