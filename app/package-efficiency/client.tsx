@@ -2395,7 +2395,15 @@ export default function PackageEfficiencyClient({
                                               {/* 첫 번째 줄: 드롭다운 */}
                                             <div className="flex gap-1 items-center">
                                                 <SearchableSelect
-                                                value={nestedComp.itemName}
+                                                value={
+                                                  // 직접 입력 모드: itemName이 __manual__이거나 availableItemNames에 없으면 __manual__ 유지
+                                                  (nestedComp.itemName === '__manual__' || nestedComp.itemName === '' || 
+                                                   (nestedComp.itemName && nestedComp.itemName !== '__nested__' && 
+                                                    !nestedComp.itemName.includes('(실제가치)') && 
+                                                    !availableItemNames.has(nestedComp.itemName)))
+                                                    ? '__manual__'
+                                                    : nestedComp.itemName
+                                                }
                                                   onChange={(value) => {
                                                     if (!component.nestedItem) return;
                                                     const nestedComponents = [...component.nestedItem.components];
@@ -2422,10 +2430,13 @@ export default function PackageEfficiencyClient({
                                               </div>
                                               
                                               {/* 직접 입력 필드 */}
-                                              {(nestedComp.itemName === '__manual__' || (nestedComp.itemName && nestedComp.itemName !== '__nested__' && !nestedComp.itemName.includes('(실제가치)') && !availableItemNames.has(nestedComp.itemName))) && (
+                                              {(nestedComp.itemName === '__manual__' || nestedComp.itemName === '' || 
+                                                (nestedComp.itemName && nestedComp.itemName !== '__nested__' && 
+                                                 !nestedComp.itemName.includes('(실제가치)') && 
+                                                 !availableItemNames.has(nestedComp.itemName))) && (
                                                 <input
                                                   type="text"
-                                                  value={nestedComp.itemName === '__manual__' ? '' : nestedComp.itemName}
+                                                  value={nestedComp.itemName === '__manual__' || nestedComp.itemName === '' ? '' : nestedComp.itemName}
                                                 onChange={(e) => {
                                                   if (!component.nestedItem) return;
                                                   const nestedComponents = [...component.nestedItem.components];
@@ -2437,6 +2448,60 @@ export default function PackageEfficiencyClient({
                                                   className="w-full px-1 py-0.5 bg-gray-600 text-white rounded border border-gray-500 text-[10px]"
                                                   placeholder="아이템 이름 입력"
                                                 />
+                                              )}
+                                              
+                                              {/* 단가 직접 입력 필드 (직접 입력 선택 시) */}
+                                              {(nestedComp.itemName === '__manual__' || nestedComp.itemName === '' || 
+                                                (nestedComp.itemName && nestedComp.itemName !== '__nested__' && 
+                                                 !nestedComp.itemName.includes('(실제가치)') && 
+                                                 !availableItemNames.has(nestedComp.itemName))) && (
+                                                <div className="flex gap-1 items-center">
+                                                  <select
+                                                    value={nestedComp.manualUnitType || '골드'}
+                                                    onChange={(e) => {
+                                                      if (!component.nestedItem) return;
+                                                      const nestedComponents = [...component.nestedItem.components];
+                                                      nestedComponents[nestedCompIndex] = { ...nestedComponents[nestedCompIndex], manualUnitType: e.target.value as '골드' | '크리스탈' | '현금' };
+                                                      const nestedItem = { ...component.nestedItem, components: nestedComponents };
+                                                      updateBonusRoomComponent(roomIndex, itemIndex, compIndex, 'nestedItem', nestedItem);
+                                                    }}
+                                                    className="px-1 py-0.5 bg-gray-600 text-white rounded border border-gray-500 text-[10px]"
+                                                  >
+                                                    <option value="골드">골드</option>
+                                                    <option value="크리스탈">크리스탈</option>
+                                                    <option value="현금">현금</option>
+                                                  </select>
+                                                  <input
+                                                    type="text"
+                                                    value={manualPriceInputs[`bonus-${roomIndex}-${itemIndex}-${compIndex}-nested-${nestedCompIndex}`] ?? (nestedComp.manualPrice?.toString() ?? '')}
+                                                    onChange={(e) => {
+                                                      const key = `bonus-${roomIndex}-${itemIndex}-${compIndex}-nested-${nestedCompIndex}`;
+                                                      setManualPriceInputs(prev => ({ ...prev, [key]: e.target.value }));
+                                                    }}
+                                                    onBlur={(e) => {
+                                                      if (!component.nestedItem) return;
+                                                      const key = `bonus-${roomIndex}-${itemIndex}-${compIndex}-nested-${nestedCompIndex}`;
+                                                      const value = e.target.value.trim();
+                                                      const numValue = value === '' ? null : parseFloat(value);
+                                                      const nestedComponents = [...component.nestedItem.components];
+                                                      nestedComponents[nestedCompIndex] = { ...nestedComponents[nestedCompIndex], manualPrice: numValue || null };
+                                                      const nestedItem = { ...component.nestedItem, components: nestedComponents };
+                                                      updateBonusRoomComponent(roomIndex, itemIndex, compIndex, 'nestedItem', nestedItem);
+                                                      setManualPriceInputs(prev => {
+                                                        const next = { ...prev };
+                                                        delete next[key];
+                                                        return next;
+                                                      });
+                                                    }}
+                                                    onKeyDown={(e) => {
+                                                      if (e.key === 'Enter') {
+                                                        e.currentTarget.blur();
+                                                      }
+                                                    }}
+                                                    className="flex-1 px-1 py-0.5 bg-gray-600 text-white rounded border border-gray-500 text-[10px]"
+                                                    placeholder="단가 직접 입력"
+                                                  />
+                                                </div>
                                               )}
                                               
                                               {/* 두 번째 줄: 수량, 확률/선택, 삭제 */}
@@ -2784,7 +2849,15 @@ export default function PackageEfficiencyClient({
                                     {/* 첫 번째 줄: 드롭다운 */}
                                     <div className="flex gap-2 items-center">
                                       <SearchableSelect
-                                      value={nestedComp.itemName}
+                                      value={
+                                        // 직접 입력 모드: itemName이 __manual__이거나 availableItemNames에 없으면 __manual__ 유지
+                                        (nestedComp.itemName === '__manual__' || nestedComp.itemName === '' || 
+                                         (nestedComp.itemName && nestedComp.itemName !== '__nested__' && 
+                                          !nestedComp.itemName.includes('(실제가치)') && 
+                                          !availableItemNames.has(nestedComp.itemName)))
+                                          ? '__manual__'
+                                          : nestedComp.itemName
+                                      }
                                         onChange={(value) => {
                                           if (!component.nestedItem) return;
                                           const nestedComponents = [...component.nestedItem.components];
@@ -2811,10 +2884,13 @@ export default function PackageEfficiencyClient({
                                     </div>
                                     
                                     {/* 직접 입력 필드 */}
-                                    {(nestedComp.itemName === '__manual__' || (nestedComp.itemName && nestedComp.itemName !== '__nested__' && !nestedComp.itemName.includes('(실제가치)') && !availableItemNames.has(nestedComp.itemName))) && (
+                                    {(nestedComp.itemName === '__manual__' || nestedComp.itemName === '' || 
+                                      (nestedComp.itemName && nestedComp.itemName !== '__nested__' && 
+                                       !nestedComp.itemName.includes('(실제가치)') && 
+                                       !availableItemNames.has(nestedComp.itemName))) && (
                                       <input
                                         type="text"
-                                        value={nestedComp.itemName === '__manual__' ? '' : nestedComp.itemName}
+                                        value={nestedComp.itemName === '__manual__' || nestedComp.itemName === '' ? '' : nestedComp.itemName}
                                       onChange={(e) => {
                                         if (!component.nestedItem) return;
                                         const nestedComponents = [...component.nestedItem.components];
@@ -2826,6 +2902,60 @@ export default function PackageEfficiencyClient({
                                         className="w-full px-2 py-1 bg-gray-700 text-white rounded border border-gray-600 text-xs"
                                         placeholder="아이템 이름을 입력하세요"
                                       />
+                                    )}
+                                    
+                                    {/* 단가 직접 입력 필드 (직접 입력 선택 시) */}
+                                    {(nestedComp.itemName === '__manual__' || nestedComp.itemName === '' || 
+                                      (nestedComp.itemName && nestedComp.itemName !== '__nested__' && 
+                                       !nestedComp.itemName.includes('(실제가치)') && 
+                                       !availableItemNames.has(nestedComp.itemName))) && (
+                                      <div className="flex gap-2 items-center">
+                                        <select
+                                          value={nestedComp.manualUnitType || '골드'}
+                                          onChange={(e) => {
+                                            if (!component.nestedItem) return;
+                                            const nestedComponents = [...component.nestedItem.components];
+                                            nestedComponents[nestedCompIndex] = { ...nestedComponents[nestedCompIndex], manualUnitType: e.target.value as '골드' | '크리스탈' | '현금' };
+                                            const nestedItem = { ...component.nestedItem, components: nestedComponents };
+                                            updateComponent(itemIndex, componentIndex, 'nestedItem', nestedItem);
+                                          }}
+                                          className="px-2 py-1 bg-gray-700 text-white rounded border border-gray-600 text-xs"
+                                        >
+                                          <option value="골드">골드</option>
+                                          <option value="크리스탈">크리스탈</option>
+                                          <option value="현금">현금</option>
+                                        </select>
+                                        <input
+                                          type="text"
+                                          value={manualPriceInputs[`${itemIndex}-${componentIndex}-nested-${nestedCompIndex}`] ?? (nestedComp.manualPrice?.toString() ?? '')}
+                                          onChange={(e) => {
+                                            const key = `${itemIndex}-${componentIndex}-nested-${nestedCompIndex}`;
+                                            setManualPriceInputs(prev => ({ ...prev, [key]: e.target.value }));
+                                          }}
+                                          onBlur={(e) => {
+                                            if (!component.nestedItem) return;
+                                            const key = `${itemIndex}-${componentIndex}-nested-${nestedCompIndex}`;
+                                            const value = e.target.value.trim();
+                                            const numValue = value === '' ? null : parseFloat(value);
+                                            const nestedComponents = [...component.nestedItem.components];
+                                            nestedComponents[nestedCompIndex] = { ...nestedComponents[nestedCompIndex], manualPrice: numValue || null };
+                                            const nestedItem = { ...component.nestedItem, components: nestedComponents };
+                                            updateComponent(itemIndex, componentIndex, 'nestedItem', nestedItem);
+                                            setManualPriceInputs(prev => {
+                                              const next = { ...prev };
+                                              delete next[key];
+                                              return next;
+                                            });
+                                          }}
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                              e.currentTarget.blur();
+                                            }
+                                          }}
+                                          className="flex-1 px-2 py-1 bg-gray-700 text-white rounded border border-gray-600 text-xs"
+                                          placeholder="단가 직접 입력"
+                                        />
+                                      </div>
                                     )}
                                     
                                     {/* 두 번째 줄: 수량, 확률/선택, 삭제 */}

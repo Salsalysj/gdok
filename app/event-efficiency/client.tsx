@@ -146,52 +146,74 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
   // 로컬 환경에서만 이벤트 효율 저장/업데이트 허용
   const allowEventEfficiencySave = process.env.NEXT_PUBLIC_ALLOW_PACKAGE_SAVE === 'true' || process.env.NODE_ENV === 'development';
   
+  // 단가 직접 입력 필드의 임시 값 저장 (입력 중에는 문자열로 유지)
+  const [manualPriceInputs, setManualPriceInputs] = useState<Record<string, string>>({});
+  
   // 초기값 설정 함수들 (useState 호출 전에 정의)
+  // 가장 최근에 작성된 항목 찾기 (created_at 기준 내림차순 정렬된 배열에서 첫 번째 항목)
+  const getLatestEvent = () => {
+    if (initialSavedEventEfficiency.length === 0) return null;
+    // created_at 기준으로 정렬 (이미 서버에서 정렬되어 있지만 안전을 위해)
+    const sorted = [...initialSavedEventEfficiency].sort((a, b) => {
+      const dateA = new Date(a.created_at).getTime();
+      const dateB = new Date(b.created_at).getTime();
+      return dateB - dateA; // 내림차순 (최신이 먼저)
+    });
+    return sorted[0];
+  };
+  
   const getInitialWeeklyRewards = (): RewardGroup[] => {
-    if (initialSavedEventEfficiency.length > 0 && initialSavedEventEfficiency[0].weekly_rewards) {
-      return initialSavedEventEfficiency[0].weekly_rewards;
+    const latestEvent = getLatestEvent();
+    if (latestEvent && latestEvent.weekly_rewards) {
+      return latestEvent.weekly_rewards;
     }
     return [];
   };
   
   const getInitialCumulativeRewards = (): RewardGroup[] => {
-    if (initialSavedEventEfficiency.length > 0 && initialSavedEventEfficiency[0].cumulative_rewards) {
-      return initialSavedEventEfficiency[0].cumulative_rewards;
+    const latestEvent = getLatestEvent();
+    if (latestEvent && latestEvent.cumulative_rewards) {
+      return latestEvent.cumulative_rewards;
     }
     return [];
   };
   
   const getInitialEventName = (): string => {
-    if (initialSavedEventEfficiency.length > 0 && initialSavedEventEfficiency[0].name) {
-      return initialSavedEventEfficiency[0].name;
+    const latestEvent = getLatestEvent();
+    if (latestEvent && latestEvent.name) {
+      return latestEvent.name;
     }
     return '';
   };
   
   const getInitialEndDate = (): string => {
-    if (initialSavedEventEfficiency.length > 0 && initialSavedEventEfficiency[0].end_date) {
-      return initialSavedEventEfficiency[0].end_date;
+    const latestEvent = getLatestEvent();
+    if (latestEvent && latestEvent.end_date) {
+      return latestEvent.end_date;
     }
     return '';
   };
   
   const getInitialSelectedId = (): string | null => {
-    if (initialSavedEventEfficiency.length > 0) {
-      return initialSavedEventEfficiency[0].id;
+    const latestEvent = getLatestEvent();
+    if (latestEvent) {
+      return latestEvent.id;
     }
     return null;
   };
   
   const getInitialTotalWeeks = (): string => {
-    if (initialSavedEventEfficiency.length > 0 && initialSavedEventEfficiency[0].total_weeks != null) {
-      return initialSavedEventEfficiency[0].total_weeks.toString();
+    const latestEvent = getLatestEvent();
+    if (latestEvent && latestEvent.total_weeks != null) {
+      return latestEvent.total_weeks.toString();
     }
     return '7';
   };
   
   const getInitialTotalHours = (): string => {
-    if (initialSavedEventEfficiency.length > 0 && initialSavedEventEfficiency[0].total_hours != null) {
-      return initialSavedEventEfficiency[0].total_hours.toString();
+    const latestEvent = getLatestEvent();
+    if (latestEvent && latestEvent.total_hours != null) {
+      return latestEvent.total_hours.toString();
     }
     return '70';
   };
@@ -393,7 +415,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
   const [lightMode, setLightMode] = useState<boolean>(false);
   const [enabledRewards, setEnabledRewards] = useState<Record<string, boolean>>({});
   const [braceletPriceInput, setBraceletPriceInput] = useState('100');
-  const [totalDaysInput, setTotalDaysInput] = useState('7');
+  const [totalDaysInput, setTotalDaysInput] = useState('20');
   const [totalWeeksInput, setTotalWeeksInput] = useState(getInitialTotalWeeks());
   const [totalHoursInput, setTotalHoursInput] = useState(getInitialTotalHours());
   const [legendaryCardSelectionPriceInput, setLegendaryCardSelectionPriceInput] = useState('50000');
@@ -416,16 +438,15 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
   // 기본정보 카드 표시 여부 (활성 이벤트가 있거나 선택된 이벤트가 있으면 표시)
   const [showBasicInfo, setShowBasicInfo] = useState(() => {
     // 초기값: 저장된 이벤트가 있고 활성 이벤트가 있으면 표시
-    if (initialSavedEventEfficiency.length > 0) {
+    const latestEvent = getLatestEvent();
+    if (latestEvent) {
+      // 가장 최근 항목이 활성 이벤트인지 확인
+      if (!latestEvent.end_date) return true;
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const hasActive = initialSavedEventEfficiency.some((item) => {
-        if (!item.end_date) return true;
-        const end = new Date(item.end_date);
-        end.setHours(23, 59, 59, 999);
-        return end >= today;
-      });
-      return hasActive;
+      const end = new Date(latestEvent.end_date);
+      end.setHours(23, 59, 59, 999);
+      return end >= today;
     }
     return false;
   });
@@ -483,9 +504,29 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
     return options;
   }, [adjustedEntries, etcListItems, marketCache]);
   
+  // 드롭다운에 있는 항목 목록 (직접 입력 필드 표시 여부 확인용)
+  const availableItemNames = useMemo(() => {
+    return new Set(itemDropdownOptions.map(opt => opt.value).filter(v => v && v !== '__nested__' && v !== '__manual__' && v !== ''));
+  }, [itemDropdownOptions]);
+  
   // 아이템 단가 가져오기 (가치계산DB 우선 사용 - 가격 조정 자동 반영)
-  const getItemUnitPrice = useCallback((itemName: string): number | null => {
+  // component 또는 nestedComp 객체를 받아서 manualPrice도 확인
+  const getItemUnitPrice = useCallback((itemName: string, component?: ComponentItem): number | null => {
     if (!itemName || itemName === '__nested__' || itemName === '__manual__') return null;
+    
+    // 직접 입력된 단가가 있으면 우선 사용
+    if (component && component.manualPrice !== null && component.manualPrice !== undefined && component.manualPrice > 0) {
+      // 단위 변환 필요 시 여기서 처리 (현재는 골드 기준)
+      if (component.manualUnitType === '골드') {
+        return component.manualPrice;
+      } else if (component.manualUnitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
+        return (component.manualPrice * crystalGoldRate) / 100;
+      } else if (component.manualUnitType === '현금' && discordRate && discordRate > 0) {
+        // 현금을 골드로 변환 (discordRate는 골드당 현금 비율)
+        return component.manualPrice / discordRate;
+      }
+      return component.manualPrice; // 기본값
+    }
     
     // 1. 가치계산DB에서 찾기 (우선순위 - adjustedEntries는 가격 조정이 이미 적용된 데이터)
     if (adjustedEntries && adjustedEntries.length > 0) {
@@ -523,7 +564,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
     }
     
     return null;
-  }, [adjustedEntries, etcListItems, marketCache, crystalGoldRate, adjustPrice]);
+  }, [adjustedEntries, etcListItems, marketCache, crystalGoldRate, adjustPrice, discordRate]);
   
   // 주간 보상 상태 (직접 입력 가능) - 새 구조 적용
   const [weeklyRewardsEditable, setWeeklyRewardsEditable] = useState<RewardGroup[]>(getInitialWeeklyRewards());
@@ -1199,7 +1240,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
     {
       title: '카오스 던전/쿠르잔 전선 1회 공짜',
       items: [
-        { name: '쿠르잔 전선 보상 (휴식게이지 2배)', quantity: 2, type: 'kurzan' },
+        { name: '쿠르잔 전선 보상 (휴식게이지 2배)', quantity: 1, type: 'kurzan' },
       ],
     },
     {
@@ -2256,8 +2297,8 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
           item.components.forEach(comp => {
             if (!comp.itemName || comp.itemName === '__nested__' || comp.itemName === '__manual__' || comp.itemName === '') return;
             
-            const unitPrice = getItemUnitPrice(comp.itemName);
-            if (unitPrice === null || unitPrice <= 0) return;
+            const unitPrice = getItemUnitPrice(comp.itemName, comp);
+            if (unitPrice === null) return; // null인 경우만 제외, 0인 경우는 포함
             
             const isIncluded = item.itemType === '확정' || 
                               (item.itemType === '확률') || 
@@ -2292,8 +2333,8 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
             const itemDetails = item.components
               .filter(comp => comp.itemName && comp.itemName !== '__nested__' && comp.itemName !== '__manual__' && comp.itemName !== '')
               .map(comp => {
-                const unitPrice = getItemUnitPrice(comp.itemName);
-                if (unitPrice === null || unitPrice <= 0) return null;
+                const unitPrice = getItemUnitPrice(comp.itemName, comp);
+                if (unitPrice === null) return null; // null인 경우만 제외, 0인 경우는 포함
                 
                 const isIncluded = item.itemType === '확정' || 
                                   (item.itemType === '확률') || 
@@ -2523,8 +2564,8 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                 const itemTotalValue = item.components.reduce((sum, comp) => {
                   if (!comp.itemName || comp.itemName === '__nested__' || comp.itemName === '__manual__' || comp.itemName === '') return sum;
                   
-                  const unitPrice = getItemUnitPrice(comp.itemName);
-                  if (unitPrice === null || unitPrice <= 0) return sum;
+                  const unitPrice = getItemUnitPrice(comp.itemName, comp);
+                  if (unitPrice === null) return sum; // null인 경우만 제외, 0인 경우는 포함
                   
                   const isIncluded = item.itemType === '확정' || 
                                     (item.itemType === '확률') || 
@@ -2626,7 +2667,15 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                               )}
                               
                               <SearchableSelect
-                                value={component.itemName}
+                                value={
+                                  // 직접 입력 모드: itemName이 __manual__이거나 availableItemNames에 없으면 __manual__ 유지
+                                  (component.itemName === '__manual__' || component.itemName === '' || 
+                                   (component.itemName && component.itemName !== '__nested__' && 
+                                    !component.itemName.includes('(실제가치)') && 
+                                    !availableItemNames.has(component.itemName)))
+                                    ? '__manual__'
+                                    : component.itemName
+                                }
                                 onChange={(value) => {
                                   if (value === '__nested__') {
                                     handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'itemName', '__nested__');
@@ -2637,7 +2686,13 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                       components: [],
                                     });
                                   } else {
+                                    const oldItemName = component.itemName;
                                     handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'itemName', value);
+                                    // itemName이 변경될 때 manualPrice와 manualUnitType 초기화
+                                    if (oldItemName !== value) {
+                                      handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'manualPrice', null);
+                                      handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'manualUnitType', null);
+                                    }
                                     if (value !== '__nested__') {
                                       handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'nestedItem', undefined);
                                     }
@@ -2656,6 +2711,71 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                 삭제
                               </button>
                             </div>
+                            
+                            {/* 직접 입력 필드 */}
+                            {(component.itemName === '__manual__' || component.itemName === '' || 
+                              (component.itemName && component.itemName !== '__nested__' && 
+                               !component.itemName.includes('(실제가치)') && 
+                               !availableItemNames.has(component.itemName))) && (
+                              <div>
+                                <input
+                                  type="text"
+                                  value={component.itemName === '__manual__' || component.itemName === '' ? '' : component.itemName}
+                                  onChange={(e) => {
+                                    const value = e.target.value || '__manual__';
+                                    handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'itemName', value);
+                                  }}
+                                  className="w-full px-3 py-1.5 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500 text-sm"
+                                  placeholder="아이템 이름을 입력하세요"
+                                />
+                              </div>
+                            )}
+                            
+                            {/* 단가 직접 입력 필드 (직접 입력 선택 시) */}
+                            {(component.itemName === '__manual__' || component.itemName === '' || 
+                              (component.itemName && component.itemName !== '__nested__' && 
+                               !component.itemName.includes('(실제가치)') && 
+                               !availableItemNames.has(component.itemName))) && (
+                              <div className="flex gap-2 items-center">
+                                <select
+                                  value={component.manualUnitType || '골드'}
+                                  onChange={(e) => {
+                                    handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'manualUnitType', e.target.value as '골드' | '크리스탈' | '현금');
+                                  }}
+                                  className="px-2 py-1.5 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500 text-sm"
+                                >
+                                  <option value="골드">골드</option>
+                                  <option value="크리스탈">크리스탈</option>
+                                  <option value="현금">현금</option>
+                                </select>
+                                <input
+                                  type="text"
+                                  value={manualPriceInputs[`${type}-${groupIdx}-${itemIdx}-${compIdx}`] ?? (component.manualPrice?.toString() ?? '')}
+                                  onChange={(e) => {
+                                    const key = `${type}-${groupIdx}-${itemIdx}-${compIdx}`;
+                                    setManualPriceInputs(prev => ({ ...prev, [key]: e.target.value }));
+                                  }}
+                                  onBlur={(e) => {
+                                    const key = `${type}-${groupIdx}-${itemIdx}-${compIdx}`;
+                                    const value = e.target.value.trim();
+                                    const numValue = value === '' ? null : parseFloat(value);
+                                    handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'manualPrice', numValue || null);
+                                    setManualPriceInputs(prev => {
+                                      const next = { ...prev };
+                                      delete next[key];
+                                      return next;
+                                    });
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.currentTarget.blur();
+                                    }
+                                  }}
+                                  className="flex-1 px-3 py-1.5 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500 text-sm"
+                                  placeholder="단가 직접 입력"
+                                />
+                              </div>
+                            )}
                             
                             {/* 하위 묶음 항목 입력 */}
                             {component.itemName === '__nested__' && component.nestedItem && (
@@ -2724,11 +2844,27 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                           )}
                                           
                                           <SearchableSelect
-                                            value={nestedComp.itemName}
+                                            value={
+                                              // 직접 입력 모드: itemName이 __manual__이거나 availableItemNames에 없으면 __manual__ 유지
+                                              (nestedComp.itemName === '__manual__' || nestedComp.itemName === '' || 
+                                               (nestedComp.itemName && nestedComp.itemName !== '__nested__' && 
+                                                !nestedComp.itemName.includes('(실제가치)') && 
+                                                !availableItemNames.has(nestedComp.itemName)))
+                                                ? '__manual__'
+                                                : nestedComp.itemName
+                                            }
                                             onChange={(value) => {
-                                              const updatedNestedComponents = component.nestedItem!.components.map((c, idx) => 
-                                                idx === nestedCompIdx ? { ...c, itemName: value } : c
-                                              );
+                                              const oldItemName = nestedComp.itemName;
+                                              const updatedNestedComponents = component.nestedItem!.components.map((c, idx) => {
+                                                if (idx === nestedCompIdx) {
+                                                  // itemName이 변경될 때 manualPrice와 manualUnitType 초기화
+                                                  if (oldItemName !== value) {
+                                                    return { ...c, itemName: value, manualPrice: null, manualUnitType: null };
+                                                  }
+                                                  return { ...c, itemName: value };
+                                                }
+                                                return c;
+                                              });
                                               const nestedItem = { ...component.nestedItem!, components: updatedNestedComponents };
                                               handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'nestedItem', nestedItem);
                                             }}
@@ -2749,6 +2885,82 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                             삭제
                                           </button>
                                         </div>
+                                        
+                                        {/* 직접 입력 필드 */}
+                                        {(nestedComp.itemName === '__manual__' || nestedComp.itemName === '' || 
+                                          (nestedComp.itemName && nestedComp.itemName !== '__nested__' && 
+                                           !nestedComp.itemName.includes('(실제가치)') && 
+                                           !availableItemNames.has(nestedComp.itemName))) && (
+                                          <div>
+                                            <input
+                                              type="text"
+                                              value={nestedComp.itemName === '__manual__' || nestedComp.itemName === '' ? '' : nestedComp.itemName}
+                                              onChange={(e) => {
+                                                const updatedNestedComponents = component.nestedItem!.components.map((c, idx) => 
+                                                  idx === nestedCompIdx ? { ...c, itemName: e.target.value || '__manual__' } : c
+                                                );
+                                                const nestedItem = { ...component.nestedItem!, components: updatedNestedComponents };
+                                                handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'nestedItem', nestedItem);
+                                              }}
+                                              className="w-full px-2 py-1 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500 text-xs"
+                                              placeholder="아이템 이름을 입력하세요"
+                                            />
+                                          </div>
+                                        )}
+                                        
+                                        {/* 단가 직접 입력 필드 (직접 입력 선택 시) */}
+                                        {(nestedComp.itemName === '__manual__' || nestedComp.itemName === '' || 
+                                          (nestedComp.itemName && nestedComp.itemName !== '__nested__' && 
+                                           !nestedComp.itemName.includes('(실제가치)') && 
+                                           !availableItemNames.has(nestedComp.itemName))) && (
+                                          <div className="flex gap-2 items-center">
+                                            <select
+                                              value={nestedComp.manualUnitType || '골드'}
+                                              onChange={(e) => {
+                                                const updatedNestedComponents = component.nestedItem!.components.map((c, idx) => 
+                                                  idx === nestedCompIdx ? { ...c, manualUnitType: e.target.value as '골드' | '크리스탈' | '현금' } : c
+                                                );
+                                                const nestedItem = { ...component.nestedItem!, components: updatedNestedComponents };
+                                                handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'nestedItem', nestedItem);
+                                              }}
+                                              className="px-2 py-1 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500 text-xs"
+                                            >
+                                              <option value="골드">골드</option>
+                                              <option value="크리스탈">크리스탈</option>
+                                              <option value="현금">현금</option>
+                                            </select>
+                                            <input
+                                              type="text"
+                                              value={manualPriceInputs[`${type}-${groupIdx}-${itemIdx}-${compIdx}-nested-${nestedCompIdx}`] ?? (nestedComp.manualPrice?.toString() ?? '')}
+                                              onChange={(e) => {
+                                                const key = `${type}-${groupIdx}-${itemIdx}-${compIdx}-nested-${nestedCompIdx}`;
+                                                setManualPriceInputs(prev => ({ ...prev, [key]: e.target.value }));
+                                              }}
+                                              onBlur={(e) => {
+                                                const key = `${type}-${groupIdx}-${itemIdx}-${compIdx}-nested-${nestedCompIdx}`;
+                                                const value = e.target.value.trim();
+                                                const numValue = value === '' ? null : parseFloat(value);
+                                                const updatedNestedComponents = component.nestedItem!.components.map((c, idx) => 
+                                                  idx === nestedCompIdx ? { ...c, manualPrice: numValue || null } : c
+                                                );
+                                                const nestedItem = { ...component.nestedItem!, components: updatedNestedComponents };
+                                                handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'nestedItem', nestedItem);
+                                                setManualPriceInputs(prev => {
+                                                  const next = { ...prev };
+                                                  delete next[key];
+                                                  return next;
+                                                });
+                                              }}
+                                              onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                  e.currentTarget.blur();
+                                                }
+                                              }}
+                                              className="flex-1 px-2 py-1 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500 text-xs"
+                                              placeholder="단가 직접 입력"
+                                            />
+                                          </div>
+                                        )}
                                         
                                         {/* 두 번째 줄: 수량 및 확률 입력 */}
                                         <div className="flex gap-2 items-center">
@@ -2794,8 +3006,8 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                         </div>
                                         
                                         {/* 가치 계산 표시 */}
-                                        {nestedComp.itemName && nestedComp.itemName !== '__nested__' && nestedComp.itemName !== '__manual__' && nestedComp.itemName !== '' && (() => {
-                                          const unitPrice = getItemUnitPrice(nestedComp.itemName);
+                                        {nestedComp.itemName && nestedComp.itemName !== '__nested__' && nestedComp.itemName !== '' && (() => {
+                                          const unitPrice = getItemUnitPrice(nestedComp.itemName, nestedComp);
                                           if (unitPrice !== null && unitPrice > 0) {
                                             const isNestedIncluded = component.nestedItem!.itemType === '확정' || 
                                                                     (component.nestedItem!.itemType === '확률') || 
@@ -2890,8 +3102,8 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                             </div>
                             
                             {/* 가치 계산 표시 */}
-                            {component.itemName && component.itemName !== '__nested__' && component.itemName !== '__manual__' && component.itemName !== '' && (() => {
-                              const unitPrice = getItemUnitPrice(component.itemName);
+                            {component.itemName && component.itemName !== '__nested__' && component.itemName !== '' && (() => {
+                              const unitPrice = getItemUnitPrice(component.itemName, component);
                               if (unitPrice !== null && unitPrice > 0) {
                                 const isIncluded = item.itemType === '확정' || 
                                                   (item.itemType === '확률') || 
@@ -3505,30 +3717,6 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
               <div className="bg-gradient-to-br from-gray-900/90 to-gray-800/90 border-2 border-purple-500/40 rounded-2xl p-6 space-y-6 shadow-2xl">
               <div className="flex flex-col gap-4">
                 <div className="flex flex-wrap items-center gap-4 text-sm text-gray-200 bg-gray-800/50 rounded-lg p-4 border border-gray-700">
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-300">총 주수:</span>
-                    <input
-                      type="number"
-                      min="1"
-                      step="1"
-                      className="px-3 py-1 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500 w-24"
-                      value={totalWeeksInput}
-                      onChange={(e) => setTotalWeeksInput(e.target.value)}
-                    />
-                    <span className="text-gray-400">주</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-300">총 시간:</span>
-                    <input
-                      type="number"
-                      min="1"
-                      step="1"
-                      className="px-3 py-1 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500 w-24"
-                      value={totalHoursInput}
-                      onChange={(e) => setTotalHoursInput(e.target.value)}
-                    />
-                    <span className="text-gray-400">시간</span>
-                  </div>
                   <div className="flex items-center gap-2">
                     <span className="text-gray-300">총 진행 일수:</span>
                   <input
