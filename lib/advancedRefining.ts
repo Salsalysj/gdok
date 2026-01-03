@@ -119,19 +119,19 @@ export const SANG_JAE_4_WEAPON_MATERIALS: RefiningMaterial[] = [
   { name: '운명의 파편', amount: 13000 },
   { name: '실링', amount: 70000 },
   { name: '골드', amount: 4000 },
-  { name: '용암의 숨결', amount: 25, isOptional: true },
+  { name: '용암의 숨결', amount: 20, isOptional: true },
   { name: '장인의 야금술 : 4단계', amount: 1, isOptional: true },
 ];
 
 // 상재4 방어구 재련 재료
 export const SANG_JAE_4_ARMOR_MATERIALS: RefiningMaterial[] = [
-  { name: '운명의 수호석', amount: 1200 },
-  { name: '운명의 돌파석', amount: 23 },
-  { name: '아비도스 융화 재료', amount: 19 },
-  { name: '운명의 파편', amount: 8000 },
-  { name: '실링', amount: 56000 },
-  { name: '골드', amount: 2400 },
-  { name: '빙하의 숨결', amount: 25, isOptional: true },
+  { name: '운명의 수호석', amount: 1000 },
+  { name: '운명의 돌파석', amount: 18 },
+  { name: '아비도스 융화 재료', amount: 17 },
+  { name: '운명의 파편', amount: 7000 },
+  { name: '실링', amount: 44000 },
+  { name: '골드', amount: 2000 },
+  { name: '빙하의 숨결', amount: 20, isOptional: true },
   { name: '장인의 재봉술 : 4단계', amount: 1, isOptional: true },
 ];
 

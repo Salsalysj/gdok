@@ -809,13 +809,48 @@ function resolveEntry(
     return null;
   };
 
-  // 야금술/재봉술 3단계/4단계는 가치 계산하지 않음
-  if (itemName === '장인의 야금술 : 3단계' || itemName === '장인의 야금술 : 4단계') {
-    return { itemName, unitType: null, unitValue: null };
+  if (itemName === '장인의 야금술 : 3단계') {
+    const stage3Price = getStage3Price('야금술');
+    if (stage3Price != null && stage3Price > 0) {
+      return { itemName, unitType: '골드', unitValue: stage3Price, note: '장인의 야금술 : 2단계 × 2.5' };
+    }
   }
 
-  if (itemName === '장인의 재봉술 : 3단계' || itemName === '장인의 재봉술 : 4단계') {
-    return { itemName, unitType: null, unitValue: null };
+  if (itemName === '장인의 야금술 : 4단계') {
+    // 먼저 3단계 가치 확인
+    const stage3Price = getStage3Price('야금술');
+    if (stage3Price != null && stage3Price > 0) {
+      const stage4Price = stage3Price * 2;
+      return { itemName, unitType: '골드', unitValue: stage4Price, note: '장인의 야금술 : 3단계 × 2' };
+    }
+    // 3단계가 없으면 2단계로부터 계산
+    const stage2Price = getStage2Price('야금술');
+    if (stage2Price != null && stage2Price > 0) {
+      const stage4Price = stage2Price * 2.5 * 2;
+      return { itemName, unitType: '골드', unitValue: stage4Price, note: '장인의 야금술 : 2단계 × 2.5 × 2' };
+    }
+  }
+
+  if (itemName === '장인의 재봉술 : 3단계') {
+    const stage3Price = getStage3Price('재봉술');
+    if (stage3Price != null && stage3Price > 0) {
+      return { itemName, unitType: '골드', unitValue: stage3Price, note: '장인의 재봉술 : 2단계 × 2.5' };
+    }
+  }
+
+  if (itemName === '장인의 재봉술 : 4단계') {
+    // 먼저 3단계 가치 확인
+    const stage3Price = getStage3Price('재봉술');
+    if (stage3Price != null && stage3Price > 0) {
+      const stage4Price = stage3Price * 2;
+      return { itemName, unitType: '골드', unitValue: stage4Price, note: '장인의 재봉술 : 3단계 × 2' };
+    }
+    // 3단계가 없으면 2단계로부터 계산
+    const stage2Price = getStage2Price('재봉술');
+    if (stage2Price != null && stage2Price > 0) {
+      const stage4Price = stage2Price * 2.5 * 2;
+      return { itemName, unitType: '골드', unitValue: stage4Price, note: '장인의 재봉술 : 2단계 × 2.5 × 2' };
+    }
   }
 
   return { itemName, unitType: null, unitValue: null };
@@ -868,21 +903,12 @@ export async function getValueDbData(): Promise<ValueDbData> {
     '순환 돌파석',
     '고대 팔찌 (지옥)',
     '유물 각인서 선택',
-    '유물 각인서 랜덤',
-    '젬 가공 초기화권',
     '정련된 운명의 돌',
     '카드경험치 1당',
     '운명의 파편 1개당',
-    '장인의 야금술 : 3단계',
-    '장인의 재봉술 : 3단계',
-    '장인의 야금술 : 4단계',
-    '장인의 재봉술 : 4단계',
   ];
 
-  // etc_list.csv의 모든 항목도 포함
-  const etcListItemNames = Object.keys(etcListDataObj);
-
-  const itemSet = new Set([...itemList, ...Object.keys(manualOverrides), ...additionalItems, ...etcListItemNames]);
+  const itemSet = new Set([...itemList, ...Object.keys(manualOverrides), ...additionalItems]);
   itemSet.add('__manual__');
   const combinedItemList = Array.from(itemSet);
 
@@ -929,7 +955,7 @@ export async function getValueDbData(): Promise<ValueDbData> {
     .sort((a, b) => {
       // 카테고리 정의
       const currencyItems = ['크리스탈', '실링', '페온', '1레벨 보석 (4T)', '8레벨 보석 (4T)'];
-      const growthItems = ['운명의 파괴석', '운명의 수호석', '운명의 돌파석', '운명의 파편 주머니(소)', '운명의 파편 주머니(중)', '운명의 파편 주머니(대)', '운명의 파편 1개당', '아비도스 융화 재료', '용암의 숨결', '빙하의 숨결', '유물 각인서 선택', '유물 각인서 랜덤', '젬 가공 초기화권'];
+      const growthItems = ['운명의 파괴석', '운명의 수호석', '운명의 돌파석', '운명의 파편 주머니(소)', '운명의 파편 주머니(중)', '운명의 파편 주머니(대)', '운명의 파편 1개당', '아비도스 융화 재료', '용암의 숨결', '빙하의 숨결'];
       const cardItems = ['전설 카드팩 (확률)', '전설~고급 카드팩', '전설~영웅 카드팩', '전설~희귀 카드팩', '전체 카드팩', '전설 카드 선택팩', '메넬리크의 서', '영겁의 정수', '영혼의 잎사귀', '태초의 조각', '카드경험치 1당'];
 
       // 카테고리 인덱스 (화폐: 0, 성장재료: 1, 카드: 2, 기타: 3)

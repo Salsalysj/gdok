@@ -149,12 +149,36 @@ async function getLatestDiscordRate(): Promise<number | null> {
   }
 }
 
+async function getSavedEventEfficiency() {
+  if (!supabase) {
+    return [];
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('saved_event_efficiency')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Supabase 에러:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error: any) {
+    console.error('이벤트 효율 조회 실패:', error);
+    return [];
+  }
+}
+
 export default async function EventEfficiencyPage() {
   const crystalGoldRate = await getLatestCrystalGoldRate();
   const etcListItems = await parseEtcList(crystalGoldRate);
   const marketCache = await getMarketCache();
   const discordRate = await getLatestDiscordRate();
   const kurzanStages = await getKurzanStageSummaries();
+  const initialSavedEventEfficiency = await getSavedEventEfficiency();
   
   return (
     <EventEfficiencyClient 
@@ -163,6 +187,7 @@ export default async function EventEfficiencyPage() {
       marketCache={marketCache}
       discordRate={discordRate}
       kurzanStages={kurzanStages}
+      initialSavedEventEfficiency={initialSavedEventEfficiency}
     />
   );
 }
