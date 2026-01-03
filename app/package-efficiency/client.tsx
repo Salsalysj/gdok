@@ -84,6 +84,7 @@ export default function PackageEfficiencyClient({
   narakStages,
   narak1Stages,
   narak2Stages,
+  initialSavedPackages = [],
 }: {
   itemList: string[];
   etcListData: { [key: string]: EtcListItem };
@@ -99,6 +100,7 @@ export default function PackageEfficiencyClient({
   narakStages?: Stage[];
   narak1Stages?: Stage[];
   narak2Stages?: Stage[];
+  initialSavedPackages?: Array<{ id: string; package_name: string; created_at: string; updated_at: string; [key: string]: any }>;
 }) {
   const { adjustPrice, adjustRelicEngravingAverage } = usePriceAdjustment();
   const { adjustedEntries } = useValueDb();
@@ -187,7 +189,7 @@ export default function PackageEfficiencyClient({
   });
 
   // 저장된 패키지 관련 상태
-  const [savedPackages, setSavedPackages] = useState<Array<{ id: string; package_name: string; created_at: string; updated_at: string }>>([]);
+  const [savedPackages, setSavedPackages] = useState<Array<{ id: string; package_name: string; created_at: string; updated_at: string }>>(initialSavedPackages);
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [savePackageName, setSavePackageName] = useState('');
