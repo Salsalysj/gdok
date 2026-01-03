@@ -114,6 +114,7 @@ export default function AdvancedRefiningClient({
   const [craftsmanshipAnalysis, setCraftsmanshipAnalysis] = useState<{
     craftsmanshipItemName: string;
     craftsmanshipMarketPrice: number;
+    // 상재1, 2용
     ancestorOnlyCraftAnalysis: {
       additionalValue: number;
       craftsmanshipAmount: number;
@@ -126,8 +127,34 @@ export default function AdvancedRefiningClient({
       craftsmanshipUnitValue: number;
       craftsmanshipRealValue: number;
     } | null;
+    // 상재3, 4용 - 각 턴의 순수 기여도 측정
+    enhancedAncestorTurnCraftAnalysis: {
+      additionalValue: number;
+      craftsmanshipAmount: number;
+      craftsmanshipUnitValue: number;
+      craftsmanshipRealValue: number;
+    } | null;
+    ancestorTurnCraftAnalysis: {
+      additionalValue: number;
+      craftsmanshipAmount: number;
+      craftsmanshipUnitValue: number;
+      craftsmanshipRealValue: number;
+    } | null;
+    normalTurnCraftAnalysis: {
+      additionalValue: number;
+      craftsmanshipAmount: number;
+      craftsmanshipUnitValue: number;
+      craftsmanshipRealValue: number;
+    } | null;
+    allTurnsAverageCraftAnalysis: {
+      additionalValue: number;
+      craftsmanshipAmount: number;
+      craftsmanshipUnitValue: number;
+      craftsmanshipRealValue: number;
+    } | null;
     breathItemName: string;
     breathMarketPrice: number;
+    // 상재1, 2용
     ancestorOnlyBreathAnalysis: {
       additionalValue: number;
       breathAmount: number;
@@ -135,6 +162,31 @@ export default function AdvancedRefiningClient({
       breathRealValue: number;
     } | null;
     bothTurnsBreathAnalysis: {
+      additionalValue: number;
+      breathAmount: number;
+      breathUnitValue: number;
+      breathRealValue: number;
+    } | null;
+    // 상재3, 4용 - 각 턴의 순수 기여도 측정
+    enhancedAncestorTurnBreathAnalysis: {
+      additionalValue: number;
+      breathAmount: number;
+      breathUnitValue: number;
+      breathRealValue: number;
+    } | null;
+    ancestorTurnBreathAnalysis: {
+      additionalValue: number;
+      breathAmount: number;
+      breathUnitValue: number;
+      breathRealValue: number;
+    } | null;
+    normalTurnBreathAnalysis: {
+      additionalValue: number;
+      breathAmount: number;
+      breathUnitValue: number;
+      breathRealValue: number;
+    } | null;
+    allTurnsAverageBreathAnalysis: {
       additionalValue: number;
       breathAmount: number;
       breathUnitValue: number;
@@ -235,9 +287,9 @@ export default function AdvancedRefiningClient({
         return 1; // 골드 1개 = 골드 1
       }
       
-      // 실링은 골드로 환산 (1 실링 = 0.01 골드, 가격 조정 불필요)
+      // 실링은 0골드로 처리
       if (itemName === '실링') {
-        return 0.01;
+        return 0;
       }
       
       let basePrice: number | null = null;
@@ -498,6 +550,40 @@ export default function AdvancedRefiningClient({
         !r.strategy.enhancedAncestorTurn?.useCraftsmanship
     );
 
+    // 상재3, 4 전용 숨결 시나리오들
+    // 강화선조턴에만 숨결 투입
+    const enhancedAncestorOnlyBreath = allResults.find(
+      (r) => 
+        !r.strategy.normalTurn.useBreath && 
+        !r.strategy.normalTurn.useCraftsmanship &&
+        !r.strategy.ancestorTurn.useBreath && 
+        !r.strategy.ancestorTurn.useCraftsmanship &&
+        r.strategy.enhancedAncestorTurn?.useBreath &&
+        !r.strategy.enhancedAncestorTurn?.useCraftsmanship
+    );
+
+    // 선조턴 + 강화선조턴에 숨결 투입
+    const ancestorAndEnhancedBreath = allResults.find(
+      (r) => 
+        !r.strategy.normalTurn.useBreath && 
+        !r.strategy.normalTurn.useCraftsmanship &&
+        r.strategy.ancestorTurn.useBreath && 
+        !r.strategy.ancestorTurn.useCraftsmanship &&
+        r.strategy.enhancedAncestorTurn?.useBreath &&
+        !r.strategy.enhancedAncestorTurn?.useCraftsmanship
+    );
+
+    // 일반턴 + 선조턴 + 강화선조턴에 숨결 투입
+    const allTurnsBreath = allResults.find(
+      (r) => 
+        r.strategy.normalTurn.useBreath && 
+        !r.strategy.normalTurn.useCraftsmanship &&
+        r.strategy.ancestorTurn.useBreath && 
+        !r.strategy.ancestorTurn.useCraftsmanship &&
+        r.strategy.enhancedAncestorTurn?.useBreath &&
+        !r.strategy.enhancedAncestorTurn?.useCraftsmanship
+    );
+
     // 결과 설정
     if (noAux) {
       setNoAuxResult(noAux.result);
@@ -516,13 +602,86 @@ export default function AdvancedRefiningClient({
     const craftsmanshipItemName = activeSubSubTab === '무기' ? `장인의 야금술 : ${craftsmanshipStage}` : `장인의 재봉술 : ${craftsmanshipStage}`;
     const craftsmanshipMarketPrice = getMaterialValue(craftsmanshipItemName) || 0;
     
-    // materialBreakdown에서는 항상 "1단계"로 저장되어 있으므로, 찾을 때는 "1단계"를 사용
-    const craftsmanshipItemNameInBreakdown = activeSubSubTab === '무기' ? '장인의 야금술 : 1단계' : '장인의 재봉술 : 1단계';
+    // materialBreakdown에서도 동일한 단계 사용
+    const craftsmanshipItemNameInBreakdown = craftsmanshipItemName;
     
     let ancestorOnlyCraftAnalysis = null;
     let bothTurnsCraftAnalysis = null;
+    let enhancedAncestorTurnCraftAnalysis = null;
+    let ancestorTurnCraftAnalysis = null;
+    let normalTurnCraftAnalysis = null;
+    let allTurnsAverageCraftAnalysis = null;
     
-    // 선조턴에만 야금술/재봉술 투입 시 실제 가치
+    const isLevel3Or4 = activeSubTab === '상재3' || activeSubTab === '상재4';
+    
+    if (isLevel3Or4) {
+      // 상재3, 4 전용 분석 - 각 턴의 순수 기여도 측정
+      // 1. 강화선조턴 기준: 보조재료 미반영 vs 강화선조턴에만 투입
+      if (noAux && enhancedAncestorOnlyCraft) {
+        const additionalValue = noAux.costBreakdown.totalCost - enhancedAncestorOnlyCraft.costBreakdown.totalCost;
+        const craftsmanshipAmount = enhancedAncestorOnlyCraft.result.materialBreakdown[craftsmanshipItemNameInBreakdown] || 0;
+        const craftsmanshipUnitValue = craftsmanshipAmount > 0 ? additionalValue / craftsmanshipAmount : 0;
+        const craftsmanshipRealValue = craftsmanshipUnitValue + craftsmanshipMarketPrice;
+        
+        enhancedAncestorTurnCraftAnalysis = {
+          additionalValue,
+          craftsmanshipAmount,
+          craftsmanshipUnitValue,
+          craftsmanshipRealValue,
+        };
+      }
+      
+      // 2. 선조턴 기준: 강화선조턴에만 투입 vs 강화선조턴+선조턴에 투입
+      if (enhancedAncestorOnlyCraft && ancestorAndEnhancedCraft) {
+        const additionalValue = enhancedAncestorOnlyCraft.costBreakdown.totalCost - ancestorAndEnhancedCraft.costBreakdown.totalCost;
+        const craftsmanshipAmountBefore = enhancedAncestorOnlyCraft.result.materialBreakdown[craftsmanshipItemNameInBreakdown] || 0;
+        const craftsmanshipAmountAfter = ancestorAndEnhancedCraft.result.materialBreakdown[craftsmanshipItemNameInBreakdown] || 0;
+        const craftsmanshipAmount = craftsmanshipAmountAfter - craftsmanshipAmountBefore;
+        const craftsmanshipUnitValue = craftsmanshipAmount > 0 ? additionalValue / craftsmanshipAmount : 0;
+        const craftsmanshipRealValue = craftsmanshipUnitValue + craftsmanshipMarketPrice;
+        
+        ancestorTurnCraftAnalysis = {
+          additionalValue,
+          craftsmanshipAmount,
+          craftsmanshipUnitValue,
+          craftsmanshipRealValue,
+        };
+      }
+      
+      // 3. 일반턴 기준: 강화선조턴+선조턴에 투입 vs 모든 턴에 투입
+      if (ancestorAndEnhancedCraft && allTurnsCraft) {
+        const additionalValue = ancestorAndEnhancedCraft.costBreakdown.totalCost - allTurnsCraft.costBreakdown.totalCost;
+        const craftsmanshipAmountBefore = ancestorAndEnhancedCraft.result.materialBreakdown[craftsmanshipItemNameInBreakdown] || 0;
+        const craftsmanshipAmountAfter = allTurnsCraft.result.materialBreakdown[craftsmanshipItemNameInBreakdown] || 0;
+        const craftsmanshipAmount = craftsmanshipAmountAfter - craftsmanshipAmountBefore;
+        const craftsmanshipUnitValue = craftsmanshipAmount > 0 ? additionalValue / craftsmanshipAmount : 0;
+        const craftsmanshipRealValue = craftsmanshipUnitValue + craftsmanshipMarketPrice;
+        
+        normalTurnCraftAnalysis = {
+          additionalValue,
+          craftsmanshipAmount,
+          craftsmanshipUnitValue,
+          craftsmanshipRealValue,
+        };
+      }
+      
+      // 4. 전체 턴 평균: 보조재료 미반영 vs 모든 턴에 투입
+      if (noAux && allTurnsCraft) {
+        const additionalValue = noAux.costBreakdown.totalCost - allTurnsCraft.costBreakdown.totalCost;
+        const craftsmanshipAmount = allTurnsCraft.result.materialBreakdown[craftsmanshipItemNameInBreakdown] || 0;
+        const craftsmanshipUnitValue = craftsmanshipAmount > 0 ? additionalValue / craftsmanshipAmount : 0;
+        const craftsmanshipRealValue = craftsmanshipUnitValue + craftsmanshipMarketPrice;
+        
+        allTurnsAverageCraftAnalysis = {
+          additionalValue,
+          craftsmanshipAmount,
+          craftsmanshipUnitValue,
+          craftsmanshipRealValue,
+        };
+      }
+    } else {
+      // 상재1, 2 전용 분석 - 각 턴의 순수 기여도 측정
+      // 1. 선조턴 기준: 보조재료 미투입 vs 선조턴에만 투입
     if (noAux && ancestorOnlyCraft) {
       const additionalValue = noAux.costBreakdown.totalCost - ancestorOnlyCraft.costBreakdown.totalCost;
       const craftsmanshipAmount = ancestorOnlyCraft.result.materialBreakdown[craftsmanshipItemNameInBreakdown] || 0;
@@ -537,19 +696,37 @@ export default function AdvancedRefiningClient({
       };
     }
     
-    // 일반턴+선조턴 모두 야금술/재봉술 투입 시 실제 가치
+      // 2. 일반턴 기준: 선조턴에만 투입 vs 모든 턴에 투입
+      if (ancestorOnlyCraft && bothTurnsCraft) {
+        const additionalValue = ancestorOnlyCraft.costBreakdown.totalCost - bothTurnsCraft.costBreakdown.totalCost;
+        const craftsmanshipAmountBefore = ancestorOnlyCraft.result.materialBreakdown[craftsmanshipItemNameInBreakdown] || 0;
+        const craftsmanshipAmountAfter = bothTurnsCraft.result.materialBreakdown[craftsmanshipItemNameInBreakdown] || 0;
+        const craftsmanshipAmount = craftsmanshipAmountAfter - craftsmanshipAmountBefore;
+        const craftsmanshipUnitValue = craftsmanshipAmount > 0 ? additionalValue / craftsmanshipAmount : 0;
+        const craftsmanshipRealValue = craftsmanshipUnitValue + craftsmanshipMarketPrice;
+        
+        normalTurnCraftAnalysis = {
+          additionalValue,
+          craftsmanshipAmount,
+          craftsmanshipUnitValue,
+          craftsmanshipRealValue,
+        };
+      }
+      
+      // 3. 전체 턴 평균: 보조재료 미반영 vs 모든 턴에 투입
     if (noAux && bothTurnsCraft) {
       const additionalValue = noAux.costBreakdown.totalCost - bothTurnsCraft.costBreakdown.totalCost;
       const craftsmanshipAmount = bothTurnsCraft.result.materialBreakdown[craftsmanshipItemNameInBreakdown] || 0;
       const craftsmanshipUnitValue = craftsmanshipAmount > 0 ? additionalValue / craftsmanshipAmount : 0;
       const craftsmanshipRealValue = craftsmanshipUnitValue + craftsmanshipMarketPrice;
       
-      bothTurnsCraftAnalysis = {
+        allTurnsAverageCraftAnalysis = {
         additionalValue,
         craftsmanshipAmount,
         craftsmanshipUnitValue,
         craftsmanshipRealValue,
       };
+      }
     }
     
     // 숨결 실제 가치 계산
@@ -558,8 +735,79 @@ export default function AdvancedRefiningClient({
     
     let ancestorOnlyBreathAnalysis = null;
     let bothTurnsBreathAnalysis = null;
+    let enhancedAncestorTurnBreathAnalysis = null;
+    let ancestorTurnBreathAnalysis = null;
+    let normalTurnBreathAnalysis = null;
+    let allTurnsAverageBreathAnalysis = null;
     
-    // 선조턴에만 숨결 투입 시 실제 가치
+    if (isLevel3Or4) {
+      // 상재3, 4 전용 분석 - 각 턴의 순수 기여도 측정
+      // 1. 강화선조턴 기준: 보조재료 미반영 vs 강화선조턴에만 투입
+      if (noAux && enhancedAncestorOnlyBreath) {
+        const additionalValue = noAux.costBreakdown.totalCost - enhancedAncestorOnlyBreath.costBreakdown.totalCost;
+        const breathAmount = enhancedAncestorOnlyBreath.result.materialBreakdown[breathItemName] || 0;
+        const breathUnitValue = breathAmount > 0 ? additionalValue / breathAmount : 0;
+        const breathRealValue = breathUnitValue + breathMarketPrice;
+        
+        enhancedAncestorTurnBreathAnalysis = {
+          additionalValue,
+          breathAmount,
+          breathUnitValue,
+          breathRealValue,
+        };
+      }
+      
+      // 2. 선조턴 기준: 강화선조턴에만 투입 vs 강화선조턴+선조턴에 투입
+      if (enhancedAncestorOnlyBreath && ancestorAndEnhancedBreath) {
+        const additionalValue = enhancedAncestorOnlyBreath.costBreakdown.totalCost - ancestorAndEnhancedBreath.costBreakdown.totalCost;
+        const breathAmountBefore = enhancedAncestorOnlyBreath.result.materialBreakdown[breathItemName] || 0;
+        const breathAmountAfter = ancestorAndEnhancedBreath.result.materialBreakdown[breathItemName] || 0;
+        const breathAmount = breathAmountAfter - breathAmountBefore;
+        const breathUnitValue = breathAmount > 0 ? additionalValue / breathAmount : 0;
+        const breathRealValue = breathUnitValue + breathMarketPrice;
+        
+        ancestorTurnBreathAnalysis = {
+          additionalValue,
+          breathAmount,
+          breathUnitValue,
+          breathRealValue,
+        };
+      }
+      
+      // 3. 일반턴 기준: 강화선조턴+선조턴에 투입 vs 모든 턴에 투입
+      if (ancestorAndEnhancedBreath && allTurnsBreath) {
+        const additionalValue = ancestorAndEnhancedBreath.costBreakdown.totalCost - allTurnsBreath.costBreakdown.totalCost;
+        const breathAmountBefore = ancestorAndEnhancedBreath.result.materialBreakdown[breathItemName] || 0;
+        const breathAmountAfter = allTurnsBreath.result.materialBreakdown[breathItemName] || 0;
+        const breathAmount = breathAmountAfter - breathAmountBefore;
+        const breathUnitValue = breathAmount > 0 ? additionalValue / breathAmount : 0;
+        const breathRealValue = breathUnitValue + breathMarketPrice;
+        
+        normalTurnBreathAnalysis = {
+          additionalValue,
+          breathAmount,
+          breathUnitValue,
+          breathRealValue,
+        };
+      }
+      
+      // 4. 전체 턴 평균: 보조재료 미반영 vs 모든 턴에 투입
+      if (noAux && allTurnsBreath) {
+        const additionalValue = noAux.costBreakdown.totalCost - allTurnsBreath.costBreakdown.totalCost;
+        const breathAmount = allTurnsBreath.result.materialBreakdown[breathItemName] || 0;
+        const breathUnitValue = breathAmount > 0 ? additionalValue / breathAmount : 0;
+        const breathRealValue = breathUnitValue + breathMarketPrice;
+        
+        allTurnsAverageBreathAnalysis = {
+          additionalValue,
+          breathAmount,
+          breathUnitValue,
+          breathRealValue,
+        };
+      }
+    } else {
+      // 상재1, 2 전용 분석 - 각 턴의 순수 기여도 측정
+      // 1. 선조턴 기준: 보조재료 미투입 vs 선조턴에만 투입
     if (noAux && ancestorOnlyBreath) {
       const additionalValue = noAux.costBreakdown.totalCost - ancestorOnlyBreath.costBreakdown.totalCost;
       const breathAmount = ancestorOnlyBreath.result.materialBreakdown[breathItemName] || 0;
@@ -574,31 +822,62 @@ export default function AdvancedRefiningClient({
       };
     }
     
-    // 일반턴+선조턴 모두 숨결 투입 시 실제 가치
+      // 2. 일반턴 기준: 선조턴에만 투입 vs 모든 턴에 투입
+      if (ancestorOnlyBreath && bothTurnsBreath) {
+        const additionalValue = ancestorOnlyBreath.costBreakdown.totalCost - bothTurnsBreath.costBreakdown.totalCost;
+        const breathAmountBefore = ancestorOnlyBreath.result.materialBreakdown[breathItemName] || 0;
+        const breathAmountAfter = bothTurnsBreath.result.materialBreakdown[breathItemName] || 0;
+        const breathAmount = breathAmountAfter - breathAmountBefore;
+        const breathUnitValue = breathAmount > 0 ? additionalValue / breathAmount : 0;
+        const breathRealValue = breathUnitValue + breathMarketPrice;
+        
+        normalTurnBreathAnalysis = {
+          additionalValue,
+          breathAmount,
+          breathUnitValue,
+          breathRealValue,
+        };
+      }
+      
+      // 3. 전체 턴 평균: 보조재료 미반영 vs 모든 턴에 투입
     if (noAux && bothTurnsBreath) {
       const additionalValue = noAux.costBreakdown.totalCost - bothTurnsBreath.costBreakdown.totalCost;
       const breathAmount = bothTurnsBreath.result.materialBreakdown[breathItemName] || 0;
       const breathUnitValue = breathAmount > 0 ? additionalValue / breathAmount : 0;
       const breathRealValue = breathUnitValue + breathMarketPrice;
       
-      bothTurnsBreathAnalysis = {
+        allTurnsAverageBreathAnalysis = {
         additionalValue,
         breathAmount,
         breathUnitValue,
         breathRealValue,
       };
     }
+    }
     
-    if (ancestorOnlyCraftAnalysis || bothTurnsCraftAnalysis || ancestorOnlyBreathAnalysis || bothTurnsBreathAnalysis) {
+    if (ancestorOnlyCraftAnalysis || bothTurnsCraftAnalysis || 
+        enhancedAncestorTurnCraftAnalysis || ancestorTurnCraftAnalysis || 
+        normalTurnCraftAnalysis || allTurnsAverageCraftAnalysis ||
+        ancestorOnlyBreathAnalysis || bothTurnsBreathAnalysis || 
+        enhancedAncestorTurnBreathAnalysis || ancestorTurnBreathAnalysis ||
+        normalTurnBreathAnalysis || allTurnsAverageBreathAnalysis) {
       setCraftsmanshipAnalysis({
         craftsmanshipItemName,
         craftsmanshipMarketPrice,
         ancestorOnlyCraftAnalysis,
         bothTurnsCraftAnalysis,
+        enhancedAncestorTurnCraftAnalysis,
+        ancestorTurnCraftAnalysis,
+        normalTurnCraftAnalysis,
+        allTurnsAverageCraftAnalysis,
         breathItemName,
         breathMarketPrice,
         ancestorOnlyBreathAnalysis,
         bothTurnsBreathAnalysis,
+        enhancedAncestorTurnBreathAnalysis,
+        ancestorTurnBreathAnalysis,
+        normalTurnBreathAnalysis,
+        allTurnsAverageBreathAnalysis,
       });
     } else {
       setCraftsmanshipAnalysis(null);
@@ -857,11 +1136,12 @@ export default function AdvancedRefiningClient({
                     {/* 야금술/재봉술 */}
                     <div className="mb-6">
                       <div className="text-sm font-semibold text-orange-400 mb-3">{craftsmanshipAnalysis.craftsmanshipItemName}</div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* 선조턴 기준 실제 가치 */}
-                        {craftsmanshipAnalysis.ancestorOnlyCraftAnalysis && (
+                      <div className={`grid grid-cols-1 ${(activeSubTab === '상재3' || activeSubTab === '상재4') ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-4`}>
+                        {/* 상재1, 2: 선조턴 기준 */}
+                        {(activeSubTab === '상재1' || activeSubTab === '상재2') && craftsmanshipAnalysis.ancestorOnlyCraftAnalysis && (
                           <div className="bg-gray-900/50 rounded-lg p-4">
                             <div className="text-xs font-semibold text-purple-400 mb-2">선조턴 기준</div>
+                            <div className="text-xs text-gray-400 mb-2">비교: 미투입 vs 선조턴만</div>
                             <div className="space-y-2 text-sm">
                               <div className="flex justify-between">
                                 <span className="text-gray-300">1개당 거래소 가격</span>
@@ -889,10 +1169,107 @@ export default function AdvancedRefiningClient({
                           </div>
                         )}
                         
-                        {/* 일반턴+선조턴 평균 실제 가치 */}
-                        {craftsmanshipAnalysis.bothTurnsCraftAnalysis && (
+                        {/* 상재1, 2: 일반턴 기준 */}
+                        {(activeSubTab === '상재1' || activeSubTab === '상재2') && craftsmanshipAnalysis.normalTurnCraftAnalysis && (
                           <div className="bg-gray-900/50 rounded-lg p-4">
-                            <div className="text-xs font-semibold text-blue-400 mb-2">일반턴+선조턴 평균</div>
+                            <div className="text-xs font-semibold text-cyan-400 mb-2">일반턴 기준</div>
+                            <div className="text-xs text-gray-400 mb-2">비교: 선조만 vs 모든 턴</div>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-gray-300">1개당 거래소 가격</span>
+                                <span className="text-white font-medium">
+                                  {formatNumber(craftsmanshipAnalysis.craftsmanshipMarketPrice)} 골드
+                                </span>
+                              </div>
+                              <div className="pt-2 mt-2 border-t border-gray-700 flex justify-between items-center">
+                                <span className="text-cyan-300 font-semibold">실제 가치</span>
+                                <div className="flex items-center gap-2">
+                                  <span className={`text-lg font-bold ${craftsmanshipAnalysis.normalTurnCraftAnalysis.craftsmanshipRealValue >= craftsmanshipAnalysis.craftsmanshipMarketPrice ? 'text-green-400' : 'text-red-400'}`}>
+                                    {formatNumber(craftsmanshipAnalysis.normalTurnCraftAnalysis.craftsmanshipRealValue)} 골드
+                                  </span>
+                                  <span className={`text-sm ${craftsmanshipAnalysis.normalTurnCraftAnalysis.craftsmanshipUnitValue >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                                    ({craftsmanshipAnalysis.normalTurnCraftAnalysis.craftsmanshipUnitValue >= 0 ? '+' : ''}{formatNumber(craftsmanshipAnalysis.normalTurnCraftAnalysis.craftsmanshipUnitValue)})
+                                  </span>
+                                </div>
+                              </div>
+                              {craftsmanshipAnalysis.normalTurnCraftAnalysis.craftsmanshipRealValue >= craftsmanshipAnalysis.craftsmanshipMarketPrice ? (
+                                <div className="text-xs text-green-400 mt-1">✓ 투입 시 이득</div>
+                              ) : (
+                                <div className="text-xs text-red-400 mt-1">✗ 투입 시 손해</div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* 상재1, 2: 전체 턴 평균 */}
+                        {(activeSubTab === '상재1' || activeSubTab === '상재2') && craftsmanshipAnalysis.allTurnsAverageCraftAnalysis && (
+                          <div className="bg-gray-900/50 rounded-lg p-4">
+                            <div className="text-xs font-semibold text-green-400 mb-2">전체 턴 평균</div>
+                            <div className="text-xs text-gray-400 mb-2">비교: 미반영 vs 모든 턴</div>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-gray-300">1개당 거래소 가격</span>
+                                <span className="text-white font-medium">
+                                  {formatNumber(craftsmanshipAnalysis.craftsmanshipMarketPrice)} 골드
+                                </span>
+                              </div>
+                              <div className="pt-2 mt-2 border-t border-gray-700 flex justify-between items-center">
+                                <span className="text-green-300 font-semibold">실제 가치</span>
+                                <div className="flex items-center gap-2">
+                                  <span className={`text-lg font-bold ${craftsmanshipAnalysis.allTurnsAverageCraftAnalysis.craftsmanshipRealValue >= craftsmanshipAnalysis.craftsmanshipMarketPrice ? 'text-green-400' : 'text-red-400'}`}>
+                                    {formatNumber(craftsmanshipAnalysis.allTurnsAverageCraftAnalysis.craftsmanshipRealValue)} 골드
+                                  </span>
+                                  <span className={`text-sm ${craftsmanshipAnalysis.allTurnsAverageCraftAnalysis.craftsmanshipUnitValue >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                                    ({craftsmanshipAnalysis.allTurnsAverageCraftAnalysis.craftsmanshipUnitValue >= 0 ? '+' : ''}{formatNumber(craftsmanshipAnalysis.allTurnsAverageCraftAnalysis.craftsmanshipUnitValue)})
+                                  </span>
+                                </div>
+                              </div>
+                              {craftsmanshipAnalysis.allTurnsAverageCraftAnalysis.craftsmanshipRealValue >= craftsmanshipAnalysis.craftsmanshipMarketPrice ? (
+                                <div className="text-xs text-green-400 mt-1">✓ 투입 시 이득</div>
+                              ) : (
+                                <div className="text-xs text-red-400 mt-1">✗ 투입 시 손해</div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* 상재3, 4: 강화선조턴 기준 */}
+                        {(activeSubTab === '상재3' || activeSubTab === '상재4') && craftsmanshipAnalysis.enhancedAncestorTurnCraftAnalysis && (
+                          <div className="bg-gray-900/50 rounded-lg p-4">
+                            <div className="text-xs font-semibold text-purple-400 mb-2">강화선조턴 기준</div>
+                            <div className="text-xs text-gray-400 mb-2">비교: 미반영 vs 강화선조턴만</div>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-gray-300">1개당 거래소 가격</span>
+                                <span className="text-white font-medium">
+                                  {formatNumber(craftsmanshipAnalysis.craftsmanshipMarketPrice)} 골드
+                                </span>
+                              </div>
+                              <div className="pt-2 mt-2 border-t border-gray-700 flex justify-between items-center">
+                                <span className="text-purple-300 font-semibold">실제 가치</span>
+                                <div className="flex items-center gap-2">
+                                  <span className={`text-lg font-bold ${craftsmanshipAnalysis.enhancedAncestorTurnCraftAnalysis.craftsmanshipRealValue >= craftsmanshipAnalysis.craftsmanshipMarketPrice ? 'text-green-400' : 'text-red-400'}`}>
+                                    {formatNumber(craftsmanshipAnalysis.enhancedAncestorTurnCraftAnalysis.craftsmanshipRealValue)} 골드
+                                  </span>
+                                  <span className={`text-sm ${craftsmanshipAnalysis.enhancedAncestorTurnCraftAnalysis.craftsmanshipUnitValue >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                                    ({craftsmanshipAnalysis.enhancedAncestorTurnCraftAnalysis.craftsmanshipUnitValue >= 0 ? '+' : ''}{formatNumber(craftsmanshipAnalysis.enhancedAncestorTurnCraftAnalysis.craftsmanshipUnitValue)})
+                                  </span>
+                                </div>
+                              </div>
+                              {craftsmanshipAnalysis.enhancedAncestorTurnCraftAnalysis.craftsmanshipRealValue >= craftsmanshipAnalysis.craftsmanshipMarketPrice ? (
+                                <div className="text-xs text-green-400 mt-1">✓ 투입 시 이득</div>
+                              ) : (
+                                <div className="text-xs text-red-400 mt-1">✗ 투입 시 손해</div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* 상재3, 4: 선조턴 기준 */}
+                        {(activeSubTab === '상재3' || activeSubTab === '상재4') && craftsmanshipAnalysis.ancestorTurnCraftAnalysis && (
+                          <div className="bg-gray-900/50 rounded-lg p-4">
+                            <div className="text-xs font-semibold text-blue-400 mb-2">선조턴 기준</div>
+                            <div className="text-xs text-gray-400 mb-2">비교: 강화선조만 vs 강화선조+선조</div>
                             <div className="space-y-2 text-sm">
                               <div className="flex justify-between">
                                 <span className="text-gray-300">1개당 거래소 가격</span>
@@ -903,15 +1280,79 @@ export default function AdvancedRefiningClient({
                               <div className="pt-2 mt-2 border-t border-gray-700 flex justify-between items-center">
                                 <span className="text-blue-300 font-semibold">실제 가치</span>
                                 <div className="flex items-center gap-2">
-                                  <span className={`text-lg font-bold ${craftsmanshipAnalysis.bothTurnsCraftAnalysis.craftsmanshipRealValue >= craftsmanshipAnalysis.craftsmanshipMarketPrice ? 'text-green-400' : 'text-red-400'}`}>
-                                    {formatNumber(craftsmanshipAnalysis.bothTurnsCraftAnalysis.craftsmanshipRealValue)} 골드
+                                  <span className={`text-lg font-bold ${craftsmanshipAnalysis.ancestorTurnCraftAnalysis.craftsmanshipRealValue >= craftsmanshipAnalysis.craftsmanshipMarketPrice ? 'text-green-400' : 'text-red-400'}`}>
+                                    {formatNumber(craftsmanshipAnalysis.ancestorTurnCraftAnalysis.craftsmanshipRealValue)} 골드
                                   </span>
-                                  <span className={`text-sm ${craftsmanshipAnalysis.bothTurnsCraftAnalysis.craftsmanshipUnitValue >= 0 ? 'text-green-300' : 'text-red-300'}`}>
-                                    ({craftsmanshipAnalysis.bothTurnsCraftAnalysis.craftsmanshipUnitValue >= 0 ? '+' : ''}{formatNumber(craftsmanshipAnalysis.bothTurnsCraftAnalysis.craftsmanshipUnitValue)})
+                                  <span className={`text-sm ${craftsmanshipAnalysis.ancestorTurnCraftAnalysis.craftsmanshipUnitValue >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                                    ({craftsmanshipAnalysis.ancestorTurnCraftAnalysis.craftsmanshipUnitValue >= 0 ? '+' : ''}{formatNumber(craftsmanshipAnalysis.ancestorTurnCraftAnalysis.craftsmanshipUnitValue)})
                                   </span>
                                 </div>
                               </div>
-                              {craftsmanshipAnalysis.bothTurnsCraftAnalysis.craftsmanshipRealValue >= craftsmanshipAnalysis.craftsmanshipMarketPrice ? (
+                              {craftsmanshipAnalysis.ancestorTurnCraftAnalysis.craftsmanshipRealValue >= craftsmanshipAnalysis.craftsmanshipMarketPrice ? (
+                                <div className="text-xs text-green-400 mt-1">✓ 투입 시 이득</div>
+                              ) : (
+                                <div className="text-xs text-red-400 mt-1">✗ 투입 시 손해</div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* 상재3, 4: 일반턴 기준 */}
+                        {(activeSubTab === '상재3' || activeSubTab === '상재4') && craftsmanshipAnalysis.normalTurnCraftAnalysis && (
+                          <div className="bg-gray-900/50 rounded-lg p-4">
+                            <div className="text-xs font-semibold text-cyan-400 mb-2">일반턴 기준</div>
+                            <div className="text-xs text-gray-400 mb-2">비교: 강화선조+선조 vs 모든 턴</div>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-gray-300">1개당 거래소 가격</span>
+                                <span className="text-white font-medium">
+                                  {formatNumber(craftsmanshipAnalysis.craftsmanshipMarketPrice)} 골드
+                                </span>
+                      </div>
+                              <div className="pt-2 mt-2 border-t border-gray-700 flex justify-between items-center">
+                                <span className="text-cyan-300 font-semibold">실제 가치</span>
+                                <div className="flex items-center gap-2">
+                                  <span className={`text-lg font-bold ${craftsmanshipAnalysis.normalTurnCraftAnalysis.craftsmanshipRealValue >= craftsmanshipAnalysis.craftsmanshipMarketPrice ? 'text-green-400' : 'text-red-400'}`}>
+                                    {formatNumber(craftsmanshipAnalysis.normalTurnCraftAnalysis.craftsmanshipRealValue)} 골드
+                                  </span>
+                                  <span className={`text-sm ${craftsmanshipAnalysis.normalTurnCraftAnalysis.craftsmanshipUnitValue >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                                    ({craftsmanshipAnalysis.normalTurnCraftAnalysis.craftsmanshipUnitValue >= 0 ? '+' : ''}{formatNumber(craftsmanshipAnalysis.normalTurnCraftAnalysis.craftsmanshipUnitValue)})
+                                  </span>
+                                </div>
+                              </div>
+                              {craftsmanshipAnalysis.normalTurnCraftAnalysis.craftsmanshipRealValue >= craftsmanshipAnalysis.craftsmanshipMarketPrice ? (
+                                <div className="text-xs text-green-400 mt-1">✓ 투입 시 이득</div>
+                              ) : (
+                                <div className="text-xs text-red-400 mt-1">✗ 투입 시 손해</div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* 상재3, 4: 전체 턴 평균 */}
+                        {(activeSubTab === '상재3' || activeSubTab === '상재4') && craftsmanshipAnalysis.allTurnsAverageCraftAnalysis && (
+                          <div className="bg-gray-900/50 rounded-lg p-4">
+                            <div className="text-xs font-semibold text-green-400 mb-2">전체 턴 평균</div>
+                            <div className="text-xs text-gray-400 mb-2">비교: 미반영 vs 모든 턴</div>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-gray-300">1개당 거래소 가격</span>
+                                <span className="text-white font-medium">
+                                  {formatNumber(craftsmanshipAnalysis.craftsmanshipMarketPrice)} 골드
+                                </span>
+                              </div>
+                              <div className="pt-2 mt-2 border-t border-gray-700 flex justify-between items-center">
+                                <span className="text-green-300 font-semibold">실제 가치</span>
+                                <div className="flex items-center gap-2">
+                                  <span className={`text-lg font-bold ${craftsmanshipAnalysis.allTurnsAverageCraftAnalysis.craftsmanshipRealValue >= craftsmanshipAnalysis.craftsmanshipMarketPrice ? 'text-green-400' : 'text-red-400'}`}>
+                                    {formatNumber(craftsmanshipAnalysis.allTurnsAverageCraftAnalysis.craftsmanshipRealValue)} 골드
+                                  </span>
+                                  <span className={`text-sm ${craftsmanshipAnalysis.allTurnsAverageCraftAnalysis.craftsmanshipUnitValue >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                                    ({craftsmanshipAnalysis.allTurnsAverageCraftAnalysis.craftsmanshipUnitValue >= 0 ? '+' : ''}{formatNumber(craftsmanshipAnalysis.allTurnsAverageCraftAnalysis.craftsmanshipUnitValue)})
+                                  </span>
+                                </div>
+                              </div>
+                              {craftsmanshipAnalysis.allTurnsAverageCraftAnalysis.craftsmanshipRealValue >= craftsmanshipAnalysis.craftsmanshipMarketPrice ? (
                                 <div className="text-xs text-green-400 mt-1">✓ 투입 시 이득</div>
                               ) : (
                                 <div className="text-xs text-red-400 mt-1">✗ 투입 시 손해</div>
@@ -925,11 +1366,12 @@ export default function AdvancedRefiningClient({
                     {/* 숨결 */}
                     <div>
                       <div className="text-sm font-semibold text-orange-400 mb-3">{craftsmanshipAnalysis.breathItemName}</div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* 선조턴 기준 실제 가치 */}
-                        {craftsmanshipAnalysis.ancestorOnlyBreathAnalysis && (
+                      <div className={`grid grid-cols-1 ${(activeSubTab === '상재3' || activeSubTab === '상재4') ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-4`}>
+                        {/* 상재1, 2: 선조턴 기준 */}
+                        {(activeSubTab === '상재1' || activeSubTab === '상재2') && craftsmanshipAnalysis.ancestorOnlyBreathAnalysis && (
                           <div className="bg-gray-900/50 rounded-lg p-4">
                             <div className="text-xs font-semibold text-purple-400 mb-2">선조턴 기준</div>
+                            <div className="text-xs text-gray-400 mb-2">비교: 미투입 vs 선조턴만</div>
                             <div className="space-y-2 text-sm">
                               <div className="flex justify-between">
                                 <span className="text-gray-300">1개당 거래소 가격</span>
@@ -957,10 +1399,107 @@ export default function AdvancedRefiningClient({
                           </div>
                         )}
                         
-                        {/* 일반턴+선조턴 평균 실제 가치 */}
-                        {craftsmanshipAnalysis.bothTurnsBreathAnalysis && (
+                        {/* 상재1, 2: 일반턴 기준 */}
+                        {(activeSubTab === '상재1' || activeSubTab === '상재2') && craftsmanshipAnalysis.normalTurnBreathAnalysis && (
                           <div className="bg-gray-900/50 rounded-lg p-4">
-                            <div className="text-xs font-semibold text-blue-400 mb-2">일반턴+선조턴 평균</div>
+                            <div className="text-xs font-semibold text-cyan-400 mb-2">일반턴 기준</div>
+                            <div className="text-xs text-gray-400 mb-2">비교: 선조만 vs 모든 턴</div>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-gray-300">1개당 거래소 가격</span>
+                                <span className="text-white font-medium">
+                                  {formatNumber(craftsmanshipAnalysis.breathMarketPrice)} 골드
+                                </span>
+                              </div>
+                              <div className="pt-2 mt-2 border-t border-gray-700 flex justify-between items-center">
+                                <span className="text-cyan-300 font-semibold">실제 가치</span>
+                                <div className="flex items-center gap-2">
+                                  <span className={`text-lg font-bold ${craftsmanshipAnalysis.normalTurnBreathAnalysis.breathRealValue >= craftsmanshipAnalysis.breathMarketPrice ? 'text-green-400' : 'text-red-400'}`}>
+                                    {formatNumber(craftsmanshipAnalysis.normalTurnBreathAnalysis.breathRealValue)} 골드
+                                  </span>
+                                  <span className={`text-sm ${craftsmanshipAnalysis.normalTurnBreathAnalysis.breathUnitValue >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                                    ({craftsmanshipAnalysis.normalTurnBreathAnalysis.breathUnitValue >= 0 ? '+' : ''}{formatNumber(craftsmanshipAnalysis.normalTurnBreathAnalysis.breathUnitValue)})
+                                  </span>
+                                </div>
+                              </div>
+                              {craftsmanshipAnalysis.normalTurnBreathAnalysis.breathRealValue >= craftsmanshipAnalysis.breathMarketPrice ? (
+                                <div className="text-xs text-green-400 mt-1">✓ 투입 시 이득</div>
+                              ) : (
+                                <div className="text-xs text-red-400 mt-1">✗ 투입 시 손해</div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* 상재1, 2: 전체 턴 평균 */}
+                        {(activeSubTab === '상재1' || activeSubTab === '상재2') && craftsmanshipAnalysis.allTurnsAverageBreathAnalysis && (
+                          <div className="bg-gray-900/50 rounded-lg p-4">
+                            <div className="text-xs font-semibold text-green-400 mb-2">전체 턴 평균</div>
+                            <div className="text-xs text-gray-400 mb-2">비교: 미반영 vs 모든 턴</div>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-gray-300">1개당 거래소 가격</span>
+                                <span className="text-white font-medium">
+                                  {formatNumber(craftsmanshipAnalysis.breathMarketPrice)} 골드
+                                </span>
+                              </div>
+                              <div className="pt-2 mt-2 border-t border-gray-700 flex justify-between items-center">
+                                <span className="text-green-300 font-semibold">실제 가치</span>
+                                <div className="flex items-center gap-2">
+                                  <span className={`text-lg font-bold ${craftsmanshipAnalysis.allTurnsAverageBreathAnalysis.breathRealValue >= craftsmanshipAnalysis.breathMarketPrice ? 'text-green-400' : 'text-red-400'}`}>
+                                    {formatNumber(craftsmanshipAnalysis.allTurnsAverageBreathAnalysis.breathRealValue)} 골드
+                                  </span>
+                                  <span className={`text-sm ${craftsmanshipAnalysis.allTurnsAverageBreathAnalysis.breathUnitValue >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                                    ({craftsmanshipAnalysis.allTurnsAverageBreathAnalysis.breathUnitValue >= 0 ? '+' : ''}{formatNumber(craftsmanshipAnalysis.allTurnsAverageBreathAnalysis.breathUnitValue)})
+                                  </span>
+                                </div>
+                              </div>
+                              {craftsmanshipAnalysis.allTurnsAverageBreathAnalysis.breathRealValue >= craftsmanshipAnalysis.breathMarketPrice ? (
+                                <div className="text-xs text-green-400 mt-1">✓ 투입 시 이득</div>
+                              ) : (
+                                <div className="text-xs text-red-400 mt-1">✗ 투입 시 손해</div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* 상재3, 4: 강화선조턴 기준 */}
+                        {(activeSubTab === '상재3' || activeSubTab === '상재4') && craftsmanshipAnalysis.enhancedAncestorTurnBreathAnalysis && (
+                          <div className="bg-gray-900/50 rounded-lg p-4">
+                            <div className="text-xs font-semibold text-purple-400 mb-2">강화선조턴 기준</div>
+                            <div className="text-xs text-gray-400 mb-2">비교: 미반영 vs 강화선조턴만</div>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-gray-300">1개당 거래소 가격</span>
+                                <span className="text-white font-medium">
+                                  {formatNumber(craftsmanshipAnalysis.breathMarketPrice)} 골드
+                                </span>
+                              </div>
+                              <div className="pt-2 mt-2 border-t border-gray-700 flex justify-between items-center">
+                                <span className="text-purple-300 font-semibold">실제 가치</span>
+                                <div className="flex items-center gap-2">
+                                  <span className={`text-lg font-bold ${craftsmanshipAnalysis.enhancedAncestorTurnBreathAnalysis.breathRealValue >= craftsmanshipAnalysis.breathMarketPrice ? 'text-green-400' : 'text-red-400'}`}>
+                                    {formatNumber(craftsmanshipAnalysis.enhancedAncestorTurnBreathAnalysis.breathRealValue)} 골드
+                                  </span>
+                                  <span className={`text-sm ${craftsmanshipAnalysis.enhancedAncestorTurnBreathAnalysis.breathUnitValue >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                                    ({craftsmanshipAnalysis.enhancedAncestorTurnBreathAnalysis.breathUnitValue >= 0 ? '+' : ''}{formatNumber(craftsmanshipAnalysis.enhancedAncestorTurnBreathAnalysis.breathUnitValue)})
+                                  </span>
+                                </div>
+                              </div>
+                              {craftsmanshipAnalysis.enhancedAncestorTurnBreathAnalysis.breathRealValue >= craftsmanshipAnalysis.breathMarketPrice ? (
+                                <div className="text-xs text-green-400 mt-1">✓ 투입 시 이득</div>
+                              ) : (
+                                <div className="text-xs text-red-400 mt-1">✗ 투입 시 손해</div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* 상재3, 4: 선조턴 기준 */}
+                        {(activeSubTab === '상재3' || activeSubTab === '상재4') && craftsmanshipAnalysis.ancestorTurnBreathAnalysis && (
+                          <div className="bg-gray-900/50 rounded-lg p-4">
+                            <div className="text-xs font-semibold text-blue-400 mb-2">선조턴 기준</div>
+                            <div className="text-xs text-gray-400 mb-2">비교: 강화선조만 vs 강화선조+선조</div>
                             <div className="space-y-2 text-sm">
                               <div className="flex justify-between">
                                 <span className="text-gray-300">1개당 거래소 가격</span>
@@ -971,15 +1510,79 @@ export default function AdvancedRefiningClient({
                               <div className="pt-2 mt-2 border-t border-gray-700 flex justify-between items-center">
                                 <span className="text-blue-300 font-semibold">실제 가치</span>
                                 <div className="flex items-center gap-2">
-                                  <span className={`text-lg font-bold ${craftsmanshipAnalysis.bothTurnsBreathAnalysis.breathRealValue >= craftsmanshipAnalysis.breathMarketPrice ? 'text-green-400' : 'text-red-400'}`}>
-                                    {formatNumber(craftsmanshipAnalysis.bothTurnsBreathAnalysis.breathRealValue)} 골드
+                                  <span className={`text-lg font-bold ${craftsmanshipAnalysis.ancestorTurnBreathAnalysis.breathRealValue >= craftsmanshipAnalysis.breathMarketPrice ? 'text-green-400' : 'text-red-400'}`}>
+                                    {formatNumber(craftsmanshipAnalysis.ancestorTurnBreathAnalysis.breathRealValue)} 골드
                                   </span>
-                                  <span className={`text-sm ${craftsmanshipAnalysis.bothTurnsBreathAnalysis.breathUnitValue >= 0 ? 'text-green-300' : 'text-red-300'}`}>
-                                    ({craftsmanshipAnalysis.bothTurnsBreathAnalysis.breathUnitValue >= 0 ? '+' : ''}{formatNumber(craftsmanshipAnalysis.bothTurnsBreathAnalysis.breathUnitValue)})
+                                  <span className={`text-sm ${craftsmanshipAnalysis.ancestorTurnBreathAnalysis.breathUnitValue >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                                    ({craftsmanshipAnalysis.ancestorTurnBreathAnalysis.breathUnitValue >= 0 ? '+' : ''}{formatNumber(craftsmanshipAnalysis.ancestorTurnBreathAnalysis.breathUnitValue)})
                                   </span>
                                 </div>
                               </div>
-                              {craftsmanshipAnalysis.bothTurnsBreathAnalysis.breathRealValue >= craftsmanshipAnalysis.breathMarketPrice ? (
+                              {craftsmanshipAnalysis.ancestorTurnBreathAnalysis.breathRealValue >= craftsmanshipAnalysis.breathMarketPrice ? (
+                                <div className="text-xs text-green-400 mt-1">✓ 투입 시 이득</div>
+                              ) : (
+                                <div className="text-xs text-red-400 mt-1">✗ 투입 시 손해</div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* 상재3, 4: 일반턴 기준 */}
+                        {(activeSubTab === '상재3' || activeSubTab === '상재4') && craftsmanshipAnalysis.normalTurnBreathAnalysis && (
+                          <div className="bg-gray-900/50 rounded-lg p-4">
+                            <div className="text-xs font-semibold text-cyan-400 mb-2">일반턴 기준</div>
+                            <div className="text-xs text-gray-400 mb-2">비교: 강화선조+선조 vs 모든 턴</div>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-gray-300">1개당 거래소 가격</span>
+                                <span className="text-white font-medium">
+                                  {formatNumber(craftsmanshipAnalysis.breathMarketPrice)} 골드
+                                </span>
+                      </div>
+                              <div className="pt-2 mt-2 border-t border-gray-700 flex justify-between items-center">
+                                <span className="text-cyan-300 font-semibold">실제 가치</span>
+                                <div className="flex items-center gap-2">
+                                  <span className={`text-lg font-bold ${craftsmanshipAnalysis.normalTurnBreathAnalysis.breathRealValue >= craftsmanshipAnalysis.breathMarketPrice ? 'text-green-400' : 'text-red-400'}`}>
+                                    {formatNumber(craftsmanshipAnalysis.normalTurnBreathAnalysis.breathRealValue)} 골드
+                                  </span>
+                                  <span className={`text-sm ${craftsmanshipAnalysis.normalTurnBreathAnalysis.breathUnitValue >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                                    ({craftsmanshipAnalysis.normalTurnBreathAnalysis.breathUnitValue >= 0 ? '+' : ''}{formatNumber(craftsmanshipAnalysis.normalTurnBreathAnalysis.breathUnitValue)})
+                                  </span>
+                                </div>
+                              </div>
+                              {craftsmanshipAnalysis.normalTurnBreathAnalysis.breathRealValue >= craftsmanshipAnalysis.breathMarketPrice ? (
+                                <div className="text-xs text-green-400 mt-1">✓ 투입 시 이득</div>
+                              ) : (
+                                <div className="text-xs text-red-400 mt-1">✗ 투입 시 손해</div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* 상재3, 4: 전체 턴 평균 */}
+                        {(activeSubTab === '상재3' || activeSubTab === '상재4') && craftsmanshipAnalysis.allTurnsAverageBreathAnalysis && (
+                          <div className="bg-gray-900/50 rounded-lg p-4">
+                            <div className="text-xs font-semibold text-green-400 mb-2">전체 턴 평균</div>
+                            <div className="text-xs text-gray-400 mb-2">비교: 미반영 vs 모든 턴</div>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-gray-300">1개당 거래소 가격</span>
+                                <span className="text-white font-medium">
+                                  {formatNumber(craftsmanshipAnalysis.breathMarketPrice)} 골드
+                                </span>
+                              </div>
+                              <div className="pt-2 mt-2 border-t border-gray-700 flex justify-between items-center">
+                                <span className="text-green-300 font-semibold">실제 가치</span>
+                                <div className="flex items-center gap-2">
+                                  <span className={`text-lg font-bold ${craftsmanshipAnalysis.allTurnsAverageBreathAnalysis.breathRealValue >= craftsmanshipAnalysis.breathMarketPrice ? 'text-green-400' : 'text-red-400'}`}>
+                                    {formatNumber(craftsmanshipAnalysis.allTurnsAverageBreathAnalysis.breathRealValue)} 골드
+                                  </span>
+                                  <span className={`text-sm ${craftsmanshipAnalysis.allTurnsAverageBreathAnalysis.breathUnitValue >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                                    ({craftsmanshipAnalysis.allTurnsAverageBreathAnalysis.breathUnitValue >= 0 ? '+' : ''}{formatNumber(craftsmanshipAnalysis.allTurnsAverageBreathAnalysis.breathUnitValue)})
+                                  </span>
+                                </div>
+                              </div>
+                              {craftsmanshipAnalysis.allTurnsAverageBreathAnalysis.breathRealValue >= craftsmanshipAnalysis.breathMarketPrice ? (
                                 <div className="text-xs text-green-400 mt-1">✓ 투입 시 이득</div>
                               ) : (
                                 <div className="text-xs text-red-400 mt-1">✗ 투입 시 손해</div>
@@ -992,7 +1595,9 @@ export default function AdvancedRefiningClient({
 
                     <div className="mt-4 pt-4 border-t border-gray-700">
                       <div className="text-sm text-gray-400 text-center leading-relaxed">
-                        해당 계산은 보조재료 한 종류만의 효과를 독립적으로 계산해본 것이며, 최적 시뮬레이션 결과와 차이가 있을 수 있습니다. 참고만 해 주세요.
+                        각 턴 타입별로 보조재료를 추가 투입했을 때의 순수 가치를 측정한 것입니다.
+                        <br />
+                        두 케이스의 보조재료 투입 수량 차이를 통해 1개당 실제 가치를 산출합니다.
                         <br />
                         (실제 재련은 위쪽의 최적 시뮬레이션 결과대로 하시는 걸 추천합니다)
                       </div>

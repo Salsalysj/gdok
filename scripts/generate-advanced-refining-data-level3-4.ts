@@ -80,19 +80,19 @@ const MATERIALS_WEAPON_LEVEL4 = {
   fragment: 13000,
   silver: 70000,
   gold: 4000,
-  breath: 20,
+  breath: 25,
   craftsmanship: 1,
 };
 
 // 재료 수량 (상재4 방어구)
 const MATERIALS_ARMOR_LEVEL4 = {
-  guardianStone: 1000,
-  breakthroughStone: 18,
-  fusionMaterial: 17,
-  fragment: 7000,
-  silver: 44000,
-  gold: 2000,
-  breath: 20,
+  guardianStone: 1200,
+  breakthroughStone: 23,
+  fusionMaterial: 19,
+  fragment: 8000,
+  silver: 56000,
+  gold: 2400,
+  breath: 25,
   craftsmanship: 1,
 };
 
@@ -131,11 +131,33 @@ function selectAncestorEffect(isEnhanced: boolean): AncestorEffect {
 }
 
 // 기본 경험치 획득 (재련 1회당)
-function getBaseExp(): number {
+// useBreath: 숨결 사용 여부 (대성공 +15%, 대성공x2 +15%)
+// useCraftsmanship: 야금술/재봉술 사용 여부 (대성공 +30%, 대성공x2 +20%)
+function getBaseExp(useBreath: boolean = false, useCraftsmanship: boolean = false): number {
+  // 기본 확률
+  let prob10 = EXP_10_PROBABILITY; // 80%
+  let prob20 = EXP_20_PROBABILITY; // 15%
+  let prob40 = EXP_40_PROBABILITY; // 5%
+  
+  // 숨결 효과: 대성공 +15%, 대성공x2 +15%
+  if (useBreath) {
+    prob20 += 0.15;
+    prob40 += 0.15;
+  }
+  
+  // 야금술/재봉술 효과: 대성공 +30%, 대성공x2 +20%
+  if (useCraftsmanship) {
+    prob20 += 0.30;
+    prob40 += 0.20;
+  }
+  
+  // 일반 성공 확률 조정 (전체 확률이 100%가 되도록)
+  prob10 = 1.0 - prob20 - prob40;
+  
   const random = Math.random();
-  if (random < EXP_10_PROBABILITY) {
+  if (random < prob10) {
     return 10;
-  } else if (random < EXP_10_PROBABILITY + EXP_20_PROBABILITY) {
+  } else if (random < prob10 + prob20) {
     return 20;
   } else {
     return 40;
@@ -187,6 +209,11 @@ function simulateRefinement(
   } else {
     materials = gearType === '무기' ? MATERIALS_WEAPON_LEVEL4 : MATERIALS_ARMOR_LEVEL4;
   }
+  // 레벨에 따른 야금술/재봉술 단계 결정
+  const craftsmanshipName = gearType === '무기' 
+    ? `장인의 야금술 : ${level}단계` 
+    : `장인의 재봉술 : ${level}단계`;
+  
   const materialUsage: { [key: string]: number } = {
     [gearType === '무기' ? '운명의 파괴석' : '운명의 수호석']: 0,
     '운명의 돌파석': 0,
@@ -195,7 +222,7 @@ function simulateRefinement(
     '실링': 0,
     '골드': 0,
     [gearType === '무기' ? '용암의 숨결' : '빙하의 숨결']: 0,
-    [gearType === '무기' ? '장인의 야금술 : 1단계' : '장인의 재봉술 : 1단계']: 0,
+    [craftsmanshipName]: 0,
   };
   
   while (totalExp < targetExp && attempts < maxAttempts) {
@@ -251,11 +278,7 @@ function simulateRefinement(
       }
     }
     if (currentStrategy.useCraftsmanship) {
-      if (gearType === '무기') {
-        materialUsage['장인의 야금술 : 1단계'] += materials.craftsmanship;
-      } else {
-        materialUsage['장인의 재봉술 : 1단계'] += materials.craftsmanship;
-      }
+      materialUsage[craftsmanshipName] += materials.craftsmanship;
     }
     
     // 경험치 획득
@@ -263,7 +286,7 @@ function simulateRefinement(
     
     if (currentTurnType === 'ancestor' || currentTurnType === 'enhancedAncestor') {
       // 선조의 가호 턴: 기본 경험치 획득 후 선조의 가호 효과 적용
-      const baseExp = getBaseExp();
+      const baseExp = getBaseExp(currentStrategy.useBreath, currentStrategy.useCraftsmanship);
       const effect = selectAncestorEffect(currentTurnType === 'enhancedAncestor');
       expGain = applyAncestorEffect(effect, currentTurnType === 'enhancedAncestor', baseExp);
       totalExp += expGain;
@@ -281,7 +304,7 @@ function simulateRefinement(
       }
     } else {
       // 일반 턴 또는 무료 턴: 기본 경험치만 획득
-      expGain = getBaseExp();
+      expGain = getBaseExp(currentStrategy.useBreath, currentStrategy.useCraftsmanship);
       totalExp += expGain;
     }
     
