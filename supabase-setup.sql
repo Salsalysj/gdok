@@ -221,6 +221,13 @@ CREATE POLICY "모든 사용자 삭제 허용 event" ON saved_event_efficiency
 ALTER TABLE saved_event_efficiency 
 ADD COLUMN IF NOT EXISTS end_date DATE;
 
+-- saved_event_efficiency 테이블에 total_weeks, total_hours 필드 추가 (기존 테이블 마이그레이션)
+ALTER TABLE saved_event_efficiency 
+ADD COLUMN IF NOT EXISTS total_weeks NUMERIC;
+
+ALTER TABLE saved_event_efficiency 
+ADD COLUMN IF NOT EXISTS total_hours NUMERIC;
+
 -- 아크패스 선택 가이드 저장 테이블 생성
 CREATE TABLE IF NOT EXISTS saved_arkpass_guides (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,

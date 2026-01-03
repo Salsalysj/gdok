@@ -135,7 +135,7 @@ type Props = {
     fragmentValue?: number;
     cardExpValue?: number;
   }[];
-  initialSavedEventEfficiency?: Array<{ id: string; name: string; created_at: string; updated_at: string; weekly_rewards?: any; cumulative_rewards?: any; end_date?: string | null }>;
+  initialSavedEventEfficiency?: Array<{ id: string; name: string; created_at: string; updated_at: string; weekly_rewards?: any; cumulative_rewards?: any; end_date?: string | null; total_weeks?: number | null; total_hours?: number | null }>;
 };
 
 export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, marketCache, discordRate, kurzanStages, initialSavedEventEfficiency = [] }: Props) {
@@ -182,8 +182,22 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
     return null;
   };
   
+  const getInitialTotalWeeks = (): string => {
+    if (initialSavedEventEfficiency.length > 0 && initialSavedEventEfficiency[0].total_weeks != null) {
+      return initialSavedEventEfficiency[0].total_weeks.toString();
+    }
+    return '7';
+  };
+  
+  const getInitialTotalHours = (): string => {
+    if (initialSavedEventEfficiency.length > 0 && initialSavedEventEfficiency[0].total_hours != null) {
+      return initialSavedEventEfficiency[0].total_hours.toString();
+    }
+    return '70';
+  };
+  
   // 저장된 이벤트 효율 관련 상태
-  const [savedEventEfficiency, setSavedEventEfficiency] = useState<Array<{ id: string; name: string; created_at: string; updated_at: string; weekly_rewards?: any; cumulative_rewards?: any; end_date?: string | null }>>(initialSavedEventEfficiency);
+  const [savedEventEfficiency, setSavedEventEfficiency] = useState<Array<{ id: string; name: string; created_at: string; updated_at: string; weekly_rewards?: any; cumulative_rewards?: any; end_date?: string | null; total_weeks?: number | null; total_hours?: number | null }>>(initialSavedEventEfficiency);
   const [selectedEventEfficiencyId, setSelectedEventEfficiencyId] = useState<string | null>(getInitialSelectedId());
   const [isLoading, setIsLoading] = useState(false);
   
@@ -199,6 +213,21 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
         if (data.items) {
           console.log('[이벤트 효율] 서버에서 불러온 최신 데이터:', data.items.map((item: any) => ({ id: item.id, name: item.name })));
           setSavedEventEfficiency(data.items);
+          
+          // 저장된 이벤트가 없거나 모두 종료일이 지난 경우 기본정보 카드 숨김
+          if (data.items.length === 0) {
+            setShowBasicInfo(false);
+          } else {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const hasActive = data.items.some((item: any) => {
+              if (!item.end_date) return true;
+              const end = new Date(item.end_date);
+              end.setHours(23, 59, 59, 999);
+              return end >= today;
+            });
+            setShowBasicInfo(hasActive);
+          }
         }
       } catch (error) {
         console.error('[이벤트 효율] 최신 데이터 불러오기 실패:', error);
@@ -365,11 +394,41 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
   const [enabledRewards, setEnabledRewards] = useState<Record<string, boolean>>({});
   const [braceletPriceInput, setBraceletPriceInput] = useState('100');
   const [totalDaysInput, setTotalDaysInput] = useState('7');
-  const [totalWeeksInput, setTotalWeeksInput] = useState('7');
-  const [totalHoursInput, setTotalHoursInput] = useState('70');
+  const [totalWeeksInput, setTotalWeeksInput] = useState(getInitialTotalWeeks());
+  const [totalHoursInput, setTotalHoursInput] = useState(getInitialTotalHours());
   const [legendaryCardSelectionPriceInput, setLegendaryCardSelectionPriceInput] = useState('50000');
   const [eventName, setEventName] = useState(getInitialEventName());
   const [endDate, setEndDate] = useState(getInitialEndDate());
+  
+  // 활성 이벤트(종료일이 지나지 않은 이벤트)가 있는지 확인
+  const hasActiveEvent = useMemo(() => {
+    if (savedEventEfficiency.length === 0) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return savedEventEfficiency.some((item) => {
+      if (!item.end_date) return true; // 종료일이 없으면 활성
+      const end = new Date(item.end_date);
+      end.setHours(23, 59, 59, 999);
+      return end >= today;
+    });
+  }, [savedEventEfficiency]);
+  
+  // 기본정보 카드 표시 여부 (활성 이벤트가 있거나 선택된 이벤트가 있으면 표시)
+  const [showBasicInfo, setShowBasicInfo] = useState(() => {
+    // 초기값: 저장된 이벤트가 있고 활성 이벤트가 있으면 표시
+    if (initialSavedEventEfficiency.length > 0) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const hasActive = initialSavedEventEfficiency.some((item) => {
+        if (!item.end_date) return true;
+        const end = new Date(item.end_date);
+        end.setHours(23, 59, 59, 999);
+        return end >= today;
+      });
+      return hasActive;
+    }
+    return false;
+  });
   const [kurzanSwitches, setKurzanSwitches] = useState({
     breakthrough: true,
     fragment: true,
@@ -560,6 +619,14 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
   }, [totalDaysNumber]);
 
   const adjustedKurzanValue = useMemo(() => {
+    // 상시 혜택의 쿠르잔 전선 보상은 가치계산DB의 "휴식 게이지 회복 비약" 가치의 2배 사용
+    if (adjustedEntries && adjustedEntries.length > 0) {
+      const restGaugePotion = adjustedEntries.find(entry => entry.itemName === '휴식 게이지 회복 비약');
+      if (restGaugePotion && restGaugePotion.unitType === '골드' && restGaugePotion.unitValue != null) {
+        return restGaugePotion.unitValue * 2;
+      }
+    }
+    // fallback: 기존 로직 (쿠르잔 스테이지 가치)
     if (!selectedKurzanStage) return null;
     const base = selectedKurzanStage.totalGold ?? 0;
     const deduction =
@@ -567,7 +634,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
       (!kurzanSwitches.fragment ? selectedKurzanStage.fragmentValue : 0) +
       (!kurzanSwitches.cardExp ? selectedKurzanStage.cardExpValue : 0);
     return Math.max(base - deduction, 0);
-  }, [selectedKurzanStage, kurzanSwitches]);
+  }, [adjustedEntries, selectedKurzanStage, kurzanSwitches]);
 
   const handleKurzanSwitchToggle = (key: 'breakthrough' | 'fragment' | 'cardExp') => {
     setKurzanSwitches((prev) => ({
@@ -637,6 +704,20 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
     // 실링, 배틀 아이템은 제외
     if (itemName === '실링' || itemName === '배틀 아이템 종합 상자') {
       return defaultResult;
+    }
+
+    // 0. 가치계산DB에서 먼저 찾기 (우선순위 - 가격 조정이 이미 적용된 데이터)
+    if (adjustedEntries && adjustedEntries.length > 0) {
+      const valueDbEntry = adjustedEntries.find(entry => entry.itemName === itemName);
+      if (valueDbEntry && valueDbEntry.unitType === '골드' && valueDbEntry.unitValue != null) {
+        return {
+          unit: 'gold',
+          unitAmount: valueDbEntry.unitValue,
+          goldEquivalent: valueDbEntry.unitValue,
+          cashEquivalent: null,
+          note: valueDbEntry.note || null,
+        };
+      }
     }
 
     // 가격 조정을 적용하는 헬퍼 함수
@@ -997,7 +1078,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
       default:
         return defaultResult;
     }
-  }, [adjustPrice, etcListItems, allMarketItems, getMarketPrice, crystalGoldRate, braceletUnitPrice, legendaryCardSelectionUnitPrice, chaosStoneQuality, priceOverrideState]);
+  }, [adjustPrice, etcListItems, allMarketItems, getMarketPrice, crystalGoldRate, braceletUnitPrice, legendaryCardSelectionUnitPrice, chaosStoneQuality, priceOverrideState, adjustedEntries]);
 
   const formatCount = (value: number) => formatNumberWithSignificantDigits(value);
 
@@ -1153,6 +1234,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
     return sum > 0 ? sum : null;
   }, [
     pcBangLuckyBoxDetails,
+    getItemPriceInfo,
     convertCashToGold,
     convertCrystalToGold,
     etcListItems,
@@ -1161,6 +1243,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
     chaosStoneQuality,
     allMarketItems,
     pcBangDetailEnabled,
+    adjustedEntries,
   ]);
 
   const aggregateRewards = useMemo(() => {
@@ -1557,6 +1640,8 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
             weekly_rewards: weeklyRewardsEditable,
             cumulative_rewards: cumulativeRewardsEditable,
             end_date: endDate || null,
+            total_weeks: totalWeeksInput ? parseFloat(totalWeeksInput) || null : null,
+            total_hours: totalHoursInput ? parseFloat(totalHoursInput) || null : null,
           }),
         });
       } else {
@@ -1569,6 +1654,8 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
             weekly_rewards: weeklyRewardsEditable,
             cumulative_rewards: cumulativeRewardsEditable,
             end_date: endDate || null,
+            total_weeks: totalWeeksInput ? parseFloat(totalWeeksInput) || null : null,
+            total_hours: totalHoursInput ? parseFloat(totalHoursInput) || null : null,
           }),
         });
       }
@@ -1624,7 +1711,18 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
           } else {
             setEndDate('');
           }
+          if (itemToLoad.total_weeks != null) {
+            setTotalWeeksInput(itemToLoad.total_weeks.toString());
+          } else {
+            setTotalWeeksInput('7');
+          }
+          if (itemToLoad.total_hours != null) {
+            setTotalHoursInput(itemToLoad.total_hours.toString());
+          } else {
+            setTotalHoursInput('70');
+          }
           setSelectedEventEfficiencyId(itemId);
+          setShowBasicInfo(true); // 이벤트를 불러올 때 기본정보 카드 표시
           alert('이벤트 효율이 불러와졌습니다.');
         } else {
           throw new Error('이벤트 효율을 찾을 수 없습니다.');
@@ -1692,6 +1790,9 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
     setSelectedEventEfficiencyId(null);
     setEventName('');
     setEndDate('');
+    setTotalWeeksInput('7');
+    setTotalHoursInput('70');
+    setShowBasicInfo(true); // 새로 만들기 버튼 클릭 시 기본정보 카드 표시
   };
 
   // 레거시 함수 - 사용되지 않음 (renderEditableRewardTableNew 사용)
@@ -3256,76 +3357,80 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
             </div>
           </div>
           
-          {/* 새로 만들기 버튼 */}
-          <div className="mb-3">
-            <button
-              onClick={handleNewEventEfficiency}
-              className="px-5 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all disabled:opacity-50 font-semibold shadow-md shadow-green-500/30 hover:shadow-lg hover:shadow-green-500/50 transform hover:scale-105 active:scale-95 border border-green-500/50"
-              disabled={isLoading}
-            >
-              <span className="flex items-center gap-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                새로 만들기
-              </span>
-            </button>
-          </div>
+          {/* 새로 만들기 버튼 (로컬에서만 표시) */}
+          {allowEventEfficiencySave && (
+            <div className="mb-3">
+              <button
+                onClick={handleNewEventEfficiency}
+                className="px-5 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all disabled:opacity-50 font-semibold shadow-md shadow-green-500/30 hover:shadow-lg hover:shadow-green-500/50 transform hover:scale-105 active:scale-95 border border-green-500/50"
+                disabled={isLoading}
+              >
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  새로 만들기
+                </span>
+              </button>
+            </div>
+          )}
           
-          {/* 저장된 이벤트 효율 목록 (배포 버전에서도 보기 가능) */}
+          {/* 저장된 이벤트 효율 드롭다운 */}
           {savedEventEfficiency.length > 0 && (
             <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-4">
               <div className="mb-3">
-                <h3 className="text-base font-semibold text-white">저장된 이벤트 효율</h3>
-                <p className="text-xs text-gray-400 mt-1">버튼 클릭 시 불러오기 가능</p>
+                <h3 className="text-base font-semibold text-white mb-2">저장된 이벤트 효율</h3>
+                <div className="flex gap-2">
+                  <select
+                    value={selectedEventEfficiencyId || ''}
+                    onChange={(e) => {
+                      const itemId = e.target.value;
+                      if (itemId) {
+                        handleLoadEventEfficiency(itemId);
+                      } else {
+                        // 빈 값 선택 시 초기화
+                        setSelectedEventEfficiencyId(null);
+                        setWeeklyRewardsEditable([]);
+                        setCumulativeRewardsEditable([]);
+                        setEventName('');
+                        setEndDate('');
+                        setTotalWeeksInput('7');
+                        setTotalHoursInput('70');
+                        // 활성 이벤트가 없으면 기본정보 카드 숨김
+                        setShowBasicInfo(hasActiveEvent);
+                      }
+                    }}
+                    className="flex-1 px-4 py-2 bg-gray-900 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+                    disabled={isLoading}
+                  >
+                    <option value="">이벤트 선택...</option>
+                    {savedEventEfficiency.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                        {item.end_date ? ` (종료일: ${new Date(item.end_date).toLocaleDateString('ko-KR')})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedEventEfficiencyId && allowEventEfficiencySave && (
+                    <button
+                      onClick={() => {
+                        if (selectedEventEfficiencyId) {
+                          handleDeleteEventEfficiency(selectedEventEfficiencyId);
+                        }
+                      }}
+                      className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm"
+                      disabled={isLoading}
+                    >
+                      삭제
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {savedEventEfficiency.map((item) => {
-                  const isSelected = selectedEventEfficiencyId === item.id;
-                return (
-                    <div key={item.id} className="flex items-center gap-2">
-                  <button
-                        onClick={() => handleLoadEventEfficiency(item.id)}
-                        className={`group relative px-3 py-1.5 rounded-lg font-medium transition-all disabled:opacity-50 transform hover:scale-105 active:scale-95 text-xs ${
-                          isSelected
-                            ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg shadow-purple-500/50 ring-2 ring-purple-400 ring-offset-1 ring-offset-gray-800'
-                            : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white border border-gray-700'
-                        }`}
-                        disabled={isLoading}
-                      >
-                        <span className="flex flex-col items-start gap-0.5">
-                          <span className="flex items-center gap-1">
-                            {isSelected && (
-                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                            )}
-                            {item.name}
-                          </span>
-                          {item.end_date && (
-                            <span className="text-[10px] text-gray-400">
-                              종료일: {new Date(item.end_date).toLocaleDateString('ko-KR')}
-                            </span>
-                          )}
-                        </span>
-                  </button>
-                      {allowEventEfficiencySave && (
-                        <button
-                          onClick={() => handleDeleteEventEfficiency(item.id)}
-                          className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs transition-colors"
-                          disabled={isLoading}
-                        >
-                          삭제
-                        </button>
-                      )}
-                    </div>
-                );
-              })}
             </div>
-          </div>
           )}
           
           {/* 기본정보 입력 카드 */}
+          {showBasicInfo && (
           <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-4">
             <h3 className="text-base font-semibold text-white mb-4">기본정보</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -3348,10 +3453,33 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                   className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">총 주수</label>
+                <input
+                  type="number"
+                  value={totalWeeksInput}
+                  onChange={(e) => setTotalWeeksInput(e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+                  placeholder="총 주수"
+                  min="1"
+                  step="1"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">총 시간</label>
+                <input
+                  type="number"
+                  value={totalHoursInput}
+                  onChange={(e) => setTotalHoursInput(e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+                  placeholder="총 시간"
+                  min="1"
+                  step="1"
+                />
+              </div>
             </div>
           </div>
-          
-          
+          )}
 
           <div className="flex flex-wrap gap-2">
             {eventSubTabs.map((subTab) => {
@@ -3376,13 +3504,6 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
             {activeSubTab.key === 'summary' && (
               <div className="bg-gradient-to-br from-gray-900/90 to-gray-800/90 border-2 border-purple-500/40 rounded-2xl p-6 space-y-6 shadow-2xl">
               <div className="flex flex-col gap-4">
-                <h2 className="text-2xl font-bold text-white bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
-                  {totalWeeksNumber}주 누적 요약
-                </h2>
-                <p className="text-sm text-gray-300">
-                  {totalWeeksNumber}주 동안 매주 {totalWeeksNumber > 0 ? (totalHoursNumber / totalWeeksNumber).toFixed(1) : 0}시간씩 접속 (총 {totalHoursNumber}시간 기준). 주간 보상 × {totalWeeksNumber}회 + 누적 보상 × 1회 +
-                  상시 혜택 × 총 진행 일수({totalDaysNumber ?? 0}일)을 합산한 수치입니다.
-                </p>
                 <div className="flex flex-wrap items-center gap-4 text-sm text-gray-200 bg-gray-800/50 rounded-lg p-4 border border-gray-700">
                   <div className="flex items-center gap-2">
                     <span className="text-gray-300">총 주수:</span>
@@ -3580,41 +3701,6 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                             {composition.perUnit && (
                               <div className="text-xs text-gray-400 mt-1">1개당 {composition.perUnit}</div>
                             )}
-                            {isKurzanSummaryItem && (
-                              <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-300">
-                                {([
-                                  { key: 'breakthrough', label: '돌파석', amount: selectedKurzanStage?.breakthroughValue ?? 0 },
-                                  { key: 'fragment', label: '파편', amount: selectedKurzanStage?.fragmentValue ?? 0 },
-                                  { key: 'cardExp', label: '카경', amount: selectedKurzanStage?.cardExpValue ?? 0 },
-                                ] as const).map(({ key, label, amount }) => {
-                                  const active = kurzanSwitches[key];
-                                  const disabled = !selectedKurzanStage || amount <= 0;
-                                  return (
-                                    <div key={key} className={`flex items-center gap-2 ${disabled ? 'opacity-40' : ''}`}>
-                                      <span>{label}</span>
-                                      <button
-                                        type="button"
-                                        onClick={() => !disabled && handleKurzanSwitchToggle(key)}
-                                        disabled={disabled}
-                                        className={`w-9 h-4 rounded-full border transition-colors duration-200 ${
-                                          active ? 'bg-purple-600 border-purple-400' : 'bg-gray-600 border-gray-500'
-                                        } ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
-                                        aria-label={`${label} 가치 포함 여부`}
-                                      >
-                                        <span
-                                          className={`inline-block w-4 h-4 rounded-full bg-white transform transition-transform ${
-                                            active ? 'translate-x-4' : 'translate-x-0'
-                                          }`}
-                                        />
-                                      </button>
-                                      <span className="text-gray-500">
-                                        {amount > 0 ? `${formatNumberWithSignificantDigits(amount)}골드` : '0골드'}
-                                      </span>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
                           </td>
                           <td className="px-4 py-3 text-right text-gray-300">
                             <div>{formatNumberWithSignificantDigits(item.quantity)}</div>
@@ -3757,41 +3843,6 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                               {composition.perUnit && (
                                 <div className="text-xs text-gray-400 mt-1">1개당 {composition.perUnit}</div>
                               )}
-                              {isKurzanSummaryItem && (
-                                <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-300">
-                                  {([
-                                    { key: 'breakthrough', label: '돌파석', amount: selectedKurzanStage?.breakthroughValue ?? 0 },
-                                    { key: 'fragment', label: '파편', amount: selectedKurzanStage?.fragmentValue ?? 0 },
-                                    { key: 'cardExp', label: '카경', amount: selectedKurzanStage?.cardExpValue ?? 0 },
-                                  ] as const).map(({ key, label, amount }) => {
-                                    const active = kurzanSwitches[key];
-                                    const disabled = !selectedKurzanStage || amount <= 0;
-                                    return (
-                                      <div key={key} className={`flex items-center gap-2 ${disabled ? 'opacity-40' : ''}`}>
-                                        <span>{label}</span>
-                                        <button
-                                          type="button"
-                                          onClick={() => !disabled && handleKurzanSwitchToggle(key)}
-                                          disabled={disabled}
-                                          className={`w-9 h-4 rounded-full border transition-colors duration-200 ${
-                                            active ? 'bg-purple-600 border-purple-400' : 'bg-gray-600 border-gray-500'
-                                          } ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
-                                          aria-label={`${label} 가치 포함 여부`}
-                                        >
-                                          <span
-                                            className={`inline-block w-4 h-4 rounded-full bg-white transform transition-transform ${
-                                              active ? 'translate-x-4' : 'translate-x-0'
-                                            }`}
-                                          />
-                                        </button>
-                                        <span className="text-gray-500">
-                                          {amount > 0 ? `${formatNumberWithSignificantDigits(amount)}골드` : '0골드'}
-                                        </span>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              )}
                             </td>
                             <td className="px-4 py-3 text-right text-gray-300">
                               <div>{formatNumberWithSignificantDigits(item.quantity)}</div>
@@ -3933,41 +3984,6 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                               </div>
                               {composition.perUnit && (
                                 <div className="text-xs text-gray-400 mt-1">1개당 {composition.perUnit}</div>
-                              )}
-                              {isKurzanSummaryItem && (
-                                <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-300">
-                                  {([
-                                    { key: 'breakthrough', label: '돌파석', amount: selectedKurzanStage?.breakthroughValue ?? 0 },
-                                    { key: 'fragment', label: '파편', amount: selectedKurzanStage?.fragmentValue ?? 0 },
-                                    { key: 'cardExp', label: '카경', amount: selectedKurzanStage?.cardExpValue ?? 0 },
-                                  ] as const).map(({ key, label, amount }) => {
-                                    const active = kurzanSwitches[key];
-                                    const disabled = !selectedKurzanStage || amount <= 0;
-                                    return (
-                                      <div key={key} className={`flex items-center gap-2 ${disabled ? 'opacity-40' : ''}`}>
-                                        <span>{label}</span>
-                                        <button
-                                          type="button"
-                                          onClick={() => !disabled && handleKurzanSwitchToggle(key)}
-                                          disabled={disabled}
-                                          className={`w-9 h-4 rounded-full border transition-colors duration-200 ${
-                                            active ? 'bg-purple-600 border-purple-400' : 'bg-gray-600 border-gray-500'
-                                          } ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
-                                          aria-label={`${label} 가치 포함 여부`}
-                                        >
-                                          <span
-                                            className={`inline-block w-4 h-4 rounded-full bg-white transform transition-transform ${
-                                              active ? 'translate-x-4' : 'translate-x-0'
-                                            }`}
-                                          />
-                                        </button>
-                                        <span className="text-gray-500">
-                                          {amount > 0 ? `${formatNumberWithSignificantDigits(amount)}골드` : '0골드'}
-                                        </span>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
                               )}
                             </td>
                             <td className="px-4 py-3 text-right text-gray-300">

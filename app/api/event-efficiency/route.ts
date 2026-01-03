@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { name, weekly_rewards, cumulative_rewards, end_date } = body;
+    const { name, weekly_rewards, cumulative_rewards, end_date, total_weeks, total_hours } = body;
 
     if (!name || !weekly_rewards || !cumulative_rewards) {
       return NextResponse.json(
@@ -65,6 +65,8 @@ export async function POST(request: NextRequest) {
           weekly_rewards,
           cumulative_rewards,
           end_date: end_date || null,
+          total_weeks: total_weeks != null ? total_weeks : null,
+          total_hours: total_hours != null ? total_hours : null,
         },
       ])
       .select()
