@@ -135,7 +135,7 @@ type Props = {
     fragmentValue?: number;
     cardExpValue?: number;
   }[];
-  initialSavedEventEfficiency?: Array<{ id: string; name: string; created_at: string; updated_at: string; weekly_rewards?: any; cumulative_rewards?: any; event_name?: string | null; event_end_date?: string | null }>;
+  initialSavedEventEfficiency?: Array<{ id: string; name: string; created_at: string; updated_at: string; weekly_rewards?: any; cumulative_rewards?: any; event_name?: string | null; event_end_date?: string | null; end_date?: string | null }>;
 };
 
 export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, marketCache, discordRate, kurzanStages, initialSavedEventEfficiency = [] }: Props) {
@@ -147,7 +147,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
   const allowEventEfficiencySave = process.env.NEXT_PUBLIC_ALLOW_PACKAGE_SAVE === 'true' || process.env.NODE_ENV === 'development';
   
   // 저장된 이벤트 효율 관련 상태
-  const [savedEventEfficiency, setSavedEventEfficiency] = useState<Array<{ id: string; name: string; created_at: string; updated_at: string; weekly_rewards?: any; cumulative_rewards?: any; event_name?: string | null; event_end_date?: string | null }>>(initialSavedEventEfficiency);
+  const [savedEventEfficiency, setSavedEventEfficiency] = useState<Array<{ id: string; name: string; created_at: string; updated_at: string; weekly_rewards?: any; cumulative_rewards?: any; event_name?: string | null; event_end_date?: string | null; end_date?: string | null }>>(initialSavedEventEfficiency);
   const [selectedEventEfficiencyId, setSelectedEventEfficiencyId] = useState<string | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveEventEfficiencyName, setSaveEventEfficiencyName] = useState('');
