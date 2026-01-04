@@ -605,56 +605,6 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
   
   // 누적 보상 상태 (직접 입력 가능) - 새 구조 적용
   const [cumulativeRewardsEditable, setCumulativeRewardsEditable] = useState<RewardGroup[]>(getInitialCumulativeRewards());
-
-  // 주간보상 총 가치 계산 (주간보상 탭에서 사용하는 계산 로직과 동일)
-  const weeklyRewardsTotalValue = useMemo(() => {
-    let total = 0;
-    weeklyRewardsEditable.forEach(group => {
-      group.items.forEach(item => {
-        if (!isNewFormatItem(item)) return;
-        item.components.forEach(comp => {
-          if (!comp.itemName || comp.itemName === '__nested__' || comp.itemName === '__manual__' || comp.itemName === '') return;
-          const unitPrice = getItemUnitPrice(comp.itemName, comp);
-          if (unitPrice === null) return;
-          const isIncluded = item.itemType === '확정' || 
-                            (item.itemType === '확률') || 
-                            (item.itemType === '선택' && comp.selected);
-          if (!isIncluded) return;
-          let value = unitPrice * (comp.quantity || 0) * (item.quantity || 1);
-          if (item.itemType === '확률' && comp.probability !== undefined) {
-            value *= comp.probability;
-          }
-          total += value;
-        });
-      });
-    });
-    return total;
-  }, [weeklyRewardsEditable, getItemUnitPrice]);
-
-  // 누적보상 총 가치 계산 (누적보상 탭에서 사용하는 계산 로직과 동일)
-  const cumulativeRewardsTotalValue = useMemo(() => {
-    let total = 0;
-    cumulativeRewardsEditable.forEach(group => {
-      group.items.forEach(item => {
-        if (!isNewFormatItem(item)) return;
-        item.components.forEach(comp => {
-          if (!comp.itemName || comp.itemName === '__nested__' || comp.itemName === '__manual__' || comp.itemName === '') return;
-          const unitPrice = getItemUnitPrice(comp.itemName, comp);
-          if (unitPrice === null) return;
-          const isIncluded = item.itemType === '확정' || 
-                            (item.itemType === '확률') || 
-                            (item.itemType === '선택' && comp.selected);
-          if (!isIncluded) return;
-          let value = unitPrice * (comp.quantity || 0) * (item.quantity || 1);
-          if (item.itemType === '확률' && comp.probability !== undefined) {
-            value *= comp.probability;
-          }
-          total += value;
-        });
-      });
-    });
-    return total;
-  }, [cumulativeRewardsEditable, getItemUnitPrice]);
   
   const kurzanStageOptions = useMemo<KurzanStageOption[]>(() => {
     return kurzanStages.map((stage, idx) => ({
@@ -4000,7 +3950,37 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                         주간 보상 총합
                       </td>
                       <td className="px-4 py-3 text-right text-yellow-300 font-bold text-lg">
-                        {weeklyRewardsTotalValue > 0 ? `${formatNumberWithSignificantDigits(weeklyRewardsTotalValue)}골드` : '-'}
+                        {(() => {
+                          const weeklyTotal = aggregateRewards
+                            .filter(item => item.category === 'weekly')
+                            .reduce((sum, item) => {
+                              const enabled = enabledRewards[item.name] ?? true;
+                              if (!enabled) return sum;
+                              const isKurzanSummaryItem = item.name === '쿠르잔 전선 보상 (휴식게이지 2배)';
+                              const isPcBangLuckyBoxSummaryItem = item.name === PC_BANG_LUCKY_SUMMARY_NAME;
+                              const kurzanValue = adjustedKurzanValue;
+                              let unitPriceInGold: number | null = null;
+                              if (isKurzanSummaryItem) {
+                                unitPriceInGold = kurzanValue;
+                              } else if (isPcBangLuckyBoxSummaryItem) {
+                                unitPriceInGold = pcBangLuckyBoxExpectedGold;
+                              } else {
+                                const priceInfo = getItemPriceInfo(getItemName(item));
+                                if (priceInfo.goldEquivalent !== null) {
+                                  unitPriceInGold = priceInfo.goldEquivalent;
+                                } else if (priceInfo.cashEquivalent !== null) {
+                                  unitPriceInGold = convertCashToGold(priceInfo.cashEquivalent);
+                                } else if (priceInfo.unit === 'crystal' && priceInfo.unitAmount !== null) {
+                                  unitPriceInGold = convertCrystalToGold(priceInfo.unitAmount);
+                                }
+                              }
+                              if (unitPriceInGold != null) {
+                                return sum + unitPriceInGold * item.quantity;
+                              }
+                              return sum;
+                            }, 0);
+                          return weeklyTotal > 0 ? `${formatNumberWithSignificantDigits(weeklyTotal)}골드` : '-';
+                        })()}
                       </td>
                     </tr>
                   </tfoot>
@@ -4153,7 +4133,37 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                             누적 보상 총합
                           </td>
                           <td className="px-4 py-3 text-right text-yellow-300 font-bold text-lg">
-                            {cumulativeRewardsTotalValue > 0 ? `${formatNumberWithSignificantDigits(cumulativeRewardsTotalValue)}골드` : '-'}
+                            {(() => {
+                              const cumulativeTotal = aggregateRewards
+                                .filter(item => item.category === 'cumulative')
+                                .reduce((sum, item) => {
+                                  const enabled = enabledRewards[item.name] ?? true;
+                                  if (!enabled) return sum;
+                                  const isKurzanSummaryItem = item.name === '쿠르잔 전선 보상 (휴식게이지 2배)';
+                                  const isPcBangLuckyBoxSummaryItem = item.name === PC_BANG_LUCKY_SUMMARY_NAME;
+                                  const kurzanValue = adjustedKurzanValue;
+                                  let unitPriceInGold: number | null = null;
+                                  if (isKurzanSummaryItem) {
+                                    unitPriceInGold = kurzanValue;
+                                  } else if (isPcBangLuckyBoxSummaryItem) {
+                                    unitPriceInGold = pcBangLuckyBoxExpectedGold;
+                                  } else {
+                                    const priceInfo = getItemPriceInfo(getItemName(item));
+                                    if (priceInfo.goldEquivalent !== null) {
+                                      unitPriceInGold = priceInfo.goldEquivalent;
+                                    } else if (priceInfo.cashEquivalent !== null) {
+                                      unitPriceInGold = convertCashToGold(priceInfo.cashEquivalent);
+                                    } else if (priceInfo.unit === 'crystal' && priceInfo.unitAmount !== null) {
+                                      unitPriceInGold = convertCrystalToGold(priceInfo.unitAmount);
+                                    }
+                                  }
+                                  if (unitPriceInGold != null) {
+                                    return sum + unitPriceInGold * item.quantity;
+                                  }
+                                  return sum;
+                                }, 0);
+                              return cumulativeTotal > 0 ? `${formatNumberWithSignificantDigits(cumulativeTotal)}골드` : '-';
+                            })()}
                           </td>
                         </tr>
                       </tfoot>
