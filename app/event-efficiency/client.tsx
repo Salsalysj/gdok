@@ -3846,27 +3846,28 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                               note: pcBangLuckyBoxExpectedGold != null ? '상세 구성 기대값' : null,
                             }
                           : getItemPriceInfo(getItemName(item));
-                      const unitDisplay = isKurzanSummaryItem
-                        ? kurzanValue != null
-                          ? `${formatNumberWithSignificantDigits(kurzanValue)}골드`
-                          : '-'
-                        : isPcBangLuckyBoxSummaryItem
-                          ? pcBangLuckyBoxExpectedGold != null
-                            ? `${formatNumberWithSignificantDigits(pcBangLuckyBoxExpectedGold)}골드`
-                            : '-'
-                          : formatPriceDisplay(priceInfo.unitAmount, priceInfo.unit);
-                      const totalDisplay = isKurzanSummaryItem
-                        ? kurzanValue != null
-                          ? `${formatNumberWithSignificantDigits(kurzanValue * item.quantity)}골드`
-                          : '-'
-                        : isPcBangLuckyBoxSummaryItem
-                          ? pcBangLuckyBoxExpectedGold != null
-                            ? `${formatNumberWithSignificantDigits(pcBangLuckyBoxExpectedGold * item.quantity)}골드`
-                            : '-'
-                          : formatPriceDisplay(
-                              priceInfo.unitAmount !== null ? priceInfo.unitAmount * item.quantity : null,
-                              priceInfo.unit
-                            );
+                      // 단가를 골드로 통일
+                      let unitPriceInGold: number | null = null;
+                      if (isKurzanSummaryItem) {
+                        unitPriceInGold = kurzanValue;
+                      } else if (isPcBangLuckyBoxSummaryItem) {
+                        unitPriceInGold = pcBangLuckyBoxExpectedGold;
+                      } else {
+                        // priceInfo에서 골드 가치 가져오기
+                        if (priceInfo.goldEquivalent !== null) {
+                          unitPriceInGold = priceInfo.goldEquivalent;
+                        } else if (priceInfo.cashEquivalent !== null) {
+                          unitPriceInGold = convertCashToGold(priceInfo.cashEquivalent);
+                        } else if (priceInfo.unit === 'crystal' && priceInfo.unitAmount !== null) {
+                          unitPriceInGold = convertCrystalToGold(priceInfo.unitAmount);
+                        }
+                      }
+                      const unitDisplay = unitPriceInGold != null
+                        ? `${formatNumberWithSignificantDigits(unitPriceInGold)}골드`
+                        : '-';
+                      const totalDisplay = unitPriceInGold != null && item.quantity > 0
+                        ? `${formatNumberWithSignificantDigits(unitPriceInGold * item.quantity)}골드`
+                        : '-';
                       const composition = getCompositionInfo(getItemName(item), item.quantity);
 
                       return (
@@ -3988,27 +3989,28 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                   note: pcBangLuckyBoxExpectedGold != null ? '상세 구성 기대값' : null,
                                 }
                               : getItemPriceInfo(getItemName(item));
-                          const unitDisplay = isKurzanSummaryItem
-                            ? kurzanValue != null
-                              ? `${formatNumberWithSignificantDigits(kurzanValue)}골드`
-                              : '-'
-                            : isPcBangLuckyBoxSummaryItem
-                              ? pcBangLuckyBoxExpectedGold != null
-                                ? `${formatNumberWithSignificantDigits(pcBangLuckyBoxExpectedGold)}골드`
-                                : '-'
-                              : formatPriceDisplay(priceInfo.unitAmount, priceInfo.unit);
-                          const totalDisplay = isKurzanSummaryItem
-                            ? kurzanValue != null
-                              ? `${formatNumberWithSignificantDigits(kurzanValue * item.quantity)}골드`
-                              : '-'
-                            : isPcBangLuckyBoxSummaryItem
-                              ? pcBangLuckyBoxExpectedGold != null
-                                ? `${formatNumberWithSignificantDigits(pcBangLuckyBoxExpectedGold * item.quantity)}골드`
-                                : '-'
-                              : formatPriceDisplay(
-                                  priceInfo.unitAmount !== null ? priceInfo.unitAmount * item.quantity : null,
-                                  priceInfo.unit
-                                );
+                          // 단가를 골드로 통일
+                          let unitPriceInGold: number | null = null;
+                          if (isKurzanSummaryItem) {
+                            unitPriceInGold = kurzanValue;
+                          } else if (isPcBangLuckyBoxSummaryItem) {
+                            unitPriceInGold = pcBangLuckyBoxExpectedGold;
+                          } else {
+                            // priceInfo에서 골드 가치 가져오기
+                            if (priceInfo.goldEquivalent !== null) {
+                              unitPriceInGold = priceInfo.goldEquivalent;
+                            } else if (priceInfo.cashEquivalent !== null) {
+                              unitPriceInGold = convertCashToGold(priceInfo.cashEquivalent);
+                            } else if (priceInfo.unit === 'crystal' && priceInfo.unitAmount !== null) {
+                              unitPriceInGold = convertCrystalToGold(priceInfo.unitAmount);
+                            }
+                          }
+                          const unitDisplay = unitPriceInGold != null
+                            ? `${formatNumberWithSignificantDigits(unitPriceInGold)}골드`
+                            : '-';
+                          const totalDisplay = unitPriceInGold != null && item.quantity > 0
+                            ? `${formatNumberWithSignificantDigits(unitPriceInGold * item.quantity)}골드`
+                            : '-';
                           const composition = getCompositionInfo(getItemName(item), item.quantity);
 
                           return (
@@ -4085,6 +4087,46 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                         );
                         })}
                       </tbody>
+                      <tfoot>
+                        <tr className="bg-gradient-to-r from-purple-900/60 to-pink-900/60 border-t-2 border-purple-500/60">
+                          <td colSpan={3} className="px-4 py-3 text-right text-gray-200 font-bold">
+                            누적 보상 총합
+                          </td>
+                          <td className="px-4 py-3 text-right text-yellow-300 font-bold text-lg">
+                            {(() => {
+                              const cumulativeTotal = aggregateRewards
+                                .filter(item => item.category === 'cumulative')
+                                .reduce((sum, item) => {
+                                  const enabled = enabledRewards[item.name] ?? true;
+                                  if (!enabled) return sum;
+                                  const isKurzanSummaryItem = item.name === '쿠르잔 전선 보상 (휴식게이지 2배)';
+                                  const isPcBangLuckyBoxSummaryItem = item.name === PC_BANG_LUCKY_SUMMARY_NAME;
+                                  const kurzanValue = adjustedKurzanValue;
+                                  let unitPriceInGold: number | null = null;
+                                  if (isKurzanSummaryItem) {
+                                    unitPriceInGold = kurzanValue;
+                                  } else if (isPcBangLuckyBoxSummaryItem) {
+                                    unitPriceInGold = pcBangLuckyBoxExpectedGold;
+                                  } else {
+                                    const priceInfo = getItemPriceInfo(getItemName(item));
+                                    if (priceInfo.goldEquivalent !== null) {
+                                      unitPriceInGold = priceInfo.goldEquivalent;
+                                    } else if (priceInfo.cashEquivalent !== null) {
+                                      unitPriceInGold = convertCashToGold(priceInfo.cashEquivalent);
+                                    } else if (priceInfo.unit === 'crystal' && priceInfo.unitAmount !== null) {
+                                      unitPriceInGold = convertCrystalToGold(priceInfo.unitAmount);
+                                    }
+                                  }
+                                  if (unitPriceInGold != null) {
+                                    return sum + unitPriceInGold * item.quantity;
+                                  }
+                                  return sum;
+                                }, 0);
+                              return cumulativeTotal > 0 ? `${formatNumberWithSignificantDigits(cumulativeTotal)}골드` : '-';
+                            })()}
+                          </td>
+                        </tr>
+                      </tfoot>
                     </table>
                   </div>
                 </div>
@@ -4130,27 +4172,28 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                   note: pcBangLuckyBoxExpectedGold != null ? '상세 구성 기대값' : null,
                                 }
                               : getItemPriceInfo(getItemName(item));
-                          const unitDisplay = isKurzanSummaryItem
-                            ? kurzanValue != null
-                              ? `${formatNumberWithSignificantDigits(kurzanValue)}골드`
-                              : '-'
-                            : isPcBangLuckyBoxSummaryItem
-                              ? pcBangLuckyBoxExpectedGold != null
-                                ? `${formatNumberWithSignificantDigits(pcBangLuckyBoxExpectedGold)}골드`
-                                : '-'
-                              : formatPriceDisplay(priceInfo.unitAmount, priceInfo.unit);
-                          const totalDisplay = isKurzanSummaryItem
-                            ? kurzanValue != null
-                              ? `${formatNumberWithSignificantDigits(kurzanValue * item.quantity)}골드`
-                              : '-'
-                            : isPcBangLuckyBoxSummaryItem
-                              ? pcBangLuckyBoxExpectedGold != null
-                                ? `${formatNumberWithSignificantDigits(pcBangLuckyBoxExpectedGold * item.quantity)}골드`
-                                : '-'
-                              : formatPriceDisplay(
-                                  priceInfo.unitAmount !== null ? priceInfo.unitAmount * item.quantity : null,
-                                  priceInfo.unit
-                                );
+                          // 단가를 골드로 통일
+                          let unitPriceInGold: number | null = null;
+                          if (isKurzanSummaryItem) {
+                            unitPriceInGold = kurzanValue;
+                          } else if (isPcBangLuckyBoxSummaryItem) {
+                            unitPriceInGold = pcBangLuckyBoxExpectedGold;
+                          } else {
+                            // priceInfo에서 골드 가치 가져오기
+                            if (priceInfo.goldEquivalent !== null) {
+                              unitPriceInGold = priceInfo.goldEquivalent;
+                            } else if (priceInfo.cashEquivalent !== null) {
+                              unitPriceInGold = convertCashToGold(priceInfo.cashEquivalent);
+                            } else if (priceInfo.unit === 'crystal' && priceInfo.unitAmount !== null) {
+                              unitPriceInGold = convertCrystalToGold(priceInfo.unitAmount);
+                            }
+                          }
+                          const unitDisplay = unitPriceInGold != null
+                            ? `${formatNumberWithSignificantDigits(unitPriceInGold)}골드`
+                            : '-';
+                          const totalDisplay = unitPriceInGold != null && item.quantity > 0
+                            ? `${formatNumberWithSignificantDigits(unitPriceInGold * item.quantity)}골드`
+                            : '-';
                           const composition = getCompositionInfo(getItemName(item), item.quantity);
 
                           return (
@@ -4227,6 +4270,46 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                         );
                         })}
                       </tbody>
+                      <tfoot>
+                        <tr className="bg-gradient-to-r from-green-900/60 to-emerald-900/60 border-t-2 border-green-500/60">
+                          <td colSpan={3} className="px-4 py-3 text-right text-gray-200 font-bold">
+                            상시 혜택 총합
+                          </td>
+                          <td className="px-4 py-3 text-right text-yellow-300 font-bold text-lg">
+                            {(() => {
+                              const dailyTotal = aggregateRewards
+                                .filter(item => item.category === 'daily')
+                                .reduce((sum, item) => {
+                                  const enabled = enabledRewards[item.name] ?? true;
+                                  if (!enabled) return sum;
+                                  const isKurzanSummaryItem = item.name === '쿠르잔 전선 보상 (휴식게이지 2배)';
+                                  const isPcBangLuckyBoxSummaryItem = item.name === PC_BANG_LUCKY_SUMMARY_NAME;
+                                  const kurzanValue = adjustedKurzanValue;
+                                  let unitPriceInGold: number | null = null;
+                                  if (isKurzanSummaryItem) {
+                                    unitPriceInGold = kurzanValue;
+                                  } else if (isPcBangLuckyBoxSummaryItem) {
+                                    unitPriceInGold = pcBangLuckyBoxExpectedGold;
+                                  } else {
+                                    const priceInfo = getItemPriceInfo(getItemName(item));
+                                    if (priceInfo.goldEquivalent !== null) {
+                                      unitPriceInGold = priceInfo.goldEquivalent;
+                                    } else if (priceInfo.cashEquivalent !== null) {
+                                      unitPriceInGold = convertCashToGold(priceInfo.cashEquivalent);
+                                    } else if (priceInfo.unit === 'crystal' && priceInfo.unitAmount !== null) {
+                                      unitPriceInGold = convertCrystalToGold(priceInfo.unitAmount);
+                                    }
+                                  }
+                                  if (unitPriceInGold != null) {
+                                    return sum + unitPriceInGold * item.quantity;
+                                  }
+                                  return sum;
+                                }, 0);
+                              return dailyTotal > 0 ? `${formatNumberWithSignificantDigits(dailyTotal)}골드` : '-';
+                            })()}
+                          </td>
+                        </tr>
+                      </tfoot>
                     </table>
                   </div>
                 </div>
