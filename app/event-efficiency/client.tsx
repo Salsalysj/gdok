@@ -657,39 +657,39 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
     return total;
   }, [cumulativeRewardsEditable, getItemUnitPrice]);
 
-  // 하위 묶음 항목의 가치를 재귀적으로 계산하는 함수
-  const calculateNestedItemValue = useCallback((nestedItem: RewardItemNew, priceType: 'gold'): number => {
-    let nestedUnitPrice = 0;
-    nestedItem.components.forEach((nestedComp) => {
-      if (nestedComp.itemName === '__nested__' && nestedComp.nestedItem) {
-        const nestedNestedUnitPrice = calculateNestedItemValue(nestedComp.nestedItem, priceType);
-        nestedUnitPrice += nestedNestedUnitPrice * (nestedComp.quantity || 1);
-        return;
-      }
-      const isManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
-      const unitPrice = !isManual && nestedComp.itemName ? getItemUnitPrice(nestedComp.itemName, nestedComp) : null;
-      if (unitPrice === null) return;
-      const isIncluded = nestedItem.itemType === '확정' || 
-                        (nestedItem.itemType === '확률') || 
-                        (nestedItem.itemType === '선택' && nestedComp.selected);
-      if (!isIncluded) return;
-      let nestedCompValue = unitPrice * (nestedComp.quantity || 0);
-      if (nestedItem.itemType === '확정') {
-        nestedUnitPrice += nestedCompValue;
-      } else if (nestedItem.itemType === '확률') {
-        const probability = nestedComp.probability || 0;
-        nestedUnitPrice += nestedCompValue * probability;
-      } else if (nestedItem.itemType === '선택') {
-        if (nestedComp.selected) {
-          nestedUnitPrice += nestedCompValue;
-        }
-      }
-    });
-    return nestedUnitPrice;
-  }, [getItemUnitPrice]);
-
   // 주간보상 그룹별 상세 정보 계산 (주간보상 탭에서 사용하는 계산 로직과 동일)
   const weeklyRewardsGroupDetails = useMemo(() => {
+    // 하위 묶음 항목의 가치를 재귀적으로 계산하는 함수 (useMemo 내부에서 정의)
+    const calculateNestedItemValue = (nestedItem: RewardItemNew, priceType: 'gold'): number => {
+      let nestedUnitPrice = 0;
+      nestedItem.components.forEach((nestedComp) => {
+        if (nestedComp.itemName === '__nested__' && nestedComp.nestedItem) {
+          const nestedNestedUnitPrice = calculateNestedItemValue(nestedComp.nestedItem, priceType);
+          nestedUnitPrice += nestedNestedUnitPrice * (nestedComp.quantity || 1);
+          return;
+        }
+        const isManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
+        const unitPrice = !isManual && nestedComp.itemName ? getItemUnitPrice(nestedComp.itemName, nestedComp) : null;
+        if (unitPrice === null) return;
+        const isIncluded = nestedItem.itemType === '확정' || 
+                          (nestedItem.itemType === '확률') || 
+                          (nestedItem.itemType === '선택' && nestedComp.selected);
+        if (!isIncluded) return;
+        let nestedCompValue = unitPrice * (nestedComp.quantity || 0);
+        if (nestedItem.itemType === '확정') {
+          nestedUnitPrice += nestedCompValue;
+        } else if (nestedItem.itemType === '확률') {
+          const probability = nestedComp.probability || 0;
+          nestedUnitPrice += nestedCompValue * probability;
+        } else if (nestedItem.itemType === '선택') {
+          if (nestedComp.selected) {
+            nestedUnitPrice += nestedCompValue;
+          }
+        }
+      });
+      return nestedUnitPrice;
+    };
+    
     return weeklyRewardsEditable.map((group) => {
       let groupTotal = 0;
       const items = group.items
@@ -775,12 +775,43 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
         groupTitle: group.title,
         groupTotal,
         items,
-      };
-    });
-  }, [weeklyRewardsEditable, getItemUnitPrice, calculateNestedItemValue]);
+        };
+      });
+    }, [weeklyRewardsEditable, getItemUnitPrice]);
 
   // 누적보상 그룹별 상세 정보 계산 (누적보상 탭에서 사용하는 계산 로직과 동일)
   const cumulativeRewardsGroupDetails = useMemo(() => {
+    // 하위 묶음 항목의 가치를 재귀적으로 계산하는 함수 (useMemo 내부에서 정의)
+    const calculateNestedItemValue = (nestedItem: RewardItemNew, priceType: 'gold'): number => {
+      let nestedUnitPrice = 0;
+      nestedItem.components.forEach((nestedComp) => {
+        if (nestedComp.itemName === '__nested__' && nestedComp.nestedItem) {
+          const nestedNestedUnitPrice = calculateNestedItemValue(nestedComp.nestedItem, priceType);
+          nestedUnitPrice += nestedNestedUnitPrice * (nestedComp.quantity || 1);
+          return;
+        }
+        const isManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
+        const unitPrice = !isManual && nestedComp.itemName ? getItemUnitPrice(nestedComp.itemName, nestedComp) : null;
+        if (unitPrice === null) return;
+        const isIncluded = nestedItem.itemType === '확정' || 
+                          (nestedItem.itemType === '확률') || 
+                          (nestedItem.itemType === '선택' && nestedComp.selected);
+        if (!isIncluded) return;
+        let nestedCompValue = unitPrice * (nestedComp.quantity || 0);
+        if (nestedItem.itemType === '확정') {
+          nestedUnitPrice += nestedCompValue;
+        } else if (nestedItem.itemType === '확률') {
+          const probability = nestedComp.probability || 0;
+          nestedUnitPrice += nestedCompValue * probability;
+        } else if (nestedItem.itemType === '선택') {
+          if (nestedComp.selected) {
+            nestedUnitPrice += nestedCompValue;
+          }
+        }
+      });
+      return nestedUnitPrice;
+    };
+    
     return cumulativeRewardsEditable.map((group) => {
       let groupTotal = 0;
       const items = group.items
@@ -866,9 +897,9 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
         groupTitle: group.title,
         groupTotal,
         items,
-      };
-    });
-  }, [cumulativeRewardsEditable, getItemUnitPrice, calculateNestedItemValue]);
+        };
+      });
+    }, [cumulativeRewardsEditable, getItemUnitPrice]);
   
   const kurzanStageOptions = useMemo<KurzanStageOption[]>(() => {
     return kurzanStages.map((stage, idx) => ({
