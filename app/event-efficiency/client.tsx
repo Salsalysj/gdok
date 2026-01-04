@@ -3944,6 +3944,46 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                       );
                     })}
                   </tbody>
+                  <tfoot>
+                    <tr className="bg-gradient-to-r from-blue-900/60 to-purple-900/60 border-t-2 border-blue-500/60">
+                      <td colSpan={3} className="px-4 py-3 text-right text-gray-200 font-bold">
+                        주간 보상 총합
+                      </td>
+                      <td className="px-4 py-3 text-right text-yellow-300 font-bold text-lg">
+                        {(() => {
+                          const weeklyTotal = aggregateRewards
+                            .filter(item => item.category === 'weekly')
+                            .reduce((sum, item) => {
+                              const enabled = enabledRewards[item.name] ?? true;
+                              if (!enabled) return sum;
+                              const isKurzanSummaryItem = item.name === '쿠르잔 전선 보상 (휴식게이지 2배)';
+                              const isPcBangLuckyBoxSummaryItem = item.name === PC_BANG_LUCKY_SUMMARY_NAME;
+                              const kurzanValue = adjustedKurzanValue;
+                              let unitPriceInGold: number | null = null;
+                              if (isKurzanSummaryItem) {
+                                unitPriceInGold = kurzanValue;
+                              } else if (isPcBangLuckyBoxSummaryItem) {
+                                unitPriceInGold = pcBangLuckyBoxExpectedGold;
+                              } else {
+                                const priceInfo = getItemPriceInfo(getItemName(item));
+                                if (priceInfo.goldEquivalent !== null) {
+                                  unitPriceInGold = priceInfo.goldEquivalent;
+                                } else if (priceInfo.cashEquivalent !== null) {
+                                  unitPriceInGold = convertCashToGold(priceInfo.cashEquivalent);
+                                } else if (priceInfo.unit === 'crystal' && priceInfo.unitAmount !== null) {
+                                  unitPriceInGold = convertCrystalToGold(priceInfo.unitAmount);
+                                }
+                              }
+                              if (unitPriceInGold != null) {
+                                return sum + unitPriceInGold * item.quantity;
+                              }
+                              return sum;
+                            }, 0);
+                          return weeklyTotal > 0 ? `${formatNumberWithSignificantDigits(weeklyTotal)}골드` : '-';
+                        })()}
+                      </td>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
                 </div>
