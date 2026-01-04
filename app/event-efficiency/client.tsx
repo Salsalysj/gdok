@@ -2318,6 +2318,136 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
     );
   };
 
+  // 보상 그룹별 상세 정보 계산 (요약 탭과 편집 탭에서 공통 사용)
+  const calculateRewardGroupDetails = useMemo(() => {
+    return (groups: RewardGroup[]) => {
+      // 하위 묶음 항목의 가치를 재귀적으로 계산하는 함수
+      const calculateNestedItemValue = (nestedItem: RewardItemNew): number => {
+        let nestedUnitPrice = 0; // 하위묶음 1개당 단가
+        nestedItem.components.forEach((nestedComp) => {
+          // 중첩된 항목 내부에 또 중첩이 있는 경우 재귀 호출
+          if (nestedComp.itemName === '__nested__' && nestedComp.nestedItem) {
+            const nestedNestedUnitPrice = calculateNestedItemValue(nestedComp.nestedItem);
+            nestedUnitPrice += nestedNestedUnitPrice * (nestedComp.quantity || 1);
+            return;
+          }
+          
+          const isManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
+          const resolved = !isManual && nestedComp.itemName ? getItemUnitPrice(nestedComp.itemName, nestedComp) : null;
+          const finalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined && nestedComp.manualPrice > 0)
+            ? nestedComp.manualPrice
+            : resolved;
+          
+          if (!finalUnitPrice || finalUnitPrice <= 0) return;
+
+          let nestedCompValue = 0; // 하위구성요소 1개 기준 가치
+
+          if (nestedItem.itemType === '확정') {
+            nestedCompValue = finalUnitPrice * (nestedComp.quantity || 1);
+          } else if (nestedItem.itemType === '확률') {
+            const probability = nestedComp.probability || 0;
+            nestedCompValue = finalUnitPrice * (nestedComp.quantity || 1) * probability;
+          } else if (nestedItem.itemType === '선택') {
+            if (nestedComp.selected) {
+              nestedCompValue = finalUnitPrice * (nestedComp.quantity || 1);
+            }
+          }
+          
+          nestedUnitPrice += nestedCompValue;
+        });
+        return nestedUnitPrice;
+      };
+
+      return groups.map((group) => {
+        let groupTotal = 0;
+        const items = group.items
+          .filter(item => isNewFormatItem(item))
+          .map(item => {
+            // 묶음 항목 1개당 단가 계산
+            let bundleUnitPrice = 0;
+            const itemDetails: Array<{
+              itemName: string;
+              unitPrice: number;
+              componentQuantity: number;
+              bundleQuantity: number;
+              probability?: number;
+              value: number;
+              isIncluded: boolean;
+            }> = [];
+            
+            item.components.forEach(comp => {
+              // 하위 묶음 항목 처리
+              if (comp.itemName === '__nested__' && comp.nestedItem) {
+                const nestedItemUnitPrice = calculateNestedItemValue(comp.nestedItem);
+                const nestedItemQuantity = comp.nestedItem.quantity || 1;
+                const nestedItemTotalValue = nestedItemUnitPrice * nestedItemQuantity;
+                
+                const isIncluded = item.itemType === '확정' || 
+                                  (item.itemType === '확률') || 
+                                  (item.itemType === '선택' && comp.selected);
+                
+                if (isIncluded) {
+                  let value = nestedItemTotalValue;
+                  if (item.itemType === '확률' && comp.probability !== undefined) {
+                    value *= comp.probability;
+                  }
+                  bundleUnitPrice += value;
+                  groupTotal += value * (item.quantity || 1);
+                  itemDetails.push({
+                    itemName: '하위 묶음 항목',
+                    unitPrice: nestedItemUnitPrice,
+                    componentQuantity: nestedItemQuantity,
+                    bundleQuantity: item.quantity || 1,
+                    probability: item.itemType === '확률' ? comp.probability : undefined,
+                    value: value * (item.quantity || 1),
+                    isIncluded,
+                  });
+                }
+                return;
+              }
+              
+              // 일반 구성요소 처리
+              if (!comp.itemName || comp.itemName === '__manual__' || comp.itemName === '') return;
+              const unitPrice = getItemUnitPrice(comp.itemName, comp);
+              if (unitPrice === null) return;
+              const isIncluded = item.itemType === '확정' || 
+                                (item.itemType === '확률') || 
+                                (item.itemType === '선택' && comp.selected);
+              if (!isIncluded) return;
+              let value = unitPrice * (comp.quantity || 0);
+              if (item.itemType === '확률' && comp.probability !== undefined) {
+                value *= comp.probability;
+              }
+              bundleUnitPrice += value;
+              groupTotal += value * (item.quantity || 1);
+              itemDetails.push({
+                itemName: comp.itemName,
+                unitPrice,
+                componentQuantity: comp.quantity || 0,
+                bundleQuantity: item.quantity || 1,
+                probability: item.itemType === '확률' ? comp.probability : undefined,
+                value: value * (item.quantity || 1),
+                isIncluded,
+              });
+            });
+            
+            return {
+              itemName: item.itemName,
+              itemType: item.itemType,
+              bundleQuantity: item.quantity || 1,
+              bundleUnitPrice,
+              details: itemDetails,
+            };
+          });
+        return {
+          groupTitle: group.title,
+          groupTotal,
+          items,
+        };
+      });
+    };
+  }, [getItemUnitPrice]);
+
   // 새로운 편집 가능한 보상 테이블 (과금 효율과 동일한 UI)
   const renderEditableRewardTableNew = (groups: RewardGroup[], type: 'weekly' | 'cumulative', sectionTitle: string) => {
     // 총 가치 계산
@@ -3807,370 +3937,179 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
               </div>
 
               {/* 주간보상 섹션 */}
-              {aggregateRewards.filter(item => item.category === 'weekly').length > 0 && (
-                <div className="space-y-3">
-                  <h3 className="text-lg font-bold text-blue-400 flex items-center gap-2">
-                    <span className="w-1 h-6 bg-blue-500 rounded"></span>
-                    주간 보상 ({totalWeeksNumber}주 × {totalWeeksNumber}회)
-                  </h3>
-                  <div className="overflow-x-auto rounded-xl border border-blue-500/30 shadow-lg">
-                <table className="w-full text-sm">
-                  <thead>
-                        <tr className="bg-gradient-to-r from-blue-900/40 to-purple-900/40 text-gray-200 border-b-2 border-blue-500/50">
-                      <th className="px-4 py-4 text-left font-bold">아이템명</th>
-                      <th className="px-4 py-4 text-right font-bold">총 수량</th>
-                      <th className="px-4 py-4 text-right font-bold">단가</th>
-                      <th className="px-4 py-4 text-right font-bold">총합</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                        {aggregateRewards.filter(item => item.category === 'weekly').map((item, idx) => {
-                      const enabled = enabledRewards[item.name] ?? true;
-                      const isKurzanSummaryItem = item.name === '쿠르잔 전선 보상 (휴식게이지 2배)';
-                      const isPcBangLuckyBoxSummaryItem = item.name === PC_BANG_LUCKY_SUMMARY_NAME;
-                      const kurzanValue = adjustedKurzanValue;
-                      const priceInfo = isKurzanSummaryItem
-                        ? {
-                            unit: 'gold' as const,
-                            unitAmount: kurzanValue,
-                            goldEquivalent: kurzanValue,
-                            cashEquivalent: null,
-                            note: null,
-                          }
-                        : isPcBangLuckyBoxSummaryItem
-                          ? {
-                              unit: pcBangLuckyBoxExpectedGold != null ? ('gold' as const) : null,
-                              unitAmount: pcBangLuckyBoxExpectedGold,
-                              goldEquivalent: pcBangLuckyBoxExpectedGold,
-                              cashEquivalent: null,
-                              note: pcBangLuckyBoxExpectedGold != null ? '상세 구성 기대값' : null,
-                            }
-                          : getItemPriceInfo(getItemName(item));
-                      // 단가를 골드로 통일
-                      let unitPriceInGold: number | null = null;
-                      if (isKurzanSummaryItem) {
-                        unitPriceInGold = kurzanValue;
-                      } else if (isPcBangLuckyBoxSummaryItem) {
-                        unitPriceInGold = pcBangLuckyBoxExpectedGold;
-                      } else {
-                        // priceInfo에서 골드 가치 가져오기
-                        if (priceInfo.goldEquivalent !== null) {
-                          unitPriceInGold = priceInfo.goldEquivalent;
-                        } else if (priceInfo.cashEquivalent !== null) {
-                          unitPriceInGold = convertCashToGold(priceInfo.cashEquivalent);
-                        } else if (priceInfo.unit === 'crystal' && priceInfo.unitAmount !== null) {
-                          unitPriceInGold = convertCrystalToGold(priceInfo.unitAmount);
-                        }
-                      }
-                      const unitDisplay = unitPriceInGold != null
-                        ? `${formatNumberWithSignificantDigits(unitPriceInGold)}골드`
-                        : '-';
-                      const totalDisplay = unitPriceInGold != null && item.quantity > 0
-                        ? `${formatNumberWithSignificantDigits(unitPriceInGold * item.quantity)}골드`
-                        : '-';
-                      const composition = getCompositionInfo(getItemName(item), item.quantity);
+              {(() => {
+                const weeklyGroupDetails = calculateRewardGroupDetails(weeklyRewardsEditable);
+                const weeklyTotal = weeklyGroupDetails.reduce((sum, group) => sum + group.groupTotal, 0);
+                const weeklyTotalWithWeeks = weeklyTotal * (totalWeeksNumber || 0);
+                
+                if (weeklyGroupDetails.length === 0) return null;
+                
+                return (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-bold text-blue-400 flex items-center gap-2">
+                      <span className="w-1 h-6 bg-blue-500 rounded"></span>
+                      주간 보상
+                    </h3>
+                    
+                    {/* 총합 정보 */}
+                    <div className="bg-gradient-to-r from-blue-900/40 to-purple-900/40 rounded-xl p-4 border border-blue-500/30">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <div className="text-sm text-gray-400 mb-1">1회 총합</div>
+                          <div className="text-xl font-bold text-blue-300">
+                            {weeklyTotal > 0 ? `${formatNumberWithSignificantDigits(weeklyTotal)}골드` : '-'}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-sm text-gray-400 mb-1">총 주수</div>
+                          <div className="text-xl font-bold text-blue-300">
+                            {totalWeeksNumber}주
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-sm text-gray-400 mb-1">전체 가치</div>
+                          <div className="text-xl font-bold text-yellow-300">
+                            {weeklyTotalWithWeeks > 0
+                              ? `${formatNumberWithSignificantDigits(weeklyTotalWithWeeks)}골드`
+                              : '-'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
 
-                      return (
-                      <tr
-                        key={`${item.name}-${idx}`}
-                        className={`border-b border-gray-800/70 hover:bg-gray-700/30 transition-colors duration-200 ${!enabled ? 'opacity-40' : ''}`}
-                      >
-                          <td className="px-4 py-3 text-white">
-                            <div className="flex items-center gap-3">
-                              <button
-                                type="button"
-                                onClick={() => toggleReward(item.name)}
-                                className={`w-10 h-5 rounded-full border transition-colors ${
-                                  enabled
-                                    ? 'bg-purple-600 border-purple-500'
-                                    : 'bg-gray-600 border-gray-500'
-                                }`}
-                                aria-label={`${item.name} 포함 여부`}
-                              >
-                                <span
-                                  className={`inline-block w-4 h-4 rounded-full bg-white transform transition-transform ${
-                                    enabled ? 'translate-x-5' : 'translate-x-1'
-                                  }`}
-                                />
-                              </button>
-                              <span>
-                                {item.name}
-                                {isKurzanSummaryItem && selectedKurzanStage && (
-                                  <span className="ml-2 text-xs text-gray-400">
-                                    ({selectedKurzanStage.level} / {selectedKurzanStage.stage})
-                                  </span>
-                                )}
-                              </span>
-                              {getItemName(item) === '고결한 혼돈의 돌 선택 상자' && (
-                                <select
-                                  value={chaosStoneQuality}
-                                  onChange={(e) => setChaosStoneQuality(Number(e.target.value) as 90 | 95)}
-                                  className="bg-gray-700 text-white border border-gray-600 rounded px-2 py-1 text-xs"
-                                >
-                                  <option value={90}>품질 90</option>
-                                  <option value={95}>품질 95</option>
-                                </select>
-                              )}
-                              {getItemName(item) === '팔찌 효과 재변환권' && (
-                                <input
-                                  type="number"
-                                  min="1"
-                                  value={braceletPriceInput}
-                                  onChange={(e) => setBraceletPriceInput(e.target.value)}
-                                  className="w-24 bg-gray-700 text-white border border-gray-600 rounded px-2 py-1 text-xs"
-                                />
-                              )}
-                            </div>
-                            {composition.perUnit && (
-                              <div className="text-xs text-gray-400 mt-1">1개당 {composition.perUnit}</div>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-right text-gray-300">
-                            <div>{formatNumberWithSignificantDigits(item.quantity)}</div>
-                            {composition.total && (
-                              <div className="text-xs text-gray-500 mt-1">({composition.total})</div>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-right text-gray-300">
-                            {unitDisplay}
-                            {priceInfo.note && (
-                              <div className="text-xs text-gray-500 mt-1">{priceInfo.note}</div>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-right text-yellow-300 font-semibold">
-                            {totalDisplay}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                  <tfoot>
-                    <tr className="bg-gradient-to-r from-blue-900/60 to-purple-900/60 border-t-2 border-blue-500/60">
-                      <td colSpan={3} className="px-4 py-3 text-right text-gray-200 font-bold">
-                        주간 보상 총합
-                      </td>
-                      <td className="px-4 py-3 text-right text-yellow-300 font-bold text-lg">
-                        {(() => {
-                          const weeklyTotal = aggregateRewards
-                            .filter(item => item.category === 'weekly')
-                            .reduce((sum, item) => {
-                              const enabled = enabledRewards[item.name] ?? true;
-                              if (!enabled) return sum;
-                              const isKurzanSummaryItem = item.name === '쿠르잔 전선 보상 (휴식게이지 2배)';
-                              const isPcBangLuckyBoxSummaryItem = item.name === PC_BANG_LUCKY_SUMMARY_NAME;
-                              const kurzanValue = adjustedKurzanValue;
-                              let unitPriceInGold: number | null = null;
-                              if (isKurzanSummaryItem) {
-                                unitPriceInGold = kurzanValue;
-                              } else if (isPcBangLuckyBoxSummaryItem) {
-                                unitPriceInGold = pcBangLuckyBoxExpectedGold;
-                              } else {
-                                const priceInfo = getItemPriceInfo(getItemName(item));
-                                if (priceInfo.goldEquivalent !== null) {
-                                  unitPriceInGold = priceInfo.goldEquivalent;
-                                } else if (priceInfo.cashEquivalent !== null) {
-                                  unitPriceInGold = convertCashToGold(priceInfo.cashEquivalent);
-                                } else if (priceInfo.unit === 'crystal' && priceInfo.unitAmount !== null) {
-                                  unitPriceInGold = convertCrystalToGold(priceInfo.unitAmount);
-                                }
-                              }
-                              if (unitPriceInGold != null) {
-                                return sum + unitPriceInGold * item.quantity;
-                              }
-                              return sum;
-                            }, 0);
-                          return weeklyTotal > 0 ? `${formatNumberWithSignificantDigits(weeklyTotal)}골드` : '-';
-                        })()}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-                </div>
-              )}
+                    {/* 그룹별 상세 테이블 */}
+                    {weeklyGroupDetails.map((group, groupIdx) => (
+                      <div key={groupIdx} className="space-y-2">
+                        <h4 className="text-base font-semibold text-blue-300">{group.groupTitle}</h4>
+                        <div className="overflow-x-auto rounded-xl border border-blue-500/30 shadow-lg">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="bg-gradient-to-r from-blue-900/40 to-purple-900/40 text-gray-200 border-b-2 border-blue-500/50">
+                                <th className="px-4 py-3 text-left font-bold">묶음 항목</th>
+                                <th className="px-4 py-3 text-right font-bold">묶음 단가</th>
+                                <th className="px-4 py-3 text-right font-bold">묶음 수량</th>
+                                <th className="px-4 py-3 text-right font-bold">묶음 가치</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {group.items.map((item, itemIdx) => (
+                                <tr key={itemIdx} className="border-b border-gray-800/70 hover:bg-gray-700/30 transition-colors">
+                                  <td className="px-4 py-3 text-white font-medium">
+                                    <span>
+                                      {item.itemName}
+                                      <span className="ml-2 text-xs text-gray-400">({item.itemType})</span>
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-right text-gray-300">
+                                    {item.bundleUnitPrice > 0 ? `${formatNumberWithSignificantDigits(item.bundleUnitPrice)}골드` : '-'}
+                                  </td>
+                                  <td className="px-4 py-3 text-right text-gray-300">
+                                    {item.bundleQuantity}
+                                  </td>
+                                  <td className="px-4 py-3 text-right text-yellow-300 font-semibold">
+                                    {item.bundleUnitPrice > 0
+                                      ? `${formatNumberWithSignificantDigits(item.bundleUnitPrice * item.bundleQuantity)}골드`
+                                      : '-'}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                            <tfoot>
+                              <tr className="bg-gradient-to-r from-blue-900/60 to-purple-900/60 border-t-2 border-blue-500/60">
+                                <td colSpan={3} className="px-4 py-2 text-right text-gray-200 font-bold">
+                                  그룹 합계
+                                </td>
+                                <td className="px-4 py-2 text-right text-yellow-300 font-bold">
+                                  {group.groupTotal > 0 ? `${formatNumberWithSignificantDigits(group.groupTotal)}골드` : '-'}
+                                </td>
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
 
               {/* 누적보상 섹션 */}
-              {aggregateRewards.filter(item => item.category === 'cumulative').length > 0 && (
-                <div className="space-y-3 mt-6">
-                  <h3 className="text-lg font-bold text-purple-400 flex items-center gap-2">
-                    <span className="w-1 h-6 bg-purple-500 rounded"></span>
-                    누적 보상 (1회)
-                  </h3>
-                  <div className="overflow-x-auto rounded-xl border border-purple-500/30 shadow-lg">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="bg-gradient-to-r from-purple-900/40 to-pink-900/40 text-gray-200 border-b-2 border-purple-500/50">
-                          <th className="px-4 py-4 text-left font-bold">아이템명</th>
-                          <th className="px-4 py-4 text-right font-bold">총 수량</th>
-                          <th className="px-4 py-4 text-right font-bold">단가</th>
-                          <th className="px-4 py-4 text-right font-bold">총합</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {aggregateRewards.filter(item => item.category === 'cumulative').map((item, idx) => {
-                          const enabled = enabledRewards[item.name] ?? true;
-                          const isKurzanSummaryItem = item.name === '쿠르잔 전선 보상 (휴식게이지 2배)';
-                          const isPcBangLuckyBoxSummaryItem = item.name === PC_BANG_LUCKY_SUMMARY_NAME;
-                          const kurzanValue = adjustedKurzanValue;
-                          const priceInfo = isKurzanSummaryItem
-                            ? {
-                                unit: 'gold' as const,
-                                unitAmount: kurzanValue,
-                                goldEquivalent: kurzanValue,
-                                cashEquivalent: null,
-                                note: null,
-                              }
-                            : isPcBangLuckyBoxSummaryItem
-                              ? {
-                                  unit: pcBangLuckyBoxExpectedGold != null ? ('gold' as const) : null,
-                                  unitAmount: pcBangLuckyBoxExpectedGold,
-                                  goldEquivalent: pcBangLuckyBoxExpectedGold,
-                                  cashEquivalent: null,
-                                  note: pcBangLuckyBoxExpectedGold != null ? '상세 구성 기대값' : null,
-                                }
-                              : getItemPriceInfo(getItemName(item));
-                          // 단가를 골드로 통일
-                          let unitPriceInGold: number | null = null;
-                          if (isKurzanSummaryItem) {
-                            unitPriceInGold = kurzanValue;
-                          } else if (isPcBangLuckyBoxSummaryItem) {
-                            unitPriceInGold = pcBangLuckyBoxExpectedGold;
-                          } else {
-                            // priceInfo에서 골드 가치 가져오기
-                            if (priceInfo.goldEquivalent !== null) {
-                              unitPriceInGold = priceInfo.goldEquivalent;
-                            } else if (priceInfo.cashEquivalent !== null) {
-                              unitPriceInGold = convertCashToGold(priceInfo.cashEquivalent);
-                            } else if (priceInfo.unit === 'crystal' && priceInfo.unitAmount !== null) {
-                              unitPriceInGold = convertCrystalToGold(priceInfo.unitAmount);
-                            }
-                          }
-                          const unitDisplay = unitPriceInGold != null
-                            ? `${formatNumberWithSignificantDigits(unitPriceInGold)}골드`
-                            : '-';
-                          const totalDisplay = unitPriceInGold != null && item.quantity > 0
-                            ? `${formatNumberWithSignificantDigits(unitPriceInGold * item.quantity)}골드`
-                            : '-';
-                          const composition = getCompositionInfo(getItemName(item), item.quantity);
+              {(() => {
+                const cumulativeGroupDetails = calculateRewardGroupDetails(cumulativeRewardsEditable);
+                const cumulativeTotal = cumulativeGroupDetails.reduce((sum, group) => sum + group.groupTotal, 0);
+                
+                if (cumulativeGroupDetails.length === 0) return null;
+                
+                return (
+                  <div className="space-y-4 mt-6">
+                    <h3 className="text-lg font-bold text-purple-400 flex items-center gap-2">
+                      <span className="w-1 h-6 bg-purple-500 rounded"></span>
+                      누적 보상
+                    </h3>
+                    
+                    {/* 총합 정보 */}
+                    <div className="bg-gradient-to-r from-purple-900/40 to-pink-900/40 rounded-xl p-4 border border-purple-500/30">
+                      <div>
+                        <div className="text-sm text-gray-400 mb-1">총합</div>
+                        <div className="text-xl font-bold text-purple-300">
+                          {cumulativeTotal > 0 ? `${formatNumberWithSignificantDigits(cumulativeTotal)}골드` : '-'}
+                        </div>
+                      </div>
+                    </div>
 
-                          return (
-                          <tr
-                            key={`cumulative-${item.name}-${idx}`}
-                            className={`border-b border-gray-800/70 hover:bg-gray-700/30 transition-colors duration-200 ${!enabled ? 'opacity-40' : ''}`}
-                          >
-                            <td className="px-4 py-3 text-white">
-                              <div className="flex items-center gap-3">
-                                <button
-                                  type="button"
-                                  onClick={() => toggleReward(item.name)}
-                                  className={`w-10 h-5 rounded-full border transition-colors ${
-                                    enabled
-                                      ? 'bg-purple-600 border-purple-500'
-                                      : 'bg-gray-600 border-gray-500'
-                                  }`}
-                                  aria-label={`${item.name} 포함 여부`}
-                                >
-                                  <span
-                                    className={`inline-block w-4 h-4 rounded-full bg-white transform transition-transform ${
-                                      enabled ? 'translate-x-5' : 'translate-x-1'
-                                    }`}
-                                  />
-                                </button>
-                                <span>
-                                  {item.name}
-                                  {isKurzanSummaryItem && selectedKurzanStage && (
-                                    <span className="ml-2 text-xs text-gray-400">
-                                      ({selectedKurzanStage.level} / {selectedKurzanStage.stage})
+                    {/* 그룹별 상세 테이블 */}
+                    {cumulativeGroupDetails.map((group, groupIdx) => (
+                      <div key={groupIdx} className="space-y-2">
+                        <h4 className="text-base font-semibold text-purple-300">{group.groupTitle}</h4>
+                        <div className="overflow-x-auto rounded-xl border border-purple-500/30 shadow-lg">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="bg-gradient-to-r from-purple-900/40 to-pink-900/40 text-gray-200 border-b-2 border-purple-500/50">
+                                <th className="px-4 py-3 text-left font-bold">묶음 항목</th>
+                                <th className="px-4 py-3 text-right font-bold">묶음 단가</th>
+                                <th className="px-4 py-3 text-right font-bold">묶음 수량</th>
+                                <th className="px-4 py-3 text-right font-bold">묶음 가치</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {group.items.map((item, itemIdx) => (
+                                <tr key={itemIdx} className="border-b border-gray-800/70 hover:bg-gray-700/30 transition-colors">
+                                  <td className="px-4 py-3 text-white font-medium">
+                                    <span>
+                                      {item.itemName}
+                                      <span className="ml-2 text-xs text-gray-400">({item.itemType})</span>
                                     </span>
-                                  )}
-                                </span>
-                                {getItemName(item) === '고결한 혼돈의 돌 선택 상자' && (
-                                  <select
-                                    value={chaosStoneQuality}
-                                    onChange={(e) => setChaosStoneQuality(Number(e.target.value) as 90 | 95)}
-                                    className="bg-gray-700 text-white border border-gray-600 rounded px-2 py-1 text-xs"
-                                  >
-                                    <option value={90}>품질 90</option>
-                                    <option value={95}>품질 95</option>
-                                  </select>
-                                )}
-                                {getItemName(item) === '팔찌 효과 재변환권' && (
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    value={braceletPriceInput}
-                                    onChange={(e) => setBraceletPriceInput(e.target.value)}
-                                    className="w-24 bg-gray-700 text-white border border-gray-600 rounded px-2 py-1 text-xs"
-                                  />
-                                )}
-                              </div>
-                              {composition.perUnit && (
-                                <div className="text-xs text-gray-400 mt-1">1개당 {composition.perUnit}</div>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-right text-gray-300">
-                              <div>{formatNumberWithSignificantDigits(item.quantity)}</div>
-                              {composition.total && (
-                                <div className="text-xs text-gray-500 mt-1">({composition.total})</div>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-right text-gray-300">
-                              {unitDisplay}
-                              {priceInfo.note && (
-                                <div className="text-xs text-gray-500 mt-1">{priceInfo.note}</div>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-right text-yellow-300 font-semibold">
-                              {totalDisplay}
-                            </td>
-                          </tr>
-                        );
-                        })}
-                      </tbody>
-                      <tfoot>
-                        <tr className="bg-gradient-to-r from-purple-900/60 to-pink-900/60 border-t-2 border-purple-500/60">
-                          <td colSpan={3} className="px-4 py-3 text-right text-gray-200 font-bold">
-                            누적 보상 총합
-                          </td>
-                          <td className="px-4 py-3 text-right text-yellow-300 font-bold text-lg">
-                            {(() => {
-                              const cumulativeTotal = aggregateRewards
-                                .filter(item => item.category === 'cumulative')
-                                .reduce((sum, item) => {
-                                  const enabled = enabledRewards[item.name] ?? true;
-                                  if (!enabled) return sum;
-                                  const isKurzanSummaryItem = item.name === '쿠르잔 전선 보상 (휴식게이지 2배)';
-                                  const isPcBangLuckyBoxSummaryItem = item.name === PC_BANG_LUCKY_SUMMARY_NAME;
-                                  const kurzanValue = adjustedKurzanValue;
-                                  let unitPriceInGold: number | null = null;
-                                  if (isKurzanSummaryItem) {
-                                    unitPriceInGold = kurzanValue;
-                                  } else if (isPcBangLuckyBoxSummaryItem) {
-                                    unitPriceInGold = pcBangLuckyBoxExpectedGold;
-                                  } else {
-                                    const priceInfo = getItemPriceInfo(getItemName(item));
-                                    if (priceInfo.goldEquivalent !== null) {
-                                      unitPriceInGold = priceInfo.goldEquivalent;
-                                    } else if (priceInfo.cashEquivalent !== null) {
-                                      unitPriceInGold = convertCashToGold(priceInfo.cashEquivalent);
-                                    } else if (priceInfo.unit === 'crystal' && priceInfo.unitAmount !== null) {
-                                      unitPriceInGold = convertCrystalToGold(priceInfo.unitAmount);
-                                    }
-                                  }
-                                  if (unitPriceInGold != null) {
-                                    return sum + unitPriceInGold * item.quantity;
-                                  }
-                                  return sum;
-                                }, 0);
-                              return cumulativeTotal > 0 ? `${formatNumberWithSignificantDigits(cumulativeTotal)}골드` : '-';
-                            })()}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
+                                  </td>
+                                  <td className="px-4 py-3 text-right text-gray-300">
+                                    {item.bundleUnitPrice > 0 ? `${formatNumberWithSignificantDigits(item.bundleUnitPrice)}골드` : '-'}
+                                  </td>
+                                  <td className="px-4 py-3 text-right text-gray-300">
+                                    {item.bundleQuantity}
+                                  </td>
+                                  <td className="px-4 py-3 text-right text-yellow-300 font-semibold">
+                                    {item.bundleUnitPrice > 0
+                                      ? `${formatNumberWithSignificantDigits(item.bundleUnitPrice * item.bundleQuantity)}골드`
+                                      : '-'}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                            <tfoot>
+                              <tr className="bg-gradient-to-r from-purple-900/60 to-pink-900/60 border-t-2 border-purple-500/60">
+                                <td colSpan={3} className="px-4 py-2 text-right text-gray-200 font-bold">
+                                  그룹 합계
+                                </td>
+                                <td className="px-4 py-2 text-right text-yellow-300 font-bold">
+                                  {group.groupTotal > 0 ? `${formatNumberWithSignificantDigits(group.groupTotal)}골드` : '-'}
+                                </td>
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* 상시혜택 섹션 */}
               {aggregateRewards.filter(item => item.category === 'daily').length > 0 && (
