@@ -546,8 +546,19 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
     // 1. 가치계산DB에서 찾기 (우선순위 - adjustedEntries는 가격 조정이 이미 적용된 데이터)
     if (adjustedEntries && adjustedEntries.length > 0) {
       const valueDbEntry = adjustedEntries.find(entry => entry.itemName === itemName);
-      if (valueDbEntry && valueDbEntry.unitType === '골드' && valueDbEntry.unitValue !== null) {
-        return valueDbEntry.unitValue;
+      if (valueDbEntry && valueDbEntry.unitValue !== null) {
+        if (valueDbEntry.unitType === '골드') {
+          return valueDbEntry.unitValue;
+        } else if (valueDbEntry.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
+          return (valueDbEntry.unitValue * crystalGoldRate) / 100;
+        } else if (valueDbEntry.unitType === '현금') {
+          // 현금을 골드로 변환
+          if (cashMode === 'discord' && discordRate && discordRate > 0) {
+            return (valueDbEntry.unitValue * 100) / discordRate;
+          } else if (cashMode === 'exchange' && crystalGoldRate && crystalGoldRate > 0) {
+            return (valueDbEntry.unitValue * crystalGoldRate) / 2750;
+          }
+        }
       }
     }
     
@@ -557,6 +568,14 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
       if (etcItem.gold !== null) return etcItem.gold;
       if (etcItem.crystal !== null && crystalGoldRate !== null) {
         return (etcItem.crystal * crystalGoldRate) / 100;
+      }
+      if (etcItem.cash !== null && etcItem.cash > 0) {
+        // 현금을 골드로 변환
+        if (cashMode === 'discord' && discordRate && discordRate > 0) {
+          return (etcItem.cash * 100) / discordRate;
+        } else if (cashMode === 'exchange' && crystalGoldRate && crystalGoldRate > 0) {
+          return (etcItem.cash * crystalGoldRate) / 2750;
+        }
       }
     }
     
