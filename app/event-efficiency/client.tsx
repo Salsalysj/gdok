@@ -414,8 +414,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
   const [chaosStoneQuality, setChaosStoneQuality] = useState<90 | 95>(90);
   const [lightMode, setLightMode] = useState<boolean>(false);
   const [enabledRewards, setEnabledRewards] = useState<Record<string, boolean>>({});
-  const [expandedBundleItems, setExpandedBundleItems] = useState<Set<string>>(new Set());
-  const [enabledBundleItems, setEnabledBundleItems] = useState<Record<string, boolean>>({});
+  const [expandedBundleItemsSummary, setExpandedBundleItemsSummary] = useState<Set<string>>(new Set());
   const [braceletPriceInput, setBraceletPriceInput] = useState('100');
   const [totalDaysInput, setTotalDaysInput] = useState('20');
   const [totalWeeksInput, setTotalWeeksInput] = useState(getInitialTotalWeeks());
@@ -633,16 +632,12 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
     return total;
   }, [weeklyRewardsEditable, getItemUnitPrice]);
 
-  // 누적보상 총 가치 계산 (누적보상 탭에서 사용하는 계산 로직과 동일, 요약 탭에서 스위치 반영)
+  // 누적보상 총 가치 계산 (누적보상 탭에서 사용하는 계산 로직과 동일)
   const cumulativeRewardsTotalValue = useMemo(() => {
     let total = 0;
-    cumulativeRewardsEditable.forEach((group, groupIdx) => {
-      group.items.forEach((item, itemIdx) => {
+    cumulativeRewardsEditable.forEach(group => {
+      group.items.forEach(item => {
         if (!isNewFormatItem(item)) return;
-        const bundleKey = `cumulative-${groupIdx}-${itemIdx}-${item.itemName}`;
-        const isEnabled = enabledBundleItems[bundleKey] !== false; // 기본값은 true
-        if (!isEnabled) return; // 스위치가 꺼진 항목은 제외
-        
         item.components.forEach(comp => {
           if (!comp.itemName || comp.itemName === '__nested__' || comp.itemName === '__manual__' || comp.itemName === '') return;
           const unitPrice = getItemUnitPrice(comp.itemName, comp);
@@ -660,48 +655,41 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
       });
     });
     return total;
-  }, [cumulativeRewardsEditable, getItemUnitPrice, enabledBundleItems]);
+  }, [cumulativeRewardsEditable, getItemUnitPrice]);
+
+  // 하위 묶음 항목의 가치를 재귀적으로 계산하는 함수
+  const calculateNestedItemValue = useCallback((nestedItem: RewardItemNew, priceType: 'gold'): number => {
+    let nestedUnitPrice = 0;
+    nestedItem.components.forEach((nestedComp) => {
+      if (nestedComp.itemName === '__nested__' && nestedComp.nestedItem) {
+        const nestedNestedUnitPrice = calculateNestedItemValue(nestedComp.nestedItem, priceType);
+        nestedUnitPrice += nestedNestedUnitPrice * (nestedComp.quantity || 1);
+        return;
+      }
+      const isManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
+      const unitPrice = !isManual && nestedComp.itemName ? getItemUnitPrice(nestedComp.itemName, nestedComp) : null;
+      if (unitPrice === null) return;
+      const isIncluded = nestedItem.itemType === '확정' || 
+                        (nestedItem.itemType === '확률') || 
+                        (nestedItem.itemType === '선택' && nestedComp.selected);
+      if (!isIncluded) return;
+      let nestedCompValue = unitPrice * (nestedComp.quantity || 0);
+      if (nestedItem.itemType === '확정') {
+        nestedUnitPrice += nestedCompValue;
+      } else if (nestedItem.itemType === '확률') {
+        const probability = nestedComp.probability || 0;
+        nestedUnitPrice += nestedCompValue * probability;
+      } else if (nestedItem.itemType === '선택') {
+        if (nestedComp.selected) {
+          nestedUnitPrice += nestedCompValue;
+        }
+      }
+    });
+    return nestedUnitPrice;
+  }, [getItemUnitPrice]);
 
   // 주간보상 그룹별 상세 정보 계산 (주간보상 탭에서 사용하는 계산 로직과 동일)
   const weeklyRewardsGroupDetails = useMemo(() => {
-    // getItemUnitPrice가 정의되어 있는지 확인
-    if (typeof getItemUnitPrice !== 'function') {
-      return [];
-    }
-
-    // 하위 묶음 항목의 가치를 재귀적으로 계산하는 함수 (useMemo 내부에서 정의하여 클로저 문제 방지)
-    const calculateNestedItemValue = (nestedItem: RewardItemNew, priceType: 'gold'): number => {
-      let nestedUnitPrice = 0;
-      nestedItem.components.forEach((nestedComp) => {
-        if (nestedComp.itemName === '__nested__' && nestedComp.nestedItem) {
-          const nestedNestedUnitPrice = calculateNestedItemValue(nestedComp.nestedItem, priceType);
-          nestedUnitPrice += nestedNestedUnitPrice * (nestedComp.quantity || 1);
-          return;
-        }
-        const isManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
-        const unitPrice = !isManual && nestedComp.itemName && typeof getItemUnitPrice === 'function' 
-          ? getItemUnitPrice(nestedComp.itemName, nestedComp) 
-          : null;
-        if (unitPrice === null) return;
-        const isIncluded = nestedItem.itemType === '확정' || 
-                          (nestedItem.itemType === '확률') || 
-                          (nestedItem.itemType === '선택' && nestedComp.selected);
-        if (!isIncluded) return;
-        let nestedCompValue = unitPrice * (nestedComp.quantity || 0);
-        if (nestedItem.itemType === '확정') {
-          nestedUnitPrice += nestedCompValue;
-        } else if (nestedItem.itemType === '확률') {
-          const probability = nestedComp.probability || 0;
-          nestedUnitPrice += nestedCompValue * probability;
-        } else if (nestedItem.itemType === '선택') {
-          if (nestedComp.selected) {
-            nestedUnitPrice += nestedCompValue;
-          }
-        }
-      });
-      return nestedUnitPrice;
-    };
-
     return weeklyRewardsEditable.map((group) => {
       let groupTotal = 0;
       const items = group.items
@@ -722,67 +710,57 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
           item.components.forEach(comp => {
             // 하위 묶음 항목 처리
             if (comp.itemName === '__nested__' && comp.nestedItem) {
-              try {
-                const nestedItemUnitPrice = calculateNestedItemValue(comp.nestedItem, 'gold');
-                const nestedItemQuantity = comp.nestedItem.quantity || 1;
-                const nestedItemTotalValue = nestedItemUnitPrice * nestedItemQuantity;
-                
-                const isIncluded = item.itemType === '확정' || 
-                                  (item.itemType === '확률') || 
-                                  (item.itemType === '선택' && comp.selected);
-                
-                if (isIncluded) {
-                  let value = nestedItemTotalValue;
-                  if (item.itemType === '확률' && comp.probability !== undefined) {
-                    value *= comp.probability;
-                  }
-                  bundleUnitPrice += value;
-                  groupTotal += value * (item.quantity || 1);
-                  itemDetails.push({
-                    itemName: '하위 묶음 항목',
-                    unitPrice: nestedItemUnitPrice,
-                    componentQuantity: nestedItemQuantity,
-                    bundleQuantity: item.quantity || 1,
-                    probability: item.itemType === '확률' ? comp.probability : undefined,
-                    value: value * (item.quantity || 1),
-                    isIncluded,
-                  });
+              const nestedItemUnitPrice = calculateNestedItemValue(comp.nestedItem, 'gold');
+              const nestedItemQuantity = comp.nestedItem.quantity || 1;
+              const nestedItemTotalValue = nestedItemUnitPrice * nestedItemQuantity;
+              
+              const isIncluded = item.itemType === '확정' || 
+                                (item.itemType === '확률') || 
+                                (item.itemType === '선택' && comp.selected);
+              
+              if (isIncluded) {
+                let value = nestedItemTotalValue;
+                if (item.itemType === '확률' && comp.probability !== undefined) {
+                  value *= comp.probability;
                 }
-              } catch (error) {
-                console.error('[이벤트 효율] 하위 묶음 항목 계산 오류:', error);
-                // 오류 발생 시 해당 항목은 건너뜀
+                bundleUnitPrice += value;
+                groupTotal += value * (item.quantity || 1);
+                itemDetails.push({
+                  itemName: '하위 묶음 항목',
+                  unitPrice: nestedItemUnitPrice,
+                  componentQuantity: nestedItemQuantity,
+                  bundleQuantity: item.quantity || 1,
+                  probability: item.itemType === '확률' ? comp.probability : undefined,
+                  value: value * (item.quantity || 1),
+                  isIncluded,
+                });
               }
               return;
             }
             
             // 일반 구성요소 처리
             if (!comp.itemName || comp.itemName === '__manual__' || comp.itemName === '') return;
-            try {
-              const unitPrice = getItemUnitPrice(comp.itemName, comp);
-              if (unitPrice === null) return;
-              const isIncluded = item.itemType === '확정' || 
-                                (item.itemType === '확률') || 
-                                (item.itemType === '선택' && comp.selected);
-              if (!isIncluded) return;
-              let value = unitPrice * (comp.quantity || 0);
-              if (item.itemType === '확률' && comp.probability !== undefined) {
-                value *= comp.probability;
-              }
-              bundleUnitPrice += value;
-              groupTotal += value * (item.quantity || 1);
-              itemDetails.push({
-                itemName: comp.itemName,
-                unitPrice,
-                componentQuantity: comp.quantity || 0,
-                bundleQuantity: item.quantity || 1,
-                probability: item.itemType === '확률' ? comp.probability : undefined,
-                value: value * (item.quantity || 1),
-                isIncluded,
-              });
-            } catch (error) {
-              console.error('[이벤트 효율] 구성요소 계산 오류:', error);
-              // 오류 발생 시 해당 항목은 건너뜀
+            const unitPrice = getItemUnitPrice(comp.itemName, comp);
+            if (unitPrice === null) return;
+            const isIncluded = item.itemType === '확정' || 
+                              (item.itemType === '확률') || 
+                              (item.itemType === '선택' && comp.selected);
+            if (!isIncluded) return;
+            let value = unitPrice * (comp.quantity || 0);
+            if (item.itemType === '확률' && comp.probability !== undefined) {
+              value *= comp.probability;
             }
+            bundleUnitPrice += value;
+            groupTotal += value * (item.quantity || 1);
+            itemDetails.push({
+              itemName: comp.itemName,
+              unitPrice,
+              componentQuantity: comp.quantity || 0,
+              bundleQuantity: item.quantity || 1,
+              probability: item.itemType === '확률' ? comp.probability : undefined,
+              value: value * (item.quantity || 1),
+              isIncluded,
+            });
           });
           
           return {
@@ -799,48 +777,10 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
         items,
       };
     });
-  }, [weeklyRewardsEditable, getItemUnitPrice]);
+  }, [weeklyRewardsEditable, getItemUnitPrice, calculateNestedItemValue]);
 
   // 누적보상 그룹별 상세 정보 계산 (누적보상 탭에서 사용하는 계산 로직과 동일)
   const cumulativeRewardsGroupDetails = useMemo(() => {
-    // getItemUnitPrice가 정의되어 있는지 확인
-    if (typeof getItemUnitPrice !== 'function') {
-      return [];
-    }
-
-    // 하위 묶음 항목의 가치를 재귀적으로 계산하는 함수 (useMemo 내부에서 정의하여 클로저 문제 방지)
-    const calculateNestedItemValue = (nestedItem: RewardItemNew, priceType: 'gold'): number => {
-      let nestedUnitPrice = 0;
-      nestedItem.components.forEach((nestedComp) => {
-        if (nestedComp.itemName === '__nested__' && nestedComp.nestedItem) {
-          const nestedNestedUnitPrice = calculateNestedItemValue(nestedComp.nestedItem, priceType);
-          nestedUnitPrice += nestedNestedUnitPrice * (nestedComp.quantity || 1);
-          return;
-        }
-        const isManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
-        const unitPrice = !isManual && nestedComp.itemName && typeof getItemUnitPrice === 'function' 
-          ? getItemUnitPrice(nestedComp.itemName, nestedComp) 
-          : null;
-        if (unitPrice === null) return;
-        const isIncluded = nestedItem.itemType === '확정' || 
-                          (nestedItem.itemType === '확률') || 
-                          (nestedItem.itemType === '선택' && nestedComp.selected);
-        if (!isIncluded) return;
-        let nestedCompValue = unitPrice * (nestedComp.quantity || 0);
-        if (nestedItem.itemType === '확정') {
-          nestedUnitPrice += nestedCompValue;
-        } else if (nestedItem.itemType === '확률') {
-          const probability = nestedComp.probability || 0;
-          nestedUnitPrice += nestedCompValue * probability;
-        } else if (nestedItem.itemType === '선택') {
-          if (nestedComp.selected) {
-            nestedUnitPrice += nestedCompValue;
-          }
-        }
-      });
-      return nestedUnitPrice;
-    };
-
     return cumulativeRewardsEditable.map((group) => {
       let groupTotal = 0;
       const items = group.items
@@ -861,67 +801,57 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
           item.components.forEach(comp => {
             // 하위 묶음 항목 처리
             if (comp.itemName === '__nested__' && comp.nestedItem) {
-              try {
-                const nestedItemUnitPrice = calculateNestedItemValue(comp.nestedItem, 'gold');
-                const nestedItemQuantity = comp.nestedItem.quantity || 1;
-                const nestedItemTotalValue = nestedItemUnitPrice * nestedItemQuantity;
-                
-                const isIncluded = item.itemType === '확정' || 
-                                  (item.itemType === '확률') || 
-                                  (item.itemType === '선택' && comp.selected);
-                
-                if (isIncluded) {
-                  let value = nestedItemTotalValue;
-                  if (item.itemType === '확률' && comp.probability !== undefined) {
-                    value *= comp.probability;
-                  }
-                  bundleUnitPrice += value;
-                  groupTotal += value * (item.quantity || 1);
-                  itemDetails.push({
-                    itemName: '하위 묶음 항목',
-                    unitPrice: nestedItemUnitPrice,
-                    componentQuantity: nestedItemQuantity,
-                    bundleQuantity: item.quantity || 1,
-                    probability: item.itemType === '확률' ? comp.probability : undefined,
-                    value: value * (item.quantity || 1),
-                    isIncluded,
-                  });
+              const nestedItemUnitPrice = calculateNestedItemValue(comp.nestedItem, 'gold');
+              const nestedItemQuantity = comp.nestedItem.quantity || 1;
+              const nestedItemTotalValue = nestedItemUnitPrice * nestedItemQuantity;
+              
+              const isIncluded = item.itemType === '확정' || 
+                                (item.itemType === '확률') || 
+                                (item.itemType === '선택' && comp.selected);
+              
+              if (isIncluded) {
+                let value = nestedItemTotalValue;
+                if (item.itemType === '확률' && comp.probability !== undefined) {
+                  value *= comp.probability;
                 }
-              } catch (error) {
-                console.error('[이벤트 효율] 하위 묶음 항목 계산 오류:', error);
-                // 오류 발생 시 해당 항목은 건너뜀
+                bundleUnitPrice += value;
+                groupTotal += value * (item.quantity || 1);
+                itemDetails.push({
+                  itemName: '하위 묶음 항목',
+                  unitPrice: nestedItemUnitPrice,
+                  componentQuantity: nestedItemQuantity,
+                  bundleQuantity: item.quantity || 1,
+                  probability: item.itemType === '확률' ? comp.probability : undefined,
+                  value: value * (item.quantity || 1),
+                  isIncluded,
+                });
               }
               return;
             }
             
             // 일반 구성요소 처리
             if (!comp.itemName || comp.itemName === '__manual__' || comp.itemName === '') return;
-            try {
-              const unitPrice = getItemUnitPrice(comp.itemName, comp);
-              if (unitPrice === null) return;
-              const isIncluded = item.itemType === '확정' || 
-                                (item.itemType === '확률') || 
-                                (item.itemType === '선택' && comp.selected);
-              if (!isIncluded) return;
-              let value = unitPrice * (comp.quantity || 0);
-              if (item.itemType === '확률' && comp.probability !== undefined) {
-                value *= comp.probability;
-              }
-              bundleUnitPrice += value;
-              groupTotal += value * (item.quantity || 1);
-              itemDetails.push({
-                itemName: comp.itemName,
-                unitPrice,
-                componentQuantity: comp.quantity || 0,
-                bundleQuantity: item.quantity || 1,
-                probability: item.itemType === '확률' ? comp.probability : undefined,
-                value: value * (item.quantity || 1),
-                isIncluded,
-              });
-            } catch (error) {
-              console.error('[이벤트 효율] 구성요소 계산 오류:', error);
-              // 오류 발생 시 해당 항목은 건너뜀
+            const unitPrice = getItemUnitPrice(comp.itemName, comp);
+            if (unitPrice === null) return;
+            const isIncluded = item.itemType === '확정' || 
+                              (item.itemType === '확률') || 
+                              (item.itemType === '선택' && comp.selected);
+            if (!isIncluded) return;
+            let value = unitPrice * (comp.quantity || 0);
+            if (item.itemType === '확률' && comp.probability !== undefined) {
+              value *= comp.probability;
             }
+            bundleUnitPrice += value;
+            groupTotal += value * (item.quantity || 1);
+            itemDetails.push({
+              itemName: comp.itemName,
+              unitPrice,
+              componentQuantity: comp.quantity || 0,
+              bundleQuantity: item.quantity || 1,
+              probability: item.itemType === '확률' ? comp.probability : undefined,
+              value: value * (item.quantity || 1),
+              isIncluded,
+            });
           });
           
           return {
@@ -938,7 +868,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
         items,
       };
     });
-  }, [cumulativeRewardsEditable, getItemUnitPrice]);
+  }, [cumulativeRewardsEditable, getItemUnitPrice, calculateNestedItemValue]);
   
   const kurzanStageOptions = useMemo<KurzanStageOption[]>(() => {
     return kurzanStages.map((stage, idx) => ({
@@ -4192,50 +4122,31 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                           </thead>
                           <tbody>
                             {group.items.map((item, itemIdx) => {
-                              const bundleKey = `weekly-${groupIdx}-${itemIdx}-${item.itemName}`;
-                              const isExpanded = expandedBundleItems.has(bundleKey);
-                              const isEnabled = enabledBundleItems[bundleKey] !== false;
-                              const bundleValue = item.bundleUnitPrice * item.bundleQuantity;
-                              
+                              const bundleKey = `summary-weekly-${groupIdx}-${itemIdx}-${item.itemName}`;
+                              const isExpanded = expandedBundleItemsSummary.has(bundleKey);
                               return (
                                 <>
-                                  <tr key={`item-${itemIdx}`} className={`border-b border-gray-800/70 hover:bg-gray-700/30 transition-colors ${!isEnabled ? 'opacity-40' : ''}`}>
+                                  <tr key={`item-${itemIdx}`} className="border-b border-gray-800/70 hover:bg-gray-700/30 transition-colors">
                                     <td className="px-4 py-3 text-white font-medium">
-                                      <div className="flex items-center gap-3">
-                                        <button
-                                          type="button"
-                                          onClick={() => setEnabledBundleItems(prev => ({
-                                            ...prev,
-                                            [bundleKey]: !(prev[bundleKey] !== false)
-                                          }))}
-                                          className={`w-10 h-5 rounded-full border transition-colors ${
-                                            isEnabled
-                                              ? 'bg-purple-600 border-purple-500'
-                                              : 'bg-gray-600 border-gray-500'
-                                          }`}
-                                          aria-label={`${item.itemName} 포함 여부`}
-                                        >
-                                          <span
-                                            className={`inline-block w-4 h-4 rounded-full bg-white transform transition-transform ${
-                                              isEnabled ? 'translate-x-5' : 'translate-x-1'
-                                            }`}
-                                          />
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            const newExpanded = new Set(expandedBundleItems);
-                                            if (isExpanded) {
-                                              newExpanded.delete(bundleKey);
-                                            } else {
-                                              newExpanded.add(bundleKey);
-                                            }
-                                            setExpandedBundleItems(newExpanded);
-                                          }}
-                                          className="text-gray-400 hover:text-white transition-colors"
-                                        >
-                                          {isExpanded ? '▼' : '▶'}
-                                        </button>
+                                      <div className="flex items-center gap-2">
+                                        {item.details.length > 0 && (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              const newExpanded = new Set(expandedBundleItemsSummary);
+                                              if (isExpanded) {
+                                                newExpanded.delete(bundleKey);
+                                              } else {
+                                                newExpanded.add(bundleKey);
+                                              }
+                                              setExpandedBundleItemsSummary(newExpanded);
+                                            }}
+                                            className="text-gray-400 hover:text-white transition-colors"
+                                            aria-label={isExpanded ? '접기' : '펼치기'}
+                                          >
+                                            {isExpanded ? '▼' : '▶'}
+                                          </button>
+                                        )}
                                         <span>
                                           {item.itemName}
                                           <span className="ml-2 text-xs text-gray-400">({item.itemType})</span>
@@ -4250,13 +4161,13 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                     </td>
                                     <td className="px-4 py-3 text-right text-yellow-300 font-semibold">
                                       {item.bundleUnitPrice > 0
-                                        ? `${formatNumberWithSignificantDigits(bundleValue)}골드`
+                                        ? `${formatNumberWithSignificantDigits(item.bundleUnitPrice * item.bundleQuantity)}골드`
                                         : '-'}
                                     </td>
                                   </tr>
                                   {isExpanded && item.details.map((detail, detailIdx) => (
                                     <tr key={`detail-${itemIdx}-${detailIdx}`} className="bg-gray-900/30 border-b border-gray-800/50">
-                                      <td className="px-4 py-2 text-gray-400 text-xs pl-16">
+                                      <td className="px-4 py-2 text-gray-400 text-xs pl-8">
                                         • {detail.itemName}
                                       </td>
                                       <td className="px-4 py-2 text-right text-gray-400 text-xs">
@@ -4280,20 +4191,10 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                           <tfoot>
                             <tr className="bg-gradient-to-r from-blue-900/60 to-purple-900/60 border-t-2 border-blue-500/60">
                               <td colSpan={3} className="px-4 py-2 text-right text-gray-200 font-bold">
-                                그룹 합계 (활성 항목만)
+                                그룹 합계
                               </td>
                               <td className="px-4 py-2 text-right text-yellow-300 font-bold">
-                                {(() => {
-                                  let enabledTotal = 0;
-                                  group.items.forEach((item, itemIdx) => {
-                                    const bundleKey = `weekly-${groupIdx}-${itemIdx}-${item.itemName}`;
-                                    const isEnabled = enabledBundleItems[bundleKey] !== false;
-                                    if (isEnabled) {
-                                      enabledTotal += item.bundleUnitPrice * item.bundleQuantity;
-                                    }
-                                  });
-                                  return enabledTotal > 0 ? `${formatNumberWithSignificantDigits(enabledTotal)}골드` : '-';
-                                })()}
+                                {group.groupTotal > 0 ? `${formatNumberWithSignificantDigits(group.groupTotal)}골드` : '-'}
                               </td>
                             </tr>
                           </tfoot>
@@ -4340,50 +4241,31 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                           </thead>
                           <tbody>
                             {group.items.map((item, itemIdx) => {
-                              const bundleKey = `cumulative-${groupIdx}-${itemIdx}-${item.itemName}`;
-                              const isExpanded = expandedBundleItems.has(bundleKey);
-                              const isEnabled = enabledBundleItems[bundleKey] !== false;
-                              const bundleValue = item.bundleUnitPrice * item.bundleQuantity;
-                              
+                              const bundleKey = `summary-cumulative-${groupIdx}-${itemIdx}-${item.itemName}`;
+                              const isExpanded = expandedBundleItemsSummary.has(bundleKey);
                               return (
                                 <>
-                                  <tr key={`item-${itemIdx}`} className={`border-b border-gray-800/70 hover:bg-gray-700/30 transition-colors ${!isEnabled ? 'opacity-40' : ''}`}>
+                                  <tr key={`item-${itemIdx}`} className="border-b border-gray-800/70 hover:bg-gray-700/30 transition-colors">
                                     <td className="px-4 py-3 text-white font-medium">
-                                      <div className="flex items-center gap-3">
-                                        <button
-                                          type="button"
-                                          onClick={() => setEnabledBundleItems(prev => ({
-                                            ...prev,
-                                            [bundleKey]: !(prev[bundleKey] !== false)
-                                          }))}
-                                          className={`w-10 h-5 rounded-full border transition-colors ${
-                                            isEnabled
-                                              ? 'bg-purple-600 border-purple-500'
-                                              : 'bg-gray-600 border-gray-500'
-                                          }`}
-                                          aria-label={`${item.itemName} 포함 여부`}
-                                        >
-                                          <span
-                                            className={`inline-block w-4 h-4 rounded-full bg-white transform transition-transform ${
-                                              isEnabled ? 'translate-x-5' : 'translate-x-1'
-                                            }`}
-                                          />
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            const newExpanded = new Set(expandedBundleItems);
-                                            if (isExpanded) {
-                                              newExpanded.delete(bundleKey);
-                                            } else {
-                                              newExpanded.add(bundleKey);
-                                            }
-                                            setExpandedBundleItems(newExpanded);
-                                          }}
-                                          className="text-gray-400 hover:text-white transition-colors"
-                                        >
-                                          {isExpanded ? '▼' : '▶'}
-                                        </button>
+                                      <div className="flex items-center gap-2">
+                                        {item.details.length > 0 && (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              const newExpanded = new Set(expandedBundleItemsSummary);
+                                              if (isExpanded) {
+                                                newExpanded.delete(bundleKey);
+                                              } else {
+                                                newExpanded.add(bundleKey);
+                                              }
+                                              setExpandedBundleItemsSummary(newExpanded);
+                                            }}
+                                            className="text-gray-400 hover:text-white transition-colors"
+                                            aria-label={isExpanded ? '접기' : '펼치기'}
+                                          >
+                                            {isExpanded ? '▼' : '▶'}
+                                          </button>
+                                        )}
                                         <span>
                                           {item.itemName}
                                           <span className="ml-2 text-xs text-gray-400">({item.itemType})</span>
@@ -4398,13 +4280,13 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                     </td>
                                     <td className="px-4 py-3 text-right text-yellow-300 font-semibold">
                                       {item.bundleUnitPrice > 0
-                                        ? `${formatNumberWithSignificantDigits(bundleValue)}골드`
+                                        ? `${formatNumberWithSignificantDigits(item.bundleUnitPrice * item.bundleQuantity)}골드`
                                         : '-'}
                                     </td>
                                   </tr>
                                   {isExpanded && item.details.map((detail, detailIdx) => (
                                     <tr key={`detail-${itemIdx}-${detailIdx}`} className="bg-gray-900/30 border-b border-gray-800/50">
-                                      <td className="px-4 py-2 text-gray-400 text-xs pl-16">
+                                      <td className="px-4 py-2 text-gray-400 text-xs pl-8">
                                         • {detail.itemName}
                                       </td>
                                       <td className="px-4 py-2 text-right text-gray-400 text-xs">
@@ -4428,20 +4310,10 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                           <tfoot>
                             <tr className="bg-gradient-to-r from-purple-900/60 to-pink-900/60 border-t-2 border-purple-500/60">
                               <td colSpan={3} className="px-4 py-2 text-right text-gray-200 font-bold">
-                                그룹 합계 (활성 항목만)
+                                그룹 합계
                               </td>
                               <td className="px-4 py-2 text-right text-yellow-300 font-bold">
-                                {(() => {
-                                  let enabledTotal = 0;
-                                  group.items.forEach((item, itemIdx) => {
-                                    const bundleKey = `cumulative-${groupIdx}-${itemIdx}-${item.itemName}`;
-                                    const isEnabled = enabledBundleItems[bundleKey] !== false;
-                                    if (isEnabled) {
-                                      enabledTotal += item.bundleUnitPrice * item.bundleQuantity;
-                                    }
-                                  });
-                                  return enabledTotal > 0 ? `${formatNumberWithSignificantDigits(enabledTotal)}골드` : '-';
-                                })()}
+                                {group.groupTotal > 0 ? `${formatNumberWithSignificantDigits(group.groupTotal)}골드` : '-'}
                               </td>
                             </tr>
                           </tfoot>
