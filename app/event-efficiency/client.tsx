@@ -657,39 +657,38 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
     return total;
   }, [cumulativeRewardsEditable, getItemUnitPrice]);
 
-  // 하위 묶음 항목의 가치를 재귀적으로 계산하는 함수 (함수 선언 방식으로 호이스팅 활용)
-  function calculateNestedItemValue(nestedItem: RewardItemNew, priceType: 'gold', getItemUnitPriceFn: typeof getItemUnitPrice): number {
-    let nestedUnitPrice = 0;
-    nestedItem.components.forEach((nestedComp) => {
-      if (nestedComp.itemName === '__nested__' && nestedComp.nestedItem) {
-        const nestedNestedUnitPrice = calculateNestedItemValue(nestedComp.nestedItem, priceType, getItemUnitPriceFn);
-        nestedUnitPrice += nestedNestedUnitPrice * (nestedComp.quantity || 1);
-        return;
-      }
-      const isManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
-      const unitPrice = !isManual && nestedComp.itemName ? getItemUnitPriceFn(nestedComp.itemName, nestedComp) : null;
-      if (unitPrice === null) return;
-      const isIncluded = nestedItem.itemType === '확정' || 
-                        (nestedItem.itemType === '확률') || 
-                        (nestedItem.itemType === '선택' && nestedComp.selected);
-      if (!isIncluded) return;
-      let nestedCompValue = unitPrice * (nestedComp.quantity || 0);
-      if (nestedItem.itemType === '확정') {
-        nestedUnitPrice += nestedCompValue;
-      } else if (nestedItem.itemType === '확률') {
-        const probability = nestedComp.probability || 0;
-        nestedUnitPrice += nestedCompValue * probability;
-      } else if (nestedItem.itemType === '선택') {
-        if (nestedComp.selected) {
-          nestedUnitPrice += nestedCompValue;
-        }
-      }
-    });
-    return nestedUnitPrice;
-  }
-
   // 주간보상 그룹별 상세 정보 계산 (주간보상 탭에서 사용하는 계산 로직과 동일)
   const weeklyRewardsGroupDetails = useMemo(() => {
+    // 하위 묶음 항목의 가치를 재귀적으로 계산하는 함수 (useMemo 내부에서 정의하여 초기화 문제 방지)
+    const calculateNestedItemValue = (nestedItem: RewardItemNew): number => {
+      let nestedUnitPrice = 0;
+      nestedItem.components.forEach((nestedComp) => {
+        if (nestedComp.itemName === '__nested__' && nestedComp.nestedItem) {
+          const nestedNestedUnitPrice = calculateNestedItemValue(nestedComp.nestedItem);
+          nestedUnitPrice += nestedNestedUnitPrice * (nestedComp.quantity || 1);
+          return;
+        }
+        const isManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
+        const unitPrice = !isManual && nestedComp.itemName ? getItemUnitPrice(nestedComp.itemName, nestedComp) : null;
+        if (unitPrice === null) return;
+        const isIncluded = nestedItem.itemType === '확정' || 
+                          (nestedItem.itemType === '확률') || 
+                          (nestedItem.itemType === '선택' && nestedComp.selected);
+        if (!isIncluded) return;
+        let nestedCompValue = unitPrice * (nestedComp.quantity || 0);
+        if (nestedItem.itemType === '확정') {
+          nestedUnitPrice += nestedCompValue;
+        } else if (nestedItem.itemType === '확률') {
+          const probability = nestedComp.probability || 0;
+          nestedUnitPrice += nestedCompValue * probability;
+        } else if (nestedItem.itemType === '선택') {
+          if (nestedComp.selected) {
+            nestedUnitPrice += nestedCompValue;
+          }
+        }
+      });
+      return nestedUnitPrice;
+    };
     
     return weeklyRewardsEditable.map((group) => {
       let groupTotal = 0;
@@ -711,7 +710,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
           item.components.forEach(comp => {
             // 하위 묶음 항목 처리
             if (comp.itemName === '__nested__' && comp.nestedItem) {
-              const nestedItemUnitPrice = calculateNestedItemValue(comp.nestedItem, 'gold', getItemUnitPrice);
+              const nestedItemUnitPrice = calculateNestedItemValue(comp.nestedItem);
               const nestedItemQuantity = comp.nestedItem.quantity || 1;
               const nestedItemTotalValue = nestedItemUnitPrice * nestedItemQuantity;
               
@@ -782,6 +781,36 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
 
   // 누적보상 그룹별 상세 정보 계산 (누적보상 탭에서 사용하는 계산 로직과 동일)
   const cumulativeRewardsGroupDetails = useMemo(() => {
+    // 하위 묶음 항목의 가치를 재귀적으로 계산하는 함수 (useMemo 내부에서 정의하여 초기화 문제 방지)
+    const calculateNestedItemValue = (nestedItem: RewardItemNew): number => {
+      let nestedUnitPrice = 0;
+      nestedItem.components.forEach((nestedComp) => {
+        if (nestedComp.itemName === '__nested__' && nestedComp.nestedItem) {
+          const nestedNestedUnitPrice = calculateNestedItemValue(nestedComp.nestedItem);
+          nestedUnitPrice += nestedNestedUnitPrice * (nestedComp.quantity || 1);
+          return;
+        }
+        const isManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
+        const unitPrice = !isManual && nestedComp.itemName ? getItemUnitPrice(nestedComp.itemName, nestedComp) : null;
+        if (unitPrice === null) return;
+        const isIncluded = nestedItem.itemType === '확정' || 
+                          (nestedItem.itemType === '확률') || 
+                          (nestedItem.itemType === '선택' && nestedComp.selected);
+        if (!isIncluded) return;
+        let nestedCompValue = unitPrice * (nestedComp.quantity || 0);
+        if (nestedItem.itemType === '확정') {
+          nestedUnitPrice += nestedCompValue;
+        } else if (nestedItem.itemType === '확률') {
+          const probability = nestedComp.probability || 0;
+          nestedUnitPrice += nestedCompValue * probability;
+        } else if (nestedItem.itemType === '선택') {
+          if (nestedComp.selected) {
+            nestedUnitPrice += nestedCompValue;
+          }
+        }
+      });
+      return nestedUnitPrice;
+    };
     
     return cumulativeRewardsEditable.map((group) => {
       let groupTotal = 0;
@@ -803,7 +832,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
           item.components.forEach(comp => {
             // 하위 묶음 항목 처리
             if (comp.itemName === '__nested__' && comp.nestedItem) {
-              const nestedItemUnitPrice = calculateNestedItemValue(comp.nestedItem, 'gold', getItemUnitPrice);
+              const nestedItemUnitPrice = calculateNestedItemValue(comp.nestedItem);
               const nestedItemQuantity = comp.nestedItem.quantity || 1;
               const nestedItemTotalValue = nestedItemUnitPrice * nestedItemQuantity;
               
