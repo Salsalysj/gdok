@@ -662,8 +662,8 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
     return total;
   }, [cumulativeRewardsEditable, getItemUnitPrice, enabledBundleItems]);
 
-  // 하위 묶음 항목의 가치를 재귀적으로 계산하는 함수
-  const calculateNestedItemValue = useCallback((nestedItem: RewardItemNew, priceType: 'gold'): number => {
+  // 하위 묶음 항목의 가치를 재귀적으로 계산하는 함수 (일반 함수로 선언하여 호이스팅 문제 방지)
+  function calculateNestedItemValue(nestedItem: RewardItemNew, priceType: 'gold'): number {
     let nestedUnitPrice = 0;
     nestedItem.components.forEach((nestedComp) => {
       if (nestedComp.itemName === '__nested__' && nestedComp.nestedItem) {
@@ -691,7 +691,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
       }
     });
     return nestedUnitPrice;
-  }, [getItemUnitPrice]);
+  }
 
   // 주간보상 그룹별 상세 정보 계산 (주간보상 탭에서 사용하는 계산 로직과 동일)
   const weeklyRewardsGroupDetails = useMemo(() => {
@@ -782,7 +782,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
         items,
       };
     });
-  }, [weeklyRewardsEditable, getItemUnitPrice, calculateNestedItemValue]);
+  }, [weeklyRewardsEditable, getItemUnitPrice]);
 
   // 누적보상 그룹별 상세 정보 계산 (누적보상 탭에서 사용하는 계산 로직과 동일)
   const cumulativeRewardsGroupDetails = useMemo(() => {
@@ -873,7 +873,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
         items,
       };
     });
-  }, [cumulativeRewardsEditable, getItemUnitPrice, calculateNestedItemValue]);
+  }, [cumulativeRewardsEditable, getItemUnitPrice]);
   
   const kurzanStageOptions = useMemo<KurzanStageOption[]>(() => {
     return kurzanStages.map((stage, idx) => ({
