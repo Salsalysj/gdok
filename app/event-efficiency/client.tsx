@@ -414,6 +414,8 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
   const [chaosStoneQuality, setChaosStoneQuality] = useState<90 | 95>(90);
   const [lightMode, setLightMode] = useState<boolean>(false);
   const [enabledRewards, setEnabledRewards] = useState<Record<string, boolean>>({});
+  const [expandedBundleItems, setExpandedBundleItems] = useState<Set<string>>(new Set());
+  const [enabledBundleItems, setEnabledBundleItems] = useState<Record<string, boolean>>({});
   const [braceletPriceInput, setBraceletPriceInput] = useState('100');
   const [totalDaysInput, setTotalDaysInput] = useState('20');
   const [totalWeeksInput, setTotalWeeksInput] = useState(getInitialTotalWeeks());
@@ -515,15 +517,30 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
     if (!itemName || itemName === '__nested__' || itemName === '__manual__') return null;
     
     // 직접 입력된 단가가 있으면 우선 사용
-    if (component && component.manualPrice !== null && component.manualPrice !== undefined && component.manualPrice > 0) {
+    if (component && component.manualPrice !== null && component.manualPrice !== undefined) {
       // 단위 변환 필요 시 여기서 처리 (현재는 골드 기준)
       if (component.manualUnitType === '골드') {
         return component.manualPrice;
       } else if (component.manualUnitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
         return (component.manualPrice * crystalGoldRate) / 100;
-      } else if (component.manualUnitType === '현금' && discordRate && discordRate > 0) {
-        // 현금을 골드로 변환 (discordRate는 골드당 현금 비율)
-        return component.manualPrice / discordRate;
+      } else if (component.manualUnitType === '현금') {
+        // 현금을 골드로 변환
+        // cashMode에 따라 다른 환율 사용
+        if (cashMode === 'discord') {
+          // 디스코드: discordRate는 "100골드당 현금"을 의미하므로, 1골드당 현금 = discordRate / 100
+          // 따라서 현금을 골드로 변환: 골드 = 현금 / (discordRate / 100) = 현금 * 100 / discordRate
+          if (discordRate && discordRate > 0) {
+            return (component.manualPrice * 100) / discordRate;
+          }
+        } else {
+          // 화폐거래소: 1골드 = 2750 / crystalGoldRate 원
+          // 따라서 현금을 골드로 변환: 골드 = 현금 / (2750 / crystalGoldRate) = 현금 * crystalGoldRate / 2750
+          if (crystalGoldRate && crystalGoldRate > 0) {
+            return (component.manualPrice * crystalGoldRate) / 2750;
+          }
+        }
+        // 환율 정보가 없으면 null 반환
+        return null;
       }
       return component.manualPrice; // 기본값
     }
@@ -531,8 +548,19 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
     // 1. 가치계산DB에서 찾기 (우선순위 - adjustedEntries는 가격 조정이 이미 적용된 데이터)
     if (adjustedEntries && adjustedEntries.length > 0) {
       const valueDbEntry = adjustedEntries.find(entry => entry.itemName === itemName);
-      if (valueDbEntry && valueDbEntry.unitType === '골드' && valueDbEntry.unitValue !== null) {
-        return valueDbEntry.unitValue;
+      if (valueDbEntry && valueDbEntry.unitValue !== null) {
+        if (valueDbEntry.unitType === '골드') {
+          return valueDbEntry.unitValue;
+        } else if (valueDbEntry.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
+          return (valueDbEntry.unitValue * crystalGoldRate) / 100;
+        } else if (valueDbEntry.unitType === '현금') {
+          // 현금을 골드로 변환
+          if (cashMode === 'discord' && discordRate && discordRate > 0) {
+            return (valueDbEntry.unitValue * 100) / discordRate;
+          } else if (cashMode === 'exchange' && crystalGoldRate && crystalGoldRate > 0) {
+            return (valueDbEntry.unitValue * crystalGoldRate) / 2750;
+          }
+        }
       }
     }
     
@@ -542,6 +570,14 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
       if (etcItem.gold !== null) return etcItem.gold;
       if (etcItem.crystal !== null && crystalGoldRate !== null) {
         return (etcItem.crystal * crystalGoldRate) / 100;
+      }
+      if (etcItem.cash !== null && etcItem.cash > 0) {
+        // 현금을 골드로 변환
+        if (cashMode === 'discord' && discordRate && discordRate > 0) {
+          return (etcItem.cash * 100) / discordRate;
+        } else if (cashMode === 'exchange' && crystalGoldRate && crystalGoldRate > 0) {
+          return (etcItem.cash * crystalGoldRate) / 2750;
+        }
       }
     }
     
@@ -564,13 +600,280 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
     }
     
     return null;
-  }, [adjustedEntries, etcListItems, marketCache, crystalGoldRate, adjustPrice, discordRate]);
+  }, [adjustedEntries, etcListItems, marketCache, crystalGoldRate, adjustPrice, discordRate, lightMode]);
   
   // 주간 보상 상태 (직접 입력 가능) - 새 구조 적용
   const [weeklyRewardsEditable, setWeeklyRewardsEditable] = useState<RewardGroup[]>(getInitialWeeklyRewards());
   
   // 누적 보상 상태 (직접 입력 가능) - 새 구조 적용
   const [cumulativeRewardsEditable, setCumulativeRewardsEditable] = useState<RewardGroup[]>(getInitialCumulativeRewards());
+
+  // 주간보상 총 가치 계산 (주간보상 탭에서 사용하는 계산 로직과 동일)
+  const weeklyRewardsTotalValue = useMemo(() => {
+    let total = 0;
+    weeklyRewardsEditable.forEach(group => {
+      group.items.forEach(item => {
+        if (!isNewFormatItem(item)) return;
+        item.components.forEach(comp => {
+          if (!comp.itemName || comp.itemName === '__nested__' || comp.itemName === '__manual__' || comp.itemName === '') return;
+          const unitPrice = getItemUnitPrice(comp.itemName, comp);
+          if (unitPrice === null) return;
+          const isIncluded = item.itemType === '확정' || 
+                            (item.itemType === '확률') || 
+                            (item.itemType === '선택' && comp.selected);
+          if (!isIncluded) return;
+          let value = unitPrice * (comp.quantity || 0) * (item.quantity || 1);
+          if (item.itemType === '확률' && comp.probability !== undefined) {
+            value *= comp.probability;
+          }
+          total += value;
+        });
+      });
+    });
+    return total;
+  }, [weeklyRewardsEditable, getItemUnitPrice]);
+
+  // 누적보상 총 가치 계산 (누적보상 탭에서 사용하는 계산 로직과 동일, 요약 탭에서 스위치 반영)
+  const cumulativeRewardsTotalValue = useMemo(() => {
+    let total = 0;
+    cumulativeRewardsEditable.forEach((group, groupIdx) => {
+      group.items.forEach((item, itemIdx) => {
+        if (!isNewFormatItem(item)) return;
+        const bundleKey = `cumulative-${groupIdx}-${itemIdx}-${item.itemName}`;
+        const isEnabled = enabledBundleItems[bundleKey] !== false; // 기본값은 true
+        if (!isEnabled) return; // 스위치가 꺼진 항목은 제외
+        
+        item.components.forEach(comp => {
+          if (!comp.itemName || comp.itemName === '__nested__' || comp.itemName === '__manual__' || comp.itemName === '') return;
+          const unitPrice = getItemUnitPrice(comp.itemName, comp);
+          if (unitPrice === null) return;
+          const isIncluded = item.itemType === '확정' || 
+                            (item.itemType === '확률') || 
+                            (item.itemType === '선택' && comp.selected);
+          if (!isIncluded) return;
+          let value = unitPrice * (comp.quantity || 0) * (item.quantity || 1);
+          if (item.itemType === '확률' && comp.probability !== undefined) {
+            value *= comp.probability;
+          }
+          total += value;
+        });
+      });
+    });
+    return total;
+  }, [cumulativeRewardsEditable, getItemUnitPrice, enabledBundleItems]);
+
+  // 하위 묶음 항목의 가치를 재귀적으로 계산하는 함수
+  const calculateNestedItemValue = useCallback((nestedItem: RewardItemNew, priceType: 'gold'): number => {
+    let nestedUnitPrice = 0;
+    nestedItem.components.forEach((nestedComp) => {
+      if (nestedComp.itemName === '__nested__' && nestedComp.nestedItem) {
+        const nestedNestedUnitPrice = calculateNestedItemValue(nestedComp.nestedItem, priceType);
+        nestedUnitPrice += nestedNestedUnitPrice * (nestedComp.quantity || 1);
+        return;
+      }
+      const isManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
+      const unitPrice = !isManual && nestedComp.itemName ? getItemUnitPrice(nestedComp.itemName, nestedComp) : null;
+      if (unitPrice === null) return;
+      const isIncluded = nestedItem.itemType === '확정' || 
+                        (nestedItem.itemType === '확률') || 
+                        (nestedItem.itemType === '선택' && nestedComp.selected);
+      if (!isIncluded) return;
+      let nestedCompValue = unitPrice * (nestedComp.quantity || 0);
+      if (nestedItem.itemType === '확정') {
+        nestedUnitPrice += nestedCompValue;
+      } else if (nestedItem.itemType === '확률') {
+        const probability = nestedComp.probability || 0;
+        nestedUnitPrice += nestedCompValue * probability;
+      } else if (nestedItem.itemType === '선택') {
+        if (nestedComp.selected) {
+          nestedUnitPrice += nestedCompValue;
+        }
+      }
+    });
+    return nestedUnitPrice;
+  }, [getItemUnitPrice]);
+
+  // 주간보상 그룹별 상세 정보 계산 (주간보상 탭에서 사용하는 계산 로직과 동일)
+  const weeklyRewardsGroupDetails = useMemo(() => {
+    return weeklyRewardsEditable.map((group) => {
+      let groupTotal = 0;
+      const items = group.items
+        .filter(item => isNewFormatItem(item))
+        .map(item => {
+          // 묶음 항목 1개당 단가 계산
+          let bundleUnitPrice = 0;
+          const itemDetails: Array<{
+            itemName: string;
+            unitPrice: number;
+            componentQuantity: number;
+            bundleQuantity: number;
+            probability?: number;
+            value: number;
+            isIncluded: boolean;
+          }> = [];
+          
+          item.components.forEach(comp => {
+            // 하위 묶음 항목 처리
+            if (comp.itemName === '__nested__' && comp.nestedItem) {
+              const nestedItemUnitPrice = calculateNestedItemValue(comp.nestedItem, 'gold');
+              const nestedItemQuantity = comp.nestedItem.quantity || 1;
+              const nestedItemTotalValue = nestedItemUnitPrice * nestedItemQuantity;
+              
+              const isIncluded = item.itemType === '확정' || 
+                                (item.itemType === '확률') || 
+                                (item.itemType === '선택' && comp.selected);
+              
+              if (isIncluded) {
+                let value = nestedItemTotalValue;
+                if (item.itemType === '확률' && comp.probability !== undefined) {
+                  value *= comp.probability;
+                }
+                bundleUnitPrice += value;
+                groupTotal += value * (item.quantity || 1);
+                itemDetails.push({
+                  itemName: '하위 묶음 항목',
+                  unitPrice: nestedItemUnitPrice,
+                  componentQuantity: nestedItemQuantity,
+                  bundleQuantity: item.quantity || 1,
+                  probability: item.itemType === '확률' ? comp.probability : undefined,
+                  value: value * (item.quantity || 1),
+                  isIncluded,
+                });
+              }
+              return;
+            }
+            
+            // 일반 구성요소 처리
+            if (!comp.itemName || comp.itemName === '__manual__' || comp.itemName === '') return;
+            const unitPrice = getItemUnitPrice(comp.itemName, comp);
+            if (unitPrice === null) return;
+            const isIncluded = item.itemType === '확정' || 
+                              (item.itemType === '확률') || 
+                              (item.itemType === '선택' && comp.selected);
+            if (!isIncluded) return;
+            let value = unitPrice * (comp.quantity || 0);
+            if (item.itemType === '확률' && comp.probability !== undefined) {
+              value *= comp.probability;
+            }
+            bundleUnitPrice += value;
+            groupTotal += value * (item.quantity || 1);
+            itemDetails.push({
+              itemName: comp.itemName,
+              unitPrice,
+              componentQuantity: comp.quantity || 0,
+              bundleQuantity: item.quantity || 1,
+              probability: item.itemType === '확률' ? comp.probability : undefined,
+              value: value * (item.quantity || 1),
+              isIncluded,
+            });
+          });
+          
+          return {
+            itemName: item.itemName,
+            itemType: item.itemType,
+            bundleQuantity: item.quantity || 1,
+            bundleUnitPrice,
+            details: itemDetails,
+          };
+        });
+      return {
+        groupTitle: group.title,
+        groupTotal,
+        items,
+      };
+    });
+  }, [weeklyRewardsEditable, getItemUnitPrice, calculateNestedItemValue]);
+
+  // 누적보상 그룹별 상세 정보 계산 (누적보상 탭에서 사용하는 계산 로직과 동일)
+  const cumulativeRewardsGroupDetails = useMemo(() => {
+    return cumulativeRewardsEditable.map((group) => {
+      let groupTotal = 0;
+      const items = group.items
+        .filter(item => isNewFormatItem(item))
+        .map(item => {
+          // 묶음 항목 1개당 단가 계산
+          let bundleUnitPrice = 0;
+          const itemDetails: Array<{
+            itemName: string;
+            unitPrice: number;
+            componentQuantity: number;
+            bundleQuantity: number;
+            probability?: number;
+            value: number;
+            isIncluded: boolean;
+          }> = [];
+          
+          item.components.forEach(comp => {
+            // 하위 묶음 항목 처리
+            if (comp.itemName === '__nested__' && comp.nestedItem) {
+              const nestedItemUnitPrice = calculateNestedItemValue(comp.nestedItem, 'gold');
+              const nestedItemQuantity = comp.nestedItem.quantity || 1;
+              const nestedItemTotalValue = nestedItemUnitPrice * nestedItemQuantity;
+              
+              const isIncluded = item.itemType === '확정' || 
+                                (item.itemType === '확률') || 
+                                (item.itemType === '선택' && comp.selected);
+              
+              if (isIncluded) {
+                let value = nestedItemTotalValue;
+                if (item.itemType === '확률' && comp.probability !== undefined) {
+                  value *= comp.probability;
+                }
+                bundleUnitPrice += value;
+                groupTotal += value * (item.quantity || 1);
+                itemDetails.push({
+                  itemName: '하위 묶음 항목',
+                  unitPrice: nestedItemUnitPrice,
+                  componentQuantity: nestedItemQuantity,
+                  bundleQuantity: item.quantity || 1,
+                  probability: item.itemType === '확률' ? comp.probability : undefined,
+                  value: value * (item.quantity || 1),
+                  isIncluded,
+                });
+              }
+              return;
+            }
+            
+            // 일반 구성요소 처리
+            if (!comp.itemName || comp.itemName === '__manual__' || comp.itemName === '') return;
+            const unitPrice = getItemUnitPrice(comp.itemName, comp);
+            if (unitPrice === null) return;
+            const isIncluded = item.itemType === '확정' || 
+                              (item.itemType === '확률') || 
+                              (item.itemType === '선택' && comp.selected);
+            if (!isIncluded) return;
+            let value = unitPrice * (comp.quantity || 0);
+            if (item.itemType === '확률' && comp.probability !== undefined) {
+              value *= comp.probability;
+            }
+            bundleUnitPrice += value;
+            groupTotal += value * (item.quantity || 1);
+            itemDetails.push({
+              itemName: comp.itemName,
+              unitPrice,
+              componentQuantity: comp.quantity || 0,
+              bundleQuantity: item.quantity || 1,
+              probability: item.itemType === '확률' ? comp.probability : undefined,
+              value: value * (item.quantity || 1),
+              isIncluded,
+            });
+          });
+          
+          return {
+            itemName: item.itemName,
+            itemType: item.itemType,
+            bundleQuantity: item.quantity || 1,
+            bundleUnitPrice,
+            details: itemDetails,
+          };
+        });
+      return {
+        groupTitle: group.title,
+        groupTotal,
+        items,
+      };
+    });
+  }, [cumulativeRewardsEditable, getItemUnitPrice, calculateNestedItemValue]);
   
   const kurzanStageOptions = useMemo<KurzanStageOption[]>(() => {
     return kurzanStages.map((stage, idx) => ({
@@ -3773,286 +4076,314 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
               </div>
 
               {/* 주간보상 섹션 */}
-              {aggregateRewards.filter(item => item.category === 'weekly').length > 0 && (
-                <div className="space-y-3">
-                  <h3 className="text-lg font-bold text-blue-400 flex items-center gap-2">
-                    <span className="w-1 h-6 bg-blue-500 rounded"></span>
-                    주간 보상 ({totalWeeksNumber}주 × {totalWeeksNumber}회)
-                  </h3>
-                  <div className="overflow-x-auto rounded-xl border border-blue-500/30 shadow-lg">
-                <table className="w-full text-sm">
-                  <thead>
-                        <tr className="bg-gradient-to-r from-blue-900/40 to-purple-900/40 text-gray-200 border-b-2 border-blue-500/50">
-                      <th className="px-4 py-4 text-left font-bold">아이템명</th>
-                      <th className="px-4 py-4 text-right font-bold">총 수량</th>
-                      <th className="px-4 py-4 text-right font-bold">단가</th>
-                      <th className="px-4 py-4 text-right font-bold">총합</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                        {aggregateRewards.filter(item => item.category === 'weekly').map((item, idx) => {
-                      const enabled = enabledRewards[item.name] ?? true;
-                      const isKurzanSummaryItem = item.name === '쿠르잔 전선 보상 (휴식게이지 2배)';
-                      const isPcBangLuckyBoxSummaryItem = item.name === PC_BANG_LUCKY_SUMMARY_NAME;
-                      const kurzanValue = adjustedKurzanValue;
-                      const priceInfo = isKurzanSummaryItem
-                        ? {
-                            unit: 'gold' as const,
-                            unitAmount: kurzanValue,
-                            goldEquivalent: kurzanValue,
-                            cashEquivalent: null,
-                            note: null,
-                          }
-                        : isPcBangLuckyBoxSummaryItem
-                          ? {
-                              unit: pcBangLuckyBoxExpectedGold != null ? ('gold' as const) : null,
-                              unitAmount: pcBangLuckyBoxExpectedGold,
-                              goldEquivalent: pcBangLuckyBoxExpectedGold,
-                              cashEquivalent: null,
-                              note: pcBangLuckyBoxExpectedGold != null ? '상세 구성 기대값' : null,
-                            }
-                          : getItemPriceInfo(getItemName(item));
-                      const unitDisplay = isKurzanSummaryItem
-                        ? kurzanValue != null
-                          ? `${formatNumberWithSignificantDigits(kurzanValue)}골드`
-                          : '-'
-                        : isPcBangLuckyBoxSummaryItem
-                          ? pcBangLuckyBoxExpectedGold != null
-                            ? `${formatNumberWithSignificantDigits(pcBangLuckyBoxExpectedGold)}골드`
-                            : '-'
-                          : formatPriceDisplay(priceInfo.unitAmount, priceInfo.unit);
-                      const totalDisplay = isKurzanSummaryItem
-                        ? kurzanValue != null
-                          ? `${formatNumberWithSignificantDigits(kurzanValue * item.quantity)}골드`
-                          : '-'
-                        : isPcBangLuckyBoxSummaryItem
-                          ? pcBangLuckyBoxExpectedGold != null
-                            ? `${formatNumberWithSignificantDigits(pcBangLuckyBoxExpectedGold * item.quantity)}골드`
-                            : '-'
-                          : formatPriceDisplay(
-                              priceInfo.unitAmount !== null ? priceInfo.unitAmount * item.quantity : null,
-                              priceInfo.unit
-                            );
-                      const composition = getCompositionInfo(getItemName(item), item.quantity);
+              {weeklyRewardsGroupDetails.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-bold text-blue-400 flex items-center gap-2">
+                      <span className="w-1 h-6 bg-blue-500 rounded"></span>
+                      주간 보상
+                    </h3>
+                  </div>
+                  
+                  {/* 총합 정보 */}
+                  <div className="bg-gradient-to-r from-blue-900/40 to-purple-900/40 rounded-xl p-4 border border-blue-500/30">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <div className="text-sm text-gray-400 mb-1">1회 총합</div>
+                        <div className="text-xl font-bold text-blue-300">
+                          {weeklyRewardsTotalValue > 0 ? `${formatNumberWithSignificantDigits(weeklyRewardsTotalValue)}골드` : '-'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-gray-400 mb-1">총 주수</div>
+                        <div className="text-xl font-bold text-blue-300">
+                          {totalWeeksNumber}주
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-gray-400 mb-1">전체 가치</div>
+                        <div className="text-xl font-bold text-yellow-300">
+                          {weeklyRewardsTotalValue > 0 && totalWeeksNumber > 0
+                            ? `${formatNumberWithSignificantDigits(weeklyRewardsTotalValue * totalWeeksNumber)}골드`
+                            : '-'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
-                      return (
-                      <tr
-                        key={`${item.name}-${idx}`}
-                        className={`border-b border-gray-800/70 hover:bg-gray-700/30 transition-colors duration-200 ${!enabled ? 'opacity-40' : ''}`}
-                      >
-                          <td className="px-4 py-3 text-white">
-                            <div className="flex items-center gap-3">
-                              <button
-                                type="button"
-                                onClick={() => toggleReward(item.name)}
-                                className={`w-10 h-5 rounded-full border transition-colors ${
-                                  enabled
-                                    ? 'bg-purple-600 border-purple-500'
-                                    : 'bg-gray-600 border-gray-500'
-                                }`}
-                                aria-label={`${item.name} 포함 여부`}
-                              >
-                                <span
-                                  className={`inline-block w-4 h-4 rounded-full bg-white transform transition-transform ${
-                                    enabled ? 'translate-x-5' : 'translate-x-1'
-                                  }`}
-                                />
-                              </button>
-                              <span>
-                                {item.name}
-                                {isKurzanSummaryItem && selectedKurzanStage && (
-                                  <span className="ml-2 text-xs text-gray-400">
-                                    ({selectedKurzanStage.level} / {selectedKurzanStage.stage})
-                                  </span>
-                                )}
-                              </span>
-                              {getItemName(item) === '고결한 혼돈의 돌 선택 상자' && (
-                                <select
-                                  value={chaosStoneQuality}
-                                  onChange={(e) => setChaosStoneQuality(Number(e.target.value) as 90 | 95)}
-                                  className="bg-gray-700 text-white border border-gray-600 rounded px-2 py-1 text-xs"
-                                >
-                                  <option value={90}>품질 90</option>
-                                  <option value={95}>품질 95</option>
-                                </select>
-                              )}
-                              {getItemName(item) === '팔찌 효과 재변환권' && (
-                                <input
-                                  type="number"
-                                  min="1"
-                                  value={braceletPriceInput}
-                                  onChange={(e) => setBraceletPriceInput(e.target.value)}
-                                  className="w-24 bg-gray-700 text-white border border-gray-600 rounded px-2 py-1 text-xs"
-                                />
-                              )}
-                            </div>
-                            {composition.perUnit && (
-                              <div className="text-xs text-gray-400 mt-1">1개당 {composition.perUnit}</div>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-right text-gray-300">
-                            <div>{formatNumberWithSignificantDigits(item.quantity)}</div>
-                            {composition.total && (
-                              <div className="text-xs text-gray-500 mt-1">({composition.total})</div>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-right text-gray-300">
-                            {unitDisplay}
-                            {priceInfo.note && (
-                              <div className="text-xs text-gray-500 mt-1">{priceInfo.note}</div>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-right text-yellow-300 font-semibold">
-                            {totalDisplay}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                  {/* 그룹별 상세 테이블 */}
+                  {weeklyRewardsGroupDetails.map((group, groupIdx) => (
+                    <div key={groupIdx} className="space-y-2">
+                      <h4 className="text-base font-semibold text-blue-300">{group.groupTitle}</h4>
+                      <div className="overflow-x-auto rounded-xl border border-blue-500/30 shadow-lg">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="bg-gradient-to-r from-blue-900/40 to-purple-900/40 text-gray-200 border-b-2 border-blue-500/50">
+                              <th className="px-4 py-3 text-left font-bold">묶음 항목</th>
+                              <th className="px-4 py-3 text-right font-bold">묶음 단가</th>
+                              <th className="px-4 py-3 text-right font-bold">묶음 수량</th>
+                              <th className="px-4 py-3 text-right font-bold">묶음 가치</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {group.items.map((item, itemIdx) => {
+                              const bundleKey = `weekly-${groupIdx}-${itemIdx}-${item.itemName}`;
+                              const isExpanded = expandedBundleItems.has(bundleKey);
+                              const isEnabled = enabledBundleItems[bundleKey] !== false;
+                              const bundleValue = item.bundleUnitPrice * item.bundleQuantity;
+                              
+                              return (
+                                <>
+                                  <tr key={`item-${itemIdx}`} className={`border-b border-gray-800/70 hover:bg-gray-700/30 transition-colors ${!isEnabled ? 'opacity-40' : ''}`}>
+                                    <td className="px-4 py-3 text-white font-medium">
+                                      <div className="flex items-center gap-3">
+                                        <button
+                                          type="button"
+                                          onClick={() => setEnabledBundleItems(prev => ({
+                                            ...prev,
+                                            [bundleKey]: !(prev[bundleKey] !== false)
+                                          }))}
+                                          className={`w-10 h-5 rounded-full border transition-colors ${
+                                            isEnabled
+                                              ? 'bg-purple-600 border-purple-500'
+                                              : 'bg-gray-600 border-gray-500'
+                                          }`}
+                                          aria-label={`${item.itemName} 포함 여부`}
+                                        >
+                                          <span
+                                            className={`inline-block w-4 h-4 rounded-full bg-white transform transition-transform ${
+                                              isEnabled ? 'translate-x-5' : 'translate-x-1'
+                                            }`}
+                                          />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const newExpanded = new Set(expandedBundleItems);
+                                            if (isExpanded) {
+                                              newExpanded.delete(bundleKey);
+                                            } else {
+                                              newExpanded.add(bundleKey);
+                                            }
+                                            setExpandedBundleItems(newExpanded);
+                                          }}
+                                          className="text-gray-400 hover:text-white transition-colors"
+                                        >
+                                          {isExpanded ? '▼' : '▶'}
+                                        </button>
+                                        <span>
+                                          {item.itemName}
+                                          <span className="ml-2 text-xs text-gray-400">({item.itemType})</span>
+                                        </span>
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-right text-gray-300">
+                                      {item.bundleUnitPrice > 0 ? `${formatNumberWithSignificantDigits(item.bundleUnitPrice)}골드` : '-'}
+                                    </td>
+                                    <td className="px-4 py-3 text-right text-gray-300">
+                                      {item.bundleQuantity}
+                                    </td>
+                                    <td className="px-4 py-3 text-right text-yellow-300 font-semibold">
+                                      {item.bundleUnitPrice > 0
+                                        ? `${formatNumberWithSignificantDigits(bundleValue)}골드`
+                                        : '-'}
+                                    </td>
+                                  </tr>
+                                  {isExpanded && item.details.map((detail, detailIdx) => (
+                                    <tr key={`detail-${itemIdx}-${detailIdx}`} className="bg-gray-900/30 border-b border-gray-800/50">
+                                      <td className="px-4 py-2 text-gray-400 text-xs pl-16">
+                                        • {detail.itemName}
+                                      </td>
+                                      <td className="px-4 py-2 text-right text-gray-400 text-xs">
+                                        {detail.unitPrice > 0 ? `${formatNumberWithSignificantDigits(detail.unitPrice)}골드` : '-'}
+                                      </td>
+                                      <td className="px-4 py-2 text-right text-gray-400 text-xs">
+                                        {detail.componentQuantity}
+                                        {detail.probability !== undefined && (
+                                          <span className="text-purple-400 ml-1">× {formatNumberWithSignificantDigits(detail.probability * 100)}%</span>
+                                        )}
+                                      </td>
+                                      <td className="px-4 py-2 text-right text-gray-400 text-xs">
+                                        {detail.value > 0 ? `${formatNumberWithSignificantDigits(detail.value)}골드` : '-'}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </>
+                              );
+                            })}
+                          </tbody>
+                          <tfoot>
+                            <tr className="bg-gradient-to-r from-blue-900/60 to-purple-900/60 border-t-2 border-blue-500/60">
+                              <td colSpan={3} className="px-4 py-2 text-right text-gray-200 font-bold">
+                                그룹 합계 (활성 항목만)
+                              </td>
+                              <td className="px-4 py-2 text-right text-yellow-300 font-bold">
+                                {(() => {
+                                  let enabledTotal = 0;
+                                  group.items.forEach((item, itemIdx) => {
+                                    const bundleKey = `weekly-${groupIdx}-${itemIdx}-${item.itemName}`;
+                                    const isEnabled = enabledBundleItems[bundleKey] !== false;
+                                    if (isEnabled) {
+                                      enabledTotal += item.bundleUnitPrice * item.bundleQuantity;
+                                    }
+                                  });
+                                  return enabledTotal > 0 ? `${formatNumberWithSignificantDigits(enabledTotal)}골드` : '-';
+                                })()}
+                              </td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
 
               {/* 누적보상 섹션 */}
-              {aggregateRewards.filter(item => item.category === 'cumulative').length > 0 && (
-                <div className="space-y-3 mt-6">
-                  <h3 className="text-lg font-bold text-purple-400 flex items-center gap-2">
-                    <span className="w-1 h-6 bg-purple-500 rounded"></span>
-                    누적 보상 (1회)
-                  </h3>
-                  <div className="overflow-x-auto rounded-xl border border-purple-500/30 shadow-lg">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="bg-gradient-to-r from-purple-900/40 to-pink-900/40 text-gray-200 border-b-2 border-purple-500/50">
-                          <th className="px-4 py-4 text-left font-bold">아이템명</th>
-                          <th className="px-4 py-4 text-right font-bold">총 수량</th>
-                          <th className="px-4 py-4 text-right font-bold">단가</th>
-                          <th className="px-4 py-4 text-right font-bold">총합</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {aggregateRewards.filter(item => item.category === 'cumulative').map((item, idx) => {
-                          const enabled = enabledRewards[item.name] ?? true;
-                          const isKurzanSummaryItem = item.name === '쿠르잔 전선 보상 (휴식게이지 2배)';
-                          const isPcBangLuckyBoxSummaryItem = item.name === PC_BANG_LUCKY_SUMMARY_NAME;
-                          const kurzanValue = adjustedKurzanValue;
-                          const priceInfo = isKurzanSummaryItem
-                            ? {
-                                unit: 'gold' as const,
-                                unitAmount: kurzanValue,
-                                goldEquivalent: kurzanValue,
-                                cashEquivalent: null,
-                                note: null,
-                              }
-                            : isPcBangLuckyBoxSummaryItem
-                              ? {
-                                  unit: pcBangLuckyBoxExpectedGold != null ? ('gold' as const) : null,
-                                  unitAmount: pcBangLuckyBoxExpectedGold,
-                                  goldEquivalent: pcBangLuckyBoxExpectedGold,
-                                  cashEquivalent: null,
-                                  note: pcBangLuckyBoxExpectedGold != null ? '상세 구성 기대값' : null,
-                                }
-                              : getItemPriceInfo(getItemName(item));
-                          const unitDisplay = isKurzanSummaryItem
-                            ? kurzanValue != null
-                              ? `${formatNumberWithSignificantDigits(kurzanValue)}골드`
-                              : '-'
-                            : isPcBangLuckyBoxSummaryItem
-                              ? pcBangLuckyBoxExpectedGold != null
-                                ? `${formatNumberWithSignificantDigits(pcBangLuckyBoxExpectedGold)}골드`
-                                : '-'
-                              : formatPriceDisplay(priceInfo.unitAmount, priceInfo.unit);
-                          const totalDisplay = isKurzanSummaryItem
-                            ? kurzanValue != null
-                              ? `${formatNumberWithSignificantDigits(kurzanValue * item.quantity)}골드`
-                              : '-'
-                            : isPcBangLuckyBoxSummaryItem
-                              ? pcBangLuckyBoxExpectedGold != null
-                                ? `${formatNumberWithSignificantDigits(pcBangLuckyBoxExpectedGold * item.quantity)}골드`
-                                : '-'
-                              : formatPriceDisplay(
-                                  priceInfo.unitAmount !== null ? priceInfo.unitAmount * item.quantity : null,
-                                  priceInfo.unit
-                                );
-                          const composition = getCompositionInfo(getItemName(item), item.quantity);
-
-                          return (
-                          <tr
-                            key={`cumulative-${item.name}-${idx}`}
-                            className={`border-b border-gray-800/70 hover:bg-gray-700/30 transition-colors duration-200 ${!enabled ? 'opacity-40' : ''}`}
-                          >
-                            <td className="px-4 py-3 text-white">
-                              <div className="flex items-center gap-3">
-                                <button
-                                  type="button"
-                                  onClick={() => toggleReward(item.name)}
-                                  className={`w-10 h-5 rounded-full border transition-colors ${
-                                    enabled
-                                      ? 'bg-purple-600 border-purple-500'
-                                      : 'bg-gray-600 border-gray-500'
-                                  }`}
-                                  aria-label={`${item.name} 포함 여부`}
-                                >
-                                  <span
-                                    className={`inline-block w-4 h-4 rounded-full bg-white transform transition-transform ${
-                                      enabled ? 'translate-x-5' : 'translate-x-1'
-                                    }`}
-                                  />
-                                </button>
-                                <span>
-                                  {item.name}
-                                  {isKurzanSummaryItem && selectedKurzanStage && (
-                                    <span className="ml-2 text-xs text-gray-400">
-                                      ({selectedKurzanStage.level} / {selectedKurzanStage.stage})
-                                    </span>
-                                  )}
-                                </span>
-                                {getItemName(item) === '고결한 혼돈의 돌 선택 상자' && (
-                                  <select
-                                    value={chaosStoneQuality}
-                                    onChange={(e) => setChaosStoneQuality(Number(e.target.value) as 90 | 95)}
-                                    className="bg-gray-700 text-white border border-gray-600 rounded px-2 py-1 text-xs"
-                                  >
-                                    <option value={90}>품질 90</option>
-                                    <option value={95}>품질 95</option>
-                                  </select>
-                                )}
-                                {getItemName(item) === '팔찌 효과 재변환권' && (
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    value={braceletPriceInput}
-                                    onChange={(e) => setBraceletPriceInput(e.target.value)}
-                                    className="w-24 bg-gray-700 text-white border border-gray-600 rounded px-2 py-1 text-xs"
-                                  />
-                                )}
-                              </div>
-                              {composition.perUnit && (
-                                <div className="text-xs text-gray-400 mt-1">1개당 {composition.perUnit}</div>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-right text-gray-300">
-                              <div>{formatNumberWithSignificantDigits(item.quantity)}</div>
-                              {composition.total && (
-                                <div className="text-xs text-gray-500 mt-1">({composition.total})</div>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-right text-gray-300">
-                              {unitDisplay}
-                              {priceInfo.note && (
-                                <div className="text-xs text-gray-500 mt-1">{priceInfo.note}</div>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-right text-yellow-300 font-semibold">
-                              {totalDisplay}
-                            </td>
-                          </tr>
-                        );
-                        })}
-                      </tbody>
-                    </table>
+              {cumulativeRewardsGroupDetails.length > 0 && (
+                <div className="space-y-4 mt-6">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-bold text-purple-400 flex items-center gap-2">
+                      <span className="w-1 h-6 bg-purple-500 rounded"></span>
+                      누적 보상
+                    </h3>
                   </div>
+                  
+                  {/* 총합 정보 */}
+                  <div className="bg-gradient-to-r from-purple-900/40 to-pink-900/40 rounded-xl p-4 border border-purple-500/30">
+                    <div>
+                      <div className="text-sm text-gray-400 mb-1">총합</div>
+                      <div className="text-xl font-bold text-purple-300">
+                        {cumulativeRewardsTotalValue > 0 ? `${formatNumberWithSignificantDigits(cumulativeRewardsTotalValue)}골드` : '-'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 그룹별 상세 테이블 */}
+                  {cumulativeRewardsGroupDetails.map((group, groupIdx) => (
+                    <div key={groupIdx} className="space-y-2">
+                      <h4 className="text-base font-semibold text-purple-300">{group.groupTitle}</h4>
+                      <div className="overflow-x-auto rounded-xl border border-purple-500/30 shadow-lg">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="bg-gradient-to-r from-purple-900/40 to-pink-900/40 text-gray-200 border-b-2 border-purple-500/50">
+                              <th className="px-4 py-3 text-left font-bold">묶음 항목</th>
+                              <th className="px-4 py-3 text-right font-bold">묶음 단가</th>
+                              <th className="px-4 py-3 text-right font-bold">묶음 수량</th>
+                              <th className="px-4 py-3 text-right font-bold">묶음 가치</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {group.items.map((item, itemIdx) => {
+                              const bundleKey = `cumulative-${groupIdx}-${itemIdx}-${item.itemName}`;
+                              const isExpanded = expandedBundleItems.has(bundleKey);
+                              const isEnabled = enabledBundleItems[bundleKey] !== false;
+                              const bundleValue = item.bundleUnitPrice * item.bundleQuantity;
+                              
+                              return (
+                                <>
+                                  <tr key={`item-${itemIdx}`} className={`border-b border-gray-800/70 hover:bg-gray-700/30 transition-colors ${!isEnabled ? 'opacity-40' : ''}`}>
+                                    <td className="px-4 py-3 text-white font-medium">
+                                      <div className="flex items-center gap-3">
+                                        <button
+                                          type="button"
+                                          onClick={() => setEnabledBundleItems(prev => ({
+                                            ...prev,
+                                            [bundleKey]: !(prev[bundleKey] !== false)
+                                          }))}
+                                          className={`w-10 h-5 rounded-full border transition-colors ${
+                                            isEnabled
+                                              ? 'bg-purple-600 border-purple-500'
+                                              : 'bg-gray-600 border-gray-500'
+                                          }`}
+                                          aria-label={`${item.itemName} 포함 여부`}
+                                        >
+                                          <span
+                                            className={`inline-block w-4 h-4 rounded-full bg-white transform transition-transform ${
+                                              isEnabled ? 'translate-x-5' : 'translate-x-1'
+                                            }`}
+                                          />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const newExpanded = new Set(expandedBundleItems);
+                                            if (isExpanded) {
+                                              newExpanded.delete(bundleKey);
+                                            } else {
+                                              newExpanded.add(bundleKey);
+                                            }
+                                            setExpandedBundleItems(newExpanded);
+                                          }}
+                                          className="text-gray-400 hover:text-white transition-colors"
+                                        >
+                                          {isExpanded ? '▼' : '▶'}
+                                        </button>
+                                        <span>
+                                          {item.itemName}
+                                          <span className="ml-2 text-xs text-gray-400">({item.itemType})</span>
+                                        </span>
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-right text-gray-300">
+                                      {item.bundleUnitPrice > 0 ? `${formatNumberWithSignificantDigits(item.bundleUnitPrice)}골드` : '-'}
+                                    </td>
+                                    <td className="px-4 py-3 text-right text-gray-300">
+                                      {item.bundleQuantity}
+                                    </td>
+                                    <td className="px-4 py-3 text-right text-yellow-300 font-semibold">
+                                      {item.bundleUnitPrice > 0
+                                        ? `${formatNumberWithSignificantDigits(bundleValue)}골드`
+                                        : '-'}
+                                    </td>
+                                  </tr>
+                                  {isExpanded && item.details.map((detail, detailIdx) => (
+                                    <tr key={`detail-${itemIdx}-${detailIdx}`} className="bg-gray-900/30 border-b border-gray-800/50">
+                                      <td className="px-4 py-2 text-gray-400 text-xs pl-16">
+                                        • {detail.itemName}
+                                      </td>
+                                      <td className="px-4 py-2 text-right text-gray-400 text-xs">
+                                        {detail.unitPrice > 0 ? `${formatNumberWithSignificantDigits(detail.unitPrice)}골드` : '-'}
+                                      </td>
+                                      <td className="px-4 py-2 text-right text-gray-400 text-xs">
+                                        {detail.componentQuantity}
+                                        {detail.probability !== undefined && (
+                                          <span className="text-purple-400 ml-1">× {formatNumberWithSignificantDigits(detail.probability * 100)}%</span>
+                                        )}
+                                      </td>
+                                      <td className="px-4 py-2 text-right text-gray-400 text-xs">
+                                        {detail.value > 0 ? `${formatNumberWithSignificantDigits(detail.value)}골드` : '-'}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </>
+                              );
+                            })}
+                          </tbody>
+                          <tfoot>
+                            <tr className="bg-gradient-to-r from-purple-900/60 to-pink-900/60 border-t-2 border-purple-500/60">
+                              <td colSpan={3} className="px-4 py-2 text-right text-gray-200 font-bold">
+                                그룹 합계 (활성 항목만)
+                              </td>
+                              <td className="px-4 py-2 text-right text-yellow-300 font-bold">
+                                {(() => {
+                                  let enabledTotal = 0;
+                                  group.items.forEach((item, itemIdx) => {
+                                    const bundleKey = `cumulative-${groupIdx}-${itemIdx}-${item.itemName}`;
+                                    const isEnabled = enabledBundleItems[bundleKey] !== false;
+                                    if (isEnabled) {
+                                      enabledTotal += item.bundleUnitPrice * item.bundleQuantity;
+                                    }
+                                  });
+                                  return enabledTotal > 0 ? `${formatNumberWithSignificantDigits(enabledTotal)}골드` : '-';
+                                })()}
+                              </td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
 
@@ -4096,27 +4427,28 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                   note: pcBangLuckyBoxExpectedGold != null ? '상세 구성 기대값' : null,
                                 }
                               : getItemPriceInfo(getItemName(item));
-                          const unitDisplay = isKurzanSummaryItem
-                            ? kurzanValue != null
-                              ? `${formatNumberWithSignificantDigits(kurzanValue)}골드`
-                              : '-'
-                            : isPcBangLuckyBoxSummaryItem
-                              ? pcBangLuckyBoxExpectedGold != null
-                                ? `${formatNumberWithSignificantDigits(pcBangLuckyBoxExpectedGold)}골드`
-                                : '-'
-                              : formatPriceDisplay(priceInfo.unitAmount, priceInfo.unit);
-                          const totalDisplay = isKurzanSummaryItem
-                            ? kurzanValue != null
-                              ? `${formatNumberWithSignificantDigits(kurzanValue * item.quantity)}골드`
-                              : '-'
-                            : isPcBangLuckyBoxSummaryItem
-                              ? pcBangLuckyBoxExpectedGold != null
-                                ? `${formatNumberWithSignificantDigits(pcBangLuckyBoxExpectedGold * item.quantity)}골드`
-                                : '-'
-                              : formatPriceDisplay(
-                                  priceInfo.unitAmount !== null ? priceInfo.unitAmount * item.quantity : null,
-                                  priceInfo.unit
-                                );
+                          // 단가를 골드로 통일
+                          let unitPriceInGold: number | null = null;
+                          if (isKurzanSummaryItem) {
+                            unitPriceInGold = kurzanValue;
+                          } else if (isPcBangLuckyBoxSummaryItem) {
+                            unitPriceInGold = pcBangLuckyBoxExpectedGold;
+                          } else {
+                            // priceInfo에서 골드 가치 가져오기
+                            if (priceInfo.goldEquivalent !== null) {
+                              unitPriceInGold = priceInfo.goldEquivalent;
+                            } else if (priceInfo.cashEquivalent !== null) {
+                              unitPriceInGold = convertCashToGold(priceInfo.cashEquivalent);
+                            } else if (priceInfo.unit === 'crystal' && priceInfo.unitAmount !== null) {
+                              unitPriceInGold = convertCrystalToGold(priceInfo.unitAmount);
+                            }
+                          }
+                          const unitDisplay = unitPriceInGold != null
+                            ? `${formatNumberWithSignificantDigits(unitPriceInGold)}골드`
+                            : '-';
+                          const totalDisplay = unitPriceInGold != null && item.quantity > 0
+                            ? `${formatNumberWithSignificantDigits(unitPriceInGold * item.quantity)}골드`
+                            : '-';
                           const composition = getCompositionInfo(getItemName(item), item.quantity);
 
                           return (
@@ -4193,6 +4525,46 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                         );
                         })}
                       </tbody>
+                      <tfoot>
+                        <tr className="bg-gradient-to-r from-green-900/60 to-emerald-900/60 border-t-2 border-green-500/60">
+                          <td colSpan={3} className="px-4 py-3 text-right text-gray-200 font-bold">
+                            상시 혜택 총합
+                          </td>
+                          <td className="px-4 py-3 text-right text-yellow-300 font-bold text-lg">
+                            {(() => {
+                              const dailyTotal = aggregateRewards
+                                .filter(item => item.category === 'daily')
+                                .reduce((sum, item) => {
+                                  const enabled = enabledRewards[item.name] ?? true;
+                                  if (!enabled) return sum;
+                                  const isKurzanSummaryItem = item.name === '쿠르잔 전선 보상 (휴식게이지 2배)';
+                                  const isPcBangLuckyBoxSummaryItem = item.name === PC_BANG_LUCKY_SUMMARY_NAME;
+                                  const kurzanValue = adjustedKurzanValue;
+                                  let unitPriceInGold: number | null = null;
+                                  if (isKurzanSummaryItem) {
+                                    unitPriceInGold = kurzanValue;
+                                  } else if (isPcBangLuckyBoxSummaryItem) {
+                                    unitPriceInGold = pcBangLuckyBoxExpectedGold;
+                                  } else {
+                                    const priceInfo = getItemPriceInfo(getItemName(item));
+                                    if (priceInfo.goldEquivalent !== null) {
+                                      unitPriceInGold = priceInfo.goldEquivalent;
+                                    } else if (priceInfo.cashEquivalent !== null) {
+                                      unitPriceInGold = convertCashToGold(priceInfo.cashEquivalent);
+                                    } else if (priceInfo.unit === 'crystal' && priceInfo.unitAmount !== null) {
+                                      unitPriceInGold = convertCrystalToGold(priceInfo.unitAmount);
+                                    }
+                                  }
+                                  if (unitPriceInGold != null) {
+                                    return sum + unitPriceInGold * item.quantity;
+                                  }
+                                  return sum;
+                                }, 0);
+                              return dailyTotal > 0 ? `${formatNumberWithSignificantDigits(dailyTotal)}골드` : '-';
+                            })()}
+                          </td>
+                        </tr>
+                      </tfoot>
                     </table>
                   </div>
                 </div>
