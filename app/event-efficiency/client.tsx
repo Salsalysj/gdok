@@ -659,35 +659,74 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
 
   // 주간보상 그룹별 상세 정보 계산 (주간보상 탭에서 사용하는 계산 로직과 동일)
   const weeklyRewardsGroupDetails = useMemo(() => {
-    // 하위 묶음 항목의 가치를 재귀적으로 계산하는 함수 (useMemo 내부에서 정의하여 초기화 문제 방지)
+    // 하위 묶음 항목의 가치를 반복문으로 계산하는 함수 (재귀 호출 대신 스택 사용)
     const calculateNestedItemValue = (nestedItem: RewardItemNew): number => {
-      let nestedUnitPrice = 0;
-      nestedItem.components.forEach((nestedComp) => {
-        if (nestedComp.itemName === '__nested__' && nestedComp.nestedItem) {
-          const nestedNestedUnitPrice = calculateNestedItemValue(nestedComp.nestedItem);
-          nestedUnitPrice += nestedNestedUnitPrice * (nestedComp.quantity || 1);
-          return;
+      // 스택을 사용하여 중첩된 항목을 처리 (재귀 호출 방지)
+      const processStack: Array<{ item: RewardItemNew; parentMultiplier: number }> = [
+        { item: nestedItem, parentMultiplier: 1 }
+      ];
+      const resultMap = new Map<RewardItemNew, number>();
+      
+      while (processStack.length > 0) {
+        const { item, parentMultiplier } = processStack[processStack.length - 1];
+        
+        // 이미 계산된 항목인지 확인
+        if (resultMap.has(item)) {
+          processStack.pop();
+          continue;
         }
-        const isManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
-        const unitPrice = !isManual && nestedComp.itemName ? getItemUnitPrice(nestedComp.itemName, nestedComp) : null;
-        if (unitPrice === null) return;
-        const isIncluded = nestedItem.itemType === '확정' || 
-                          (nestedItem.itemType === '확률') || 
-                          (nestedItem.itemType === '선택' && nestedComp.selected);
-        if (!isIncluded) return;
-        let nestedCompValue = unitPrice * (nestedComp.quantity || 0);
-        if (nestedItem.itemType === '확정') {
-          nestedUnitPrice += nestedCompValue;
-        } else if (nestedItem.itemType === '확률') {
-          const probability = nestedComp.probability || 0;
-          nestedUnitPrice += nestedCompValue * probability;
-        } else if (nestedItem.itemType === '선택') {
-          if (nestedComp.selected) {
-            nestedUnitPrice += nestedCompValue;
+        
+        // 모든 하위 항목이 계산되었는지 확인
+        let allChildrenCalculated = true;
+        let itemValue = 0;
+        
+        for (const comp of item.components) {
+          if (comp.itemName === '__nested__' && comp.nestedItem) {
+            if (!resultMap.has(comp.nestedItem)) {
+              // 아직 계산되지 않은 하위 항목이 있으면 스택에 추가
+              allChildrenCalculated = false;
+              processStack.push({ 
+                item: comp.nestedItem, 
+                parentMultiplier: parentMultiplier * (comp.quantity || 1) 
+              });
+            } else {
+              // 이미 계산된 하위 항목의 값을 사용
+              const nestedValue = resultMap.get(comp.nestedItem)!;
+              itemValue += nestedValue * (comp.quantity || 1);
+            }
+            continue;
+          }
+          
+          const isManual = comp.itemName === '__manual__' || comp.itemName === '';
+          const unitPrice = !isManual && comp.itemName ? getItemUnitPrice(comp.itemName, comp) : null;
+          if (unitPrice === null) continue;
+          
+          const isIncluded = item.itemType === '확정' || 
+                            (item.itemType === '확률') || 
+                            (item.itemType === '선택' && comp.selected);
+          if (!isIncluded) continue;
+          
+          let compValue = unitPrice * (comp.quantity || 0);
+          if (item.itemType === '확정') {
+            itemValue += compValue;
+          } else if (item.itemType === '확률') {
+            const probability = comp.probability || 0;
+            itemValue += compValue * probability;
+          } else if (item.itemType === '선택') {
+            if (comp.selected) {
+              itemValue += compValue;
+            }
           }
         }
-      });
-      return nestedUnitPrice;
+        
+        if (allChildrenCalculated) {
+          // 모든 하위 항목이 계산되었으므로 현재 항목의 값을 저장하고 스택에서 제거
+          resultMap.set(item, itemValue);
+          processStack.pop();
+        }
+      }
+      
+      return resultMap.get(nestedItem) || 0;
     };
     
     return weeklyRewardsEditable.map((group) => {
@@ -781,36 +820,75 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
 
   // 누적보상 그룹별 상세 정보 계산 (누적보상 탭에서 사용하는 계산 로직과 동일)
   const cumulativeRewardsGroupDetails = useMemo(() => {
-    // 하위 묶음 항목의 가치를 재귀적으로 계산하는 함수 (useMemo 내부에서 정의하여 초기화 문제 방지)
+    // 하위 묶음 항목의 가치를 반복문으로 계산하는 함수 (재귀 호출 대신 스택 사용)
     const calculateNestedItemValue = (nestedItem: RewardItemNew): number => {
-      let nestedUnitPrice = 0;
-      nestedItem.components.forEach((nestedComp) => {
-        if (nestedComp.itemName === '__nested__' && nestedComp.nestedItem) {
-          const nestedNestedUnitPrice = calculateNestedItemValue(nestedComp.nestedItem);
-          nestedUnitPrice += nestedNestedUnitPrice * (nestedComp.quantity || 1);
-          return;
+      // 스택을 사용하여 중첩된 항목을 처리 (재귀 호출 방지)
+      const processStack: Array<{ item: RewardItemNew; parentMultiplier: number }> = [
+        { item: nestedItem, parentMultiplier: 1 }
+      ];
+      const resultMap = new Map<RewardItemNew, number>();
+      
+      while (processStack.length > 0) {
+        const { item, parentMultiplier } = processStack[processStack.length - 1];
+        
+        // 이미 계산된 항목인지 확인
+        if (resultMap.has(item)) {
+          processStack.pop();
+          continue;
         }
-        const isManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
-        const unitPrice = !isManual && nestedComp.itemName ? getItemUnitPrice(nestedComp.itemName, nestedComp) : null;
-        if (unitPrice === null) return;
-        const isIncluded = nestedItem.itemType === '확정' || 
-                          (nestedItem.itemType === '확률') || 
-                          (nestedItem.itemType === '선택' && nestedComp.selected);
-        if (!isIncluded) return;
-        let nestedCompValue = unitPrice * (nestedComp.quantity || 0);
-        if (nestedItem.itemType === '확정') {
-          nestedUnitPrice += nestedCompValue;
-        } else if (nestedItem.itemType === '확률') {
-          const probability = nestedComp.probability || 0;
-          nestedUnitPrice += nestedCompValue * probability;
-        } else if (nestedItem.itemType === '선택') {
-          if (nestedComp.selected) {
-            nestedUnitPrice += nestedCompValue;
+        
+        // 모든 하위 항목이 계산되었는지 확인
+        let allChildrenCalculated = true;
+        let itemValue = 0;
+        
+        for (const comp of item.components) {
+          if (comp.itemName === '__nested__' && comp.nestedItem) {
+            if (!resultMap.has(comp.nestedItem)) {
+              // 아직 계산되지 않은 하위 항목이 있으면 스택에 추가
+              allChildrenCalculated = false;
+              processStack.push({ 
+                item: comp.nestedItem, 
+                parentMultiplier: parentMultiplier * (comp.quantity || 1) 
+              });
+            } else {
+              // 이미 계산된 하위 항목의 값을 사용
+              const nestedValue = resultMap.get(comp.nestedItem)!;
+              itemValue += nestedValue * (comp.quantity || 1);
+            }
+            continue;
+          }
+          
+          const isManual = comp.itemName === '__manual__' || comp.itemName === '';
+          const unitPrice = !isManual && comp.itemName ? getItemUnitPrice(comp.itemName, comp) : null;
+          if (unitPrice === null) continue;
+          
+          const isIncluded = item.itemType === '확정' || 
+                            (item.itemType === '확률') || 
+                            (item.itemType === '선택' && comp.selected);
+          if (!isIncluded) continue;
+          
+          let compValue = unitPrice * (comp.quantity || 0);
+          if (item.itemType === '확정') {
+            itemValue += compValue;
+          } else if (item.itemType === '확률') {
+            const probability = comp.probability || 0;
+            itemValue += compValue * probability;
+          } else if (item.itemType === '선택') {
+            if (comp.selected) {
+              itemValue += compValue;
+            }
           }
         }
-      });
-      return nestedUnitPrice;
-    };
+        
+        if (allChildrenCalculated) {
+          // 모든 하위 항목이 계산되었으므로 현재 항목의 값을 저장하고 스택에서 제거
+          resultMap.set(item, itemValue);
+          processStack.pop();
+        }
+      }
+      
+      return resultMap.get(nestedItem) || 0;
+    });
     
     return cumulativeRewardsEditable.map((group) => {
       let groupTotal = 0;
