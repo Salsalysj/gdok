@@ -664,6 +664,11 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
 
   // 주간보상 그룹별 상세 정보 계산 (주간보상 탭에서 사용하는 계산 로직과 동일)
   const weeklyRewardsGroupDetails = useMemo(() => {
+    // getItemUnitPrice가 정의되어 있는지 확인
+    if (typeof getItemUnitPrice !== 'function') {
+      return [];
+    }
+
     // 하위 묶음 항목의 가치를 재귀적으로 계산하는 함수 (useMemo 내부에서 정의하여 클로저 문제 방지)
     const calculateNestedItemValue = (nestedItem: RewardItemNew, priceType: 'gold'): number => {
       let nestedUnitPrice = 0;
@@ -674,7 +679,9 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
           return;
         }
         const isManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
-        const unitPrice = !isManual && nestedComp.itemName ? getItemUnitPrice(nestedComp.itemName, nestedComp) : null;
+        const unitPrice = !isManual && nestedComp.itemName && typeof getItemUnitPrice === 'function' 
+          ? getItemUnitPrice(nestedComp.itemName, nestedComp) 
+          : null;
         if (unitPrice === null) return;
         const isIncluded = nestedItem.itemType === '확정' || 
                           (nestedItem.itemType === '확률') || 
@@ -715,57 +722,67 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
           item.components.forEach(comp => {
             // 하위 묶음 항목 처리
             if (comp.itemName === '__nested__' && comp.nestedItem) {
-              const nestedItemUnitPrice = calculateNestedItemValue(comp.nestedItem, 'gold');
-              const nestedItemQuantity = comp.nestedItem.quantity || 1;
-              const nestedItemTotalValue = nestedItemUnitPrice * nestedItemQuantity;
-              
-              const isIncluded = item.itemType === '확정' || 
-                                (item.itemType === '확률') || 
-                                (item.itemType === '선택' && comp.selected);
-              
-              if (isIncluded) {
-                let value = nestedItemTotalValue;
-                if (item.itemType === '확률' && comp.probability !== undefined) {
-                  value *= comp.probability;
+              try {
+                const nestedItemUnitPrice = calculateNestedItemValue(comp.nestedItem, 'gold');
+                const nestedItemQuantity = comp.nestedItem.quantity || 1;
+                const nestedItemTotalValue = nestedItemUnitPrice * nestedItemQuantity;
+                
+                const isIncluded = item.itemType === '확정' || 
+                                  (item.itemType === '확률') || 
+                                  (item.itemType === '선택' && comp.selected);
+                
+                if (isIncluded) {
+                  let value = nestedItemTotalValue;
+                  if (item.itemType === '확률' && comp.probability !== undefined) {
+                    value *= comp.probability;
+                  }
+                  bundleUnitPrice += value;
+                  groupTotal += value * (item.quantity || 1);
+                  itemDetails.push({
+                    itemName: '하위 묶음 항목',
+                    unitPrice: nestedItemUnitPrice,
+                    componentQuantity: nestedItemQuantity,
+                    bundleQuantity: item.quantity || 1,
+                    probability: item.itemType === '확률' ? comp.probability : undefined,
+                    value: value * (item.quantity || 1),
+                    isIncluded,
+                  });
                 }
-                bundleUnitPrice += value;
-                groupTotal += value * (item.quantity || 1);
-                itemDetails.push({
-                  itemName: '하위 묶음 항목',
-                  unitPrice: nestedItemUnitPrice,
-                  componentQuantity: nestedItemQuantity,
-                  bundleQuantity: item.quantity || 1,
-                  probability: item.itemType === '확률' ? comp.probability : undefined,
-                  value: value * (item.quantity || 1),
-                  isIncluded,
-                });
+              } catch (error) {
+                console.error('[이벤트 효율] 하위 묶음 항목 계산 오류:', error);
+                // 오류 발생 시 해당 항목은 건너뜀
               }
               return;
             }
             
             // 일반 구성요소 처리
             if (!comp.itemName || comp.itemName === '__manual__' || comp.itemName === '') return;
-            const unitPrice = getItemUnitPrice(comp.itemName, comp);
-            if (unitPrice === null) return;
-            const isIncluded = item.itemType === '확정' || 
-                              (item.itemType === '확률') || 
-                              (item.itemType === '선택' && comp.selected);
-            if (!isIncluded) return;
-            let value = unitPrice * (comp.quantity || 0);
-            if (item.itemType === '확률' && comp.probability !== undefined) {
-              value *= comp.probability;
+            try {
+              const unitPrice = getItemUnitPrice(comp.itemName, comp);
+              if (unitPrice === null) return;
+              const isIncluded = item.itemType === '확정' || 
+                                (item.itemType === '확률') || 
+                                (item.itemType === '선택' && comp.selected);
+              if (!isIncluded) return;
+              let value = unitPrice * (comp.quantity || 0);
+              if (item.itemType === '확률' && comp.probability !== undefined) {
+                value *= comp.probability;
+              }
+              bundleUnitPrice += value;
+              groupTotal += value * (item.quantity || 1);
+              itemDetails.push({
+                itemName: comp.itemName,
+                unitPrice,
+                componentQuantity: comp.quantity || 0,
+                bundleQuantity: item.quantity || 1,
+                probability: item.itemType === '확률' ? comp.probability : undefined,
+                value: value * (item.quantity || 1),
+                isIncluded,
+              });
+            } catch (error) {
+              console.error('[이벤트 효율] 구성요소 계산 오류:', error);
+              // 오류 발생 시 해당 항목은 건너뜀
             }
-            bundleUnitPrice += value;
-            groupTotal += value * (item.quantity || 1);
-            itemDetails.push({
-              itemName: comp.itemName,
-              unitPrice,
-              componentQuantity: comp.quantity || 0,
-              bundleQuantity: item.quantity || 1,
-              probability: item.itemType === '확률' ? comp.probability : undefined,
-              value: value * (item.quantity || 1),
-              isIncluded,
-            });
           });
           
           return {
@@ -786,6 +803,11 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
 
   // 누적보상 그룹별 상세 정보 계산 (누적보상 탭에서 사용하는 계산 로직과 동일)
   const cumulativeRewardsGroupDetails = useMemo(() => {
+    // getItemUnitPrice가 정의되어 있는지 확인
+    if (typeof getItemUnitPrice !== 'function') {
+      return [];
+    }
+
     // 하위 묶음 항목의 가치를 재귀적으로 계산하는 함수 (useMemo 내부에서 정의하여 클로저 문제 방지)
     const calculateNestedItemValue = (nestedItem: RewardItemNew, priceType: 'gold'): number => {
       let nestedUnitPrice = 0;
@@ -796,7 +818,9 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
           return;
         }
         const isManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
-        const unitPrice = !isManual && nestedComp.itemName ? getItemUnitPrice(nestedComp.itemName, nestedComp) : null;
+        const unitPrice = !isManual && nestedComp.itemName && typeof getItemUnitPrice === 'function' 
+          ? getItemUnitPrice(nestedComp.itemName, nestedComp) 
+          : null;
         if (unitPrice === null) return;
         const isIncluded = nestedItem.itemType === '확정' || 
                           (nestedItem.itemType === '확률') || 
@@ -837,57 +861,67 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
           item.components.forEach(comp => {
             // 하위 묶음 항목 처리
             if (comp.itemName === '__nested__' && comp.nestedItem) {
-              const nestedItemUnitPrice = calculateNestedItemValue(comp.nestedItem, 'gold');
-              const nestedItemQuantity = comp.nestedItem.quantity || 1;
-              const nestedItemTotalValue = nestedItemUnitPrice * nestedItemQuantity;
-              
-              const isIncluded = item.itemType === '확정' || 
-                                (item.itemType === '확률') || 
-                                (item.itemType === '선택' && comp.selected);
-              
-              if (isIncluded) {
-                let value = nestedItemTotalValue;
-                if (item.itemType === '확률' && comp.probability !== undefined) {
-                  value *= comp.probability;
+              try {
+                const nestedItemUnitPrice = calculateNestedItemValue(comp.nestedItem, 'gold');
+                const nestedItemQuantity = comp.nestedItem.quantity || 1;
+                const nestedItemTotalValue = nestedItemUnitPrice * nestedItemQuantity;
+                
+                const isIncluded = item.itemType === '확정' || 
+                                  (item.itemType === '확률') || 
+                                  (item.itemType === '선택' && comp.selected);
+                
+                if (isIncluded) {
+                  let value = nestedItemTotalValue;
+                  if (item.itemType === '확률' && comp.probability !== undefined) {
+                    value *= comp.probability;
+                  }
+                  bundleUnitPrice += value;
+                  groupTotal += value * (item.quantity || 1);
+                  itemDetails.push({
+                    itemName: '하위 묶음 항목',
+                    unitPrice: nestedItemUnitPrice,
+                    componentQuantity: nestedItemQuantity,
+                    bundleQuantity: item.quantity || 1,
+                    probability: item.itemType === '확률' ? comp.probability : undefined,
+                    value: value * (item.quantity || 1),
+                    isIncluded,
+                  });
                 }
-                bundleUnitPrice += value;
-                groupTotal += value * (item.quantity || 1);
-                itemDetails.push({
-                  itemName: '하위 묶음 항목',
-                  unitPrice: nestedItemUnitPrice,
-                  componentQuantity: nestedItemQuantity,
-                  bundleQuantity: item.quantity || 1,
-                  probability: item.itemType === '확률' ? comp.probability : undefined,
-                  value: value * (item.quantity || 1),
-                  isIncluded,
-                });
+              } catch (error) {
+                console.error('[이벤트 효율] 하위 묶음 항목 계산 오류:', error);
+                // 오류 발생 시 해당 항목은 건너뜀
               }
               return;
             }
             
             // 일반 구성요소 처리
             if (!comp.itemName || comp.itemName === '__manual__' || comp.itemName === '') return;
-            const unitPrice = getItemUnitPrice(comp.itemName, comp);
-            if (unitPrice === null) return;
-            const isIncluded = item.itemType === '확정' || 
-                              (item.itemType === '확률') || 
-                              (item.itemType === '선택' && comp.selected);
-            if (!isIncluded) return;
-            let value = unitPrice * (comp.quantity || 0);
-            if (item.itemType === '확률' && comp.probability !== undefined) {
-              value *= comp.probability;
+            try {
+              const unitPrice = getItemUnitPrice(comp.itemName, comp);
+              if (unitPrice === null) return;
+              const isIncluded = item.itemType === '확정' || 
+                                (item.itemType === '확률') || 
+                                (item.itemType === '선택' && comp.selected);
+              if (!isIncluded) return;
+              let value = unitPrice * (comp.quantity || 0);
+              if (item.itemType === '확률' && comp.probability !== undefined) {
+                value *= comp.probability;
+              }
+              bundleUnitPrice += value;
+              groupTotal += value * (item.quantity || 1);
+              itemDetails.push({
+                itemName: comp.itemName,
+                unitPrice,
+                componentQuantity: comp.quantity || 0,
+                bundleQuantity: item.quantity || 1,
+                probability: item.itemType === '확률' ? comp.probability : undefined,
+                value: value * (item.quantity || 1),
+                isIncluded,
+              });
+            } catch (error) {
+              console.error('[이벤트 효율] 구성요소 계산 오류:', error);
+              // 오류 발생 시 해당 항목은 건너뜀
             }
-            bundleUnitPrice += value;
-            groupTotal += value * (item.quantity || 1);
-            itemDetails.push({
-              itemName: comp.itemName,
-              unitPrice,
-              componentQuantity: comp.quantity || 0,
-              bundleQuantity: item.quantity || 1,
-              probability: item.itemType === '확률' ? comp.probability : undefined,
-              value: value * (item.quantity || 1),
-              isIncluded,
-            });
           });
           
           return {
