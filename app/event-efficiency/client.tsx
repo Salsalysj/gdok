@@ -414,6 +414,8 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
   const [chaosStoneQuality, setChaosStoneQuality] = useState<90 | 95>(90);
   const [lightMode, setLightMode] = useState<boolean>(false);
   const [enabledRewards, setEnabledRewards] = useState<Record<string, boolean>>({});
+  // 요약 탭의 묶음 항목 활성화 상태 (type-groupIdx-itemIdx 형식)
+  const [summaryItemEnabled, setSummaryItemEnabled] = useState<Record<string, boolean>>({});
   const [braceletPriceInput, setBraceletPriceInput] = useState('100');
   const [totalDaysInput, setTotalDaysInput] = useState('20');
   const [totalWeeksInput, setTotalWeeksInput] = useState(getInitialTotalWeeks());
@@ -1383,8 +1385,13 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
       }
     };
 
-    weeklyRewards.forEach(group => {
-      group.items.forEach(item => {
+    weeklyRewards.forEach((group, groupIdx) => {
+      group.items.forEach((item, itemIdx) => {
+        // 스위치 상태 확인
+        const itemKey = `weekly-${groupIdx}-${itemIdx}`;
+        const isEnabled = summaryItemEnabled[itemKey] !== false;
+        if (!isEnabled) return; // 스위치가 off면 건너뛰기
+        
         if (isNewFormatItem(item)) {
           addItemNew(item, weeklyFactor, true, 'weekly');
         } else {
@@ -1393,8 +1400,13 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
       });
     });
 
-    cumulativeRewards.forEach(group => {
-      group.items.forEach(item => {
+    cumulativeRewards.forEach((group, groupIdx) => {
+      group.items.forEach((item, itemIdx) => {
+        // 스위치 상태 확인
+        const itemKey = `cumulative-${groupIdx}-${itemIdx}`;
+        const isEnabled = summaryItemEnabled[itemKey] !== false;
+        if (!isEnabled) return; // 스위치가 off면 건너뛰기
+        
         if (isNewFormatItem(item)) {
           addItemNew(item, 1, false, 'cumulative');
         } else {
@@ -1428,7 +1440,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
     }
 
     return aggregatedList;
-  }, [weeklyRewards, cumulativeRewards, dailyBenefits, totalDaysNumber, totalWeeksNumber, pcBangLuckyBoxQuantity]);
+  }, [weeklyRewards, cumulativeRewards, dailyBenefits, totalDaysNumber, totalWeeksNumber, pcBangLuckyBoxQuantity, summaryItemEnabled]);
 
   useEffect(() => {
     setEnabledRewards((prev) => {
@@ -2320,7 +2332,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
 
   // 보상 그룹별 상세 정보 계산 (요약 탭과 편집 탭에서 공통 사용)
   const calculateRewardGroupDetails = useMemo(() => {
-    return (groups: RewardGroup[]) => {
+    return (groups: RewardGroup[], type?: 'weekly' | 'cumulative', itemEnabledMap?: Record<string, boolean>) => {
       // 하위 묶음 항목의 가치를 재귀적으로 계산하는 함수
       const calculateNestedItemValue = (nestedItem: RewardItemNew): number => {
         let nestedUnitPrice = 0; // 하위묶음 1개당 단가
@@ -2358,11 +2370,14 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
         return nestedUnitPrice;
       };
 
-      return groups.map((group) => {
+      return groups.map((group, groupIdx) => {
         let groupTotal = 0;
         const items = group.items
           .filter(item => isNewFormatItem(item))
-          .map(item => {
+          .map((item, itemIdx) => {
+            // 요약 탭에서 스위치 상태 확인
+            const itemKey = type ? `${type}-${groupIdx}-${itemIdx}` : '';
+            const isEnabled = itemEnabledMap ? (itemEnabledMap[itemKey] !== false) : true;
             // 묶음 항목 1개당 단가 계산
             let bundleUnitPrice = 0;
             const itemDetails: Array<{
@@ -2392,7 +2407,9 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                     value *= comp.probability;
                   }
                   bundleUnitPrice += value;
-                  groupTotal += value * (item.quantity || 1);
+                  if (isEnabled) {
+                    groupTotal += value * (item.quantity || 1);
+                  }
                   itemDetails.push({
                     itemName: '하위 묶음 항목',
                     unitPrice: nestedItemUnitPrice,
@@ -2419,7 +2436,9 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                 value *= comp.probability;
               }
               bundleUnitPrice += value;
-              groupTotal += value * (item.quantity || 1);
+              if (isEnabled) {
+                groupTotal += value * (item.quantity || 1);
+              }
               itemDetails.push({
                 itemName: comp.itemName,
                 unitPrice,
@@ -2437,6 +2456,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
               bundleQuantity: item.quantity || 1,
               bundleUnitPrice,
               details: itemDetails,
+              isEnabled,
             };
           });
         return {
@@ -3938,7 +3958,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
 
               {/* 주간보상 섹션 */}
               {(() => {
-                const weeklyGroupDetails = calculateRewardGroupDetails(weeklyRewardsEditable);
+                const weeklyGroupDetails = calculateRewardGroupDetails(weeklyRewardsEditable, 'weekly', summaryItemEnabled);
                 const weeklyTotal = weeklyGroupDetails.reduce((sum, group) => sum + group.groupTotal, 0);
                 const weeklyTotalWithWeeks = weeklyTotal * (totalWeeksNumber || 0);
                 
@@ -3985,6 +4005,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                           <table className="w-full text-sm">
                             <thead>
                               <tr className="bg-gradient-to-r from-blue-900/40 to-purple-900/40 text-gray-200 border-b-2 border-blue-500/50">
+                                <th className="px-4 py-3 text-left font-bold w-16">활성</th>
                                 <th className="px-4 py-3 text-left font-bold">묶음 항목</th>
                                 <th className="px-4 py-3 text-right font-bold">묶음 단가</th>
                                 <th className="px-4 py-3 text-right font-bold">묶음 수량</th>
@@ -3992,8 +4013,27 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                               </tr>
                             </thead>
                             <tbody>
-                              {group.items.map((item, itemIdx) => (
-                                <tr key={itemIdx} className="border-b border-gray-800/70 hover:bg-gray-700/30 transition-colors">
+                              {group.items.map((item, itemIdx) => {
+                                const itemKey = `weekly-${groupIdx}-${itemIdx}`;
+                                const isEnabled = summaryItemEnabled[itemKey] !== false;
+                                return (
+                                <tr key={itemIdx} className={`border-b border-gray-800/70 hover:bg-gray-700/30 transition-colors ${!isEnabled ? 'opacity-50' : ''}`}>
+                                  <td className="px-4 py-3 text-center">
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                      <input
+                                        type="checkbox"
+                                        checked={isEnabled}
+                                        onChange={(e) => {
+                                          setSummaryItemEnabled(prev => ({
+                                            ...prev,
+                                            [itemKey]: e.target.checked
+                                          }));
+                                        }}
+                                        className="sr-only peer"
+                                      />
+                                      <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                                    </label>
+                                  </td>
                                   <td className="px-4 py-3 text-white font-medium">
                                     <span>
                                       {item.itemName}
@@ -4012,11 +4052,12 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                       : '-'}
                                   </td>
                                 </tr>
-                              ))}
+                              );
+                              })}
                             </tbody>
                             <tfoot>
                               <tr className="bg-gradient-to-r from-blue-900/60 to-purple-900/60 border-t-2 border-blue-500/60">
-                                <td colSpan={3} className="px-4 py-2 text-right text-gray-200 font-bold">
+                                <td colSpan={4} className="px-4 py-2 text-right text-gray-200 font-bold">
                                   그룹 합계
                                 </td>
                                 <td className="px-4 py-2 text-right text-yellow-300 font-bold">
@@ -4034,7 +4075,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
 
               {/* 누적보상 섹션 */}
               {(() => {
-                const cumulativeGroupDetails = calculateRewardGroupDetails(cumulativeRewardsEditable);
+                const cumulativeGroupDetails = calculateRewardGroupDetails(cumulativeRewardsEditable, 'cumulative', summaryItemEnabled);
                 const cumulativeTotal = cumulativeGroupDetails.reduce((sum, group) => sum + group.groupTotal, 0);
                 
                 if (cumulativeGroupDetails.length === 0) return null;
@@ -4064,6 +4105,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                           <table className="w-full text-sm">
                             <thead>
                               <tr className="bg-gradient-to-r from-purple-900/40 to-pink-900/40 text-gray-200 border-b-2 border-purple-500/50">
+                                <th className="px-4 py-3 text-left font-bold w-16">활성</th>
                                 <th className="px-4 py-3 text-left font-bold">묶음 항목</th>
                                 <th className="px-4 py-3 text-right font-bold">묶음 단가</th>
                                 <th className="px-4 py-3 text-right font-bold">묶음 수량</th>
@@ -4071,8 +4113,27 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                               </tr>
                             </thead>
                             <tbody>
-                              {group.items.map((item, itemIdx) => (
-                                <tr key={itemIdx} className="border-b border-gray-800/70 hover:bg-gray-700/30 transition-colors">
+                              {group.items.map((item, itemIdx) => {
+                                const itemKey = `cumulative-${groupIdx}-${itemIdx}`;
+                                const isEnabled = summaryItemEnabled[itemKey] !== false;
+                                return (
+                                <tr key={itemIdx} className={`border-b border-gray-800/70 hover:bg-gray-700/30 transition-colors ${!isEnabled ? 'opacity-50' : ''}`}>
+                                  <td className="px-4 py-3 text-center">
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                      <input
+                                        type="checkbox"
+                                        checked={isEnabled}
+                                        onChange={(e) => {
+                                          setSummaryItemEnabled(prev => ({
+                                            ...prev,
+                                            [itemKey]: e.target.checked
+                                          }));
+                                        }}
+                                        className="sr-only peer"
+                                      />
+                                      <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                                    </label>
+                                  </td>
                                   <td className="px-4 py-3 text-white font-medium">
                                     <span>
                                       {item.itemName}
@@ -4091,11 +4152,12 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                       : '-'}
                                   </td>
                                 </tr>
-                              ))}
+                              );
+                              })}
                             </tbody>
                             <tfoot>
                               <tr className="bg-gradient-to-r from-purple-900/60 to-pink-900/60 border-t-2 border-purple-500/60">
-                                <td colSpan={3} className="px-4 py-2 text-right text-gray-200 font-bold">
+                                <td colSpan={4} className="px-4 py-2 text-right text-gray-200 font-bold">
                                   그룹 합계
                                 </td>
                                 <td className="px-4 py-2 text-right text-yellow-300 font-bold">
