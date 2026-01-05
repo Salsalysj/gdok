@@ -15,13 +15,13 @@ export async function PUT(
   try {
     const { id } = params;
     const body = await request.json();
-    const { name, pass_name, pass_period, levels } = body;
+    const { name, pass_name, start_date, end_date, levels } = body;
     if (!name || !pass_name || !levels) {
       return NextResponse.json({ error: '이름, 패스 이름, 레벨 데이터가 필요합니다.' }, { status: 400 });
     }
     const { data, error } = await supabase
       .from('saved_arkpass_guides')
-      .update({ name, pass_name, pass_period: pass_period || '', levels })
+      .update({ name, pass_name, start_date: start_date || '', end_date: end_date || '', levels })
       .eq('id', id)
       .select()
       .single();

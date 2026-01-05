@@ -50,7 +50,7 @@ type LevelChoice = {
 type ArkpassGuideClientProps = {
   crystalGoldRate: number | null;
   etcListItems: EtcListItem[];
-  initialSavedGuides: Array<{ id: string; name: string; pass_name: string; pass_period: string; levels: LevelChoice[]; created_at: string; updated_at: string }>;
+  initialSavedGuides: Array<{ id: string; name: string; pass_name: string; start_date: string; end_date: string; levels: LevelChoice[]; created_at: string; updated_at: string }>;
 };
 
 export default function ArkpassGuideClient({
@@ -213,7 +213,7 @@ export default function ArkpassGuideClient({
   }, [adjustedEntries, etcListItems, crystalGoldRate]);
   
   // 저장된 가이드 관련 상태
-  const [savedGuides, setSavedGuides] = useState<Array<{ id: string; name: string; pass_name: string; pass_period: string; levels: LevelChoice[]; created_at: string; updated_at: string }>>(initialSavedGuides);
+  const [savedGuides, setSavedGuides] = useState<Array<{ id: string; name: string; pass_name: string; start_date: string; end_date: string; levels: LevelChoice[]; created_at: string; updated_at: string }>>(initialSavedGuides);
   const [selectedGuideId, setSelectedGuideId] = useState<string | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveGuideName, setSaveGuideName] = useState('');
@@ -221,7 +221,8 @@ export default function ArkpassGuideClient({
   
   // 기본 정보
   const [passName, setPassName] = useState('');
-  const [passPeriod, setPassPeriod] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   
   // 레벨 데이터
   const [levels, setLevels] = useState<LevelChoice[]>([]);
@@ -505,16 +506,17 @@ export default function ArkpassGuideClient({
   
   // 새로 만들기
   const handleNew = useCallback(() => {
-    if (passName || passPeriod || levels.length > 0) {
+    if (passName || startDate || endDate || levels.length > 0) {
       if (!confirm('작성 중인 내용이 있습니다. 새로 만들기를 진행하시겠습니까?')) {
         return;
       }
     }
     setPassName('');
-    setPassPeriod('');
+    setStartDate('');
+    setEndDate('');
     setLevels([]);
     setSelectedGuideId(null);
-  }, [passName, passPeriod, levels]);
+  }, [passName, startDate, endDate, levels]);
   
   // 저장
   const handleSave = async () => {
@@ -533,7 +535,8 @@ export default function ArkpassGuideClient({
         body: JSON.stringify({
           name: saveGuideName,
           pass_name: passName,
-          pass_period: passPeriod,
+          start_date: startDate,
+          end_date: endDate,
           levels,
         }),
       });
@@ -565,24 +568,29 @@ export default function ArkpassGuideClient({
   };
   
   // 불러오기
-  const handleLoad = async (itemId: string) => {
+  const handleLoad = async (itemId: string, silent: boolean = false) => {
     setIsLoading(true);
     try {
       const itemToLoad = savedGuides.find(item => item.id === itemId);
       if (itemToLoad) {
         setPassName(itemToLoad.pass_name || '');
-        setPassPeriod(itemToLoad.pass_period || '');
+        setStartDate(itemToLoad.start_date || '');
+        setEndDate(itemToLoad.end_date || '');
         if (itemToLoad.levels) {
           setLevels(itemToLoad.levels);
         }
         setSelectedGuideId(itemId);
-        alert('아크패스 가이드가 불러와졌습니다.');
+        if (!silent) {
+          alert('아크패스 가이드가 불러와졌습니다.');
+        }
       } else {
         throw new Error('아크패스 가이드를 찾을 수 없습니다.');
       }
     } catch (error: any) {
       console.error('아크패스 가이드 불러오기 실패:', error);
-      alert(error.message || '아크패스 가이드 불러오기에 실패했습니다.');
+      if (!silent) {
+        alert(error.message || '아크패스 가이드 불러오기에 실패했습니다.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -636,7 +644,8 @@ export default function ArkpassGuideClient({
                   <button
                     onClick={() => {
                       const selectedItem = savedGuides.find(item => item.id === selectedGuideId);
-                      setSaveGuideName(selectedItem?.name || '');
+                      // 업데이트 시에는 기존 이름, 새로 저장 시에는 패스 이름을 기본값으로 사용
+                      setSaveGuideName(selectedItem?.name || passName || '');
                       setShowSaveModal(true);
                     }}
                     className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors"
@@ -658,33 +667,94 @@ export default function ArkpassGuideClient({
             {/* 저장된 가이드 목록 */}
             {savedGuides.length > 0 && (
               <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-4">
-                <div className="mb-3">
-                  <h3 className="text-base font-semibold text-white">저장된 아크패스 가이드</h3>
-                  <p className="text-xs text-gray-400 mt-1">버튼 클릭 시 불러오기 가능</p>
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold text-white mb-1">저장된 아크패스 가이드</h3>
+                  <p className="text-xs text-gray-400">카드를 클릭하여 선택하거나 불러오기</p>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {savedGuides.map((item) => (
-                    <div key={item.id} className="flex items-center gap-1">
-                      <button
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {savedGuides.map((item) => {
+                    // 종료일 체크
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    let isExpired = false;
+                    if (item.end_date) {
+                      const endDate = new Date(item.end_date);
+                      endDate.setHours(23, 59, 59, 999);
+                      isExpired = endDate < today;
+                    }
+                    const statusText = isExpired ? '기간 만료' : '보상 수령 가능';
+                    const statusColor = isExpired ? 'text-gray-400' : 'text-green-400';
+                    const isSelected = selectedGuideId === item.id;
+                    
+                    // 날짜 포맷팅
+                    const formatDate = (dateStr: string) => {
+                      if (!dateStr) return '-';
+                      try {
+                        const date = new Date(dateStr);
+                        return date.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
+                      } catch {
+                        return dateStr;
+                      }
+                    };
+                    
+                    return (
+                      <div
+                        key={item.id}
                         onClick={() => handleLoad(item.id)}
-                        className={`px-3 py-1.5 rounded text-sm transition-colors ${
-                          selectedGuideId === item.id
-                            ? 'bg-purple-600 text-white'
-                            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                        className={`relative bg-gradient-to-br ${
+                          isSelected
+                            ? 'from-purple-900/80 to-purple-800/80 border-2 border-purple-500'
+                            : isExpired
+                            ? 'from-gray-800/60 to-gray-700/60 border border-gray-600'
+                            : 'from-gray-800/80 to-gray-700/80 border border-gray-600'
+                        } rounded-xl p-4 cursor-pointer transition-all hover:scale-105 hover:shadow-lg ${
+                          isSelected ? 'shadow-purple-500/20' : 'hover:shadow-gray-500/20'
                         }`}
                       >
-                        {item.name}
-                      </button>
-                      {allowSave && (
-                        <button
-                          onClick={() => handleDelete(item.id)}
-                          className="px-2 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-xs transition-colors"
-                        >
-                          ×
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                        {isSelected && (
+                          <div className="absolute top-2 right-2">
+                            <span className="px-2 py-1 bg-purple-600 text-white text-xs font-bold rounded">선택됨</span>
+                          </div>
+                        )}
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-start justify-between">
+                            <h4 className={`text-lg font-bold ${isExpired ? 'text-gray-400' : 'text-white'} pr-12`}>
+                              {item.name}
+                            </h4>
+                          </div>
+                          <div className="space-y-1">
+                            <div className="text-sm text-gray-300">
+                              <span className="text-gray-400">패스:</span> {item.pass_name || '-'}
+                            </div>
+                            <div className="text-sm text-gray-300">
+                              <span className="text-gray-400">기간:</span>{' '}
+                              {item.start_date && item.end_date
+                                ? `${formatDate(item.start_date)} ~ ${formatDate(item.end_date)}`
+                                : '-'}
+                            </div>
+                            <div className="flex items-center gap-2 mt-2">
+                              <span className={`text-xs font-semibold px-2 py-1 rounded ${statusColor} ${
+                                isExpired ? 'bg-gray-700/50' : 'bg-green-500/20'
+                              }`}>
+                                {statusText}
+                              </span>
+                            </div>
+                          </div>
+                          {allowSave && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(item.id);
+                              }}
+                              className="absolute bottom-2 right-2 px-2 py-1 bg-red-600/80 hover:bg-red-700 text-white rounded text-xs transition-colors"
+                            >
+                              삭제
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -747,13 +817,21 @@ export default function ArkpassGuideClient({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">패스 기간</label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">시작일</label>
               <input
-                type="text"
-                value={passPeriod}
-                onChange={(e) => setPassPeriod(e.target.value)}
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
                 className="w-full px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-600 focus:outline-none focus:border-purple-500"
-                placeholder="예: 2025.02.05 ~ 2025.04.02"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">종료일</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-600 focus:outline-none focus:border-purple-500"
               />
             </div>
           </div>

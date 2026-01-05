@@ -10,7 +10,8 @@ CREATE TABLE IF NOT EXISTS saved_arkpass_guides (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
   pass_name TEXT NOT NULL,
-  pass_period TEXT NOT NULL,
+  start_date TEXT NOT NULL,
+  end_date TEXT NOT NULL,
   levels JSONB NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -58,7 +59,8 @@ CREATE POLICY "모든 사용자 삭제 허용 arkpass" ON saved_arkpass_guides
 
 ### 1. 기본 정보 입력
 - **패스 이름**: 아크패스 이름 입력 (예: 2025년 2월 아크패스)
-- **패스 기간**: 아크패스 기간 입력 (예: 2025.02.05 ~ 2025.04.02)
+- **시작일**: 아크패스 시작일 입력 (날짜 형식)
+- **종료일**: 아크패스 종료일 입력 (날짜 형식)
 
 ### 2. 레벨별 선택 아이템 비교
 - **레벨 추가**: 각 레벨마다 2개의 선택지(A, B)를 비교할 수 있습니다
@@ -76,7 +78,7 @@ CREATE POLICY "모든 사용자 삭제 허용 arkpass" ON saved_arkpass_guides
 
 ## 사용 방법
 
-1. 기본 정보(패스 이름, 패스 기간)를 입력합니다
+1. 기본 정보(패스 이름, 시작일, 종료일)를 입력합니다
 2. "레벨 추가" 버튼을 클릭하여 레벨을 추가합니다
 3. 각 선택지(A, B)에 "묶음 추가" 버튼을 클릭하여 묶음 항목을 추가합니다
 4. 각 묶음 항목에 "구성 요소 추가" 버튼을 클릭하여 아이템을 추가합니다
