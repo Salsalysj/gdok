@@ -45,6 +45,7 @@ type BundleItem = {
 type LevelChoice = {
   left: BundleItem[];
   right: BundleItem[];
+  recommended?: 'left' | 'right' | null;
 };
 
 type ArkpassGuideClientProps = {
@@ -312,6 +313,45 @@ export default function ArkpassGuideClient({
   // 레벨 데이터
   const [levels, setLevels] = useState<LevelChoice[]>([]);
   
+  // 재사용 모달 상태
+  const [showBundleReuseModal, setShowBundleReuseModal] = useState(false);
+  const [reuseModalContext, setReuseModalContext] = useState<{ levelIndex: number; side: 'left' | 'right' } | null>(null);
+  
+  // 현재 입력 완료된 묶음 항목들 추출 (재사용용)
+  const completedBundles = useMemo(() => {
+    const bundles: BundleItem[] = [];
+    levels.forEach(level => {
+      // 왼쪽 선택지의 완료된 묶음 항목
+      level.left.forEach(bundle => {
+        if (bundle.itemName && bundle.itemName.trim() && bundle.components.length > 0) {
+          bundles.push(bundle);
+        }
+      });
+      // 오른쪽 선택지의 완료된 묶음 항목
+      level.right.forEach(bundle => {
+        if (bundle.itemName && bundle.itemName.trim() && bundle.components.length > 0) {
+          bundles.push(bundle);
+        }
+      });
+    });
+    
+    // 중복 제거 (이름, 타입, 수량, 구성 요소가 같으면 제외)
+    const uniqueBundles: BundleItem[] = [];
+    bundles.forEach(bundle => {
+      const exists = uniqueBundles.some(b => 
+        b.itemName === bundle.itemName && 
+        b.itemType === bundle.itemType &&
+        b.quantity === bundle.quantity &&
+        JSON.stringify(b.components) === JSON.stringify(bundle.components)
+      );
+      if (!exists) {
+        uniqueBundles.push(bundle);
+      }
+    });
+    
+    return uniqueBundles;
+  }, [levels]);
+  
   // 아이템 단가 가져오기
   const getItemUnitPrice = useCallback((itemName: string): number | null => {
     if (!itemName || itemName === '__manual__') return null;
@@ -393,12 +433,22 @@ export default function ArkpassGuideClient({
     setLevels(prev => [...prev, {
       left: [],
       right: [],
+      recommended: null,
     }]);
   }, []);
   
   // 레벨 삭제
   const handleRemoveLevel = useCallback((levelIndex: number) => {
     setLevels(prev => prev.filter((_, idx) => idx !== levelIndex));
+  }, []);
+
+  // 추천 선택 변경
+  const handleSetRecommended = useCallback((levelIndex: number, side: 'left' | 'right' | null) => {
+    setLevels(prev => prev.map((level, idx) => 
+      idx === levelIndex 
+        ? { ...level, recommended: side }
+        : level
+    ));
   }, []);
   
   // 묶음 항목 추가
@@ -423,6 +473,40 @@ export default function ArkpassGuideClient({
         ? { ...level, [side]: level[side].filter((_, bIdx) => bIdx !== bundleIndex) }
         : level
     ));
+  }, []);
+
+  // 묶음 항목 재사용
+  const handleReuseBundle = useCallback((bundle: BundleItem) => {
+    if (!reuseModalContext) return;
+    
+    // 깊은 복사
+    const reusedBundle: BundleItem = {
+      itemName: bundle.itemName,
+      itemType: bundle.itemType,
+      quantity: bundle.quantity,
+      components: bundle.components.map(comp => ({
+        ...comp,
+        nestedItem: comp.nestedItem ? {
+          ...comp.nestedItem,
+          components: comp.nestedItem.components.map(c => ({ ...c }))
+        } : null
+      }))
+    };
+    
+    setLevels(prev => prev.map((level, idx) => 
+      idx === reuseModalContext.levelIndex 
+        ? { ...level, [reuseModalContext.side]: [...level[reuseModalContext.side], reusedBundle] }
+        : level
+    ));
+    
+    setShowBundleReuseModal(false);
+    setReuseModalContext(null);
+  }, [reuseModalContext]);
+
+  // 묶음 재사용 모달 열기
+  const handleOpenBundleReuse = useCallback((levelIndex: number, side: 'left' | 'right') => {
+    setReuseModalContext({ levelIndex, side });
+    setShowBundleReuseModal(true);
   }, []);
   
   // 묶음 항목 업데이트
@@ -891,6 +975,67 @@ export default function ArkpassGuideClient({
             )}
           </div>
         </div>
+
+        {/* 묶음 항목 재사용 모달 */}
+        {showBundleReuseModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden flex flex-col">
+              <h3 className="text-xl font-semibold text-white mb-4">묶음 항목 재사용</h3>
+              <div className="flex-1 overflow-y-auto mb-4">
+                {completedBundles.length === 0 ? (
+                  <div className="text-center py-8 text-gray-400">
+                    <p>재사용할 수 있는 묶음 항목이 없습니다.</p>
+                    <p className="text-sm mt-2">묶음 항목을 추가하고 이름과 구성 요소를 입력하면 여기에 표시됩니다.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {completedBundles.map((bundle, index) => {
+                      const bundleValue = calculateBundleValue([bundle]);
+                      return (
+                        <div
+                          key={index}
+                          onClick={() => handleReuseBundle(bundle)}
+                          className="bg-gray-700/50 hover:bg-gray-700 border border-gray-600 rounded-lg p-4 cursor-pointer transition-colors"
+                        >
+                          <div className="flex justify-between items-start mb-2">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-semibold text-white">{bundle.itemName || '(이름 없음)'}</span>
+                                <span className="px-2 py-0.5 bg-gray-600 text-gray-300 rounded text-xs">
+                                  {bundle.itemType}
+                                </span>
+                                <span className="text-gray-400 text-xs">×{bundle.quantity}</span>
+                              </div>
+                              <div className="text-sm text-gray-400">
+                                구성 요소: {bundle.components.length}개
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-sm text-yellow-400 font-bold">
+                                {bundleValue.toFixed(0)}골드
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={() => {
+                    setShowBundleReuseModal(false);
+                    setReuseModalContext(null);
+                  }}
+                  className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                >
+                  취소
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         
         {/* 기본 정보 카드 */}
         <div className="bg-gray-900/70 border border-gray-700 rounded-2xl p-8">
@@ -944,19 +1089,46 @@ export default function ArkpassGuideClient({
             {levels.map((level, levelIndex) => {
               const leftValue = calculateBundleValue(level.left);
               const rightValue = calculateBundleValue(level.right);
-              const highlightLeft = leftValue > rightValue;
-              const highlightRight = rightValue > leftValue;
+              const highlightLeft = level.recommended === 'left';
+              const highlightRight = level.recommended === 'right';
               
               return (
                 <div key={levelIndex} className="bg-gray-800/60 rounded-xl border border-gray-700 p-6">
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-lg font-bold text-purple-300">레벨 {levelIndex + 1}</h3>
-                    <button
-                      onClick={() => handleRemoveLevel(levelIndex)}
-                      className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm font-medium transition-colors"
-                    >
-                      레벨 삭제
-                    </button>
+                    <div className="flex gap-2">
+                      {/* 추천 선택 버튼 */}
+                      <div className="flex gap-1 items-center">
+                        <button
+                          onClick={() => handleSetRecommended(levelIndex, level.recommended === 'left' ? null : 'left')}
+                          className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                            highlightLeft 
+                              ? 'bg-yellow-600 hover:bg-yellow-700 text-white' 
+                              : 'bg-gray-600 hover:bg-gray-500 text-gray-300'
+                          }`}
+                          title="선택지 A 추천"
+                        >
+                          A 추천
+                        </button>
+                        <button
+                          onClick={() => handleSetRecommended(levelIndex, level.recommended === 'right' ? null : 'right')}
+                          className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                            highlightRight 
+                              ? 'bg-yellow-600 hover:bg-yellow-700 text-white' 
+                              : 'bg-gray-600 hover:bg-gray-500 text-gray-300'
+                          }`}
+                          title="선택지 B 추천"
+                        >
+                          B 추천
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveLevel(levelIndex)}
+                        className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm font-medium transition-colors"
+                      >
+                        레벨 삭제
+                      </button>
+                    </div>
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -969,12 +1141,23 @@ export default function ArkpassGuideClient({
                             <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-xs font-bold">추천</span>
                           )}
                         </div>
-                        <button
-                          onClick={() => handleAddBundle(levelIndex, 'left')}
-                          className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs transition-colors"
-                        >
-                          + 묶음 추가
-                        </button>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => handleAddBundle(levelIndex, 'left')}
+                            className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs transition-colors"
+                          >
+                            + 묶음 추가
+                          </button>
+                          {completedBundles.length > 0 && (
+                            <button
+                              onClick={() => handleOpenBundleReuse(levelIndex, 'left')}
+                              className="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs transition-colors"
+                              title="현재 입력 완료된 묶음 항목 재사용"
+                            >
+                              재사용
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <div className="text-sm text-gray-400 mb-2">
                         총 가치: <span className="text-yellow-400 font-bold">{leftValue.toFixed(0)}골드</span>
@@ -1393,12 +1576,23 @@ export default function ArkpassGuideClient({
                             <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-xs font-bold">추천</span>
                           )}
                         </div>
-                        <button
-                          onClick={() => handleAddBundle(levelIndex, 'right')}
-                          className="px-2 py-1 bg-pink-600 hover:bg-pink-700 text-white rounded text-xs transition-colors"
-                        >
-                          + 묶음 추가
-                        </button>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => handleAddBundle(levelIndex, 'right')}
+                            className="px-2 py-1 bg-pink-600 hover:bg-pink-700 text-white rounded text-xs transition-colors"
+                          >
+                            + 묶음 추가
+                          </button>
+                          {completedBundles.length > 0 && (
+                            <button
+                              onClick={() => handleOpenBundleReuse(levelIndex, 'right')}
+                              className="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs transition-colors"
+                              title="현재 입력 완료된 묶음 항목 재사용"
+                            >
+                              재사용
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <div className="text-sm text-gray-400 mb-2">
                         총 가치: <span className="text-yellow-400 font-bold">{rightValue.toFixed(0)}골드</span>
