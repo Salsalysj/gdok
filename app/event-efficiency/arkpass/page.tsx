@@ -94,7 +94,26 @@ async function getSavedArkpassGuides() {
       console.error('Supabase 에러:', error);
       return [];
     }
-    return data || [];
+    // pass_period를 start_date, end_date로 변환 (기존 데이터 호환성)
+    const normalizedData = (data || []).map((item: any) => {
+      if (item.pass_period && (!item.start_date || !item.end_date)) {
+        const period = item.pass_period;
+        const match = period.match(/(\d{4}[.-]\d{2}[.-]\d{2})\s*~\s*(\d{4}[.-]\d{2}[.-]\d{2})/);
+        if (match) {
+          item.start_date = match[1].replace(/\./g, '-');
+          item.end_date = match[2].replace(/\./g, '-');
+        } else {
+          item.start_date = item.start_date || '';
+          item.end_date = item.end_date || '';
+        }
+      }
+      return {
+        ...item,
+        start_date: item.start_date || '',
+        end_date: item.end_date || '',
+      };
+    });
+    return normalizedData;
   } catch (error) {
     console.error('아크패스 가이드 조회 실패:', error);
     return [];

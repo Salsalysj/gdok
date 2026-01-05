@@ -50,7 +50,17 @@ type LevelChoice = {
 type ArkpassGuideClientProps = {
   crystalGoldRate: number | null;
   etcListItems: EtcListItem[];
-  initialSavedGuides: Array<{ id: string; name: string; pass_name: string; start_date: string; end_date: string; levels: LevelChoice[]; created_at: string; updated_at: string }>;
+  initialSavedGuides: Array<{ 
+    id: string; 
+    name: string; 
+    pass_name: string; 
+    start_date?: string; 
+    end_date?: string; 
+    pass_period?: string; // 기존 데이터 호환성
+    levels: LevelChoice[]; 
+    created_at: string; 
+    updated_at: string 
+  }>;
 };
 
 export default function ArkpassGuideClient({
@@ -212,8 +222,83 @@ export default function ArkpassGuideClient({
     ];
   }, [adjustedEntries, etcListItems, crystalGoldRate]);
   
-  // 저장된 가이드 관련 상태
-  const [savedGuides, setSavedGuides] = useState<Array<{ id: string; name: string; pass_name: string; start_date: string; end_date: string; levels: LevelChoice[]; created_at: string; updated_at: string }>>(initialSavedGuides);
+  // 저장된 가이드 관련 상태 - pass_period를 start_date, end_date로 변환
+  const normalizeGuide = (guide: any) => {
+    if (guide.pass_period && (!guide.start_date || !guide.end_date)) {
+      // pass_period 형식: "2025.02.05 ~ 2025.04.02" 또는 "2025-02-05 ~ 2025-04-02"
+      const period = guide.pass_period;
+      const match = period.match(/(\d{4}[.-]\d{2}[.-]\d{2})\s*~\s*(\d{4}[.-]\d{2}[.-]\d{2})/);
+      if (match) {
+        guide.start_date = match[1].replace(/\./g, '-');
+        guide.end_date = match[2].replace(/\./g, '-');
+      } else {
+        guide.start_date = guide.start_date || '';
+        guide.end_date = guide.end_date || '';
+      }
+    }
+    return {
+      ...guide,
+      start_date: guide.start_date || '',
+      end_date: guide.end_date || '',
+    };
+  };
+
+  const [savedGuides, setSavedGuides] = useState<Array<{ id: string; name: string; pass_name: string; start_date: string; end_date: string; levels: LevelChoice[]; created_at: string; updated_at: string }>>(
+    initialSavedGuides.map(normalizeGuide)
+  );
+
+  // 디버깅: 초기 데이터 확인
+  useEffect(() => {
+    console.log('[아크패스 가이드] 초기 데이터:', {
+      count: initialSavedGuides.length,
+      items: initialSavedGuides.map(item => ({
+        id: item.id,
+        name: item.name,
+        pass_name: item.pass_name,
+        hasStartDate: !!item.start_date,
+        hasEndDate: !!item.end_date,
+        hasPassPeriod: !!item.pass_period,
+      }))
+    });
+    console.log('[아크패스 가이드] 정규화된 데이터:', {
+      count: savedGuides.length,
+      items: savedGuides.map(item => ({
+        id: item.id,
+        name: item.name,
+        start_date: item.start_date,
+        end_date: item.end_date,
+      }))
+    });
+  }, []);
+
+  // 페이지 로드 시 최신 데이터 불러오기
+  useEffect(() => {
+    const fetchLatestGuides = async () => {
+      try {
+        const res = await fetch('/api/arkpass-guides');
+        const data = await res.json();
+        if (data.items) {
+          console.log('[아크패스 가이드] API에서 불러온 데이터:', {
+            count: data.items.length,
+            items: data.items.map((item: any) => ({
+              id: item.id,
+              name: item.name,
+              hasStartDate: !!item.start_date,
+              hasEndDate: !!item.end_date,
+              hasPassPeriod: !!item.pass_period,
+            }))
+          });
+          setSavedGuides(data.items.map(normalizeGuide));
+        } else if (data.error) {
+          console.error('[아크패스 가이드] API 에러:', data.error);
+        }
+      } catch (error) {
+        console.error('[아크패스 가이드] 데이터 불러오기 실패:', error);
+      }
+    };
+    
+    fetchLatestGuides();
+  }, []);
   const [selectedGuideId, setSelectedGuideId] = useState<string | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveGuideName, setSaveGuideName] = useState('');
@@ -550,7 +635,7 @@ export default function ArkpassGuideClient({
       const listRes = await fetch('/api/arkpass-guides');
       const listData = await listRes.json();
       if (listData.items) {
-        setSavedGuides(listData.items);
+        setSavedGuides(listData.items.map(normalizeGuide));
         if (selectedGuideId) {
           setSelectedGuideId(data.item.id);
         }
@@ -568,7 +653,7 @@ export default function ArkpassGuideClient({
   };
   
   // 불러오기
-  const handleLoad = async (itemId: string, silent: boolean = false) => {
+  const handleLoad = async (itemId: string) => {
     setIsLoading(true);
     try {
       const itemToLoad = savedGuides.find(item => item.id === itemId);
@@ -580,17 +665,13 @@ export default function ArkpassGuideClient({
           setLevels(itemToLoad.levels);
         }
         setSelectedGuideId(itemId);
-        if (!silent) {
-          alert('아크패스 가이드가 불러와졌습니다.');
-        }
+        alert('아크패스 가이드가 불러와졌습니다.');
       } else {
         throw new Error('아크패스 가이드를 찾을 수 없습니다.');
       }
     } catch (error: any) {
       console.error('아크패스 가이드 불러오기 실패:', error);
-      if (!silent) {
-        alert(error.message || '아크패스 가이드 불러오기에 실패했습니다.');
-      }
+      alert(error.message || '아크패스 가이드 불러오기에 실패했습니다.');
     } finally {
       setIsLoading(false);
     }
@@ -615,7 +696,7 @@ export default function ArkpassGuideClient({
       const listRes = await fetch('/api/arkpass-guides');
       const listData = await listRes.json();
       if (listData.items) {
-        setSavedGuides(listData.items);
+        setSavedGuides(listData.items.map(normalizeGuide));
       }
       
       if (selectedGuideId === itemId) {
@@ -665,13 +746,13 @@ export default function ArkpassGuideClient({
             </div>
             
             {/* 저장된 가이드 목록 */}
-            {savedGuides.length > 0 && (
+            {savedGuides.length > 0 ? (
               <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-4">
                 <div className="mb-4">
                   <h3 className="text-lg font-semibold text-white mb-1">저장된 아크패스 가이드</h3>
-                  <p className="text-xs text-gray-400">카드를 클릭하여 선택하거나 불러오기</p>
+                  <p className="text-xs text-gray-400">카드를 클릭하여 불러오기</p>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                   {savedGuides.map((item) => {
                     // 종료일 체크
                     const today = new Date();
@@ -755,6 +836,13 @@ export default function ArkpassGuideClient({
                       </div>
                     );
                   })}
+                </div>
+              </div>
+            ) : (
+              <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-4">
+                <div className="text-center py-8 text-gray-400">
+                  <p>저장된 아크패스 가이드가 없습니다.</p>
+                  <p className="text-sm mt-2">기본 정보를 입력하고 저장 버튼을 클릭하여 가이드를 생성하세요.</p>
                 </div>
               </div>
             )}
