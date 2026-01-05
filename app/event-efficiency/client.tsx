@@ -3713,7 +3713,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
     );
   };
 
-  // 종료일 체크 (배포 환경에서만)
+  // 종료일 체크 (배포 환경에서만) - 하지만 전체를 숨기지 않고 경고만 표시
   const isEventExpired = useMemo(() => {
     if (process.env.NODE_ENV === 'development') {
       return false; // 개발 환경에서는 항상 표시
@@ -3728,10 +3728,8 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
     return today > end;
   }, [endDate]);
 
-  // 종료일이 지났으면 배포 버전에서 숨기기
-  if (isEventExpired) {
-    return null;
-  }
+  // 종료일이 지났어도 전체를 숨기지 않음 - 사용자가 다른 이벤트를 선택할 수 있도록 함
+  // 대신 경고 메시지를 표시하거나 기본정보 카드만 숨김
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
@@ -3825,8 +3823,20 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
             </div>
           )}
           
+          {/* 종료일 경고 메시지 (배포 환경에서만) */}
+          {isEventExpired && (
+            <div className="bg-yellow-900/30 border border-yellow-600/50 rounded-lg p-4">
+              <div className="flex items-center gap-2 text-yellow-400">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span className="font-semibold">이 이벤트는 종료일이 지났습니다. 다른 이벤트를 선택하거나 새로 만들어주세요.</span>
+              </div>
+            </div>
+          )}
+
           {/* 기본정보 입력 카드 */}
-          {showBasicInfo && (
+          {showBasicInfo && !isEventExpired && (
           <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-4">
             <h3 className="text-base font-semibold text-white mb-4">기본정보</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
