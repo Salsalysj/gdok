@@ -735,13 +735,15 @@ export default function ArkpassGuideClient({
                   </button>
                 )}
                 
-                {/* 새로 만들기 버튼 */}
-                <button
-                  onClick={handleNew}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
-                >
-                  새로 만들기
-                </button>
+                {/* 새로 만들기 버튼 (로컬에서만 표시) */}
+                {allowSave && (
+                  <button
+                    onClick={handleNew}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                  >
+                    새로 만들기
+                  </button>
+                )}
               </div>
             </div>
             
