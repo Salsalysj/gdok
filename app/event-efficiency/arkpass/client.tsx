@@ -52,6 +52,7 @@ type LevelChoice = {
 
 type ArkpassGuideClientProps = {
   crystalGoldRate: number | null;
+  discordRate: number | null;
   etcListItems: EtcListItem[];
   initialSavedGuides: Array<{ 
     id: string; 
@@ -68,10 +69,33 @@ type ArkpassGuideClientProps = {
 
 export default function ArkpassGuideClient({
   crystalGoldRate,
+  discordRate,
   etcListItems,
   initialSavedGuides,
 }: ArkpassGuideClientProps) {
   const { adjustedEntries } = useValueDb();
+  const [lightMode, setLightMode] = useState<boolean>(false);
+  
+  // 글로벌 디코기준 스위치 상태 감지
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('themeLight');
+      if (saved != null) {
+        setLightMode(saved === '1');
+      }
+    } catch {}
+
+    const handleThemeChange = (e: CustomEvent<{ light: boolean }>) => {
+      setLightMode(e.detail.light);
+    };
+
+    window.addEventListener('theme-change', handleThemeChange as EventListener);
+    return () => {
+      window.removeEventListener('theme-change', handleThemeChange as EventListener);
+    };
+  }, []);
+
+  const cashMode: 'exchange' | 'discord' = lightMode ? 'exchange' : 'discord';
   
   // 로컬 환경에서만 저장/업데이트 허용
   const allowSave = process.env.NEXT_PUBLIC_ALLOW_PACKAGE_SAVE === 'true' || process.env.NODE_ENV === 'development';
@@ -395,8 +419,32 @@ export default function ArkpassGuideClient({
     // 1. 가치계산DB에서 찾기
     if (adjustedEntries && adjustedEntries.length > 0) {
       const valueDbEntry = adjustedEntries.find(entry => entry.itemName === itemName);
-      if (valueDbEntry && valueDbEntry.unitType === '골드' && valueDbEntry.unitValue !== null) {
-        return valueDbEntry.unitValue;
+      if (valueDbEntry && valueDbEntry.unitValue !== null) {
+        // 골드 단위인 경우 그대로 반환
+        if (valueDbEntry.unitType === '골드') {
+          return valueDbEntry.unitValue;
+        }
+        // 크리스탈 단위인 경우 골드로 변환
+        if (valueDbEntry.unitType === '크리스탈') {
+          if (crystalGoldRate !== null) {
+            return (valueDbEntry.unitValue * crystalGoldRate) / 100;
+          }
+          // crystalGoldRate가 null이면 etc_list로 fallback (아래에서 처리)
+        }
+        // 현금 단위인 경우 골드로 변환
+        if (valueDbEntry.unitType === '현금') {
+          if (cashMode === 'discord' && discordRate && discordRate > 0) {
+            // 디스코드: discordRate는 "100골드당 현금"을 의미하므로, 1골드당 현금 = discordRate / 100
+            // 따라서 현금을 골드로 변환: 골드 = 현금 / (discordRate / 100) = 현금 * 100 / discordRate
+            return (valueDbEntry.unitValue * 100) / discordRate;
+          } else if (cashMode === 'exchange' && crystalGoldRate && crystalGoldRate > 0) {
+            // 화폐거래소: 1골드 = 2750 / crystalGoldRate 원
+            // 따라서 현금을 골드로 변환: 골드 = 현금 / (2750 / crystalGoldRate) = 현금 * crystalGoldRate / 2750
+            return (valueDbEntry.unitValue * crystalGoldRate) / 2750;
+          }
+          // 환율 정보가 없으면 etc_list로 fallback (아래에서 처리)
+        }
+        // etc_list로 fallback (아래에서 처리)
       }
     }
     
@@ -407,10 +455,18 @@ export default function ArkpassGuideClient({
       if (etcItem.crystal !== null && crystalGoldRate !== null) {
         return (etcItem.crystal * crystalGoldRate) / 100;
       }
+      if (etcItem.cash !== null && etcItem.cash > 0) {
+        // 현금을 골드로 변환
+        if (cashMode === 'discord' && discordRate && discordRate > 0) {
+          return (etcItem.cash * 100) / discordRate;
+        } else if (cashMode === 'exchange' && crystalGoldRate && crystalGoldRate > 0) {
+          return (etcItem.cash * crystalGoldRate) / 2750;
+        }
+      }
     }
     
     return null;
-  }, [adjustedEntries, etcListItems, crystalGoldRate]);
+  }, [adjustedEntries, etcListItems, crystalGoldRate, discordRate, cashMode]);
   
   // 중첩된 묶음 항목의 가치를 재귀적으로 계산하는 함수 (1개당 단가 반환)
   const calculateNestedItemValue = useCallback((nestedItem: BundleItem): number => {
@@ -466,16 +522,19 @@ export default function ArkpassGuideClient({
           return componentSum + nestedItemTotalValue;
         }
         
-        // 직접 입력인 경우
-        const isManual = comp.itemName === '__manual__' || comp.itemName === '';
+        // 직접 입력인 경우 판단
+        const isManualFlag = comp.itemName === '__manual__' || comp.itemName === '';
         let compValue = 0;
-        if (isManual && comp.manualPrice !== null && comp.manualPrice !== undefined && comp.manualPrice > 0) {
+        if (isManualFlag && comp.manualPrice !== null && comp.manualPrice !== undefined && comp.manualPrice > 0) {
           compValue = comp.manualPrice * (comp.quantity || 1);
         } else {
           // 일반 아이템인 경우
           const unitPrice = getItemUnitPrice(comp.itemName);
           if (unitPrice !== null && unitPrice > 0) {
             compValue = unitPrice * (comp.quantity || 1);
+          } else if (comp.manualPrice !== null && comp.manualPrice !== undefined && comp.manualPrice > 0) {
+            // 가격을 찾지 못했는데 manualPrice가 있으면 manualPrice 사용 (직접 입력 모드)
+            compValue = comp.manualPrice * (comp.quantity || 1);
           }
         }
         
@@ -1311,11 +1370,16 @@ export default function ArkpassGuideClient({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* 선택지 A */}
                     <div className={`bg-gray-900/50 rounded-lg p-3 border-2 ${level.recommended === 'left' ? 'border-yellow-500 shadow-lg shadow-yellow-500/30' : 'border-gray-700'}`}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <h4 className="text-sm font-semibold text-blue-300">선택지 A</h4>
-                        {level.recommended === 'left' && (
-                          <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-xs font-bold">추천</span>
-                        )}
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-semibold text-blue-300">선택지 A</h4>
+                          {level.recommended === 'left' && (
+                            <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-xs font-bold">추천</span>
+                          )}
+                        </div>
+                        <div className="text-sm font-bold text-yellow-400">
+                          {formatNumberWithSignificantDigits(calculateBundleValue(level.left))}골드
+                        </div>
                       </div>
                       {level.left.length === 0 ? (
                         <p className="text-xs text-gray-500">묶음 항목 없음</p>
@@ -1392,11 +1456,16 @@ export default function ArkpassGuideClient({
                     
                     {/* 선택지 B */}
                     <div className={`bg-gray-900/50 rounded-lg p-3 border-2 ${level.recommended === 'right' ? 'border-yellow-500 shadow-lg shadow-yellow-500/30' : 'border-gray-700'}`}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <h4 className="text-sm font-semibold text-pink-300">선택지 B</h4>
-                        {level.recommended === 'right' && (
-                          <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-xs font-bold">추천</span>
-                        )}
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-semibold text-pink-300">선택지 B</h4>
+                          {level.recommended === 'right' && (
+                            <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-xs font-bold">추천</span>
+                          )}
+                        </div>
+                        <div className="text-sm font-bold text-yellow-400">
+                          {formatNumberWithSignificantDigits(calculateBundleValue(level.right))}골드
+                        </div>
                       </div>
                       {level.right.length === 0 ? (
                         <p className="text-xs text-gray-500">묶음 항목 없음</p>

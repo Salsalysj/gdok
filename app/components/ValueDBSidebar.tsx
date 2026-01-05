@@ -114,6 +114,33 @@ export default function ValueDBSidebar() {
             />
             <span>풀유각 오우너</span>
           </label>
+          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white transition-colors">
+            <input
+              type="checkbox"
+              checked={state.cardSetGraduated}
+              onChange={(e) => setState((prev) => ({ ...prev, cardSetGraduated: e.target.checked }))}
+              className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
+            />
+            <span>카드 세트 졸업</span>
+          </label>
+          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white transition-colors">
+            <input
+              type="checkbox"
+              checked={state.ignoreSilver}
+              onChange={(e) => setState((prev) => ({ ...prev, ignoreSilver: e.target.checked }))}
+              className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
+            />
+            <span>실링 미반영</span>
+          </label>
+          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white transition-colors">
+            <input
+              type="checkbox"
+              checked={state.ignoreDestructionGuardStone}
+              onChange={(e) => setState((prev) => ({ ...prev, ignoreDestructionGuardStone: e.target.checked }))}
+              className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
+            />
+            <span>파괴석/수호석 미반영</span>
+          </label>
         </div>
       </div>
       

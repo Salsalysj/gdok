@@ -9,6 +9,9 @@ export function getPriceOverrideState(): {
   ignoreCardExp: boolean;
   has97Stone: boolean;
   hasFullRelicEngraving: boolean;
+  cardSetGraduated: boolean;
+  ignoreSilver: boolean;
+  ignoreDestructionGuardStone: boolean;
 } | null {
   // 서버 사이드에서는 null 반환 (클라이언트에서만 사용)
   if (typeof window === 'undefined') return null;
@@ -62,6 +65,20 @@ export function applyPriceOverride(itemName: string, originalPrice: number | nul
       itemName === '태초의 조각' ||
       itemName === '영겁의 정수' ||
       itemName === '영혼의 잎사귀'
+    ) {
+      return 0;
+    }
+  }
+
+  // 카드 세트 졸업
+  if (state.cardSetGraduated) {
+    if (
+      itemName === '전설 카드팩 (확률)' ||
+      itemName === '전설~고급 카드팩' ||
+      itemName === '전설~영웅 카드팩' ||
+      itemName === '전설~희귀 카드팩' ||
+      itemName === '전체 카드팩' ||
+      itemName === '전설 카드 선택팩'
     ) {
       return 0;
     }

@@ -8,6 +8,9 @@ type PriceOverrideState = {
   ignoreCardExp: boolean;
   has97Stone: boolean;
   hasFullRelicEngraving: boolean;
+  cardSetGraduated: boolean;
+  ignoreSilver: boolean;
+  ignoreDestructionGuardStone: boolean;
 };
 
 const PriceOverrideContext = createContext<{
@@ -22,6 +25,9 @@ export function PriceOverrideProvider({ children }: { children: ReactNode }) {
     ignoreCardExp: false,
     has97Stone: false,
     hasFullRelicEngraving: false,
+    cardSetGraduated: false,
+    ignoreSilver: false,
+    ignoreDestructionGuardStone: false,
   });
   const isInitialMount = useRef(true);
   const previousStateRef = useRef<PriceOverrideState | undefined>(undefined);

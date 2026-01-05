@@ -68,14 +68,55 @@ async function parseEtcList(crystalGoldRate: number | null): Promise<EtcListItem
 
 async function getCrystalGoldRate(): Promise<number | null> {
   try {
+    // 먼저 Supabase에서 최신 환율 가져오기 시도
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('crystal_exchange_rates')
+        .select('exchange')
+        .order('timestamp', { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (!error && data && data.exchange) {
+        return Number(data.exchange);
+      }
+    }
+    
+    // Supabase에서 가져오지 못하면 로컬 파일에서 가져오기 (fallback)
     const fileContents = await fs.readFile(CRYSTAL_GOLD_DATA_FILE, 'utf-8');
     const data = JSON.parse(fileContents);
-    if (data && typeof data.crystalGoldRate === 'number') {
-      return data.crystalGoldRate;
+    const rates = data.exchangeRates || [];
+    if (rates.length > 0) {
+      // exchangeRates 배열의 마지막 항목의 exchange 값 사용
+      const latestRate = rates[rates.length - 1];
+      if (latestRate && typeof latestRate.exchange === 'number' && latestRate.exchange > 0) {
+        return latestRate.exchange;
+      }
     }
     return null;
   } catch (error) {
     console.error('crystal-gold-rates.json 읽기 오류:', error);
+    return null;
+  }
+}
+
+type LocalCrystalGoldData = {
+  exchangeRates?: {
+    date: string;
+    exchange: number;
+    discord?: number;
+  }[];
+};
+
+async function getLatestDiscordRate(): Promise<number | null> {
+  try {
+    const raw = await fs.readFile(CRYSTAL_GOLD_DATA_FILE, 'utf-8');
+    const json = JSON.parse(raw) as LocalCrystalGoldData;
+    const rates = json.exchangeRates || [];
+    if (rates.length === 0) return null;
+    const latest = rates[rates.length - 1];
+    return typeof latest.discord === 'number' ? latest.discord : null;
+  } catch (error) {
     return null;
   }
 }
@@ -121,8 +162,9 @@ async function getSavedArkpassGuides() {
 }
 
 export default async function ArkpassGuidePage() {
-  const [crystalGoldRate, etcListItems, initialSavedGuides] = await Promise.all([
+  const [crystalGoldRate, discordRate, etcListItems, initialSavedGuides] = await Promise.all([
     getCrystalGoldRate(),
+    getLatestDiscordRate(),
     parseEtcList(await getCrystalGoldRate()),
     getSavedArkpassGuides(),
   ]);
@@ -130,6 +172,7 @@ export default async function ArkpassGuidePage() {
   return (
     <ArkpassGuideClient
       crystalGoldRate={crystalGoldRate}
+      discordRate={discordRate}
       etcListItems={etcListItems}
       initialSavedGuides={initialSavedGuides}
     />

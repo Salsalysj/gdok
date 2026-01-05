@@ -410,6 +410,13 @@ export function calculateAdjustedEntries(params: CalculateAdjustedEntriesParams)
         adjustedValue = adjustPrice(entry.itemName, adjustedValue);
       }
     }
+    // 크리스탈 단위인 경우에도 가격 조정 적용 (카드 세트 졸업 등)
+    else if (entry.unitType === '크리스탈' && adjustedValue != null) {
+      const adjustedPrice = adjustPrice(entry.itemName, null);
+      if (adjustedPrice === 0) {
+        adjustedValue = 0;
+      }
+    }
     // 현금 단위인 경우에도 가격 조정 적용 (카드경험치 미반영 등)
     else if (entry.unitType === '현금' && adjustedValue != null) {
       const adjustedPrice = adjustPrice(entry.itemName, null);

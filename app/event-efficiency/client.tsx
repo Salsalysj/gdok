@@ -778,8 +778,8 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
   const getItemPriceInfo = useCallback((itemName: string): PriceInfo => {
     const defaultResult: PriceInfo = { unit: null, unitAmount: null, goldEquivalent: null, cashEquivalent: null, note: null };
 
-    // 실링, 배틀 아이템은 제외
-    if (itemName === '실링' || itemName === '배틀 아이템 종합 상자') {
+    // 배틀 아이템은 제외
+    if (itemName === '배틀 아이템 종합 상자') {
       return defaultResult;
     }
 
