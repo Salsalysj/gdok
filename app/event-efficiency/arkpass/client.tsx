@@ -313,6 +313,22 @@ export default function ArkpassGuideClient({
   // 레벨 데이터
   const [levels, setLevels] = useState<LevelChoice[]>([]);
   
+  // 요약 카드 펼치기/접기 상태 (레벨 인덱스, 선택지, 묶음 인덱스)
+  const [expandedBundles, setExpandedBundles] = useState<Set<string>>(new Set());
+  
+  const toggleBundleExpanded = useCallback((levelIndex: number, side: 'left' | 'right', bundleIndex: number) => {
+    const key = `${levelIndex}-${side}-${bundleIndex}`;
+    setExpandedBundles(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(key)) {
+        newSet.delete(key);
+      } else {
+        newSet.add(key);
+      }
+      return newSet;
+    });
+  }, []);
+  
   // 재사용 모달 상태
   const [showBundleReuseModal, setShowBundleReuseModal] = useState(false);
   const [reuseModalContext, setReuseModalContext] = useState<{ levelIndex: number; side: 'left' | 'right' } | null>(null);
@@ -1072,7 +1088,188 @@ export default function ArkpassGuideClient({
           </div>
         </div>
         
+        {/* 요약 카드 */}
+        {levels.length > 0 && (
+          <div className="bg-gray-900/70 border border-gray-700 rounded-2xl p-8">
+            <h2 className="text-xl font-bold text-white mb-4">요약</h2>
+            <div className="space-y-4">
+              {levels.map((level, levelIndex) => (
+                <div key={levelIndex} className="bg-gray-800/50 rounded-lg border border-gray-700 p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <h3 className="text-lg font-semibold text-purple-300">레벨 {levelIndex + 1}</h3>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* 선택지 A */}
+                    <div className={`bg-gray-900/50 rounded-lg p-3 border-2 ${level.recommended === 'left' ? 'border-yellow-500 shadow-lg shadow-yellow-500/30' : 'border-gray-700'}`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <h4 className="text-sm font-semibold text-blue-300">선택지 A</h4>
+                        {level.recommended === 'left' && (
+                          <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-xs font-bold">추천</span>
+                        )}
+                      </div>
+                      {level.left.length === 0 ? (
+                        <p className="text-xs text-gray-500">묶음 항목 없음</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {level.left.map((bundle, bundleIndex) => {
+                            const expandKey = `${levelIndex}-left-${bundleIndex}`;
+                            const isExpanded = expandedBundles.has(expandKey);
+                            return (
+                              <div key={bundleIndex} className="bg-gray-800/50 rounded p-2 border border-gray-600">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className="text-xs font-medium text-white truncate">
+                                        {bundle.itemName || '(이름 없음)'}
+                                      </span>
+                                      <span className="px-1.5 py-0.5 bg-gray-700 text-gray-300 rounded text-xs">
+                                        {bundle.itemType}
+                                      </span>
+                                      <span className="text-xs text-gray-400">×{bundle.quantity}</span>
+                                    </div>
+                                    {bundle.components.length > 0 && (
+                                      <button
+                                        onClick={() => toggleBundleExpanded(levelIndex, 'left', bundleIndex)}
+                                        className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                                      >
+                                        {isExpanded ? '▼' : '▶'} 구성요소 ({bundle.components.length}개)
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                                {isExpanded && bundle.components.length > 0 && (
+                                  <div className="mt-2 pt-2 border-t border-gray-700 space-y-1">
+                                    {bundle.components.map((component, componentIndex) => {
+                                      const unitPrice = getItemUnitPrice(component.itemName);
+                                      const isManual = component.itemName === '__manual__' || component.itemName === '';
+                                      const isNested = component.itemName === '__nested__';
+                                      return (
+                                        <div key={componentIndex} className="text-xs text-gray-400 pl-2">
+                                          {isNested && component.nestedItem ? (
+                                            <span className="text-purple-400">
+                                              [묶음] {component.nestedItem.itemName || '(이름 없음)'} ×{component.quantity}
+                                            </span>
+                                          ) : isManual ? (
+                                            <span>
+                                              {component.itemName || '(직접 입력)'} ×{component.quantity}
+                                              {component.manualPrice !== null && component.manualPrice !== undefined && (
+                                                <span className="text-gray-500 ml-1">
+                                                  ({formatNumberWithSignificantDigits(component.manualPrice)}골드)
+                                                </span>
+                                              )}
+                                            </span>
+                                          ) : (
+                                            <span>
+                                              {component.itemName} ×{component.quantity}
+                                              {unitPrice !== null && unitPrice > 0 && (
+                                                <span className="text-gray-500 ml-1">
+                                                  ({formatNumberWithSignificantDigits(unitPrice)}골드)
+                                                </span>
+                                              )}
+                                            </span>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* 선택지 B */}
+                    <div className={`bg-gray-900/50 rounded-lg p-3 border-2 ${level.recommended === 'right' ? 'border-yellow-500 shadow-lg shadow-yellow-500/30' : 'border-gray-700'}`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <h4 className="text-sm font-semibold text-pink-300">선택지 B</h4>
+                        {level.recommended === 'right' && (
+                          <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-xs font-bold">추천</span>
+                        )}
+                      </div>
+                      {level.right.length === 0 ? (
+                        <p className="text-xs text-gray-500">묶음 항목 없음</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {level.right.map((bundle, bundleIndex) => {
+                            const expandKey = `${levelIndex}-right-${bundleIndex}`;
+                            const isExpanded = expandedBundles.has(expandKey);
+                            return (
+                              <div key={bundleIndex} className="bg-gray-800/50 rounded p-2 border border-gray-600">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className="text-xs font-medium text-white truncate">
+                                        {bundle.itemName || '(이름 없음)'}
+                                      </span>
+                                      <span className="px-1.5 py-0.5 bg-gray-700 text-gray-300 rounded text-xs">
+                                        {bundle.itemType}
+                                      </span>
+                                      <span className="text-xs text-gray-400">×{bundle.quantity}</span>
+                                    </div>
+                                    {bundle.components.length > 0 && (
+                                      <button
+                                        onClick={() => toggleBundleExpanded(levelIndex, 'right', bundleIndex)}
+                                        className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                                      >
+                                        {isExpanded ? '▼' : '▶'} 구성요소 ({bundle.components.length}개)
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                                {isExpanded && bundle.components.length > 0 && (
+                                  <div className="mt-2 pt-2 border-t border-gray-700 space-y-1">
+                                    {bundle.components.map((component, componentIndex) => {
+                                      const unitPrice = getItemUnitPrice(component.itemName);
+                                      const isManual = component.itemName === '__manual__' || component.itemName === '';
+                                      const isNested = component.itemName === '__nested__';
+                                      return (
+                                        <div key={componentIndex} className="text-xs text-gray-400 pl-2">
+                                          {isNested && component.nestedItem ? (
+                                            <span className="text-purple-400">
+                                              [묶음] {component.nestedItem.itemName || '(이름 없음)'} ×{component.quantity}
+                                            </span>
+                                          ) : isManual ? (
+                                            <span>
+                                              {component.itemName || '(직접 입력)'} ×{component.quantity}
+                                              {component.manualPrice !== null && component.manualPrice !== undefined && (
+                                                <span className="text-gray-500 ml-1">
+                                                  ({formatNumberWithSignificantDigits(component.manualPrice)}골드)
+                                                </span>
+                                              )}
+                                            </span>
+                                          ) : (
+                                            <span>
+                                              {component.itemName} ×{component.quantity}
+                                              {unitPrice !== null && unitPrice > 0 && (
+                                                <span className="text-gray-500 ml-1">
+                                                  ({formatNumberWithSignificantDigits(unitPrice)}골드)
+                                                </span>
+                                              )}
+                                            </span>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
         {/* 선택 아이템 카드 */}
+        {allowSave && (
         <div className="bg-gray-900/70 border border-gray-700 rounded-2xl p-8">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold text-white">선택 아이템</h2>
@@ -2013,6 +2210,7 @@ export default function ArkpassGuideClient({
             )}
           </div>
         </div>
+        )}
       </div>
     </div>
   );
