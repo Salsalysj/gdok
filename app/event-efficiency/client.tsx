@@ -235,21 +235,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
         if (data.items) {
           console.log('[이벤트 효율] 서버에서 불러온 최신 데이터:', data.items.map((item: any) => ({ id: item.id, name: item.name })));
           setSavedEventEfficiency(data.items);
-          
-          // 저장된 이벤트가 없거나 모두 종료일이 지난 경우 기본정보 카드 숨김
-          if (data.items.length === 0) {
-            setShowBasicInfo(false);
-          } else {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const hasActive = data.items.some((item: any) => {
-              if (!item.end_date) return true;
-              const end = new Date(item.end_date);
-              end.setHours(23, 59, 59, 999);
-              return end >= today;
-            });
-            setShowBasicInfo(hasActive);
-          }
+          // showBasicInfo는 hasActiveEvent useEffect에서 자동으로 업데이트됨
         }
       } catch (error) {
         console.error('[이벤트 효율] 최신 데이터 불러오기 실패:', error);
@@ -436,21 +422,60 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
       return end >= today;
     });
   }, [savedEventEfficiency]);
+
+  // 배포 버전에서 모든 이벤트가 종료일이 지난 경우 필터링된 탭 목록
+  const visibleSubTabs = useMemo(() => {
+    const isProduction = process.env.NODE_ENV !== 'development';
+    const shouldHideWeeklyCumulative = isProduction && !hasActiveEvent && savedEventEfficiency.length > 0;
+    
+    if (shouldHideWeeklyCumulative) {
+      // 요약과 상시혜택만 표시
+      return eventSubTabs.filter(tab => tab.key === 'summary' || tab.key === 'daily');
+    }
+    
+    return eventSubTabs;
+  }, [hasActiveEvent, savedEventEfficiency.length]);
+
+  // 현재 활성 탭이 숨겨진 탭이면 요약 탭으로 자동 전환
+  useEffect(() => {
+    const isCurrentTabVisible = visibleSubTabs.some(tab => tab.key === activeSubTab.key);
+    if (!isCurrentTabVisible && visibleSubTabs.length > 0) {
+      setActiveSubTab(visibleSubTabs[0]);
+    }
+  }, [visibleSubTabs, activeSubTab.key]);
+
+  // hasActiveEvent가 변경될 때 showBasicInfo 동기화 (배포 버전에서 종료일이 지난 이벤트 처리)
+  useEffect(() => {
+    const isProduction = process.env.NODE_ENV !== 'development';
+    if (isProduction && savedEventEfficiency.length > 0) {
+      // 배포 버전에서는 hasActiveEvent에 따라 showBasicInfo 업데이트
+      setShowBasicInfo(hasActiveEvent);
+    } else if (savedEventEfficiency.length === 0) {
+      // 저장된 이벤트가 없으면 숨김
+      setShowBasicInfo(false);
+    }
+    // 개발 버전에서는 초기값 유지 (수동으로 변경 가능)
+  }, [hasActiveEvent, savedEventEfficiency.length]);
   
   // 기본정보 카드 표시 여부 (활성 이벤트가 있거나 선택된 이벤트가 있으면 표시)
   const [showBasicInfo, setShowBasicInfo] = useState(() => {
     // 초기값: 저장된 이벤트가 있고 활성 이벤트가 있으면 표시
-    const latestEvent = getLatestEvent();
-    if (latestEvent) {
-      // 가장 최근 항목이 활성 이벤트인지 확인
-      if (!latestEvent.end_date) return true;
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const end = new Date(latestEvent.end_date);
+    const isProduction = process.env.NODE_ENV !== 'development';
+    
+    if (initialSavedEventEfficiency.length === 0) return false;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // 배포 버전에서는 종료일이 지난 이벤트는 제외
+    const hasActive = initialSavedEventEfficiency.some((item) => {
+      if (!item.end_date) return true; // 종료일이 없으면 활성
+      const end = new Date(item.end_date);
       end.setHours(23, 59, 59, 999);
       return end >= today;
-    }
-    return false;
+    });
+    
+    return hasActive;
   });
   const [kurzanSwitches, setKurzanSwitches] = useState({
     breakthrough: true,
@@ -3878,7 +3903,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
           )}
 
           <div className="flex flex-wrap gap-2">
-            {eventSubTabs.map((subTab) => {
+            {visibleSubTabs.map((subTab) => {
               const isActive = subTab.key === activeSubTab.key;
               return (
                 <button
