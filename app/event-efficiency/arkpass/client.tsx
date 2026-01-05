@@ -32,6 +32,8 @@ type ComponentItem = {
   quantity: number;
   manualPrice?: number | null;
   manualUnitType?: '골드' | '크리스탈' | '현금' | null;
+  probability?: number; // 확률 타입용
+  selected?: boolean; // 선택 타입용
   nestedItem?: BundleItem | null;
 };
 
@@ -184,14 +186,26 @@ export default function ArkpassGuideClient({
   const itemDropdownOptions = useMemo(() => {
     const options: { value: string; label: string }[] = [];
     
-    // 가치계산DB에서 가져오기
+    // 가치계산DB에서 가져오기 (모든 unitType 포함: 골드, 현금, 크리스탈)
     if (adjustedEntries && adjustedEntries.length > 0) {
       adjustedEntries.forEach(entry => {
-        if (entry.itemName && entry.unitType === '골드' && entry.unitValue !== null) {
-          options.push({
-            value: entry.itemName,
-            label: `${entry.itemName} (${formatNumberWithSignificantDigits(entry.unitValue)}골드)`,
-          });
+        if (entry.itemName && entry.unitValue !== null) {
+          if (entry.unitType === '골드') {
+            options.push({
+              value: entry.itemName,
+              label: `${entry.itemName} (${formatNumberWithSignificantDigits(entry.unitValue)}골드)`,
+            });
+          } else if (entry.unitType === '현금') {
+            options.push({
+              value: entry.itemName,
+              label: `${entry.itemName} (${formatNumberWithSignificantDigits(entry.unitValue)}현금)`,
+            });
+          } else if (entry.unitType === '크리스탈') {
+            options.push({
+              value: entry.itemName,
+              label: `${entry.itemName} (${formatNumberWithSignificantDigits(entry.unitValue)}크리스탈)`,
+            });
+          }
         }
       });
     }
@@ -209,6 +223,11 @@ export default function ArkpassGuideClient({
           options.push({
             value: item.itemName,
             label: `${item.itemName} (${formatNumberWithSignificantDigits(goldValue)}골드)`,
+          });
+        } else if (item.cash !== null) {
+          options.push({
+            value: item.itemName,
+            label: `${item.itemName} (${formatNumberWithSignificantDigits(item.cash)}현금)`,
           });
         }
       }
@@ -312,6 +331,7 @@ export default function ArkpassGuideClient({
   
   // 레벨 데이터
   const [levels, setLevels] = useState<LevelChoice[]>([]);
+  const levelsUpdateRef = useRef(false);
   
   // 요약 카드 펼치기/접기 상태 (레벨 인덱스, 선택지, 묶음 인덱스)
   const [expandedBundles, setExpandedBundles] = useState<Set<string>>(new Set());
@@ -392,57 +412,239 @@ export default function ArkpassGuideClient({
     return null;
   }, [adjustedEntries, etcListItems, crystalGoldRate]);
   
-  // 중첩된 묶음 항목의 가치를 재귀적으로 계산하는 함수
+  // 중첩된 묶음 항목의 가치를 재귀적으로 계산하는 함수 (1개당 단가 반환)
   const calculateNestedItemValue = useCallback((nestedItem: BundleItem): number => {
     let nestedValue = 0;
     nestedItem.components.forEach((nestedComp) => {
       // 중첩된 항목 내부에 또 중첩이 있는 경우 재귀 호출
       if (nestedComp.itemName === '__nested__' && nestedComp.nestedItem) {
-        const nestedNestedValue = calculateNestedItemValue(nestedComp.nestedItem);
-        nestedValue += nestedNestedValue * (nestedComp.quantity || 1);
+        const nestedNestedUnitPrice = calculateNestedItemValue(nestedComp.nestedItem);
+        const nestedNestedQuantity = nestedComp.nestedItem.quantity || 1;
+        const nestedNestedTotalValue = nestedNestedUnitPrice * nestedNestedQuantity;
+        nestedValue += nestedNestedTotalValue;
         return;
       }
       
       // 직접 입력인 경우
       const isManual = nestedComp.itemName === '__manual__' || (nestedComp.itemName && nestedComp.itemName !== '__nested__' && !getItemUnitPrice(nestedComp.itemName));
+      let nestedCompValue = 0;
       if (isManual && nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined && nestedComp.manualPrice > 0) {
-        nestedValue += nestedComp.manualPrice * (nestedComp.quantity || 1);
-        return;
+        nestedCompValue = nestedComp.manualPrice * (nestedComp.quantity || 1);
+      } else {
+        // 일반 아이템인 경우
+        const unitPrice = getItemUnitPrice(nestedComp.itemName);
+        if (unitPrice !== null && unitPrice > 0) {
+          nestedCompValue = unitPrice * (nestedComp.quantity || 1);
+        }
       }
       
-      // 일반 아이템인 경우
-      const unitPrice = getItemUnitPrice(nestedComp.itemName);
-      if (unitPrice !== null && unitPrice > 0) {
-        nestedValue += unitPrice * (nestedComp.quantity || 1);
+      // itemType에 따라 다르게 계산
+      if (nestedItem.itemType === '확정') {
+        nestedValue += nestedCompValue;
+      } else if (nestedItem.itemType === '확률') {
+        const probability = nestedComp.probability || 0;
+        nestedValue += nestedCompValue * probability;
+      } else if (nestedItem.itemType === '선택') {
+        if (nestedComp.selected) {
+          nestedValue += nestedCompValue;
+        }
       }
     });
-    return nestedValue * nestedItem.quantity;
+    return nestedValue;
   }, [getItemUnitPrice]);
   
   // 묶음 항목 가치 계산
   const calculateBundleValue = useCallback((bundle: BundleItem[]): number => {
     return bundle.reduce((sum, item) => {
-      const itemValue = item.components.reduce((componentSum, comp) => {
+      // 묶음 항목 1개당 단가 계산
+      const itemUnitValue = item.components.reduce((componentSum, comp) => {
         // 중첩된 묶음 항목인 경우
         if (comp.itemName === '__nested__' && comp.nestedItem) {
-          const nestedValue = calculateNestedItemValue(comp.nestedItem);
-          return componentSum + nestedValue * (comp.quantity || 1) * item.quantity;
+          const nestedItemUnitPrice = calculateNestedItemValue(comp.nestedItem);
+          const nestedItemQuantity = comp.nestedItem.quantity || 1;
+          const nestedItemTotalValue = nestedItemUnitPrice * nestedItemQuantity;
+          return componentSum + nestedItemTotalValue;
         }
         
         // 직접 입력인 경우
         const isManual = comp.itemName === '__manual__' || comp.itemName === '';
+        let compValue = 0;
         if (isManual && comp.manualPrice !== null && comp.manualPrice !== undefined && comp.manualPrice > 0) {
-          return componentSum + comp.manualPrice * (comp.quantity || 1) * item.quantity;
+          compValue = comp.manualPrice * (comp.quantity || 1);
+        } else {
+          // 일반 아이템인 경우
+          const unitPrice = getItemUnitPrice(comp.itemName);
+          if (unitPrice !== null && unitPrice > 0) {
+            compValue = unitPrice * (comp.quantity || 1);
+          }
         }
         
-        // 일반 아이템인 경우
-        const unitPrice = getItemUnitPrice(comp.itemName);
-        if (unitPrice === null || unitPrice <= 0) return componentSum;
-        return componentSum + (unitPrice * comp.quantity * item.quantity);
+        // itemType에 따라 다르게 계산
+        if (item.itemType === '확정') {
+          return componentSum + compValue;
+        } else if (item.itemType === '확률') {
+          const probability = comp.probability || 0;
+          return componentSum + compValue * probability;
+        } else if (item.itemType === '선택') {
+          if (comp.selected) {
+            return componentSum + compValue;
+          }
+        }
+        return componentSum;
       }, 0);
-      return sum + itemValue;
+      
+      // 묶음 항목 총 가치 = 묶음 항목 1개당 단가 × 묶음 항목 수량
+      return sum + itemUnitValue * item.quantity;
     }, 0);
   }, [getItemUnitPrice, calculateNestedItemValue]);
+  
+  // 구성요소의 가치를 계산하는 함수
+  const calculateComponentValue = useCallback((component: ComponentItem): number => {
+    // 중첩된 묶음 항목인 경우
+    if (component.itemName === '__nested__' && component.nestedItem) {
+      const nestedItemUnitPrice = calculateNestedItemValue(component.nestedItem);
+      const nestedItemQuantity = component.nestedItem.quantity || 1;
+      return nestedItemUnitPrice * nestedItemQuantity * (component.quantity || 1);
+    }
+    
+    // 직접 입력인 경우
+    const isManual = component.itemName === '__manual__' || component.itemName === '';
+    if (isManual && component.manualPrice !== null && component.manualPrice !== undefined && component.manualPrice > 0) {
+      return component.manualPrice * (component.quantity || 1);
+    }
+    
+    // 일반 아이템인 경우
+    const unitPrice = getItemUnitPrice(component.itemName);
+    if (unitPrice !== null && unitPrice > 0) {
+      return unitPrice * (component.quantity || 1);
+    }
+    
+    return 0;
+  }, [getItemUnitPrice, calculateNestedItemValue]);
+  
+  // 선택 타입 묶음 항목에서 가장 가치가 높은 항목을 자동 선택
+  const prevLevelsRef = useRef<string>('');
+  const levelsKey = useMemo(() => JSON.stringify(levels.map(level => ({
+    left: level.left.map(b => ({
+      itemType: b.itemType,
+      components: b.components.map(c => ({
+        itemName: c.itemName,
+        quantity: c.quantity,
+        manualPrice: c.manualPrice,
+        nestedItem: c.nestedItem ? {
+          itemType: c.nestedItem.itemType,
+          quantity: c.nestedItem.quantity,
+          components: c.nestedItem.components.map(nc => ({
+            itemName: nc.itemName,
+            quantity: nc.quantity,
+            manualPrice: nc.manualPrice,
+          })),
+        } : null,
+      })),
+    })),
+    right: level.right.map(b => ({
+      itemType: b.itemType,
+      components: b.components.map(c => ({
+        itemName: c.itemName,
+        quantity: c.quantity,
+        manualPrice: c.manualPrice,
+        nestedItem: c.nestedItem ? {
+          itemType: c.nestedItem.itemType,
+          quantity: c.nestedItem.quantity,
+          components: c.nestedItem.components.map(nc => ({
+            itemName: nc.itemName,
+            quantity: nc.quantity,
+            manualPrice: nc.manualPrice,
+          })),
+        } : null,
+      })),
+    })),
+  }))), [levels]);
+  
+  useEffect(() => {
+    // 이전과 동일하면 업데이트하지 않음
+    if (prevLevelsRef.current === levelsKey) {
+      return;
+    }
+    prevLevelsRef.current = levelsKey;
+    
+    setLevels(prev => {
+      const updated = prev.map((level) => {
+        const updateBundle = (bundle: BundleItem): BundleItem => {
+          if (bundle.itemType !== '선택' || bundle.components.length === 0) {
+            return bundle;
+          }
+          
+          // 모든 구성요소의 가치 계산
+          const componentValues = bundle.components.map((comp, compIndex) => ({
+            index: compIndex,
+            value: calculateComponentValue(comp),
+          }));
+          
+          // 가치가 가장 높은 항목 찾기 (가치가 같으면 인덱스가 작은 것)
+          if (componentValues.length === 0) {
+            return bundle;
+          }
+          
+          const maxValue = Math.max(...componentValues.map(cv => cv.value));
+          const bestComponent = componentValues
+            .filter(cv => cv.value === maxValue)
+            .sort((a, b) => a.index - b.index)[0];
+          
+          // 이미 선택된 항목이 최고 가치 항목과 같으면 변경하지 않음
+          const currentSelected = bundle.components.findIndex(c => c.selected);
+          if (currentSelected === bestComponent.index) {
+            return bundle;
+          }
+          
+          // 선택 상태 업데이트
+          const updatedComponents = bundle.components.map((comp, compIndex) => ({
+            ...comp,
+            selected: compIndex === bestComponent.index,
+          }));
+          
+          return {
+            ...bundle,
+            components: updatedComponents,
+          };
+        };
+        
+        return {
+          ...level,
+          left: level.left.map(updateBundle),
+          right: level.right.map(updateBundle),
+        };
+      });
+      
+      // 실제로 변경이 있었는지 확인
+      const hasChanges = JSON.stringify(updated) !== JSON.stringify(prev);
+      if (hasChanges) {
+        // 업데이트된 levelsKey를 저장
+        const updatedLevelsKey = JSON.stringify(updated.map(level => ({
+          left: level.left.map(b => ({
+            itemType: b.itemType,
+            components: b.components.map(c => ({
+              itemName: c.itemName,
+              quantity: c.quantity,
+              manualPrice: c.manualPrice,
+              selected: c.selected,
+            })),
+          })),
+          right: level.right.map(b => ({
+            itemType: b.itemType,
+            components: b.components.map(c => ({
+              itemName: c.itemName,
+              quantity: c.quantity,
+              manualPrice: c.manualPrice,
+              selected: c.selected,
+            })),
+          })),
+        })));
+        prevLevelsRef.current = updatedLevelsKey;
+      }
+      return hasChanges ? updated : prev;
+    });
+  }, [levelsKey, calculateComponentValue]);
   
   // 레벨 추가
   const handleAddLevel = useCallback(() => {
@@ -585,9 +787,16 @@ export default function ArkpassGuideClient({
               bIdx === bundleIndex 
                 ? {
                     ...bundle,
-                    components: bundle.components.map((comp, cIdx) => 
-                      cIdx === componentIndex ? { ...comp, [field]: value } : comp
-                    ),
+                    components: bundle.components.map((comp, cIdx) => {
+                      if (cIdx === componentIndex) {
+                        return { ...comp, [field]: value };
+                      }
+                      // 선택 타입일 때 selected 필드 업데이트 시 다른 구성요소는 false로 설정
+                      if (field === 'selected' && bundle.itemType === '선택') {
+                        return { ...comp, selected: false };
+                      }
+                      return comp;
+                    }),
                   }
                 : bundle
             ),
@@ -1416,6 +1625,16 @@ export default function ArkpassGuideClient({
                                 return (
                                   <div key={componentIndex} className="bg-gray-700/50 rounded p-2 space-y-1">
                                     <div className="flex gap-2 items-center">
+                                      {/* 선택 타입일 때 라디오 버튼 */}
+                                      {bundle.itemType === '선택' && (
+                                        <input
+                                          type="radio"
+                                          name={`bundle-${levelIndex}-left-${bundleIndex}`}
+                                          checked={component.selected || false}
+                                          onChange={() => handleUpdateComponent(levelIndex, 'left', bundleIndex, componentIndex, 'selected', true)}
+                                          className="w-4 h-4 border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
+                                        />
+                                      )}
                                       <SearchableSelect
                                         value={isManual ? '__manual__' : component.itemName}
                                         onChange={(value) => {
@@ -1452,6 +1671,20 @@ export default function ArkpassGuideClient({
                                         className="w-16 px-2 py-1 bg-gray-600 text-white rounded border border-gray-500 focus:outline-none focus:border-blue-500 text-xs"
                                         min="1"
                                       />
+                                      {/* 확률 타입일 때 확률 입력 필드 */}
+                                      {bundle.itemType === '확률' && (
+                                        <input
+                                          type="number"
+                                          value={component.probability !== undefined ? component.probability : ''}
+                                          onChange={(e) => handleUpdateComponent(levelIndex, 'left', bundleIndex, componentIndex, 'probability', parseFloat(e.target.value) || 0)}
+                                          className="w-20 px-2 py-1 bg-gray-600 text-white rounded border border-gray-500 focus:outline-none focus:border-blue-500 text-xs"
+                                          placeholder="확률"
+                                          min="0"
+                                          max="1"
+                                          step="0.01"
+                                          title="확률 (0~1)"
+                                        />
+                                      )}
                                       <button
                                         onClick={() => handleRemoveComponent(levelIndex, 'left', bundleIndex, componentIndex)}
                                         className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs"
@@ -1851,6 +2084,16 @@ export default function ArkpassGuideClient({
                                 return (
                                   <div key={componentIndex} className="bg-gray-700/50 rounded p-2 space-y-1">
                                     <div className="flex gap-2 items-center">
+                                      {/* 선택 타입일 때 라디오 버튼 */}
+                                      {bundle.itemType === '선택' && (
+                                        <input
+                                          type="radio"
+                                          name={`bundle-${levelIndex}-right-${bundleIndex}`}
+                                          checked={component.selected || false}
+                                          onChange={() => handleUpdateComponent(levelIndex, 'right', bundleIndex, componentIndex, 'selected', true)}
+                                          className="w-4 h-4 border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
+                                        />
+                                      )}
                                       <SearchableSelect
                                         value={isManual ? '__manual__' : component.itemName}
                                         onChange={(value) => {
@@ -1887,6 +2130,20 @@ export default function ArkpassGuideClient({
                                         className="w-16 px-2 py-1 bg-gray-600 text-white rounded border border-gray-500 focus:outline-none focus:border-pink-500 text-xs"
                                         min="1"
                                       />
+                                      {/* 확률 타입일 때 확률 입력 필드 */}
+                                      {bundle.itemType === '확률' && (
+                                        <input
+                                          type="number"
+                                          value={component.probability !== undefined ? component.probability : ''}
+                                          onChange={(e) => handleUpdateComponent(levelIndex, 'right', bundleIndex, componentIndex, 'probability', parseFloat(e.target.value) || 0)}
+                                          className="w-20 px-2 py-1 bg-gray-600 text-white rounded border border-gray-500 focus:outline-none focus:border-pink-500 text-xs"
+                                          placeholder="확률"
+                                          min="0"
+                                          max="1"
+                                          step="0.01"
+                                          title="확률 (0~1)"
+                                        />
+                                      )}
                                       <button
                                         onClick={() => handleRemoveComponent(levelIndex, 'right', bundleIndex, componentIndex)}
                                         className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs"
