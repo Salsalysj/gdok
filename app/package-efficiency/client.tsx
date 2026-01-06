@@ -667,9 +667,22 @@ export default function PackageEfficiencyClient({
       }
     }
 
-    // 에브니 큐브 입장권: cubeStageRewards를 사용하여 클라이언트에서 재계산 (카드경험치 미반영 반영)
+    // 에브니 큐브 입장권 처리
     if (itemName.startsWith('에브니 큐브 입장권')) {
-      const m = itemName.match(/\(([^)]+)\)/);
+      // 지옥교환 항목 처리: "에브니 큐브 입장권 (X해금) (지옥교환)" 형식
+      const hellExchangeMatch = itemName.match(/에브니 큐브 입장권 \(([^)]+)\) \(지옥교환\)/);
+      if (hellExchangeMatch) {
+        // 지옥교환 항목은 valueDbMap에서 직접 찾기 (전설 지옥 열쇠 ÷ 10)
+        const valueDbEntry = valueDbMap[itemName];
+        if (valueDbEntry && valueDbEntry.unitType === '골드' && valueDbEntry.unitValue != null) {
+          return { unitType: '골드', unitPrice: valueDbEntry.unitValue };
+        }
+        // valueDbMap에 없으면 null 반환
+        return null;
+      }
+      
+      // 일반 에브니 큐브 입장권 처리: "에브니 큐브 입장권 (1해금)" 형식
+      const m = itemName.match(/에브니 큐브 입장권 \(([^)]+)\)/);
       const key = m ? m[1] : '';
       if (key && cubeStageRewards[key]) {
         // cubeStageRewards를 사용하여 재계산

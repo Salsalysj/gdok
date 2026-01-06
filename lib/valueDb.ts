@@ -8,6 +8,7 @@ const P_LIST_FILE_ALT = path.join(process.cwd(), 'p_list.csv');
 const ETC_LIST_FILE = path.join(process.cwd(), 'etc_list.csv');
 const RATES_FILE = path.join(process.cwd(), 'data', 'crystal-gold-rates.json');
 const CSV_REWARDS_FILE = path.join(process.cwd(), 'data', 'csv-rewards.json');
+const VALUE_DB_EXPLANATION_FILE = path.join(process.cwd(), 'value-db-explanation.csv');
 
 type EtcListItem = {
   crystal: number | null;
@@ -26,6 +27,41 @@ type Stage = {
   stage: string;
   rewards: { itemName: string; quantity: number; price?: number | null; category?: string }[];
 };
+
+async function getValueDbExplanations(): Promise<Record<string, string>> {
+  try {
+    const content = await fs.readFile(VALUE_DB_EXPLANATION_FILE, 'utf-8');
+    const lines = content.split('\n').map((line) => line.trim()).filter((line) => line.length > 0);
+    const explanationMap: Record<string, string> = {};
+    
+    // 헤더 스킵 (첫 번째 줄)
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i];
+      // CSV 파싱: 첫 번째 쉼표를 기준으로 분리
+      const commaIndex = line.indexOf(',');
+      if (commaIndex === -1) continue;
+      
+      let itemName = line.substring(0, commaIndex).trim();
+      let explanation = line.substring(commaIndex + 1).trim();
+      
+      // 따옴표 제거
+      if (itemName.startsWith('"') && itemName.endsWith('"')) {
+        itemName = itemName.slice(1, -1).replace(/""/g, '"');
+      }
+      if (explanation.startsWith('"') && explanation.endsWith('"')) {
+        explanation = explanation.slice(1, -1).replace(/""/g, '"');
+      }
+      
+      // 계산 방법이 비어있지 않은 경우만 추가
+      if (explanation && explanation.length > 0) {
+        explanationMap[itemName] = explanation;
+      }
+    }
+    return explanationMap;
+  } catch {
+    return {};
+  }
+}
 
 async function getItemList(): Promise<string[]> {
   let items: string[] = [];
@@ -141,12 +177,96 @@ async function getMarketData() {
   }
 }
 
+// contentRewards.ts와 동일한 방식으로 아이템 가격 찾기
+function findItemPriceInMarketData(itemName: string, marketData: any): number | null {
+  if (!marketData) return null;
+  const allItems = [
+    ...(marketData.tier4Results || []),
+    ...(marketData.tier3Results || []),
+    ...(marketData.gemResults || []),
+    ...(marketData.otherResults || []),
+    ...(marketData.relicEngravingResults || []),
+  ];
+  
+  const matchExact = allItems.find((item: any) => {
+    const name = (item.displayName || item.Name || '').trim();
+    return name === itemName;
+  });
+
+  const item =
+    matchExact ||
+    allItems.find((item: any) => {
+      const displayName = (item.displayName || item.Name || '').replace(/\([^)]*\)/g, '').trim();
+      const target = itemName.replace(/\([^)]*\)/g, '').trim();
+      return displayName === target;
+    });
+
+  if (!item) return null;
+
+  const price = item.CurrentMinPrice || item.RecentPrice || null;
+  if (!price) return null;
+
+  // 운명의 파괴석, 운명의 수호석은 100개 묶음이므로 단가로 변환
+  if (itemName === '운명의 파괴석' || itemName === '운명의 수호석') {
+    const bundleCount = item.BundleCount || 100;
+    return bundleCount > 0 ? price / bundleCount : price;
+  }
+
+  return price;
+}
+
+// contentRewards.ts와 동일한 방식으로 보석 가격 계산
+function calculateGemPriceFromMarketData(gemType: '3T' | '4T', marketData: any): number | null {
+  if (!marketData) return null;
+  const fearGem = findItemPriceInMarketData('5레벨 겁화의 보석', marketData);
+  const fireGem = findItemPriceInMarketData('5레벨 작열의 보석', marketData);
+  if (!fearGem || !fireGem) return null;
+  if (gemType === '4T') {
+    return (fearGem + fireGem) / 162;
+  }
+  const tier4Unit = (fearGem + fireGem) / 162;
+  return tier4Unit / 9;
+}
+
+// contentRewards.ts와 동일한 방식으로 카드 경험치 가격 계산
+async function calculateCardExpPriceFromMarketData(
+  marketData: any,
+  crystalGoldRate: number | null,
+  etcListDataObj: Record<string, EtcListItem>
+): Promise<number | null> {
+  // etc_list에서 메넬리크의 서 찾기
+  const menelik = etcListDataObj['메넬리크의 서'];
+  if (menelik) {
+    // 현금 가격이 있으면 먼저 현금 단위로 계산 (메넬리크의 서 현금 가격 / 9000)
+    if (menelik.cash != null && menelik.cash > 0 && crystalGoldRate != null && crystalGoldRate > 0) {
+      const cardExpPerUnitCash = menelik.cash / 9000;
+      // 현금->골드 환율 적용
+      const cashToGoldRate = crystalGoldRate / 2750; // exchange / 2750
+      return cardExpPerUnitCash * cashToGoldRate;
+    }
+    // 골드 가격이 있으면 그대로 사용
+    if (menelik.gold != null && menelik.gold > 0) {
+      return menelik.gold / 9000;
+    }
+  }
+  
+  // etc_list에 없으면 marketData에서 찾기
+  const menelikPrice = findItemPriceInMarketData('메넬리크의 서', marketData);
+  return menelikPrice ? menelikPrice / 9000 : null;
+}
+
 async function getCubeStageTotals(
   etcListData: Map<string, EtcListItem>,
-  marketPriceMap: Record<string, number>
+  marketPriceMap: Record<string, number>,
+  marketData: any,
+  crystalGoldRate: number | null
 ): Promise<{ totals: Record<string, number>; rewards: Record<string, { itemName: string; quantity: number }[]> }> {
   const cubeStageTotals: Record<string, number> = {};
   const cubeStageRewards: Record<string, { itemName: string; quantity: number }[]> = {};
+  const etcListDataObj = Object.fromEntries(etcListData);
+  
+  console.log('\n=== 에브니 큐브 입장권 가치 계산 시작 ===');
+  
   try {
     const csvRaw = await fs.readFile(CSV_REWARDS_FILE, 'utf-8');
     const csvJson = JSON.parse(csvRaw);
@@ -156,20 +276,81 @@ async function getCubeStageTotals(
         const stageName: string = stage.stage || stage.name || '';
         const rewards: { itemName: string; quantity: number }[] = stage.rewards || [];
         cubeStageRewards[stageName] = rewards; // 원본 보상 데이터 저장
+        
+        console.log(`\n[${stageName}] 계산 시작`);
         let sum = 0;
+        const rewardDetails: Array<{ name: string; qty: number; unit: number | null; total: number }> = [];
+        
         for (const r of rewards) {
           const name = r.itemName as string;
           const qty = Number(r.quantity) || 0;
-          let unit = 0;
-          const etc = etcListData.get(name);
-          if (etc && etc.gold != null) unit = etc.gold;
-          else if (marketPriceMap[name] != null) unit = marketPriceMap[name];
-          if (unit > 0 && qty > 0) sum += unit * qty;
+          let unit: number | null = null;
+          
+          // 컨텐츠 보상 페이지와 동일한 방식으로 계산
+          // 1레벨 보석 (4T) 또는 (3T): calculateGemPriceFromMarketData 사용
+          if (name === '1레벨 보석 (4T)' || name === '1레벨 보석 (3T)') {
+            const gemType = name.includes('4T') ? '4T' : '3T';
+            unit = calculateGemPriceFromMarketData(gemType, marketData);
+            // marketData에서 계산 실패 시 calculateGemPrice로 재시도 (marketPriceMap 사용)
+            if (unit == null) {
+              unit = calculateGemPrice(gemType, marketPriceMap);
+            }
+            console.log(`  ${name}: 보석 가격 계산 = ${unit}`);
+          }
+          // 카드 경험치: calculateCardExpPriceFromMarketData 사용
+          else if (name === '카드 경험치') {
+            unit = await calculateCardExpPriceFromMarketData(marketData, crystalGoldRate, etcListDataObj);
+            console.log(`  ${name}: 카드 경험치 가격 계산 = ${unit}`);
+          }
+          // 실링: 전체 합계에 포함하지 않음 (컨텐츠 보상 페이지와 동일)
+          else if (name === '실링') {
+            unit = null; // null로 설정하여 합계에 포함되지 않도록
+            console.log(`  ${name}: 실링은 합계에서 제외`);
+          }
+          // 기타 항목: etc_list 또는 marketData에서 찾기
+          else {
+            const etc = etcListData.get(name);
+            if (etc && etc.gold != null) {
+              unit = etc.gold;
+              console.log(`  ${name}: etc_list에서 찾음 = ${unit}`);
+            } else {
+              // marketData에서 찾기
+              unit = findItemPriceInMarketData(name, marketData);
+              // marketData에서 찾지 못하면 marketPriceMap 확인
+              if (unit == null && marketPriceMap[name] != null) {
+                unit = marketPriceMap[name];
+                console.log(`  ${name}: marketPriceMap에서 찾음 = ${unit}`);
+              } else if (unit != null) {
+                console.log(`  ${name}: marketData에서 찾음 = ${unit}`);
+              } else {
+                console.log(`  ${name}: 가격을 찾을 수 없음`);
+              }
+            }
+          }
+          
+          if (unit != null && unit > 0 && qty > 0) {
+            const total = unit * qty;
+            sum += total;
+            rewardDetails.push({ name, qty, unit, total });
+          }
         }
+        
+        console.log(`[${stageName}] 상세 내역:`);
+        rewardDetails.forEach(detail => {
+          console.log(`  - ${detail.name}: ${detail.qty} × ${detail.unit} = ${detail.total}`);
+        });
+        console.log(`[${stageName}] 총합: ${sum}`);
+        
         if (sum > 0) cubeStageTotals[stageName] = sum;
       }
     }
-  } catch {}
+  } catch (error) {
+    console.error('에브니 큐브 입장권 가치 계산 중 오류:', error);
+  }
+  
+  console.log('\n=== 에브니 큐브 입장권 가치 계산 완료 ===');
+  console.log('최종 cubeStageTotals:', cubeStageTotals);
+  
   return { totals: cubeStageTotals, rewards: cubeStageRewards };
 }
 
@@ -623,12 +804,55 @@ function resolveEntry(
   }
 
   if (itemName.startsWith('에브니 큐브 입장권')) {
-    const match = itemName.match(/\(([^)]+)\)/);
-    const key = match ? match[1] : '';
-    if (key && cubeStageTotals[key] != null) {
-      return { itemName, unitType: '골드', unitValue: cubeStageTotals[key], note: key };
+    // 지옥교환 항목 처리: "에브니 큐브 입장권 (X해금) (지옥교환)" 형식
+    const hellExchangeMatch = itemName.match(/에브니 큐브 입장권 \(([^)]+)\) \(지옥교환\)/);
+    if (hellExchangeMatch) {
+      const stage = hellExchangeMatch[1]; // 1해금, 2해금, 3해금, 4해금
+      let hellKeyName: string | null = null;
+      
+      // 해금 단계에 따라 해당하는 지옥 열쇠 결정
+      if (stage === '1해금' || stage === '2해금') {
+        hellKeyName = '전설 지옥 열쇠 I';
+      } else if (stage === '3해금') {
+        hellKeyName = '전설 지옥 열쇠 II';
+      } else if (stage === '4해금') {
+        hellKeyName = '전설 지옥 열쇠 III';
+      }
+      
+      // manualOverrides에서 지옥 열쇠 가치 찾기
+      if (hellKeyName && manualOverrides[hellKeyName] && manualOverrides[hellKeyName].unitValue != null) {
+        const hellKeyValue = manualOverrides[hellKeyName].unitValue!;
+        return { 
+          itemName, 
+          unitType: '골드', 
+          unitValue: hellKeyValue / 10,
+          note: `${hellKeyName} ÷ 10`
+        };
+      }
+      
+      // manualOverrides에 없으면 null 반환
+      return { itemName, unitType: null, unitValue: null };
     }
-    // cubeStageTotals에 없으면 null 반환 (etcListDataObj나 marketPriceMap에서 찾지 않음)
+    
+    // 일반 에브니 큐브 입장권 처리: "에브니 큐브 입장권 (1해금)" 형식
+    const match = itemName.match(/에브니 큐브 입장권 \(([^)]+)\)/);
+    const key = match ? match[1] : '';
+    
+    console.log(`[resolveEntry] 에브니 큐브 입장권 처리: itemName="${itemName}", 추출된 key="${key}"`);
+    console.log(`[resolveEntry] cubeStageTotals 키 목록:`, Object.keys(cubeStageTotals));
+    
+    if (key && cubeStageTotals[key] != null) {
+      const value = cubeStageTotals[key];
+      console.log(`[resolveEntry] ${itemName}: cubeStageTotals["${key}"] = ${value} 사용`);
+      return { itemName, unitType: '골드', unitValue: value, note: key };
+    }
+    
+    // cubeStageTotals에 없으면 로그 출력 후 null 반환
+    if (key) {
+      console.log(`[resolveEntry] ${itemName}: cubeStageTotals["${key}"]를 찾을 수 없음`);
+    } else {
+      console.log(`[resolveEntry] ${itemName}: 키 추출 실패`);
+    }
     return { itemName, unitType: null, unitValue: null };
   }
 
@@ -834,6 +1058,7 @@ export type ValueDbData = {
   kurzanStageRewards: Record<string, { itemName: string; quantity: number; price?: number | null; cubeStageRewards?: { itemName: string; quantity: number; price?: number | null }[] }[]>; // 쿠르잔 단계별 원본 보상 데이터
   entries: ValueDbEntry[];
   entryMap: Record<string, ValueDbEntry>;
+  explanationMap: Record<string, string>; // 항목별 계산 방법 설명
   hellStages: Stage[]; // 지옥3 stages (기존 호환성 유지)
   hell1Stages: Stage[];
   hell2Stages: Stage[];
@@ -849,7 +1074,8 @@ export async function getValueDbData(): Promise<ValueDbData> {
   const crystalGoldRate = await getLatestCrystalGoldRate();
   const marketPriceMap = await getMarketPriceMap();
   const marketData = await getMarketData();
-  const { totals: cubeStageTotals, rewards: cubeStageRewards } = await getCubeStageTotals(etcListMap, marketPriceMap);
+  const explanationMap = await getValueDbExplanations();
+  const { totals: cubeStageTotals, rewards: cubeStageRewards } = await getCubeStageTotals(etcListMap, marketPriceMap, marketData, crystalGoldRate);
   const { data: contentRewards } = await getContentRewardsData(undefined); // 순환 참조 방지를 위해 undefined 전달
   const hell1Stages = (contentRewards['지옥']?.['지옥1'] as Stage[]) || [];
   const hell2Stages = (contentRewards['지옥']?.['지옥2'] as Stage[]) || [];
@@ -1012,6 +1238,7 @@ export async function getValueDbData(): Promise<ValueDbData> {
     kurzanStageRewards,
     entries: uniqueEntries,
     entryMap,
+    explanationMap,
     hellStages: hell3Stages, // 기존 호환성을 위해 지옥3 stages 유지
     hell1Stages,
     hell2Stages,

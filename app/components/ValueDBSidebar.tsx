@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
 import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
 import { usePriceOverride } from '../contexts/PriceOverrideContext';
 import { useValueDb } from '../contexts/ValueDbContext';
@@ -8,8 +8,26 @@ import type { ValueDbEntry } from '@/lib/valueDb';
 
 export default function ValueDBSidebar() {
   const { state, setState } = usePriceOverride();
-  const { adjustedEntries } = useValueDb();
+  const { adjustedEntries, explanationMap } = useValueDb();
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedExplanation, setSelectedExplanation] = useState<{ itemName: string; explanation: string; x: number; y: number; isRight: boolean } | null>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+
+  // 외부 클릭 시 툴팁 닫기
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (tooltipRef.current && !tooltipRef.current.contains(event.target as Node)) {
+        setSelectedExplanation(null);
+      }
+    };
+
+    if (selectedExplanation) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [selectedExplanation]);
 
   // 검색 필터링
   const filteredEntries = useMemo(() => {
@@ -174,19 +192,53 @@ export default function ValueDBSidebar() {
                       기본재화
                     </td>
                   </tr>
-                  {categorizedEntries.currency.map((entry) => (
-                    <tr key={entry.itemName} className="hover:bg-gray-800/50">
-                      <td className="px-2 py-1.5 text-white truncate" title={entry.itemName}>{entry.itemName}</td>
-                      <td className="px-2 py-1.5 text-gray-300 text-xs whitespace-nowrap">
-                        {entry.unitType === '크리스탈' ? '크리' : entry.unitType ?? '-'}
-                      </td>
-                      <td className="px-2 py-1.5 text-right text-yellow-300 text-xs">
-                        {entry.unitValue != null
-                          ? formatNumberWithSignificantDigits(entry.unitValue)
-                          : '-'}
-                      </td>
-                    </tr>
-                  ))}
+                  {categorizedEntries.currency.map((entry) => {
+                    const explanation = explanationMap[entry.itemName];
+                    return (
+                      <tr key={entry.itemName} className="hover:bg-gray-800/50">
+                        <td className="px-2 py-1.5 text-white truncate" title={entry.itemName}>
+                          <div className="flex items-center gap-1 relative">
+                            <span className="truncate">{entry.itemName}</span>
+                            {explanation && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                  const tooltipWidth = 320; // max-w-xs = 320px
+                                  const windowWidth = window.innerWidth;
+                                  const isRight = rect.right + tooltipWidth + 16 <= windowWidth;
+                                  const x = isRight
+                                    ? rect.right + 8 
+                                    : rect.left - tooltipWidth - 8;
+                                  setSelectedExplanation({ 
+                                    itemName: entry.itemName, 
+                                    explanation,
+                                    x,
+                                    y: rect.top + rect.height / 2,
+                                    isRight
+                                  });
+                                }}
+                                className="flex-shrink-0 text-blue-400 hover:text-blue-300 transition-colors"
+                                title="계산 방법 보기"
+                              >
+                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-2 py-1.5 text-gray-300 text-xs whitespace-nowrap">
+                          {entry.unitType === '크리스탈' ? '크리' : entry.unitType ?? '-'}
+                        </td>
+                        <td className="px-2 py-1.5 text-right text-yellow-300 text-xs">
+                          {entry.unitValue != null
+                            ? formatNumberWithSignificantDigits(entry.unitValue)
+                            : '-'}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </>
               )}
 
@@ -198,19 +250,53 @@ export default function ValueDBSidebar() {
                       성장 재료
                     </td>
                   </tr>
-                  {categorizedEntries.growth.map((entry) => (
-                    <tr key={entry.itemName} className="hover:bg-gray-800/50">
-                      <td className="px-2 py-1.5 text-white truncate" title={entry.itemName}>{entry.itemName}</td>
-                      <td className="px-2 py-1.5 text-gray-300 text-xs whitespace-nowrap">
-                        {entry.unitType === '크리스탈' ? '크리' : entry.unitType ?? '-'}
-                      </td>
-                      <td className="px-2 py-1.5 text-right text-yellow-300 text-xs">
-                        {entry.unitValue != null
-                          ? formatNumberWithSignificantDigits(entry.unitValue)
-                          : '-'}
-                      </td>
-                    </tr>
-                  ))}
+                  {categorizedEntries.growth.map((entry) => {
+                    const explanation = explanationMap[entry.itemName];
+                    return (
+                      <tr key={entry.itemName} className="hover:bg-gray-800/50">
+                        <td className="px-2 py-1.5 text-white truncate" title={entry.itemName}>
+                          <div className="flex items-center gap-1 relative">
+                            <span className="truncate">{entry.itemName}</span>
+                            {explanation && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                  const tooltipWidth = 320; // max-w-xs = 320px
+                                  const windowWidth = window.innerWidth;
+                                  const isRight = rect.right + tooltipWidth + 16 <= windowWidth;
+                                  const x = isRight
+                                    ? rect.right + 8 
+                                    : rect.left - tooltipWidth - 8;
+                                  setSelectedExplanation({ 
+                                    itemName: entry.itemName, 
+                                    explanation,
+                                    x,
+                                    y: rect.top + rect.height / 2,
+                                    isRight
+                                  });
+                                }}
+                                className="flex-shrink-0 text-blue-400 hover:text-blue-300 transition-colors"
+                                title="계산 방법 보기"
+                              >
+                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-2 py-1.5 text-gray-300 text-xs whitespace-nowrap">
+                          {entry.unitType === '크리스탈' ? '크리' : entry.unitType ?? '-'}
+                        </td>
+                        <td className="px-2 py-1.5 text-right text-yellow-300 text-xs">
+                          {entry.unitValue != null
+                            ? formatNumberWithSignificantDigits(entry.unitValue)
+                            : '-'}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </>
               )}
 
@@ -222,19 +308,53 @@ export default function ValueDBSidebar() {
                       카드
                     </td>
                   </tr>
-                  {categorizedEntries.card.map((entry) => (
-                    <tr key={entry.itemName} className="hover:bg-gray-800/50">
-                      <td className="px-2 py-1.5 text-white truncate" title={entry.itemName}>{entry.itemName}</td>
-                      <td className="px-2 py-1.5 text-gray-300 text-xs whitespace-nowrap">
-                        {entry.unitType === '크리스탈' ? '크리' : entry.unitType ?? '-'}
-                      </td>
-                      <td className="px-2 py-1.5 text-right text-yellow-300 text-xs">
-                        {entry.unitValue != null
-                          ? formatNumberWithSignificantDigits(entry.unitValue)
-                          : '-'}
-                      </td>
-                    </tr>
-                  ))}
+                  {categorizedEntries.card.map((entry) => {
+                    const explanation = explanationMap[entry.itemName];
+                    return (
+                      <tr key={entry.itemName} className="hover:bg-gray-800/50">
+                        <td className="px-2 py-1.5 text-white truncate" title={entry.itemName}>
+                          <div className="flex items-center gap-1 relative">
+                            <span className="truncate">{entry.itemName}</span>
+                            {explanation && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                  const tooltipWidth = 320; // max-w-xs = 320px
+                                  const windowWidth = window.innerWidth;
+                                  const isRight = rect.right + tooltipWidth + 16 <= windowWidth;
+                                  const x = isRight
+                                    ? rect.right + 8 
+                                    : rect.left - tooltipWidth - 8;
+                                  setSelectedExplanation({ 
+                                    itemName: entry.itemName, 
+                                    explanation,
+                                    x,
+                                    y: rect.top + rect.height / 2,
+                                    isRight
+                                  });
+                                }}
+                                className="flex-shrink-0 text-blue-400 hover:text-blue-300 transition-colors"
+                                title="계산 방법 보기"
+                              >
+                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-2 py-1.5 text-gray-300 text-xs whitespace-nowrap">
+                          {entry.unitType === '크리스탈' ? '크리' : entry.unitType ?? '-'}
+                        </td>
+                        <td className="px-2 py-1.5 text-right text-yellow-300 text-xs">
+                          {entry.unitValue != null
+                            ? formatNumberWithSignificantDigits(entry.unitValue)
+                            : '-'}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </>
               )}
 
@@ -248,19 +368,53 @@ export default function ValueDBSidebar() {
                       </td>
                     </tr>
                   ) : null}
-                  {categorizedEntries.others.map((entry) => (
-                    <tr key={entry.itemName} className="hover:bg-gray-800/50">
-                      <td className="px-2 py-1.5 text-white truncate" title={entry.itemName}>{entry.itemName}</td>
-                      <td className="px-2 py-1.5 text-gray-300 text-xs whitespace-nowrap">
-                        {entry.unitType === '크리스탈' ? '크리' : entry.unitType ?? '-'}
-                      </td>
-                      <td className="px-2 py-1.5 text-right text-yellow-300 text-xs">
-                        {entry.unitValue != null
-                          ? formatNumberWithSignificantDigits(entry.unitValue)
-                          : '-'}
-                      </td>
-                    </tr>
-                  ))}
+                  {categorizedEntries.others.map((entry) => {
+                    const explanation = explanationMap[entry.itemName];
+                    return (
+                      <tr key={entry.itemName} className="hover:bg-gray-800/50">
+                        <td className="px-2 py-1.5 text-white truncate" title={entry.itemName}>
+                          <div className="flex items-center gap-1 relative">
+                            <span className="truncate">{entry.itemName}</span>
+                            {explanation && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                  const tooltipWidth = 320; // max-w-xs = 320px
+                                  const windowWidth = window.innerWidth;
+                                  const isRight = rect.right + tooltipWidth + 16 <= windowWidth;
+                                  const x = isRight
+                                    ? rect.right + 8 
+                                    : rect.left - tooltipWidth - 8;
+                                  setSelectedExplanation({ 
+                                    itemName: entry.itemName, 
+                                    explanation,
+                                    x,
+                                    y: rect.top + rect.height / 2,
+                                    isRight
+                                  });
+                                }}
+                                className="flex-shrink-0 text-blue-400 hover:text-blue-300 transition-colors"
+                                title="계산 방법 보기"
+                              >
+                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-2 py-1.5 text-gray-300 text-xs whitespace-nowrap">
+                          {entry.unitType === '크리스탈' ? '크리' : entry.unitType ?? '-'}
+                        </td>
+                        <td className="px-2 py-1.5 text-right text-yellow-300 text-xs">
+                          {entry.unitValue != null
+                            ? formatNumberWithSignificantDigits(entry.unitValue)
+                            : '-'}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </>
               )}
 
@@ -275,6 +429,29 @@ export default function ValueDBSidebar() {
           </table>
         </div>
       </div>
+
+      {/* 계산 방법 툴팁 */}
+      {selectedExplanation && (
+        <div
+          ref={tooltipRef}
+          className="fixed z-50 bg-gray-800 rounded-lg p-3 max-w-xs border border-gray-700 shadow-lg"
+          style={{
+            left: `${selectedExplanation.x}px`,
+            top: `${selectedExplanation.y}px`,
+            transform: 'translateY(-50%)',
+          }}
+        >
+          <p className="text-sm text-white">{selectedExplanation.explanation}</p>
+          {/* 화살표 - 툴팁이 오른쪽에 있을 때 왼쪽 화살표, 왼쪽에 있을 때 오른쪽 화살표 */}
+          <div 
+            className={`absolute top-1/2 -translate-y-1/2 w-0 h-0 ${
+              selectedExplanation.isRight
+                ? '-left-2 border-t-4 border-b-4 border-r-4 border-transparent border-r-gray-800'
+                : '-right-2 border-t-4 border-b-4 border-l-4 border-transparent border-l-gray-800'
+            }`}
+          ></div>
+        </div>
+      )}
     </div>
   );
 }
