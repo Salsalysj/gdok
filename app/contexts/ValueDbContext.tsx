@@ -21,6 +21,11 @@ type Stage = {
 type ValueDbContextType = {
   adjustedEntries: ValueDbEntry[];
   explanationMap: Record<string, string>;
+  cubeStageRewards: Record<string, { itemName: string; quantity: number }[]>;
+  marketPriceMap: Record<string, number>;
+  etcListData: Record<string, { crystal: number | null; gold: number | null; cash: number | null }>;
+  valueDbMap: Record<string, ValueDbEntry>;
+  marketData?: any; // marketData는 선택적 (에브니 큐브 입장권 재계산용)
 };
 
 const ValueDbContext = createContext<ValueDbContextType | null>(null);
@@ -44,6 +49,7 @@ type ValueDbProviderProps = {
   narak2Stages?: Stage[];
   valueDbEntryMap?: Map<string, ValueDbEntry>;
   explanationMap: Record<string, string>;
+  marketData?: any; // marketData는 선택적 (에브니 큐브 입장권 재계산용)
 };
 
 export function ValueDbProvider({
@@ -65,8 +71,25 @@ export function ValueDbProvider({
   narak2Stages,
   valueDbEntryMap,
   explanationMap,
+  marketData,
 }: ValueDbProviderProps) {
   const { adjustPrice, adjustRelicEngravingAverage } = usePriceAdjustment();
+  
+  // valueDbEntryMap을 Record로 변환
+  const valueDbMap = useMemo(() => {
+    if (valueDbEntryMap) {
+      const map: Record<string, ValueDbEntry> = {};
+      valueDbEntryMap.forEach((entry, key) => {
+        map[key] = entry;
+      });
+      return map;
+    }
+    const map: Record<string, ValueDbEntry> = {};
+    entries.forEach(entry => {
+      map[entry.itemName] = entry;
+    });
+    return map;
+  }, [valueDbEntryMap, entries]);
 
   const adjustedEntries = useMemo(() => {
     return calculateAdjustedEntries({
@@ -111,7 +134,15 @@ export function ValueDbProvider({
   ]);
 
   return (
-    <ValueDbContext.Provider value={{ adjustedEntries, explanationMap }}>
+    <ValueDbContext.Provider value={{ 
+      adjustedEntries, 
+      explanationMap,
+      cubeStageRewards,
+      marketPriceMap,
+      etcListData,
+      valueDbMap,
+      marketData,
+    }}>
       {children}
     </ValueDbContext.Provider>
   );

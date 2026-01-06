@@ -1,14 +1,16 @@
 'use client';
 
-import { useMemo, useState, useRef, useEffect } from 'react';
+import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
 import { usePriceOverride } from '../contexts/PriceOverrideContext';
 import { useValueDb } from '../contexts/ValueDbContext';
+import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
 import type { ValueDbEntry } from '@/lib/valueDb';
 
 export default function ValueDBSidebar() {
   const { state, setState } = usePriceOverride();
-  const { adjustedEntries, explanationMap } = useValueDb();
+  const { adjustedEntries, explanationMap, cubeStageRewards, marketPriceMap, etcListData, valueDbMap, marketData } = useValueDb();
+  const { adjustPrice } = usePriceAdjustment();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedExplanation, setSelectedExplanation] = useState<{ itemName: string; explanation: string; x: number; y: number; isRight: boolean } | null>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
@@ -29,14 +31,154 @@ export default function ValueDBSidebar() {
     }
   }, [selectedExplanation]);
 
+  // 에브니 큐브 입장권 가치 재계산 함수 (가격 조정 스위치 반영)
+  const recalculateCubeTicketValue = useCallback((itemName: string): number | null => {
+    if (!itemName.startsWith('에브니 큐브 입장권')) return null;
+    
+    // 지옥교환 항목은 valueDbMap에서 직접 가져오기
+    const hellExchangeMatch = itemName.match(/에브니 큐브 입장권 \(([^)]+)\) \(지옥교환\)/);
+    if (hellExchangeMatch) {
+      const valueDbEntry = valueDbMap[itemName];
+      if (valueDbEntry && valueDbEntry.unitType && valueDbEntry.unitValue != null) {
+        let adjustedValue = valueDbEntry.unitValue;
+        if (valueDbEntry.unitType === '골드') {
+          adjustedValue = adjustPrice(itemName, adjustedValue) ?? adjustedValue;
+        }
+        return adjustedValue;
+      }
+      return null;
+    }
+    
+    // 일반 에브니 큐브 입장권: cubeStageRewards를 사용하여 재계산
+    const m = itemName.match(/에브니 큐브 입장권 \(([^)]+)\)/);
+    const key = m ? m[1] : '';
+    if (key && cubeStageRewards[key]) {
+      let sum = 0;
+      for (const reward of cubeStageRewards[key]) {
+        let originalPrice: number | null = null;
+        
+        // 1레벨 보석 (4T) 또는 (3T): marketData에서 계산
+        if (reward.itemName === '1레벨 보석 (4T)' || reward.itemName === '1레벨 보석 (3T)') {
+          const gemType = reward.itemName.includes('4T') ? '4T' : '3T';
+          // marketData에서 5레벨 보석 가격 찾기
+          const findGemPrice = (gemName: string): number | null => {
+            if (!marketData) return null;
+            const allItems = [
+              ...(marketData.tier4Results || []),
+              ...(marketData.tier3Results || []),
+              ...(marketData.gemResults || []),
+              ...(marketData.otherResults || []),
+            ];
+            const item = allItems.find((item: any) => {
+              const name = (item.displayName || item.Name || '').trim();
+              return name === gemName;
+            });
+            if (item) {
+              const price = item.CurrentMinPrice || item.RecentPrice;
+              return price && price > 0 ? price : null;
+            }
+            return null;
+          };
+          const fearGem = findGemPrice('5레벨 겁화의 보석');
+          const fireGem = findGemPrice('5레벨 작열의 보석');
+          if (fearGem && fireGem) {
+            if (gemType === '4T') {
+              originalPrice = (fearGem + fireGem) / 162;
+            } else {
+              const tier4Unit = (fearGem + fireGem) / 162;
+              originalPrice = tier4Unit / 9;
+            }
+          }
+        }
+        // 카드 경험치: valueDbMap에서 찾기
+        else if (reward.itemName === '카드 경험치') {
+          const cardExpEntry = Object.values(valueDbMap).find(e => e.itemName === '카드경험치 1당');
+          if (cardExpEntry && cardExpEntry.unitValue != null) {
+            originalPrice = cardExpEntry.unitValue;
+          } else {
+            const etc = etcListData[reward.itemName];
+            if (etc?.gold != null) {
+              originalPrice = etc.gold;
+            } else if (marketPriceMap[reward.itemName] != null) {
+              originalPrice = marketPriceMap[reward.itemName];
+            }
+          }
+        }
+        // 실링: 제외
+        else if (reward.itemName === '실링') {
+          originalPrice = null; // 실링은 합계에서 제외
+        }
+        // 기타 항목: etcListData 또는 marketPriceMap에서 찾기
+        else {
+          const etc = etcListData[reward.itemName];
+          if (etc?.gold != null) {
+            originalPrice = etc.gold;
+          } else if (marketPriceMap[reward.itemName] != null) {
+            originalPrice = marketPriceMap[reward.itemName];
+          } else if (marketData) {
+            // marketData에서 직접 찾기
+            const allItems = [
+              ...(marketData.tier4Results || []),
+              ...(marketData.tier3Results || []),
+              ...(marketData.gemResults || []),
+              ...(marketData.otherResults || []),
+            ];
+            const item = allItems.find((item: any) => {
+              const name = (item.displayName || item.Name || '').trim();
+              return name === reward.itemName;
+            });
+            if (item) {
+              const price = item.CurrentMinPrice || item.RecentPrice;
+              if (price && price > 0) {
+                // 묶음 개수 확인
+                const bundleMatch = reward.itemName.match(/\((\d+)개 묶음\)/);
+                const bundleCount = bundleMatch ? parseInt(bundleMatch[1], 10) : 1;
+                originalPrice = bundleCount > 0 ? price / bundleCount : price;
+              }
+            }
+          }
+        }
+        
+        // originalPrice가 null이 아니고 0보다 크면 가격 조정 적용
+        if (originalPrice != null && originalPrice > 0) {
+          const adjustedPrice = adjustPrice(reward.itemName, originalPrice);
+          if (adjustedPrice != null && adjustedPrice > 0) {
+            sum += adjustedPrice * reward.quantity;
+          }
+        }
+      }
+      return sum;
+    }
+    
+    return null;
+  }, [cubeStageRewards, marketPriceMap, etcListData, valueDbMap, marketData, adjustPrice]);
+
+  // 가격 조정이 적용된 entries 생성
+  const adjustedEntriesWithCubeRecalc = useMemo(() => {
+    return adjustedEntries.map(entry => {
+      // 에브니 큐브 입장권 항목만 재계산
+      if (entry.itemName.startsWith('에브니 큐브 입장권')) {
+        const recalculatedValue = recalculateCubeTicketValue(entry.itemName);
+        if (recalculatedValue != null) {
+          return {
+            ...entry,
+            unitValue: recalculatedValue,
+            unitType: '골드' as const,
+          };
+        }
+      }
+      return entry;
+    });
+  }, [adjustedEntries, recalculateCubeTicketValue]);
+
   // 검색 필터링
   const filteredEntries = useMemo(() => {
-    if (!searchQuery.trim()) return adjustedEntries;
+    if (!searchQuery.trim()) return adjustedEntriesWithCubeRecalc;
     const query = searchQuery.toLowerCase().trim();
-    return adjustedEntries.filter(entry =>
+    return adjustedEntriesWithCubeRecalc.filter(entry =>
       entry.itemName.toLowerCase().includes(query)
     );
-  }, [adjustedEntries, searchQuery]);
+  }, [adjustedEntriesWithCubeRecalc, searchQuery]);
 
   // 카테고리별 그룹화
   const categorizedEntries = useMemo(() => {

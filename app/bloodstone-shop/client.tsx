@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
 import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
 import { useValueDb } from '../contexts/ValueDbContext';
+import { usePriceOverride } from '../contexts/PriceOverrideContext';
 import type { ValueDbEntry } from '@/lib/valueDb';
 
 type ComponentItem = {
@@ -91,8 +92,26 @@ export default function BloodstoneShopClient({
 }) {
   const { adjustPrice } = usePriceAdjustment();
   const { adjustedEntries } = useValueDb();
+  const { state: priceOverrideState } = usePriceOverride();
   const [lightMode, setLightMode] = useState<boolean>(false);
   const [discordRate, setDiscordRate] = useState<number | null>(null);
+  
+  // 가격 조정 스위치 변경 시 resolveUnitPrice 재계산을 위한 refresh key
+  const [refreshKey, setRefreshKey] = useState(0);
+  
+  // 가격 조정 스위치 변경 감지
+  useEffect(() => {
+    setRefreshKey(prev => prev + 1);
+  }, [
+    priceOverrideState.has97Stone,
+    priceOverrideState.ignoreCardExp,
+    priceOverrideState.cardSetGraduated,
+    priceOverrideState.hasFullRelicEngraving,
+    priceOverrideState.ignoreSilver,
+    priceOverrideState.ignoreBreakthroughStone,
+    priceOverrideState.ignoreFragment,
+    priceOverrideState.ignoreDestructionGuardStone,
+  ]);
   
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
   const [expandedNestedItems, setExpandedNestedItems] = useState<Record<string, boolean>>({});
@@ -321,7 +340,41 @@ export default function BloodstoneShopClient({
         for (const reward of cubeStageRewards[key]) {
           let originalPrice: number | null = null;
           
-          if (reward.itemName === '카드 경험치') {
+          // 1레벨 보석 (4T) 또는 (3T): marketData에서 계산
+          if (reward.itemName === '1레벨 보석 (4T)' || reward.itemName === '1레벨 보석 (3T)') {
+            const gemType = reward.itemName.includes('4T') ? '4T' : '3T';
+            // marketData에서 5레벨 보석 가격 찾기
+            const findGemPrice = (gemName: string): number | null => {
+              if (!marketData) return null;
+              const allItems = [
+                ...(marketData.tier4Results || []),
+                ...(marketData.tier3Results || []),
+                ...(marketData.gemResults || []),
+                ...(marketData.otherResults || []),
+              ];
+              const item = allItems.find((item: any) => {
+                const name = (item.displayName || item.Name || '').trim();
+                return name === gemName;
+              });
+              if (item) {
+                const price = item.CurrentMinPrice || item.RecentPrice;
+                return price && price > 0 ? price : null;
+              }
+              return null;
+            };
+            const fearGem = findGemPrice('5레벨 겁화의 보석');
+            const fireGem = findGemPrice('5레벨 작열의 보석');
+            if (fearGem && fireGem) {
+              if (gemType === '4T') {
+                originalPrice = (fearGem + fireGem) / 162;
+              } else {
+                const tier4Unit = (fearGem + fireGem) / 162;
+                originalPrice = tier4Unit / 9;
+              }
+            }
+          }
+          // 카드 경험치: valueDbMap에서 찾기
+          else if (reward.itemName === '카드 경험치') {
             const cardExpEntry = Object.values(valueDbMap).find(e => e.itemName === '카드경험치 1당');
             if (cardExpEntry && cardExpEntry.unitValue != null) {
               originalPrice = cardExpEntry.unitValue;
@@ -333,18 +386,48 @@ export default function BloodstoneShopClient({
                 originalPrice = marketPriceMap[reward.itemName];
               }
             }
-          } else {
+          }
+          // 실링: 제외
+          else if (reward.itemName === '실링') {
+            originalPrice = null; // 실링은 합계에서 제외
+          }
+          // 기타 항목: etcListData 또는 marketPriceMap에서 찾기
+          else {
             const etc = etcListData[reward.itemName];
             if (etc?.gold != null) {
               originalPrice = etc.gold;
             } else if (marketPriceMap[reward.itemName] != null) {
               originalPrice = marketPriceMap[reward.itemName];
+            } else if (marketData) {
+              // marketData에서 직접 찾기
+              const allItems = [
+                ...(marketData.tier4Results || []),
+                ...(marketData.tier3Results || []),
+                ...(marketData.gemResults || []),
+                ...(marketData.otherResults || []),
+              ];
+              const item = allItems.find((item: any) => {
+                const name = (item.displayName || item.Name || '').trim();
+                return name === reward.itemName;
+              });
+              if (item) {
+                const price = item.CurrentMinPrice || item.RecentPrice;
+                if (price && price > 0) {
+                  // 묶음 개수 확인
+                  const bundleMatch = reward.itemName.match(/\((\d+)개 묶음\)/);
+                  const bundleCount = bundleMatch ? parseInt(bundleMatch[1], 10) : 1;
+                  originalPrice = bundleCount > 0 ? price / bundleCount : price;
+                }
+              }
             }
           }
           
-          const adjustedPrice = adjustPrice(reward.itemName, originalPrice);
-          if (adjustedPrice != null && adjustedPrice > 0) {
-            sum += adjustedPrice * reward.quantity;
+          // originalPrice가 null이 아니고 0보다 크면 가격 조정 적용
+          if (originalPrice != null && originalPrice > 0) {
+            const adjustedPrice = adjustPrice(reward.itemName, originalPrice);
+            if (adjustedPrice != null && adjustedPrice > 0) {
+              sum += adjustedPrice * reward.quantity;
+            }
           }
         }
         return { unitType: '골드', unitPrice: sum };
@@ -368,7 +451,16 @@ export default function BloodstoneShopClient({
       if (valueDbEntry.unitType === '골드') {
         adjustedValue = adjustPrice(itemName, adjustedValue) ?? adjustedValue;
       }
-      // 크리스탈, 현금 단위는 가격 조정 없이 그대로 반환
+      // 현금 단위인 경우도 가격 조정 적용 (실링 미반영 등)
+      else if (valueDbEntry.unitType === '현금') {
+        const adjusted = adjustPrice(itemName, adjustedValue);
+        if (adjusted === 0) {
+          adjustedValue = 0;
+        } else {
+          adjustedValue = adjusted ?? adjustedValue;
+        }
+      }
+      // 크리스탈 단위는 가격 조정 없이 그대로 반환
       return {
         unitType: valueDbEntry.unitType,
         unitPrice: adjustedValue,
@@ -385,7 +477,13 @@ export default function BloodstoneShopClient({
       return { unitType: '크리스탈', unitPrice: etc.crystal };
     }
     if (etc?.cash != null) {
-      return { unitType: '현금', unitPrice: etc.cash };
+      // 현금 단위도 adjustPrice를 호출하여 실링 미반영 등 가격 조정 적용
+      const adjustedValue = adjustPrice(itemName, etc.cash);
+      // adjustPrice가 0을 반환하면 (실링 미반영 등) 0으로 설정
+      if (adjustedValue === 0) {
+        return { unitType: '현금', unitPrice: 0 };
+      }
+      return { unitType: '현금', unitPrice: adjustedValue ?? etc.cash };
     }
 
     // marketPriceMap 확인
@@ -395,7 +493,15 @@ export default function BloodstoneShopClient({
     }
 
     return null;
-  }, [adjustedEntries, etcListData, marketPriceMap, valueDbMap, cubeStageRewards, adjustPrice]);
+  }, [
+    adjustedEntries, 
+    etcListData, 
+    marketPriceMap, 
+    valueDbMap, 
+    cubeStageRewards, 
+    adjustPrice,
+    refreshKey,
+  ]);
 
   const componentOptions = useMemo(() => {
     const realValueItems = adjustedEntries
@@ -755,10 +861,11 @@ export default function BloodstoneShopClient({
       return items.map((item) => {
         const value = calculateBundleItemValue(item);
         const bloodstoneCost = item.bloodstoneCost || 0;
-        const valuePerBloodstone = bloodstoneCost > 0 ? value / bloodstoneCost : 0;
+        const valuePerBloodstone = bloodstoneCost > 0 ? (value / bloodstoneCost) * 100 : 0;
         
         return {
           itemName: item.itemName || '(미입력)',
+          quantity: item.quantity || 1,
           value,
           bloodstoneCost,
           valuePerBloodstone,
@@ -774,16 +881,17 @@ export default function BloodstoneShopClient({
   }, [shopData, calculateBundleItemValue, goldToCashPerGold]);
 
   // 페이지 로드 시 저장된 상점 자동 불러오기
+  const hasAutoLoaded = useRef(false);
   useEffect(() => {
-    // 저장된 상점이 없으면 스킵
-    if (!initialSavedShops || initialSavedShops.length === 0) {
-      console.log('[자동 로드] 저장된 상점이 없습니다.');
+    // 이미 자동 로드를 했으면 스킵
+    if (hasAutoLoaded.current) {
       return;
     }
     
-    // 이미 선택된 상점이 있으면 스킵 (수동으로 로드한 경우)
-    if (selectedShopId) {
-      console.log('[자동 로드] 이미 상점이 선택되어 있습니다:', selectedShopId);
+    // 저장된 상점이 없으면 스킵
+    if (!initialSavedShops || initialSavedShops.length === 0) {
+      console.log('[자동 로드] 저장된 상점이 없습니다.');
+      hasAutoLoaded.current = true;
       return;
     }
     
@@ -799,10 +907,12 @@ export default function BloodstoneShopClient({
       console.log('[자동 로드] 상점 데이터 로드 중');
       setShopData(firstShop.shop_data);
       setSelectedShopId(firstShop.id);
+      hasAutoLoaded.current = true;
     } else {
       console.log('[자동 로드] 상점 데이터가 없습니다.');
+      hasAutoLoaded.current = true;
     }
-  }, [initialSavedShops, selectedShopId]);
+  }, [initialSavedShops]);
 
   // 상점 저장
   const handleSaveShop = async () => {
@@ -1316,20 +1426,35 @@ export default function BloodstoneShopClient({
             <div>
               <h3 className="text-lg font-semibold text-white mb-3">입장권 및 보조 재료</h3>
               {sectionDetails.ticketItems.length > 0 ? (
-                <div className="space-y-2">
-                  {sectionDetails.ticketItems.map((item, index) => (
-                    <div key={index} className="bg-gray-900/50 rounded-lg p-3 border border-gray-700/50">
-                      <div className="text-sm text-gray-300">
-                        <span className="font-medium">{item.itemName}</span>
-                        {' - '}
-                        가치: <span className="text-yellow-300">{formatNumberWithSignificantDigits(item.value)}</span> 골드
-                        {' - '}
-                        혈석: <span className="text-blue-300">{formatNumberWithSignificantDigits(item.bloodstoneCost)}</span>
-                        {' - '}
-                        혈석 1개당 가치: <span className="text-green-300">{item.bloodstoneCost > 0 ? formatNumberWithSignificantDigits(item.valuePerBloodstone) : '0'}</span> 골드
-                      </div>
-                    </div>
-                  ))}
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="border-b border-gray-700">
+                        <th className="text-left py-2 px-4 text-sm font-semibold text-gray-300">묶음 항목명 × 수량</th>
+                        <th className="text-right py-2 px-4 text-sm font-semibold text-gray-300">가치</th>
+                        <th className="text-right py-2 px-4 text-sm font-semibold text-gray-300">혈석 비용</th>
+                        <th className="text-right py-2 px-4 text-sm font-semibold text-gray-300">혈석 100개당 가치</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sectionDetails.ticketItems.map((item, index) => (
+                        <tr key={index} className="border-b border-gray-700/50 hover:bg-gray-900/30">
+                          <td className="py-2 px-4 text-sm text-gray-300">
+                            {item.itemName} × {item.quantity}
+                          </td>
+                          <td className="py-2 px-4 text-sm text-right text-yellow-300">
+                            {formatNumberWithSignificantDigits(item.value)} 골드
+                          </td>
+                          <td className="py-2 px-4 text-sm text-right text-blue-300">
+                            {formatNumberWithSignificantDigits(item.bloodstoneCost)}
+                          </td>
+                          <td className="py-2 px-4 text-sm text-right text-green-300">
+                            {item.bloodstoneCost > 0 ? formatNumberWithSignificantDigits(item.valuePerBloodstone) : '0'} 골드
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               ) : (
                 <div className="text-sm text-gray-500">묶음 항목이 없습니다.</div>
@@ -1340,20 +1465,35 @@ export default function BloodstoneShopClient({
             <div>
               <h3 className="text-lg font-semibold text-white mb-3">재련 재료</h3>
               {sectionDetails.refiningItems.length > 0 ? (
-                <div className="space-y-2">
-                  {sectionDetails.refiningItems.map((item, index) => (
-                    <div key={index} className="bg-gray-900/50 rounded-lg p-3 border border-gray-700/50">
-                      <div className="text-sm text-gray-300">
-                        <span className="font-medium">{item.itemName}</span>
-                        {' - '}
-                        가치: <span className="text-yellow-300">{formatNumberWithSignificantDigits(item.value)}</span> 골드
-                        {' - '}
-                        혈석: <span className="text-blue-300">{formatNumberWithSignificantDigits(item.bloodstoneCost)}</span>
-                        {' - '}
-                        혈석 1개당 가치: <span className="text-green-300">{item.bloodstoneCost > 0 ? formatNumberWithSignificantDigits(item.valuePerBloodstone) : '0'}</span> 골드
-                      </div>
-                    </div>
-                  ))}
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="border-b border-gray-700">
+                        <th className="text-left py-2 px-4 text-sm font-semibold text-gray-300">묶음 항목명 × 수량</th>
+                        <th className="text-right py-2 px-4 text-sm font-semibold text-gray-300">가치</th>
+                        <th className="text-right py-2 px-4 text-sm font-semibold text-gray-300">혈석 비용</th>
+                        <th className="text-right py-2 px-4 text-sm font-semibold text-gray-300">혈석 100개당 가치</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sectionDetails.refiningItems.map((item, index) => (
+                        <tr key={index} className="border-b border-gray-700/50 hover:bg-gray-900/30">
+                          <td className="py-2 px-4 text-sm text-gray-300">
+                            {item.itemName} × {item.quantity}
+                          </td>
+                          <td className="py-2 px-4 text-sm text-right text-yellow-300">
+                            {formatNumberWithSignificantDigits(item.value)} 골드
+                          </td>
+                          <td className="py-2 px-4 text-sm text-right text-blue-300">
+                            {formatNumberWithSignificantDigits(item.bloodstoneCost)}
+                          </td>
+                          <td className="py-2 px-4 text-sm text-right text-green-300">
+                            {item.bloodstoneCost > 0 ? formatNumberWithSignificantDigits(item.valuePerBloodstone) : '0'} 골드
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               ) : (
                 <div className="text-sm text-gray-500">묶음 항목이 없습니다.</div>
@@ -1364,20 +1504,35 @@ export default function BloodstoneShopClient({
             <div>
               <h3 className="text-lg font-semibold text-white mb-3">실링</h3>
               {sectionDetails.silverItems.length > 0 ? (
-                <div className="space-y-2">
-                  {sectionDetails.silverItems.map((item, index) => (
-                    <div key={index} className="bg-gray-900/50 rounded-lg p-3 border border-gray-700/50">
-                      <div className="text-sm text-gray-300">
-                        <span className="font-medium">{item.itemName}</span>
-                        {' - '}
-                        가치: <span className="text-yellow-300">{formatNumberWithSignificantDigits(item.value)}</span> 골드
-                        {' - '}
-                        혈석: <span className="text-blue-300">{formatNumberWithSignificantDigits(item.bloodstoneCost)}</span>
-                        {' - '}
-                        혈석 1개당 가치: <span className="text-green-300">{item.bloodstoneCost > 0 ? formatNumberWithSignificantDigits(item.valuePerBloodstone) : '0'}</span> 골드
-                      </div>
-                    </div>
-                  ))}
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="border-b border-gray-700">
+                        <th className="text-left py-2 px-4 text-sm font-semibold text-gray-300">묶음 항목명 × 수량</th>
+                        <th className="text-right py-2 px-4 text-sm font-semibold text-gray-300">가치</th>
+                        <th className="text-right py-2 px-4 text-sm font-semibold text-gray-300">혈석 비용</th>
+                        <th className="text-right py-2 px-4 text-sm font-semibold text-gray-300">혈석 100개당 가치</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sectionDetails.silverItems.map((item, index) => (
+                        <tr key={index} className="border-b border-gray-700/50 hover:bg-gray-900/30">
+                          <td className="py-2 px-4 text-sm text-gray-300">
+                            {item.itemName} × {item.quantity}
+                          </td>
+                          <td className="py-2 px-4 text-sm text-right text-yellow-300">
+                            {formatNumberWithSignificantDigits(item.value)} 골드
+                          </td>
+                          <td className="py-2 px-4 text-sm text-right text-blue-300">
+                            {formatNumberWithSignificantDigits(item.bloodstoneCost)}
+                          </td>
+                          <td className="py-2 px-4 text-sm text-right text-green-300">
+                            {item.bloodstoneCost > 0 ? formatNumberWithSignificantDigits(item.valuePerBloodstone) : '0'} 골드
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               ) : (
                 <div className="text-sm text-gray-500">묶음 항목이 없습니다.</div>
