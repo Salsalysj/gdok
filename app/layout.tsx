@@ -20,6 +20,11 @@ import {
 export const metadata: Metadata = {
   title: '껨산기 by 스누껨독',
   description: '로스트아크 효율 계산 도구 (컨텐츠 보상, 과금 효율, 재련 효율, 이벤트 효율, 골드 환율)',
+  icons: {
+    icon: '/favicon.ico',
+    shortcut: '/favicon.ico',
+    apple: '/apple-touch-icon.png',
+  },
   other: {
     'naver-site-verification': '8f08231fdf313560e91a3a0594db9fc420681267',
   },
@@ -65,7 +70,6 @@ export default async function RootLayout({
           <ValueDbProvider
             entries={valueDbData.entries}
             cubeStageRewards={valueDbData.cubeStageRewards}
-            cubeStageTotals={valueDbData.cubeStageTotals}
             kurzanStageRewards={valueDbData.kurzanStageRewards}
             marketPriceMap={valueDbData.marketPriceMap}
             etcListData={valueDbData.etcListDataObj}
@@ -79,8 +83,6 @@ export default async function RootLayout({
             narak1Stages={valueDbData.narak1Stages}
             narak2Stages={valueDbData.narak2Stages}
             valueDbEntryMap={new Map(Object.entries(valueDbData.entryMap))}
-            explanationMap={valueDbData.explanationMap}
-            marketData={valueDbData.marketData}
           >
             <Navigation />
             <div className="flex" style={{ height: 'calc(100vh - 4rem)' }}>
