@@ -1,15 +1,24 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
 import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
 import { usePriceOverride } from '../contexts/PriceOverrideContext';
 import { useValueDb } from '../contexts/ValueDbContext';
 import type { ValueDbEntry } from '@/lib/valueDb';
 
+type TooltipState = {
+  itemName: string;
+  explanation: string;
+  x: number;
+  y: number;
+} | null;
+
 export default function ValueDBSidebar() {
   const { state, setState } = usePriceOverride();
-  const { adjustedEntries } = useValueDb();
+  const { adjustedEntries, explanationMap } = useValueDb();
   const [searchQuery, setSearchQuery] = useState('');
+  const [tooltip, setTooltip] = useState<TooltipState>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
 
   // 검색 필터링
   const filteredEntries = useMemo(() => {
@@ -62,6 +71,40 @@ export default function ValueDBSidebar() {
       others: others.sort((a, b) => a.itemName.localeCompare(b.itemName, 'ko')),
     };
   }, [filteredEntries]);
+
+  // 툴팁 외부 클릭 시 닫기
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (tooltipRef.current && !tooltipRef.current.contains(event.target as Node)) {
+        setTooltip(null);
+      }
+    };
+
+    if (tooltip) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [tooltip]);
+
+  const handleQuestionClick = (e: React.MouseEvent<HTMLButtonElement>, itemName: string) => {
+    e.stopPropagation();
+    const explanation = explanationMap?.[itemName];
+    if (explanation) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      setTooltip({
+        itemName,
+        explanation,
+        x: rect.right + 8, // 물음표 오른쪽에 8px 여백
+        y: rect.top, // 물음표와 같은 높이
+      });
+    }
+  };
+
+  const hasExplanation = (itemName: string): boolean => {
+    return !!(explanationMap?.[itemName] && explanationMap[itemName].trim());
+  };
 
   return (
     <div className="h-full flex flex-col bg-gray-900/70 border-r border-gray-800">
@@ -176,7 +219,20 @@ export default function ValueDBSidebar() {
                   </tr>
                   {categorizedEntries.currency.map((entry) => (
                     <tr key={entry.itemName} className="hover:bg-gray-800/50">
-                      <td className="px-2 py-1.5 text-white truncate" title={entry.itemName}>{entry.itemName}</td>
+                      <td className="px-2 py-1.5 text-white truncate" title={entry.itemName}>
+                        <div className="flex items-center gap-1">
+                          <span>{entry.itemName}</span>
+                          {hasExplanation(entry.itemName) && (
+                            <button
+                              onClick={(e) => handleQuestionClick(e, entry.itemName)}
+                              className="text-gray-400 hover:text-blue-400 transition-colors text-xs leading-none"
+                              aria-label="계산 방법 보기"
+                            >
+                              ?
+                            </button>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-2 py-1.5 text-gray-300 text-xs whitespace-nowrap">
                         {entry.unitType === '크리스탈' ? '크리' : entry.unitType ?? '-'}
                       </td>
@@ -200,7 +256,20 @@ export default function ValueDBSidebar() {
                   </tr>
                   {categorizedEntries.growth.map((entry) => (
                     <tr key={entry.itemName} className="hover:bg-gray-800/50">
-                      <td className="px-2 py-1.5 text-white truncate" title={entry.itemName}>{entry.itemName}</td>
+                      <td className="px-2 py-1.5 text-white truncate" title={entry.itemName}>
+                        <div className="flex items-center gap-1">
+                          <span>{entry.itemName}</span>
+                          {hasExplanation(entry.itemName) && (
+                            <button
+                              onClick={(e) => handleQuestionClick(e, entry.itemName)}
+                              className="text-gray-400 hover:text-blue-400 transition-colors text-xs leading-none"
+                              aria-label="계산 방법 보기"
+                            >
+                              ?
+                            </button>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-2 py-1.5 text-gray-300 text-xs whitespace-nowrap">
                         {entry.unitType === '크리스탈' ? '크리' : entry.unitType ?? '-'}
                       </td>
@@ -224,7 +293,20 @@ export default function ValueDBSidebar() {
                   </tr>
                   {categorizedEntries.card.map((entry) => (
                     <tr key={entry.itemName} className="hover:bg-gray-800/50">
-                      <td className="px-2 py-1.5 text-white truncate" title={entry.itemName}>{entry.itemName}</td>
+                      <td className="px-2 py-1.5 text-white truncate" title={entry.itemName}>
+                        <div className="flex items-center gap-1">
+                          <span>{entry.itemName}</span>
+                          {hasExplanation(entry.itemName) && (
+                            <button
+                              onClick={(e) => handleQuestionClick(e, entry.itemName)}
+                              className="text-gray-400 hover:text-blue-400 transition-colors text-xs leading-none"
+                              aria-label="계산 방법 보기"
+                            >
+                              ?
+                            </button>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-2 py-1.5 text-gray-300 text-xs whitespace-nowrap">
                         {entry.unitType === '크리스탈' ? '크리' : entry.unitType ?? '-'}
                       </td>
@@ -250,7 +332,20 @@ export default function ValueDBSidebar() {
                   ) : null}
                   {categorizedEntries.others.map((entry) => (
                     <tr key={entry.itemName} className="hover:bg-gray-800/50">
-                      <td className="px-2 py-1.5 text-white truncate" title={entry.itemName}>{entry.itemName}</td>
+                      <td className="px-2 py-1.5 text-white truncate" title={entry.itemName}>
+                        <div className="flex items-center gap-1">
+                          <span>{entry.itemName}</span>
+                          {hasExplanation(entry.itemName) && (
+                            <button
+                              onClick={(e) => handleQuestionClick(e, entry.itemName)}
+                              className="text-gray-400 hover:text-blue-400 transition-colors text-xs leading-none"
+                              aria-label="계산 방법 보기"
+                            >
+                              ?
+                            </button>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-2 py-1.5 text-gray-300 text-xs whitespace-nowrap">
                         {entry.unitType === '크리스탈' ? '크리' : entry.unitType ?? '-'}
                       </td>
@@ -275,6 +370,21 @@ export default function ValueDBSidebar() {
           </table>
         </div>
       </div>
+      
+      {/* 툴팁 */}
+      {tooltip && (
+        <div
+          ref={tooltipRef}
+          className="fixed z-50 bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-3 max-w-xs text-xs text-gray-200 pointer-events-auto"
+          style={{
+            left: `${tooltip.x}px`,
+            top: `${tooltip.y}px`,
+          }}
+        >
+          <div className="font-semibold text-white mb-1">{tooltip.itemName}</div>
+          <div className="text-gray-300 whitespace-pre-wrap">{tooltip.explanation}</div>
+        </div>
+      )}
     </div>
   );
 }

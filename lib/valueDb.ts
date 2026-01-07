@@ -8,6 +8,7 @@ const P_LIST_FILE_ALT = path.join(process.cwd(), 'p_list.csv');
 const ETC_LIST_FILE = path.join(process.cwd(), 'etc_list.csv');
 const RATES_FILE = path.join(process.cwd(), 'data', 'crystal-gold-rates.json');
 const CSV_REWARDS_FILE = path.join(process.cwd(), 'data', 'csv-rewards.json');
+const VALUE_DB_EXPLANATION_FILE = path.join(process.cwd(), 'value-db-explanation.csv');
 
 type EtcListItem = {
   crystal: number | null;
@@ -840,7 +841,58 @@ export type ValueDbData = {
   narakStages: Stage[]; // 나락3 stages (기존 호환성 유지)
   narak1Stages: Stage[];
   narak2Stages: Stage[];
+  explanationMap: Record<string, string>;
 };
+
+async function getExplanationMap(): Promise<Record<string, string>> {
+  try {
+    const content = await fs.readFile(VALUE_DB_EXPLANATION_FILE, 'utf-8');
+    const lines = content.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
+    
+    if (lines.length < 2) {
+      return {};
+    }
+
+    const explanationMap: Record<string, string> = {};
+    
+    // 헤더 스킵하고 데이터 행 처리
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i];
+      // CSV 파싱: 쉼표로 분리하되, 따옴표 안의 쉼표는 무시
+      const cols: string[] = [];
+      let current = '';
+      let inQuotes = false;
+      
+      for (let j = 0; j < line.length; j++) {
+        const char = line[j];
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          cols.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      cols.push(current.trim());
+      
+      if (cols.length >= 2) {
+        const itemName = cols[0].replace(/^"|"$/g, ''); // 따옴표 제거
+        const explanation = cols[1].replace(/^"|"$/g, ''); // 따옴표 제거
+        
+        // 계산 방법이 비어있지 않은 경우만 추가
+        if (explanation && explanation.trim()) {
+          explanationMap[itemName] = explanation.trim();
+        }
+      }
+    }
+    
+    return explanationMap;
+  } catch (error) {
+    console.error('Failed to load value-db-explanation.csv:', error);
+    return {};
+  }
+}
 
 export async function getValueDbData(): Promise<ValueDbData> {
   const itemList = await getItemList();
@@ -850,6 +902,7 @@ export async function getValueDbData(): Promise<ValueDbData> {
   const marketPriceMap = await getMarketPriceMap();
   const marketData = await getMarketData();
   const { totals: cubeStageTotals, rewards: cubeStageRewards } = await getCubeStageTotals(etcListMap, marketPriceMap);
+  const explanationMap = await getExplanationMap();
   const { data: contentRewards } = await getContentRewardsData(undefined); // 순환 참조 방지를 위해 undefined 전달
   const hell1Stages = (contentRewards['지옥']?.['지옥1'] as Stage[]) || [];
   const hell2Stages = (contentRewards['지옥']?.['지옥2'] as Stage[]) || [];
@@ -1018,6 +1071,7 @@ export async function getValueDbData(): Promise<ValueDbData> {
     narakStages: narak3Stages, // 기존 호환성을 위해 나락3 stages 유지
     narak1Stages,
     narak2Stages,
+    explanationMap,
   };
 }
 
