@@ -3656,7 +3656,6 @@ export default function PackageEfficiencyClient({
 
                                   // 단가 계산 (패키지 가격 타입에 맞춰 변환)
                                   let unitPriceInPackageType = 0;
-                                  let unitPriceUnit = packageData.priceType;
                                   
                                   if (finalUnitPrice) {
                                     if (packageData.priceType === '골드') {
@@ -3734,10 +3733,10 @@ export default function PackageEfficiencyClient({
                                     return (
                                       <div className="mt-2 space-y-1 text-xs">
                                         <div className="text-gray-300">
-                                          단가 <span className="font-semibold">{formatNumberWithSignificantDigits(unitPriceInPackageType)}</span> {unitPriceUnit}
+                                          단가 <span className="font-semibold">{formatNumberWithSignificantDigits(finalUnitPrice.unitPrice)}</span> {finalUnitPrice.unitType}
                                         </div>
                                         <div className="text-gray-300">
-                                          단가 <span className="font-semibold">{formatNumberWithSignificantDigits(unitPriceInPackageType)}</span> {unitPriceUnit}
+                                          단가 <span className="font-semibold">{formatNumberWithSignificantDigits(finalUnitPrice.unitPrice)}</span> {finalUnitPrice.unitType}
                                           {packageItem.itemType === '확률' && component.probability !== undefined && (
                                             <span className="text-purple-400 ml-1">× {component.probability}</span>
                                           )}
