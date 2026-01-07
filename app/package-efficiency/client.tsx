@@ -667,22 +667,9 @@ export default function PackageEfficiencyClient({
       }
     }
 
-    // 에브니 큐브 입장권 처리
+    // 에브니 큐브 입장권: cubeStageRewards를 사용하여 클라이언트에서 재계산 (카드경험치 미반영 반영)
     if (itemName.startsWith('에브니 큐브 입장권')) {
-      // 지옥교환 항목 처리: "에브니 큐브 입장권 (X해금) (지옥교환)" 형식
-      const hellExchangeMatch = itemName.match(/에브니 큐브 입장권 \(([^)]+)\) \(지옥교환\)/);
-      if (hellExchangeMatch) {
-        // 지옥교환 항목은 valueDbMap에서 직접 찾기 (전설 지옥 열쇠 ÷ 10)
-        const valueDbEntry = valueDbMap[itemName];
-        if (valueDbEntry && valueDbEntry.unitType === '골드' && valueDbEntry.unitValue != null) {
-          return { unitType: '골드', unitPrice: valueDbEntry.unitValue };
-        }
-        // valueDbMap에 없으면 null 반환
-        return null;
-      }
-      
-      // 일반 에브니 큐브 입장권 처리: "에브니 큐브 입장권 (1해금)" 형식
-      const m = itemName.match(/에브니 큐브 입장권 \(([^)]+)\)/);
+      const m = itemName.match(/\(([^)]+)\)/);
       const key = m ? m[1] : '';
       if (key && cubeStageRewards[key]) {
         // cubeStageRewards를 사용하여 재계산
@@ -1791,7 +1778,7 @@ export default function PackageEfficiencyClient({
             </button>
           </div>
           
-          {/* 판매중인 패키지 버튼들 (한정, 상시, 패스로 구분) */}
+          {/* 판매중인 패키지 버튼들 (기간제한, 상시, 패스로 구분) */}
           {savedPackages.filter((pkg) => {
             const pkgData = (pkg as any).package_data;
             const endDate = pkgData?.endDate;
@@ -1808,17 +1795,20 @@ export default function PackageEfficiencyClient({
                 <p className="text-xs text-gray-400 mt-1">버튼 클릭 시 확인 가능</p>
               </div>
               <div className="grid grid-cols-3 gap-4">
-                {/* 한정 패키지 */}
+                {/* 기간제한 패키지 */}
                 <div>
-                  <div className="text-sm text-gray-400 font-medium mb-2">한정</div>
+                  <div className="text-sm text-gray-400 font-medium mb-2">기간제한</div>
                   <div className="flex flex-wrap gap-2">
                     {savedPackages
                       .filter((pkg) => {
                         const pkgData = (pkg as any).package_data;
                         const category = pkgData?.category;
-                        if (category !== '한정') return false;
                         const endDate = pkgData?.endDate;
-                        if (!endDate) return true;
+                        // 종료 예정일이 없으면 상시로 분류되므로 제외
+                        if (!endDate) return false;
+                        // 종료 예정일이 있고 구분이 패스면 패스로 분류되므로 제외
+                        if (category === '패스') return false;
+                        // 나머지 (종료 예정일이 있고 패스가 아닌 경우) -> 기간제한
                         const end = new Date(endDate);
                         const today = new Date();
                         today.setHours(0, 0, 0, 0);
@@ -1860,22 +1850,18 @@ export default function PackageEfficiencyClient({
                   </div>
                 </div>
                 
-                {/* 상시 패키지 (월간, 주간) */}
+                {/* 상시 패키지 */}
                 <div>
                   <div className="text-sm text-gray-400 font-medium mb-2">상시</div>
                   <div className="flex flex-wrap gap-2">
                     {savedPackages
                       .filter((pkg) => {
                         const pkgData = (pkg as any).package_data;
-                        const category = pkgData?.category;
-                        if (category !== '월간' && category !== '주간') return false;
                         const endDate = pkgData?.endDate;
+                        // 종료 예정일 값이 없는 경우 -> 상시
                         if (!endDate) return true;
-                        const end = new Date(endDate);
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        end.setHours(0, 0, 0, 0);
-                        return end >= today;
+                        // 종료 예정일이 있으면 다른 카테고리로 분류되므로 제외
+                        return false;
                       })
                       .map((pkg) => {
                         const pkgData = (pkg as any).package_data;
@@ -1920,9 +1906,10 @@ export default function PackageEfficiencyClient({
                       .filter((pkg) => {
                         const pkgData = (pkg as any).package_data;
                         const category = pkgData?.category;
-                        if (category !== '패스') return false;
                         const endDate = pkgData?.endDate;
-                        if (!endDate) return true;
+                        // 종료 예정일 값이 있고, 구분이 '패스'인 경우 -> 패스
+                        if (!endDate) return false;
+                        if (category !== '패스') return false;
                         const end = new Date(endDate);
                         const today = new Date();
                         today.setHours(0, 0, 0, 0);
