@@ -3,9 +3,11 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { useSidebar } from '../contexts/SidebarContext';
 
 export default function Navigation() {
   const pathname = usePathname();
+  const { isOpen: sidebarOpen, toggle: toggleSidebar } = useSidebar();
   const [lightMode, setLightMode] = useState<boolean>(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [contentRewardsOpen, setContentRewardsOpen] = useState<boolean>(false);
@@ -140,7 +142,7 @@ export default function Navigation() {
             </span>
           </Link>
 
-          {/* 모바일: 햄버거 버튼 + 테마 스위치 */}
+          {/* 모바일: 테마 스위치 + 햄버거 + 사이드바 토글 */}
           <div className="flex items-center gap-3 lg:hidden">
             <ThemeSwitch />
             <button
@@ -158,6 +160,15 @@ export default function Navigation() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               )}
+            </button>
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              className="text-white p-2 hover:bg-gray-800 rounded-lg transition-colors"
+              aria-label={sidebarOpen ? '가치 계산 DB 닫기' : '가치 계산 DB 열기'}
+              title="가치 계산 DB"
+            >
+              <span className="text-xl" aria-hidden="true">⚙️</span>
             </button>
           </div>
 
@@ -245,6 +256,15 @@ export default function Navigation() {
               })}
             </div>
             <ThemeSwitch />
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              className="text-gray-400 hover:text-white hover:bg-gray-800 px-3 py-2 rounded-lg transition-colors"
+              aria-label={sidebarOpen ? '가치 계산 DB 닫기' : '가치 계산 DB 열기'}
+              title="가치 계산 DB"
+            >
+              <span className="text-lg" aria-hidden="true">⚙️</span>
+            </button>
           </div>
         </div>
 

@@ -1,9 +1,11 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import Navigation from './components/Navigation'
+import Footer from '../components/Footer'
+import SidebarWrapper from './components/SidebarWrapper'
+import { SidebarProvider } from './contexts/SidebarContext'
 import { PriceOverrideProvider } from './contexts/PriceOverrideContext'
 import { ValueDbProvider } from './contexts/ValueDbContext'
-import ValueDBSidebar from './components/ValueDBSidebar'
 import { getValueDbData } from '@/lib/valueDb'
 import { parseUpgradeCsv, getMarketInfoMap, createStages } from './value-db/page'
 import { 
@@ -65,38 +67,37 @@ export default async function RootLayout({
 
   return (
     <html lang="ko" suppressHydrationWarning>
-      <body suppressHydrationWarning>
-        <PriceOverrideProvider>
-          <ValueDbProvider
-            entries={valueDbData.entries}
-            cubeStageRewards={valueDbData.cubeStageRewards}
-            kurzanStageRewards={valueDbData.kurzanStageRewards}
-            marketPriceMap={valueDbData.marketPriceMap}
-            etcListData={valueDbData.etcListDataObj}
-            weaponStages={weaponStages}
-            armorStages={armorStages}
-            marketInfo={marketInfo}
-            hellStages={valueDbData.hellStages}
-            hell1Stages={valueDbData.hell1Stages}
-            hell2Stages={valueDbData.hell2Stages}
-            narakStages={valueDbData.narakStages}
-            narak1Stages={valueDbData.narak1Stages}
-            narak2Stages={valueDbData.narak2Stages}
-            valueDbEntryMap={new Map(Object.entries(valueDbData.entryMap))}
-            cubeStageTotals={valueDbData.cubeStageTotals}
-            explanationMap={valueDbData.explanationMap}
-          >
-            <Navigation />
-            <div className="flex" style={{ height: 'calc(100vh - 4rem)' }}>
-              <div className="hidden lg:block w-96 flex-shrink-0">
-                <ValueDBSidebar />
-              </div>
+      <body suppressHydrationWarning className="flex flex-col min-h-screen">
+        <SidebarProvider>
+          <PriceOverrideProvider>
+            <ValueDbProvider
+              entries={valueDbData.entries}
+              cubeStageRewards={valueDbData.cubeStageRewards}
+              kurzanStageRewards={valueDbData.kurzanStageRewards}
+              marketPriceMap={valueDbData.marketPriceMap}
+              etcListData={valueDbData.etcListDataObj}
+              weaponStages={weaponStages}
+              armorStages={armorStages}
+              marketInfo={marketInfo}
+              hellStages={valueDbData.hellStages}
+              hell1Stages={valueDbData.hell1Stages}
+              hell2Stages={valueDbData.hell2Stages}
+              narakStages={valueDbData.narakStages}
+              narak1Stages={valueDbData.narak1Stages}
+              narak2Stages={valueDbData.narak2Stages}
+              valueDbEntryMap={new Map(Object.entries(valueDbData.entryMap))}
+              cubeStageTotals={valueDbData.cubeStageTotals}
+              explanationMap={valueDbData.explanationMap}
+            >
+              <Navigation />
               <div className="flex-1 overflow-y-auto min-w-0">
                 {children}
               </div>
-            </div>
-          </ValueDbProvider>
-        </PriceOverrideProvider>
+              <SidebarWrapper />
+              <Footer />
+            </ValueDbProvider>
+          </PriceOverrideProvider>
+        </SidebarProvider>
       </body>
     </html>
   )

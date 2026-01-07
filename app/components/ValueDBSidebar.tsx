@@ -4,6 +4,7 @@ import { useMemo, useState, useRef, useEffect } from 'react';
 import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
 import { usePriceOverride } from '../contexts/PriceOverrideContext';
 import { useValueDb } from '../contexts/ValueDbContext';
+import { useSidebar } from '../contexts/SidebarContext';
 import type { ValueDbEntry } from '@/lib/valueDb';
 
 type TooltipState = {
@@ -16,6 +17,7 @@ type TooltipState = {
 export default function ValueDBSidebar() {
   const { state, setState } = usePriceOverride();
   const { adjustedEntries, explanationMap } = useValueDb();
+  const { close: closeSidebar } = useSidebar();
   const [searchQuery, setSearchQuery] = useState('');
   const [tooltip, setTooltip] = useState<TooltipState>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
@@ -107,7 +109,21 @@ export default function ValueDBSidebar() {
   };
 
   return (
-    <div className="h-full flex flex-col bg-gray-900/70 border-r border-gray-800">
+    <div className="h-full flex flex-col bg-gray-900/95 backdrop-blur-sm border-r border-gray-800">
+      {/* 헤더: 제목 + 닫기 버튼 */}
+      <div className="p-3 border-b border-gray-800 flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-gray-300">가치 계산 DB</h2>
+        <button
+          onClick={closeSidebar}
+          className="text-gray-400 hover:text-white transition-colors p-1 rounded hover:bg-gray-800"
+          aria-label="닫기"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      
       {/* 가격 조정 섹션 */}
       <div className="p-3 border-b border-gray-800">
         <h2 className="text-sm font-semibold text-gray-300 mb-3">가격 조정</h2>
