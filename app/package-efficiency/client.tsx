@@ -862,13 +862,14 @@ export default function PackageEfficiencyClient({
     
     // 계산할 items 목록 결정
     let itemsToCalculate: PackageItem[] = [];
+    let bonus3ItemsToCalculate: PackageItem[] = [];
     if (packageData.packageType === '보너스룸') {
       itemsToCalculate = (packageData.bonusRooms || []).flatMap(room => room.items);
     } else if (packageData.packageType === '3+보너스') {
-      // 3+보너스 타입: 일반 구성품은 항상 포함, 3+보너스 적용 체크된 경우에만 bonus3Items 추가
+      // 3+보너스 타입: 일반 구성품과 3+보너스 구성품을 분리
       itemsToCalculate = [...packageData.items];
       if (packageData.is3PlusBonus) {
-        itemsToCalculate = [...itemsToCalculate, ...packageData.bonus3Items];
+        bonus3ItemsToCalculate = [...packageData.bonus3Items];
       }
     } else {
       itemsToCalculate = packageData.items;
@@ -1017,8 +1018,90 @@ export default function PackageEfficiencyClient({
         }
       });
     });
+    
+    // 3+보너스 적용 시: 일반 구성품 x 3 + 3+보너스 구성품
+    if (packageData.packageType === '3+보너스' && packageData.is3PlusBonus) {
+      const normalItemsTotal = total; // 일반 구성품 합계
+      total = 0; // 초기화
+      
+      // 3+보너스 구성품 계산
+      bonus3ItemsToCalculate.forEach((packageItem) => {
+        packageItem.components.forEach((component) => {
+          // 하위 묶음 항목 처리
+          if (component.itemName === '__nested__' && component.nestedItem) {
+            const nestedItemUnitPrice = calculateNestedItemValue(component.nestedItem, packageData.priceType);
+            const nestedItemQuantity = component.nestedItem.quantity || 1;
+            const nestedItemTotalValue = nestedItemUnitPrice * nestedItemQuantity;
+            const itemQuantity = packageItem.quantity || 1;
+            
+            if (packageItem.itemType === '확정') {
+              total += nestedItemTotalValue * itemQuantity;
+            } else if (packageItem.itemType === '확률') {
+              const probability = component.probability || 0;
+              total += nestedItemTotalValue * probability * itemQuantity;
+            } else if (packageItem.itemType === '선택') {
+              if (component.selected) {
+                total += nestedItemTotalValue * itemQuantity;
+              }
+            }
+            return;
+          }
+          
+          const isManual = component.itemName === '__manual__' || component.itemName === '';
+          const resolved = !isManual && component.itemName ? resolveUnitPrice(component.itemName) : null;
+          const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined && component.manualPrice > 0)
+            ? { unitType: (component.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: component.manualPrice }
+            : resolved;
+          
+          if (!finalUnitPrice) return;
+          
+          let componentValue = 0;
+          
+          if (packageData.priceType === '현금') {
+            componentValue = calculateItemPrice(
+              component.itemName || '직접입력',
+              component.quantity || 0,
+              'cash',
+              finalUnitPrice
+            );
+          } else if (packageData.priceType === '크리스탈') {
+            componentValue = calculateItemPrice(
+              component.itemName || '직접입력',
+              component.quantity || 0,
+              'crystal',
+              finalUnitPrice
+            );
+          } else if (packageData.priceType === '골드') {
+            if (finalUnitPrice.unitType === '골드') {
+              componentValue = finalUnitPrice.unitPrice * (component.quantity || 0);
+            } else if (finalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
+              componentValue = ((finalUnitPrice.unitPrice * crystalGoldRate) / 100) * (component.quantity || 0);
+            } else if (finalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
+              componentValue = (finalUnitPrice.unitPrice / goldToCashPerGold) * (component.quantity || 0);
+            }
+          }
+          
+          const itemQuantity = packageItem.quantity || 1;
+          
+          if (packageItem.itemType === '확정') {
+            total += componentValue * itemQuantity;
+          } else if (packageItem.itemType === '확률') {
+            const probability = component.probability || 0;
+            total += componentValue * probability * itemQuantity;
+          } else if (packageItem.itemType === '선택') {
+            if (component.selected) {
+              total += componentValue * itemQuantity;
+            }
+          }
+        });
+      });
+      
+      // 일반 구성품 x 3 + 3+보너스 구성품
+      total = normalItemsTotal * 3 + total;
+    }
+    
     return total;
-  }, [packageData.items, packageData.bonus3Items, packageData.bonusRooms, packageData.packageType, packageData.is3PlusBonus, packageData.priceType, etcListData, crystalGoldRate, goldToCashPerGold, marketPriceMap, valueDbMap, resolveUnitPrice]);
+  }, [packageData.items, packageData.bonus3Items, packageData.bonusRooms, packageData.packageType, packageData.is3PlusBonus, packageData.priceType, etcListData, crystalGoldRate, goldToCashPerGold, marketPriceMap, valueDbMap, resolveUnitPrice, calculateItemPrice]);
 
   // 효율 계산 (배수)
   const efficiency = useMemo(() => {
@@ -1028,10 +1111,13 @@ export default function PackageEfficiencyClient({
     // 3+1 타입이고 3+1 적용 체크된 경우 (4개 구매 시 3개 가격으로 계산)
     if (packageData.packageType === '3+1' && packageData.is3Plus1) {
       effectivePrice = (packageData.price * 3) / 4;
+    } else if (packageData.packageType === '3+보너스' && packageData.is3PlusBonus) {
+      // 3+보너스 적용 시: 패키지 가격 x 3
+      effectivePrice = packageData.price * 3;
     }
     
     return totalValue / effectivePrice;
-  }, [totalValue, packageData.price, packageData.packageType, packageData.is3Plus1]);
+  }, [totalValue, packageData.price, packageData.packageType, packageData.is3Plus1, packageData.is3PlusBonus]);
 
   // 보너스룸: 각 묶음 항목별 가치 계산
   const calculateItemValue = useCallback((packageItem: PackageItem, itemPriceType: '현금' | '크리스탈' | '골드' | '보너스'): number => {
@@ -5294,9 +5380,12 @@ export default function PackageEfficiencyClient({
                     <div className="text-xs font-medium text-blue-400/80 uppercase tracking-wider">패키지 가격</div>
                   </div>
                   {(() => {
-                    const effectivePrice = packageData.packageType === '3+1' && packageData.is3Plus1 
-                      ? (packageData.price * 3) / 4 
-                      : packageData.price;
+                    let effectivePrice = packageData.price;
+                    if (packageData.packageType === '3+1' && packageData.is3Plus1) {
+                      effectivePrice = (packageData.price * 3) / 4;
+                    } else if (packageData.packageType === '3+보너스' && packageData.is3PlusBonus) {
+                      effectivePrice = packageData.price * 3;
+                    }
                     
                     let priceInGold = 0;
                     let priceInCash = 0;
