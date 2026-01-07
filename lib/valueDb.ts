@@ -389,7 +389,7 @@ async function buildManualOverrides(
   const base: Record<string, ValueDbEntry> = {
     '정련된 혼돈의 돌(무기)': { itemName: '정련된 혼돈의 돌(무기)', unitType: '골드', unitValue: 800 },
     '정련된 혼돈의 돌(방어구)': { itemName: '정련된 혼돈의 돌(방어구)', unitType: '골드', unitValue: 300 },
-    '전설 카드팩 (확률)': { itemName: '전설 카드팩 (확률)', unitType: '크리스탈', unitValue: 575 },
+    '전설 카드팩 (확률)': { itemName: '전설 카드팩 (확률)', unitType: '크리스탈', unitValue: 500 },
     '고결한 혼돈의 돌(무기) (품질 90기준)': { itemName: '고결한 혼돈의 돌(무기) (품질 90기준)', unitType: '골드', unitValue: 117647 },
     '고결한 혼돈의 돌(무기) (품질 95기준)': { itemName: '고결한 혼돈의 돌(무기) (품질 95기준)', unitType: '골드', unitValue: 266667 },
     '고결한 혼돈의 돌(방어구) (품질 90기준)': { itemName: '고결한 혼돈의 돌(방어구) (품질 90기준)', unitType: '골드', unitValue: 44118 },
