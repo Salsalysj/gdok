@@ -83,6 +83,7 @@ export default async function RootLayout({
             narak1Stages={valueDbData.narak1Stages}
             narak2Stages={valueDbData.narak2Stages}
             valueDbEntryMap={new Map(Object.entries(valueDbData.entryMap))}
+            cubeStageTotals={valueDbData.cubeStageTotals}
           >
             <Navigation />
             <div className="flex" style={{ height: 'calc(100vh - 4rem)' }}>
