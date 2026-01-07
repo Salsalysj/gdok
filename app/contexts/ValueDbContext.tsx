@@ -20,6 +20,12 @@ type Stage = {
 
 type ValueDbContextType = {
   adjustedEntries: ValueDbEntry[];
+  explanationMap?: Record<string, string>;
+  cubeStageRewards: Record<string, { itemName: string; quantity: number }[]>;
+  marketPriceMap: Record<string, number>;
+  etcListData: Record<string, { crystal: number | null; gold: number | null; cash: number | null }>;
+  valueDbMap: Map<string, ValueDbEntry>;
+  marketData: any;
 };
 
 const ValueDbContext = createContext<ValueDbContextType | null>(null);
@@ -62,6 +68,8 @@ export function ValueDbProvider({
   narak1Stages,
   narak2Stages,
   valueDbEntryMap,
+  cubeStageTotals,
+  explanationMap,
 }: ValueDbProviderProps) {
   const { adjustPrice, adjustRelicEngravingAverage } = usePriceAdjustment();
 
@@ -105,8 +113,18 @@ export function ValueDbProvider({
     adjustRelicEngravingAverage,
   ]);
 
+  const valueDbMap = valueDbEntryMap || new Map<string, ValueDbEntry>();
+
   return (
-    <ValueDbContext.Provider value={{ adjustedEntries }}>
+    <ValueDbContext.Provider value={{ 
+      adjustedEntries,
+      explanationMap,
+      cubeStageRewards,
+      marketPriceMap,
+      etcListData,
+      valueDbMap,
+      marketData: marketInfo,
+    }}>
       {children}
     </ValueDbContext.Provider>
   );
