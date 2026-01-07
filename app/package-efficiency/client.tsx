@@ -737,6 +737,12 @@ export default function PackageEfficiencyClient({
         } else {
           adjustedValue = adjustPrice(itemName, adjustedValue) ?? adjustedValue;
         }
+      } else if (valueDbEntry.unitType === '현금') {
+        // 현금 단위인 경우에도 가격 조정 적용 (카드경험치 미반영 등)
+        adjustedValue = adjustPrice(itemName, adjustedValue) ?? adjustedValue;
+      } else if (valueDbEntry.unitType === '크리스탈') {
+        // 크리스탈 단위인 경우에도 가격 조정 적용
+        adjustedValue = adjustPrice(itemName, adjustedValue) ?? adjustedValue;
       }
       return {
         unitType: valueDbEntry.unitType,
