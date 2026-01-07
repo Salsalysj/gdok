@@ -885,7 +885,7 @@ export default function AdvancedRefiningClient({
   }, [simulationResults, valueDbMap, activeSubSubTab, materialValues, getMaterialValue, priceOverrideState, calculateTotalCost, activeSubTab, currentMaterials, requiredMaterialsTotal]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4 md:p-6 lg:p-8">
+    <div className="min-h-screen bg-gray-950 p-4 md:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
         <div className="mb-6 md:mb-10">
           <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-2">
@@ -902,9 +902,9 @@ export default function AdvancedRefiningClient({
             <button
               key={tab.key}
               onClick={() => handleSubTabChange(tab.key)}
-              className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+              className={`px-6 py-3 rounded-lg font-semibold ${
                 activeSubTab === tab.key
-                  ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg'
+                  ? 'bg-purple-600 text-white'
                   : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
               }`}
             >
@@ -919,9 +919,9 @@ export default function AdvancedRefiningClient({
             <button
               key={subTab}
               onClick={() => handleSubSubTabChange(subTab)}
-              className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+              className={`px-6 py-3 rounded-lg font-semibold ${
                 activeSubSubTab === subTab
-                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg'
+                  ? 'bg-blue-600 text-white'
                   : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
               }`}
             >
@@ -944,7 +944,7 @@ export default function AdvancedRefiningClient({
         ) : (
           <div className="space-y-6">
             {/* 1. 재련 재료 */}
-            <div className="bg-gradient-to-br from-gray-800 to-gray-800/50 rounded-xl border border-gray-700 p-6 shadow-lg">
+                  <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
               <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                 <span className="text-2xl">📦</span>
                 1회 재련 재료
@@ -1017,7 +1017,7 @@ export default function AdvancedRefiningClient({
               <>
                 {/* 최적 시뮬레이션 (1회 재련 재료 바로 다음) */}
                 {optimalStrategy && optimalResult && (
-                  <div className="bg-gradient-to-br from-green-900/30 to-gray-800/50 rounded-xl border border-green-700/50 p-6 shadow-lg">
+                  <div className="bg-gray-800 rounded-lg border border-green-700/50 p-6">
                     <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                       <span className="text-2xl">⚡</span>
                       최적 시뮬레이션
@@ -1095,7 +1095,7 @@ export default function AdvancedRefiningClient({
 
                 {/* 최적 방식 재료 소모량 */}
                 {optimalResult && (
-                  <div className="bg-gradient-to-br from-gray-800 to-gray-800/50 rounded-xl border border-gray-700 p-6 shadow-lg">
+                  <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
                     <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                       <span className="text-2xl">📊</span>
                       최적 방식 총 재료 소모량
@@ -1127,7 +1127,7 @@ export default function AdvancedRefiningClient({
 
                 {/* 보조재료 실제 가치 분석 */}
                 {craftsmanshipAnalysis && (
-                  <div className="bg-gradient-to-br from-orange-900/30 to-gray-800/50 rounded-xl border border-orange-700/50 p-6 shadow-lg">
+                  <div className="bg-gray-800 rounded-lg border border-orange-700/50 p-6">
                     <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                       <span className="text-2xl">💰</span>
                       보조재료 실제 가치 분석
@@ -1636,7 +1636,7 @@ export default function AdvancedRefiningClient({
                     onClick={() => {
                       setShowAllScenarios(!showAllScenarios);
                     }}
-                    className="px-8 py-4 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-bold rounded-lg shadow-lg hover:from-purple-700 hover:to-purple-800 transition-all"
+                    className="px-8 py-4 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700"
                   >
                     {showAllScenarios ? '모든 시나리오 숨기기' : '모든 시나리오 확인'}
                   </button>
@@ -1644,7 +1644,7 @@ export default function AdvancedRefiningClient({
 
                 {/* 모든 시나리오 표 */}
                 {showAllScenarios && (
-                  <div className="bg-gradient-to-br from-gray-800 to-gray-800/50 rounded-xl border border-gray-700 p-6 shadow-lg">
+                  <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
                     <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                       <span className="text-2xl">📋</span>
                       모든 시나리오 비교 ({allScenariosResults.length}가지)
@@ -1761,13 +1761,13 @@ function SimulationCard({
   };
 }) {
   const colorClasses = {
-    red: 'from-red-900/30 to-gray-800/50 border-red-700/50',
-    blue: 'from-blue-900/30 to-gray-800/50 border-blue-700/50',
-    green: 'from-green-900/30 to-gray-800/50 border-green-700/50',
+    red: 'bg-gray-800 border-red-700/50',
+    blue: 'bg-gray-800 border-blue-700/50',
+    green: 'bg-gray-800 border-green-700/50',
   };
 
   return (
-    <div className={`bg-gradient-to-br ${colorClasses[color]} rounded-xl border p-6 shadow-lg`}>
+    <div className={`${colorClasses[color]} rounded-lg border p-6`}>
       <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
         <span className="text-2xl">{icon}</span>
         {title}
@@ -1836,7 +1836,7 @@ function SimulationStats({
         </div>
       </div>
       {costBreakdown && costBreakdown.totalCost > 0 && (
-        <div className="bg-gradient-to-r from-yellow-900/30 to-yellow-800/20 rounded-lg p-4 border border-yellow-700/50">
+        <div className="bg-gray-800 rounded-lg p-4 border border-yellow-700/50">
           <div className="text-sm text-yellow-300 mb-3 font-semibold">예상 총 비용</div>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between items-center">

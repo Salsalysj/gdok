@@ -634,7 +634,7 @@ function CharacterSimulation({ weaponStages, armorStages, marketInfo }: { weapon
           <button
             onClick={() => handleSearch()}
             disabled={loading}
-            className="px-6 py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold rounded-lg hover:from-purple-700 hover:to-purple-800 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed transition-all"
+            className="px-6 py-2 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
           >
             {loading ? '검색 중...' : '검색'}
           </button>
@@ -690,8 +690,8 @@ function CharacterSimulation({ weaponStages, armorStages, marketInfo }: { weapon
           ) : (
             <>
               {/* 요약 정보 */}
-          <div className="bg-gray-900/70 rounded-xl border border-gray-700 shadow-md overflow-hidden">
-            <div className="px-5 py-3 bg-gradient-to-r from-purple-800/30 to-purple-700/20 border-b border-gray-700">
+          <div className="bg-gray-900/70 rounded-lg border border-gray-700 overflow-hidden">
+            <div className="px-5 py-3 bg-gray-800/50 border-b border-gray-700">
               <h3 className="text-lg font-semibold text-white">요약 정보</h3>
             </div>
             <div className="overflow-x-auto">
@@ -815,7 +815,7 @@ function CharacterSimulation({ weaponStages, armorStages, marketInfo }: { weapon
           </div>
 
           {/* 장비 표 */}
-          <div className="bg-gray-900/70 rounded-xl border border-gray-700 shadow-md overflow-hidden">
+          <div className="bg-gray-900/70 rounded-lg border border-gray-700 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="min-w-full border border-gray-800 text-sm">
                 <thead>
@@ -1553,8 +1553,8 @@ function StageCard({ stage, marketInfo }: StageCardProps) {
   essentialRight.push(goldLine);
 
   return (
-    <div className="bg-gray-900/70 rounded-xl border border-gray-700 shadow-md overflow-hidden">
-      <div className="px-5 py-3 bg-gradient-to-r from-purple-800/30 via-fuchsia-700/20 to-indigo-800/20 border-b border-gray-700">
+    <div className="bg-gray-900/70 rounded-lg border border-gray-700 overflow-hidden">
+      <div className="px-5 py-3 bg-gray-800/50 border-b border-gray-700">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
           <div>
             <h3 className="text-xl font-semibold text-white">+{stage.level} 재련</h3>
@@ -1634,7 +1634,7 @@ function StageCard({ stage, marketInfo }: StageCardProps) {
             <h4 className="text-xs font-semibold text-purple-200">재료 사용 최적화</h4>
             <button
               onClick={() => setShowOptimization(!showOptimization)}
-              className="px-3 py-1 bg-purple-700/40 hover:bg-purple-700/60 text-white text-xs rounded-lg transition-colors"
+              className="px-3 py-1 bg-purple-700/40 hover:bg-purple-700/60 text-white text-xs rounded-lg"
             >
               {showOptimization ? '숨기기' : '자세히 보기'}
             </button>
@@ -1842,7 +1842,7 @@ function StageCard({ stage, marketInfo }: StageCardProps) {
                 {optimalStrategy.simulationDetails.length > 50 && (
                   <button
                     onClick={() => setShowAllDetails(!showAllDetails)}
-                    className="px-2 py-1 bg-indigo-700/40 hover:bg-indigo-700/60 text-white text-xs rounded transition-colors"
+                    className="px-2 py-1 bg-indigo-700/40 hover:bg-indigo-700/60 text-white text-xs rounded"
                   >
                     {showAllDetails ? '처음 50개만 보기' : '전체 보기'}
                   </button>
@@ -2167,7 +2167,7 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-gray-900 to-slate-900 py-8 px-4">
+    <div className="min-h-screen bg-gray-950 py-8 px-4">
       <div className="max-w-6xl mx-auto space-y-8">
         <header className="space-y-3">
           <div className="space-y-2">
@@ -2182,9 +2182,9 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
         <div className="flex gap-2 border-b border-gray-700">
           <button
             onClick={() => setActiveSubTab('simulation')}
-            className={`px-6 py-3 rounded-t-lg font-semibold transition-all ${
+            className={`px-6 py-3 rounded-t-lg font-semibold ${
               activeSubTab === 'simulation'
-                ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg'
+                ? 'bg-purple-600 text-white'
                 : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
             }`}
           >
@@ -2192,9 +2192,9 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
           </button>
                   <button
                     onClick={() => setActiveSubTab('special')}
-                    className={`px-6 py-3 rounded-t-lg font-semibold transition-all ${
+                    className={`px-6 py-3 rounded-t-lg font-semibold ${
                       activeSubTab === 'special'
-                        ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg'
+                        ? 'bg-purple-600 text-white'
                         : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
                     }`}
                   >
@@ -2202,9 +2202,9 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
                   </button>
                   <button
                     onClick={() => setActiveSubTab('character')}
-                    className={`px-6 py-3 rounded-t-lg font-semibold transition-all ${
+                    className={`px-6 py-3 rounded-t-lg font-semibold ${
                       activeSubTab === 'character'
-                        ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg'
+                        ? 'bg-purple-600 text-white'
                         : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
                     }`}
                   >
@@ -2219,9 +2219,9 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
             <div className="flex gap-2 border-b border-gray-700">
               <button
                 onClick={() => handleSimulationTabChange('weapon')}
-                className={`px-6 py-2 rounded-t-lg font-semibold text-sm transition-all ${
+                className={`px-6 py-2 rounded-t-lg font-semibold text-sm ${
                   activeSimulationTab === 'weapon'
-                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg'
+                    ? 'bg-blue-600 text-white'
                     : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
                 }`}
               >
@@ -2229,9 +2229,9 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
               </button>
               <button
                 onClick={() => handleSimulationTabChange('armor')}
-                className={`px-6 py-2 rounded-t-lg font-semibold text-sm transition-all ${
+                className={`px-6 py-2 rounded-t-lg font-semibold text-sm ${
                   activeSimulationTab === 'armor'
-                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg'
+                    ? 'bg-blue-600 text-white'
                     : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
                 }`}
               >
@@ -2239,9 +2239,9 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
               </button>
               <button
                 onClick={() => handleSimulationTabChange('summary')}
-                className={`px-6 py-2 rounded-t-lg font-semibold text-sm transition-all ${
+                className={`px-6 py-2 rounded-t-lg font-semibold text-sm ${
                   activeSimulationTab === 'summary'
-                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg'
+                    ? 'bg-blue-600 text-white'
                     : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
                 }`}
               >
@@ -2327,7 +2327,7 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
                 </div>
 
                 {/* 요약표 */}
-                <div className="bg-gray-900/70 rounded-xl border border-gray-700 shadow-md overflow-hidden">
+                <div className="bg-gray-900/70 rounded-lg border border-gray-700 overflow-hidden">
                   <div className="overflow-x-auto">
                     <table className="min-w-full border border-gray-800 text-sm">
                       <thead>
@@ -2391,7 +2391,7 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
             </div>
 
             {/* 특수 재련 효율 표 */}
-            <div className="bg-gray-900/70 rounded-xl border border-gray-700 shadow-md overflow-hidden">
+            <div className="bg-gray-900/70 rounded-lg border border-gray-700 overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="min-w-full border border-gray-800 text-sm">
                   <thead>

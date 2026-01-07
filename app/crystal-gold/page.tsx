@@ -185,7 +185,7 @@ export default function CrystalGoldPage() {
   const per100WonGoldDiscord = typeof displayDiscord === 'number' ? (100 * 100 / displayDiscord) : undefined;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-8">
+    <div className="min-h-screen bg-gray-950 p-8">
       <div className="max-w-6xl mx-auto">
         <div className="mb-10">
           <h1 className={`text-4xl font-bold ${titleText} mb-2`}>골드 환율</h1>
@@ -208,9 +208,9 @@ export default function CrystalGoldPage() {
             <div className="flex gap-2">
               <button
                 onClick={() => setActiveTab('exchange')}
-                className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+                className={`px-6 py-3 rounded-lg font-semibold ${
                   activeTab === 'exchange'
-                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg'
+                    ? 'bg-blue-600 text-white'
                     : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
                 }`}
               >
@@ -219,9 +219,9 @@ export default function CrystalGoldPage() {
               {!lightMode && (
                 <button
                   onClick={() => setActiveTab('discord')}
-                  className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+                  className={`px-6 py-3 rounded-lg font-semibold ${
                     activeTab === 'discord'
-                      ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg'
+                      ? 'bg-purple-600 text-white'
                       : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
                   }`}
                 >
@@ -277,14 +277,14 @@ export default function CrystalGoldPage() {
                         <button
                           onClick={handleSaveDiscord}
                           disabled={savingDiscord}
-                          className="px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold rounded-lg hover:from-purple-700 hover:to-purple-800 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed transition-all"
+                          className="px-4 py-2 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
                         >
                           {savingDiscord ? '저장 중...' : '저장'}
                         </button>
                         <button
                           onClick={handleCancelDiscord}
                           disabled={savingDiscord}
-                          className="px-4 py-2 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                          className="px-4 py-2 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           취소
                         </button>
@@ -300,14 +300,14 @@ export default function CrystalGoldPage() {
                             </div>
                             <button
                               onClick={() => setIsEditingDiscord(true)}
-                              className="px-3 py-1 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                              className="px-3 py-1 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded-lg"
                             >
                               수정
                             </button>
                             {userDiscordValue != null && (
                               <button
                                 onClick={handleResetDiscord}
-                                className="px-3 py-1 text-sm bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+                                className="px-3 py-1 text-sm bg-gray-600 hover:bg-gray-700 text-white rounded-lg"
                                 title="기본값으로 복원"
                               >
                                 초기화
@@ -336,7 +336,7 @@ export default function CrystalGoldPage() {
                           <div className={descText}>디스코드 환율 정보가 없습니다.</div>
                           <button
                             onClick={() => setIsEditingDiscord(true)}
-                            className="px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold rounded-lg hover:from-purple-700 hover:to-purple-800 transition-all"
+                            className="px-4 py-2 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700"
                           >
                             환율 입력
                           </button>
