@@ -1,184 +1,24 @@
 'use client';
 
-import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
+import { useMemo, useState } from 'react';
 import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
 import { usePriceOverride } from '../contexts/PriceOverrideContext';
 import { useValueDb } from '../contexts/ValueDbContext';
-import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
 import type { ValueDbEntry } from '@/lib/valueDb';
 
 export default function ValueDBSidebar() {
   const { state, setState } = usePriceOverride();
-  const { adjustedEntries, explanationMap, cubeStageRewards, marketPriceMap, etcListData, valueDbMap, marketData } = useValueDb();
-  const { adjustPrice } = usePriceAdjustment();
+  const { adjustedEntries } = useValueDb();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedExplanation, setSelectedExplanation] = useState<{ itemName: string; explanation: string; x: number; y: number; isRight: boolean } | null>(null);
-  const tooltipRef = useRef<HTMLDivElement>(null);
-
-  // 외부 클릭 시 툴팁 닫기
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (tooltipRef.current && !tooltipRef.current.contains(event.target as Node)) {
-        setSelectedExplanation(null);
-      }
-    };
-
-    if (selectedExplanation) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
-      };
-    }
-  }, [selectedExplanation]);
-
-  // 에브니 큐브 입장권 가치 재계산 함수 (가격 조정 스위치 반영)
-  const recalculateCubeTicketValue = useCallback((itemName: string): number | null => {
-    if (!itemName.startsWith('에브니 큐브 입장권')) return null;
-    
-    // 지옥교환 항목은 valueDbMap에서 직접 가져오기
-    const hellExchangeMatch = itemName.match(/에브니 큐브 입장권 \(([^)]+)\) \(지옥교환\)/);
-    if (hellExchangeMatch) {
-      const valueDbEntry = valueDbMap[itemName];
-      if (valueDbEntry && valueDbEntry.unitType && valueDbEntry.unitValue != null) {
-        let adjustedValue = valueDbEntry.unitValue;
-        if (valueDbEntry.unitType === '골드') {
-          adjustedValue = adjustPrice(itemName, adjustedValue) ?? adjustedValue;
-        }
-        return adjustedValue;
-      }
-      return null;
-    }
-    
-    // 일반 에브니 큐브 입장권: cubeStageRewards를 사용하여 재계산
-    const m = itemName.match(/에브니 큐브 입장권 \(([^)]+)\)/);
-    const key = m ? m[1] : '';
-    if (key && cubeStageRewards[key]) {
-      let sum = 0;
-      for (const reward of cubeStageRewards[key]) {
-        let originalPrice: number | null = null;
-        
-        // 1레벨 보석 (4T) 또는 (3T): marketData에서 계산
-        if (reward.itemName === '1레벨 보석 (4T)' || reward.itemName === '1레벨 보석 (3T)') {
-          const gemType = reward.itemName.includes('4T') ? '4T' : '3T';
-          // marketData에서 5레벨 보석 가격 찾기
-          const findGemPrice = (gemName: string): number | null => {
-            if (!marketData) return null;
-            const allItems = [
-              ...(marketData.tier4Results || []),
-              ...(marketData.tier3Results || []),
-              ...(marketData.gemResults || []),
-              ...(marketData.otherResults || []),
-            ];
-            const item = allItems.find((item: any) => {
-              const name = (item.displayName || item.Name || '').trim();
-              return name === gemName;
-            });
-            if (item) {
-              const price = item.CurrentMinPrice || item.RecentPrice;
-              return price && price > 0 ? price : null;
-            }
-            return null;
-          };
-          const fearGem = findGemPrice('5레벨 겁화의 보석');
-          const fireGem = findGemPrice('5레벨 작열의 보석');
-          if (fearGem && fireGem) {
-            if (gemType === '4T') {
-              originalPrice = (fearGem + fireGem) / 162;
-            } else {
-              const tier4Unit = (fearGem + fireGem) / 162;
-              originalPrice = tier4Unit / 9;
-            }
-          }
-        }
-        // 카드 경험치: valueDbMap에서 찾기
-        else if (reward.itemName === '카드 경험치') {
-          const cardExpEntry = Object.values(valueDbMap).find(e => e.itemName === '카드경험치 1당');
-          if (cardExpEntry && cardExpEntry.unitValue != null) {
-            originalPrice = cardExpEntry.unitValue;
-          } else {
-            const etc = etcListData[reward.itemName];
-            if (etc?.gold != null) {
-              originalPrice = etc.gold;
-            } else if (marketPriceMap[reward.itemName] != null) {
-              originalPrice = marketPriceMap[reward.itemName];
-            }
-          }
-        }
-        // 실링: 제외
-        else if (reward.itemName === '실링') {
-          originalPrice = null; // 실링은 합계에서 제외
-        }
-        // 기타 항목: etcListData 또는 marketPriceMap에서 찾기
-        else {
-          const etc = etcListData[reward.itemName];
-          if (etc?.gold != null) {
-            originalPrice = etc.gold;
-          } else if (marketPriceMap[reward.itemName] != null) {
-            originalPrice = marketPriceMap[reward.itemName];
-          } else if (marketData) {
-            // marketData에서 직접 찾기
-            const allItems = [
-              ...(marketData.tier4Results || []),
-              ...(marketData.tier3Results || []),
-              ...(marketData.gemResults || []),
-              ...(marketData.otherResults || []),
-            ];
-            const item = allItems.find((item: any) => {
-              const name = (item.displayName || item.Name || '').trim();
-              return name === reward.itemName;
-            });
-            if (item) {
-              const price = item.CurrentMinPrice || item.RecentPrice;
-              if (price && price > 0) {
-                // 묶음 개수 확인
-                const bundleMatch = reward.itemName.match(/\((\d+)개 묶음\)/);
-                const bundleCount = bundleMatch ? parseInt(bundleMatch[1], 10) : 1;
-                originalPrice = bundleCount > 0 ? price / bundleCount : price;
-              }
-            }
-          }
-        }
-        
-        // originalPrice가 null이 아니고 0보다 크면 가격 조정 적용
-        if (originalPrice != null && originalPrice > 0) {
-          const adjustedPrice = adjustPrice(reward.itemName, originalPrice);
-          if (adjustedPrice != null && adjustedPrice > 0) {
-            sum += adjustedPrice * reward.quantity;
-          }
-        }
-      }
-      return sum;
-    }
-    
-    return null;
-  }, [cubeStageRewards, marketPriceMap, etcListData, valueDbMap, marketData, adjustPrice]);
-
-  // 가격 조정이 적용된 entries 생성
-  const adjustedEntriesWithCubeRecalc = useMemo(() => {
-    return adjustedEntries.map(entry => {
-      // 에브니 큐브 입장권 항목만 재계산
-      if (entry.itemName.startsWith('에브니 큐브 입장권')) {
-        const recalculatedValue = recalculateCubeTicketValue(entry.itemName);
-        if (recalculatedValue != null) {
-          return {
-            ...entry,
-            unitValue: recalculatedValue,
-            unitType: '골드' as const,
-          };
-        }
-      }
-      return entry;
-    });
-  }, [adjustedEntries, recalculateCubeTicketValue]);
 
   // 검색 필터링
   const filteredEntries = useMemo(() => {
-    if (!searchQuery.trim()) return adjustedEntriesWithCubeRecalc;
+    if (!searchQuery.trim()) return adjustedEntries;
     const query = searchQuery.toLowerCase().trim();
-    return adjustedEntriesWithCubeRecalc.filter(entry =>
+    return adjustedEntries.filter(entry =>
       entry.itemName.toLowerCase().includes(query)
     );
-  }, [adjustedEntriesWithCubeRecalc, searchQuery]);
+  }, [adjustedEntries, searchQuery]);
 
   // 카테고리별 그룹화
   const categorizedEntries = useMemo(() => {
@@ -334,53 +174,19 @@ export default function ValueDBSidebar() {
                       기본재화
                     </td>
                   </tr>
-                  {categorizedEntries.currency.map((entry) => {
-                    const explanation = explanationMap[entry.itemName];
-                    return (
-                      <tr key={entry.itemName} className="hover:bg-gray-800/50">
-                        <td className="px-2 py-1.5 text-white truncate" title={entry.itemName}>
-                          <div className="flex items-center gap-1 relative">
-                            <span className="truncate">{entry.itemName}</span>
-                            {explanation && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                                  const tooltipWidth = 320; // max-w-xs = 320px
-                                  const windowWidth = window.innerWidth;
-                                  const isRight = rect.right + tooltipWidth + 16 <= windowWidth;
-                                  const x = isRight
-                                    ? rect.right + 8 
-                                    : rect.left - tooltipWidth - 8;
-                                  setSelectedExplanation({ 
-                                    itemName: entry.itemName, 
-                                    explanation,
-                                    x,
-                                    y: rect.top + rect.height / 2,
-                                    isRight
-                                  });
-                                }}
-                                className="flex-shrink-0 text-blue-400 hover:text-blue-300 transition-colors"
-                                title="계산 방법 보기"
-                              >
-                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                                </svg>
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-2 py-1.5 text-gray-300 text-xs whitespace-nowrap">
-                          {entry.unitType === '크리스탈' ? '크리' : entry.unitType ?? '-'}
-                        </td>
-                        <td className="px-2 py-1.5 text-right text-yellow-300 text-xs">
-                          {entry.unitValue != null
-                            ? formatNumberWithSignificantDigits(entry.unitValue)
-                            : '-'}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {categorizedEntries.currency.map((entry) => (
+                    <tr key={entry.itemName} className="hover:bg-gray-800/50">
+                      <td className="px-2 py-1.5 text-white truncate" title={entry.itemName}>{entry.itemName}</td>
+                      <td className="px-2 py-1.5 text-gray-300 text-xs whitespace-nowrap">
+                        {entry.unitType === '크리스탈' ? '크리' : entry.unitType ?? '-'}
+                      </td>
+                      <td className="px-2 py-1.5 text-right text-yellow-300 text-xs">
+                        {entry.unitValue != null
+                          ? formatNumberWithSignificantDigits(entry.unitValue)
+                          : '-'}
+                      </td>
+                    </tr>
+                  ))}
                 </>
               )}
 
@@ -392,53 +198,19 @@ export default function ValueDBSidebar() {
                       성장 재료
                     </td>
                   </tr>
-                  {categorizedEntries.growth.map((entry) => {
-                    const explanation = explanationMap[entry.itemName];
-                    return (
-                      <tr key={entry.itemName} className="hover:bg-gray-800/50">
-                        <td className="px-2 py-1.5 text-white truncate" title={entry.itemName}>
-                          <div className="flex items-center gap-1 relative">
-                            <span className="truncate">{entry.itemName}</span>
-                            {explanation && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                                  const tooltipWidth = 320; // max-w-xs = 320px
-                                  const windowWidth = window.innerWidth;
-                                  const isRight = rect.right + tooltipWidth + 16 <= windowWidth;
-                                  const x = isRight
-                                    ? rect.right + 8 
-                                    : rect.left - tooltipWidth - 8;
-                                  setSelectedExplanation({ 
-                                    itemName: entry.itemName, 
-                                    explanation,
-                                    x,
-                                    y: rect.top + rect.height / 2,
-                                    isRight
-                                  });
-                                }}
-                                className="flex-shrink-0 text-blue-400 hover:text-blue-300 transition-colors"
-                                title="계산 방법 보기"
-                              >
-                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                                </svg>
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-2 py-1.5 text-gray-300 text-xs whitespace-nowrap">
-                          {entry.unitType === '크리스탈' ? '크리' : entry.unitType ?? '-'}
-                        </td>
-                        <td className="px-2 py-1.5 text-right text-yellow-300 text-xs">
-                          {entry.unitValue != null
-                            ? formatNumberWithSignificantDigits(entry.unitValue)
-                            : '-'}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {categorizedEntries.growth.map((entry) => (
+                    <tr key={entry.itemName} className="hover:bg-gray-800/50">
+                      <td className="px-2 py-1.5 text-white truncate" title={entry.itemName}>{entry.itemName}</td>
+                      <td className="px-2 py-1.5 text-gray-300 text-xs whitespace-nowrap">
+                        {entry.unitType === '크리스탈' ? '크리' : entry.unitType ?? '-'}
+                      </td>
+                      <td className="px-2 py-1.5 text-right text-yellow-300 text-xs">
+                        {entry.unitValue != null
+                          ? formatNumberWithSignificantDigits(entry.unitValue)
+                          : '-'}
+                      </td>
+                    </tr>
+                  ))}
                 </>
               )}
 
@@ -450,53 +222,19 @@ export default function ValueDBSidebar() {
                       카드
                     </td>
                   </tr>
-                  {categorizedEntries.card.map((entry) => {
-                    const explanation = explanationMap[entry.itemName];
-                    return (
-                      <tr key={entry.itemName} className="hover:bg-gray-800/50">
-                        <td className="px-2 py-1.5 text-white truncate" title={entry.itemName}>
-                          <div className="flex items-center gap-1 relative">
-                            <span className="truncate">{entry.itemName}</span>
-                            {explanation && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                                  const tooltipWidth = 320; // max-w-xs = 320px
-                                  const windowWidth = window.innerWidth;
-                                  const isRight = rect.right + tooltipWidth + 16 <= windowWidth;
-                                  const x = isRight
-                                    ? rect.right + 8 
-                                    : rect.left - tooltipWidth - 8;
-                                  setSelectedExplanation({ 
-                                    itemName: entry.itemName, 
-                                    explanation,
-                                    x,
-                                    y: rect.top + rect.height / 2,
-                                    isRight
-                                  });
-                                }}
-                                className="flex-shrink-0 text-blue-400 hover:text-blue-300 transition-colors"
-                                title="계산 방법 보기"
-                              >
-                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                                </svg>
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-2 py-1.5 text-gray-300 text-xs whitespace-nowrap">
-                          {entry.unitType === '크리스탈' ? '크리' : entry.unitType ?? '-'}
-                        </td>
-                        <td className="px-2 py-1.5 text-right text-yellow-300 text-xs">
-                          {entry.unitValue != null
-                            ? formatNumberWithSignificantDigits(entry.unitValue)
-                            : '-'}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {categorizedEntries.card.map((entry) => (
+                    <tr key={entry.itemName} className="hover:bg-gray-800/50">
+                      <td className="px-2 py-1.5 text-white truncate" title={entry.itemName}>{entry.itemName}</td>
+                      <td className="px-2 py-1.5 text-gray-300 text-xs whitespace-nowrap">
+                        {entry.unitType === '크리스탈' ? '크리' : entry.unitType ?? '-'}
+                      </td>
+                      <td className="px-2 py-1.5 text-right text-yellow-300 text-xs">
+                        {entry.unitValue != null
+                          ? formatNumberWithSignificantDigits(entry.unitValue)
+                          : '-'}
+                      </td>
+                    </tr>
+                  ))}
                 </>
               )}
 
@@ -510,53 +248,19 @@ export default function ValueDBSidebar() {
                       </td>
                     </tr>
                   ) : null}
-                  {categorizedEntries.others.map((entry) => {
-                    const explanation = explanationMap[entry.itemName];
-                    return (
-                      <tr key={entry.itemName} className="hover:bg-gray-800/50">
-                        <td className="px-2 py-1.5 text-white truncate" title={entry.itemName}>
-                          <div className="flex items-center gap-1 relative">
-                            <span className="truncate">{entry.itemName}</span>
-                            {explanation && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                                  const tooltipWidth = 320; // max-w-xs = 320px
-                                  const windowWidth = window.innerWidth;
-                                  const isRight = rect.right + tooltipWidth + 16 <= windowWidth;
-                                  const x = isRight
-                                    ? rect.right + 8 
-                                    : rect.left - tooltipWidth - 8;
-                                  setSelectedExplanation({ 
-                                    itemName: entry.itemName, 
-                                    explanation,
-                                    x,
-                                    y: rect.top + rect.height / 2,
-                                    isRight
-                                  });
-                                }}
-                                className="flex-shrink-0 text-blue-400 hover:text-blue-300 transition-colors"
-                                title="계산 방법 보기"
-                              >
-                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                                </svg>
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-2 py-1.5 text-gray-300 text-xs whitespace-nowrap">
-                          {entry.unitType === '크리스탈' ? '크리' : entry.unitType ?? '-'}
-                        </td>
-                        <td className="px-2 py-1.5 text-right text-yellow-300 text-xs">
-                          {entry.unitValue != null
-                            ? formatNumberWithSignificantDigits(entry.unitValue)
-                            : '-'}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {categorizedEntries.others.map((entry) => (
+                    <tr key={entry.itemName} className="hover:bg-gray-800/50">
+                      <td className="px-2 py-1.5 text-white truncate" title={entry.itemName}>{entry.itemName}</td>
+                      <td className="px-2 py-1.5 text-gray-300 text-xs whitespace-nowrap">
+                        {entry.unitType === '크리스탈' ? '크리' : entry.unitType ?? '-'}
+                      </td>
+                      <td className="px-2 py-1.5 text-right text-yellow-300 text-xs">
+                        {entry.unitValue != null
+                          ? formatNumberWithSignificantDigits(entry.unitValue)
+                          : '-'}
+                      </td>
+                    </tr>
+                  ))}
                 </>
               )}
 
@@ -571,29 +275,6 @@ export default function ValueDBSidebar() {
           </table>
         </div>
       </div>
-
-      {/* 계산 방법 툴팁 */}
-      {selectedExplanation && (
-        <div
-          ref={tooltipRef}
-          className="fixed z-50 bg-gray-800 rounded-lg p-3 max-w-xs border border-gray-700 shadow-lg"
-          style={{
-            left: `${selectedExplanation.x}px`,
-            top: `${selectedExplanation.y}px`,
-            transform: 'translateY(-50%)',
-          }}
-        >
-          <p className="text-sm text-white">{selectedExplanation.explanation}</p>
-          {/* 화살표 - 툴팁이 오른쪽에 있을 때 왼쪽 화살표, 왼쪽에 있을 때 오른쪽 화살표 */}
-          <div 
-            className={`absolute top-1/2 -translate-y-1/2 w-0 h-0 ${
-              selectedExplanation.isRight
-                ? '-left-2 border-t-4 border-b-4 border-r-4 border-transparent border-r-gray-800'
-                : '-right-2 border-t-4 border-b-4 border-l-4 border-transparent border-l-gray-800'
-            }`}
-          ></div>
-        </div>
-      )}
     </div>
   );
 }

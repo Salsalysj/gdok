@@ -19,7 +19,6 @@ type Stage = {
 type CalculateAdjustedEntriesParams = {
   entries: ValueDbEntry[];
   cubeStageRewards: Record<string, { itemName: string; quantity: number }[]>;
-  cubeStageTotals: Record<string, number>; // 에브니 큐브 입장권 가치 (1레벨 보석 포함)
   kurzanStageRewards: Record<string, { itemName: string; quantity: number; price?: number | null; cubeStageRewards?: { itemName: string; quantity: number; price?: number | null }[] }[]>;
   marketPriceMap: Record<string, number>;
   etcListData: Record<string, { crystal: number | null; gold: number | null; cash: number | null }>;
@@ -381,7 +380,6 @@ export function calculateAdjustedEntries(params: CalculateAdjustedEntriesParams)
   const {
     entries,
     cubeStageRewards,
-    cubeStageTotals,
     kurzanStageRewards,
     marketPriceMap,
     etcListData,
@@ -436,14 +434,47 @@ export function calculateAdjustedEntries(params: CalculateAdjustedEntriesParams)
   // 큐브 입장권과 쿠르잔 관련 항목들의 가격을 재계산
   const recalculatedValues: Record<string, number | null> = {};
 
-  // 에브니 큐브 입장권: cubeStageTotals의 값 직접 사용 (1레벨 보석 포함된 전체 합계)
-  Object.keys(cubeStageTotals).forEach((stageName) => {
+  // 에브니 큐브 입장권 재계산
+  Object.entries(cubeStageRewards).forEach(([stageName, rewards]) => {
+    // entries에서 "에브니 큐브 입장권 (stageName)" 형식으로 찾기
     const entryName = `에브니 큐브 입장권 (${stageName})`;
-    const totalValue = cubeStageTotals[stageName];
-    console.log(`[calculateAdjustedEntries] ${entryName}: cubeStageTotals["${stageName}"] = ${totalValue} 사용`);
-    if (totalValue != null && totalValue > 0) {
-      recalculatedValues[entryName] = totalValue;
+    let sum = 0;
+    for (const reward of rewards) {
+      // 각 보상의 원본 가격 찾기
+      let originalPrice: number | null = null;
+      
+      if (reward.itemName === '카드 경험치') {
+        // 카드 경험치인 경우 가치계산DB의 '카드경험치 1당' 가격 사용
+        const cardExpEntry = entries.find(e => e.itemName === '카드경험치 1당');
+        if (cardExpEntry && cardExpEntry.unitValue != null) {
+          originalPrice = cardExpEntry.unitValue;
+        } else {
+          // fallback: etcListData나 marketPriceMap에서 찾기
+          const etc = etcListData[reward.itemName];
+          if (etc?.gold != null) {
+            originalPrice = etc.gold;
+          } else if (marketPriceMap[reward.itemName] != null) {
+            originalPrice = marketPriceMap[reward.itemName];
+          }
+        }
+      } else {
+        // 다른 보상의 경우 원본 가격 찾기
+        const etc = etcListData[reward.itemName];
+        if (etc?.gold != null) {
+          originalPrice = etc.gold;
+        } else if (marketPriceMap[reward.itemName] != null) {
+          originalPrice = marketPriceMap[reward.itemName];
+        }
+      }
+      
+      // adjustPrice로 가격 조정 (카드경험치 미반영, 돌파석 미반영, 파편 미반영 등)
+      const adjustedPrice = adjustPrice(reward.itemName, originalPrice);
+      if (adjustedPrice != null && adjustedPrice > 0) {
+        sum += adjustedPrice * reward.quantity;
+      }
     }
+    // sum이 0이어도 업데이트 (카드경험치 미반영 시 0이 될 수 있음)
+    recalculatedValues[entryName] = sum;
   });
 
   // 순환 돌파석 가치 재계산 (특수 재련 효율과 동일한 방식)
@@ -819,16 +850,10 @@ export function calculateAdjustedEntries(params: CalculateAdjustedEntriesParams)
         adjustedValue = circularBreakthroughValue;
       }
     }
-    // 에브니 큐브 입장권: cubeStageTotals의 값 사용 (1레벨 보석 포함된 전체 합계)
+    // 에브니 큐브 입장권: 재계산된 값 사용
     else if (entry.itemName.startsWith('에브니 큐브 입장권')) {
-      // 지옥교환 항목은 제외
-      if (!entry.itemName.includes('지옥교환')) {
-        if (recalculatedValues[entry.itemName] != null) {
-          adjustedValue = recalculatedValues[entry.itemName];
-          console.log(`[calculateAdjustedEntries] ${entry.itemName}: recalculatedValues에서 ${adjustedValue} 사용`);
-        } else {
-          console.log(`[calculateAdjustedEntries] ${entry.itemName}: recalculatedValues에 값 없음, 원본 값 ${adjustedValue} 유지`);
-        }
+      if (recalculatedValues[entry.itemName] != null) {
+        adjustedValue = recalculatedValues[entry.itemName];
       }
     }
     // 공명의 기운 회복 비약, 휴식 게이지 회복 비약: 재계산된 값 사용
