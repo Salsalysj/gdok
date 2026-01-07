@@ -35,11 +35,13 @@ type PackageData = {
   category: '월간' | '주간' | '한정' | '패스';
   priceType: '현금' | '크리스탈' | '골드';
   price: number;
-  packageType: '일반' | '3+1' | '보너스룸';
+  packageType: '일반' | '3+1' | '3+보너스' | '보너스룸';
   is3Plus1: boolean; // 3+1 타입일 때 요약 화면에서 체크 여부
+  is3PlusBonus: boolean; // 3+보너스 타입일 때 3+보너스 구성품 가치 합산 여부
   purchaseCount: number;
   endDate: string | null;
   items: PackageItem[];
+  bonus3Items: PackageItem[]; // 3+보너스 타입일 때만 사용
   bonusRooms?: BonusRoom[]; // 보너스룸 타입일 때만 사용
 };
 
@@ -134,7 +136,7 @@ export default function PackageEfficiencyClient({
     return colorPalette[level % colorPalette.length];
   };
   
-  const toggleItemExpanded = useCallback((itemIndex: number) => {
+  const toggleItemExpanded = useCallback((itemIndex: number | string) => {
     setExpandedItems(prev => ({
       ...prev,
       [itemIndex]: !prev[itemIndex]
@@ -323,9 +325,11 @@ export default function PackageEfficiencyClient({
     price: 0,
     packageType: '일반',
     is3Plus1: false,
+    is3PlusBonus: false,
     purchaseCount: 1,
     endDate: null,
     items: [],
+    bonus3Items: [],
     bonusRooms: [
       { roomName: '보너스룸1', items: [] },
       { roomName: '보너스룸2', items: [] },
@@ -851,9 +855,18 @@ export default function PackageEfficiencyClient({
     let total = 0;
     
     // 계산할 items 목록 결정
-    const itemsToCalculate = packageData.packageType === '보너스룸' 
-      ? (packageData.bonusRooms || []).flatMap(room => room.items)
-      : packageData.items;
+    let itemsToCalculate: PackageItem[] = [];
+    if (packageData.packageType === '보너스룸') {
+      itemsToCalculate = (packageData.bonusRooms || []).flatMap(room => room.items);
+    } else if (packageData.packageType === '3+보너스') {
+      // 3+보너스 타입: 일반 구성품은 항상 포함, 3+보너스 적용 체크된 경우에만 bonus3Items 추가
+      itemsToCalculate = [...packageData.items];
+      if (packageData.is3PlusBonus) {
+        itemsToCalculate = [...itemsToCalculate, ...packageData.bonus3Items];
+      }
+    } else {
+      itemsToCalculate = packageData.items;
+    }
     
     // 하위 묶음 항목의 가치를 재귀적으로 계산하는 함수 (하위묶음 1개당 단가 반환)
     const calculateNestedItemValue = (nestedItem: PackageItem, priceType: '현금' | '크리스탈' | '골드'): number => {
@@ -999,7 +1012,7 @@ export default function PackageEfficiencyClient({
       });
     });
     return total;
-  }, [packageData.items, packageData.bonusRooms, packageData.packageType, packageData.priceType, etcListData, crystalGoldRate, goldToCashPerGold, marketPriceMap, valueDbMap, resolveUnitPrice]);
+  }, [packageData.items, packageData.bonus3Items, packageData.bonusRooms, packageData.packageType, packageData.is3PlusBonus, packageData.priceType, etcListData, crystalGoldRate, goldToCashPerGold, marketPriceMap, valueDbMap, resolveUnitPrice]);
 
   // 효율 계산 (배수)
   const efficiency = useMemo(() => {
@@ -1381,6 +1394,112 @@ export default function PackageEfficiencyClient({
     });
   };
 
+  // 3+보너스 구성품 관련 함수들
+  const addBonus3Item = () => {
+    setPackageData((prev) => ({
+      ...prev,
+      bonus3Items: [...prev.bonus3Items, { itemName: '', itemType: '확정', quantity: 1, components: [] }],
+    }));
+  };
+
+  const updateBonus3Item = (index: number, field: keyof PackageItem, value: any) => {
+    setPackageData((prev) => {
+      const newItems = [...prev.bonus3Items];
+      newItems[index] = { ...newItems[index], [field]: value };
+      return { ...prev, bonus3Items: newItems };
+    });
+  };
+
+  const removeBonus3Item = (index: number) => {
+    setPackageData((prev) => ({
+      ...prev,
+      bonus3Items: prev.bonus3Items.filter((_, i) => i !== index),
+    }));
+  };
+
+  const addBonus3Component = (itemIndex: number) => {
+    setPackageData((prev) => {
+      const newItems = [...prev.bonus3Items];
+      const packageItem = newItems[itemIndex];
+      
+      const isSelectionType = packageItem.itemType === '선택';
+      const isFirstComponent = packageItem.components.length === 0;
+      
+      newItems[itemIndex] = {
+        ...newItems[itemIndex],
+        components: [
+          ...newItems[itemIndex].components,
+          {
+            itemName: '',
+            quantity: 1,
+            manualPrice: null,
+            manualUnitType: null,
+            probability: isSelectionType ? undefined : 0,
+            selected: isSelectionType ? isFirstComponent : undefined,
+          },
+        ],
+      };
+      
+      if (isSelectionType && !isFirstComponent) {
+        newItems[itemIndex].components = newItems[itemIndex].components.map((comp, idx) => {
+          if (idx === newItems[itemIndex].components.length - 1) {
+            return { ...comp, selected: true };
+          }
+          return { ...comp, selected: false };
+        });
+      }
+      
+      return { ...prev, bonus3Items: newItems };
+    });
+  };
+
+  const updateBonus3Component = (itemIndex: number, componentIndex: number, field: keyof ComponentItem, value: any) => {
+    setPackageData((prev) => {
+      const newItems = [...prev.bonus3Items];
+      const newComponents = [...newItems[itemIndex].components];
+      const oldComponent = newComponents[componentIndex];
+      
+      if (field === 'itemName' && oldComponent.itemName !== value) {
+        const isDirectInputChange = (oldComponent.itemName === '__manual__' || oldComponent.itemName === '') && 
+                                    (value === '__manual__' || value === '');
+        if (!isDirectInputChange) {
+          newComponents[componentIndex] = { 
+            ...oldComponent, 
+            [field]: value,
+            manualPrice: null,
+            manualUnitType: null
+          };
+        } else {
+          newComponents[componentIndex] = { ...oldComponent, [field]: value };
+        }
+      } else {
+        newComponents[componentIndex] = { ...oldComponent, [field]: value };
+      }
+      
+      if (field === 'selected' && value === true && newItems[itemIndex].itemType === '선택') {
+        newComponents.forEach((comp, idx) => {
+          if (idx !== componentIndex) {
+            comp.selected = false;
+          }
+        });
+      }
+      
+      newItems[itemIndex] = { ...newItems[itemIndex], components: newComponents };
+      return { ...prev, bonus3Items: newItems };
+    });
+  };
+
+  const removeBonus3Component = (itemIndex: number, componentIndex: number) => {
+    setPackageData((prev) => {
+      const newItems = [...prev.bonus3Items];
+      newItems[itemIndex] = {
+        ...newItems[itemIndex],
+        components: newItems[itemIndex].components.filter((_, i) => i !== componentIndex),
+      };
+      return { ...prev, bonus3Items: newItems };
+    });
+  };
+
   // 보너스룸 관련 함수들
   const addBonusRoomItem = (roomIndex: number) => {
     setPackageData((prev) => {
@@ -1530,9 +1649,11 @@ export default function PackageEfficiencyClient({
       price: 0,
       packageType: '일반',
       is3Plus1: false,
+      is3PlusBonus: false,
       purchaseCount: 1,
       endDate: null,
       items: [],
+      bonus3Items: [],
       bonusRooms: [
         { roomName: '보너스룸1', items: [] },
         { roomName: '보너스룸2', items: [] },
@@ -1636,10 +1757,19 @@ export default function PackageEfficiencyClient({
               { roomName: '보너스룸3', items: [] },
             ];
           }
+          // 3+보너스 구성품 데이터가 없으면 초기화
+          if (!loadedData.bonus3Items) {
+            loadedData.bonus3Items = [];
+          }
+          // is3PlusBonus가 없으면 초기화
+          if (loadedData.is3PlusBonus === undefined) {
+            loadedData.is3PlusBonus = false;
+          }
           // 패스 구분일 경우 패키지 유형을 '일반'으로 강제 설정
           if (loadedData.category === '패스') {
             loadedData.packageType = '일반';
             loadedData.is3Plus1 = false;
+            loadedData.is3PlusBonus = false;
           }
           setPackageData(loadedData);
           setSelectedPackageId(packageId);
@@ -2029,7 +2159,7 @@ export default function PackageEfficiencyClient({
                   setPackageData((prev) => {
                     // 패스 선택 시 패키지 유형을 '일반'으로 고정
                     if (newCategory === '패스') {
-                      return { ...prev, category: newCategory, packageType: '일반', is3Plus1: false };
+                      return { ...prev, category: newCategory, packageType: '일반', is3Plus1: false, is3PlusBonus: false };
                     }
                     return { ...prev, category: newCategory };
                   });
@@ -2108,7 +2238,7 @@ export default function PackageEfficiencyClient({
                     name="packageType"
                     value="일반"
                     checked={packageData.packageType === '일반'}
-                    onChange={(e) => setPackageData((prev) => ({ ...prev, packageType: '일반', is3Plus1: false }))}
+                    onChange={(e) => setPackageData((prev) => ({ ...prev, packageType: '일반', is3Plus1: false, is3PlusBonus: false }))}
                     disabled={packageData.category === '패스'}
                     className={`w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 focus:ring-purple-500 ${packageData.category === '패스' ? 'cursor-not-allowed opacity-50' : ''}`}
                   />
@@ -2130,9 +2260,21 @@ export default function PackageEfficiencyClient({
                   <input
                     type="radio"
                     name="packageType"
+                    value="3+보너스"
+                    checked={packageData.packageType === '3+보너스'}
+                    onChange={(e) => setPackageData((prev) => ({ ...prev, packageType: '3+보너스', is3Plus1: false, is3PlusBonus: false }))}
+                    disabled={packageData.category === '패스'}
+                    className={`w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 focus:ring-purple-500 ${packageData.category === '패스' ? 'cursor-not-allowed opacity-50' : ''}`}
+                  />
+                  <span className={`text-sm ${packageData.category === '패스' ? 'text-gray-500' : 'text-gray-300'}`}>3+보너스</span>
+                </label>
+                <label className={`flex items-center gap-2 ${packageData.category === '패스' ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+                  <input
+                    type="radio"
+                    name="packageType"
                     value="보너스룸"
                     checked={packageData.packageType === '보너스룸'}
-                    onChange={(e) => setPackageData((prev) => ({ ...prev, packageType: '보너스룸', is3Plus1: false }))}
+                    onChange={(e) => setPackageData((prev) => ({ ...prev, packageType: '보너스룸', is3Plus1: false, is3PlusBonus: false }))}
                     disabled={packageData.category === '패스'}
                     className={`w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 focus:ring-purple-500 ${packageData.category === '패스' ? 'cursor-not-allowed opacity-50' : ''}`}
                   />
@@ -3292,6 +3434,397 @@ export default function PackageEfficiencyClient({
         </div>
         )}
 
+        {/* 3+보너스 구성품 섹션 */}
+        {packageData.packageType === '3+보너스' && (
+          <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-white">3+보너스 구성품</h2>
+              <button
+                onClick={addBonus3Item}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                항목 추가
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {packageData.bonus3Items.map((packageItem, itemIndex) => {
+                const level0Colors = getLevelColors(0);
+                return (
+                  <div key={itemIndex} className={`${level0Colors.bg} rounded-lg border ${level0Colors.border} p-4`}>
+                    <div className="flex items-center gap-3 mb-3">
+                      <input
+                        type="text"
+                        value={packageItem.itemName}
+                        onChange={(e) => updateBonus3Item(itemIndex, 'itemName', e.target.value)}
+                        className="flex-1 px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+                        placeholder="항목명"
+                      />
+                      <input
+                        type="number"
+                        value={packageItem.quantity || ''}
+                        onChange={(e) => updateBonus3Item(itemIndex, 'quantity', parseFloat(e.target.value) || 1)}
+                        className="w-28 px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+                        placeholder="묶음 수량"
+                        min="1"
+                        step="1"
+                      />
+                      <select
+                        value={packageItem.itemType}
+                        onChange={(e) => updateBonus3Item(itemIndex, 'itemType', e.target.value as '확정' | '확률' | '선택')}
+                        className="px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+                      >
+                        <option value="확정">확정</option>
+                        <option value="확률">확률</option>
+                        <option value="선택">선택</option>
+                      </select>
+                      <button
+                        onClick={() => removeBonus3Item(itemIndex)}
+                        className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                      >
+                        삭제
+                      </button>
+                    </div>
+                    
+                    {packageItem.components.length > 0 && (
+                      <button
+                        onClick={() => {
+                          const newExpanded = { ...expandedItems };
+                          newExpanded[`bonus3-${itemIndex}`] = !newExpanded[`bonus3-${itemIndex}`];
+                          setExpandedItems(newExpanded);
+                        }}
+                        className="w-full flex items-center justify-between px-3 py-2 bg-gray-800/50 rounded-lg border border-gray-700 hover:bg-gray-800 transition-colors mb-2"
+                      >
+                        <span className="text-sm font-medium text-gray-300">
+                          구성 요소 {packageItem.components.length}개
+                        </span>
+                        <svg
+                          className={`w-4 h-4 text-gray-400 transition-transform ${expandedItems[`bonus3-${itemIndex}`] ? 'rotate-180' : ''}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                    )}
+                    
+                    {expandedItems[`bonus3-${itemIndex}`] && (
+                      <div className="space-y-2 pl-4 border-l-2 border-gray-700">
+                        {packageItem.itemType === '확률' && (() => {
+                          const totalProbability = packageItem.components.reduce((sum, comp) => {
+                            return sum + (comp.probability || 0);
+                          }, 0);
+                          const isNot100Percent = Math.abs(totalProbability - 1) > 0.001;
+                          return isNot100Percent ? (
+                            <div className="text-red-400 text-sm font-medium bg-red-900/20 border border-red-700 rounded p-2 mb-2">
+                              ⚠ 확률 합계가 {(totalProbability * 100).toFixed(1)}%입니다. (100%가 되어야 합니다)
+                            </div>
+                          ) : null;
+                        })()}
+                        {packageItem.components.map((component, componentIndex) => {
+                          const level0ItemColors = getLevelColors(0);
+                          return (
+                            <div key={componentIndex} className={`${level0ItemColors.bg} rounded-lg p-3 border ${level0ItemColors.border}`}>
+                              <div className="space-y-2">
+                                <div className="flex gap-2 items-center">
+                                  {packageItem.itemType === '선택' && (
+                                    <input
+                                      type="radio"
+                                      name={`bonus3-item-${itemIndex}-selection`}
+                                      checked={component.selected || false}
+                                      onChange={(e) => updateBonus3Component(itemIndex, componentIndex, 'selected', e.target.checked)}
+                                      className="mt-2"
+                                    />
+                                  )}
+                                  <SearchableSelect
+                                    value={component.itemName}
+                                    onChange={(value) => {
+                                      if (value === '__nested__') {
+                                        updateBonus3Component(itemIndex, componentIndex, 'itemName', '__nested__');
+                                        updateBonus3Component(itemIndex, componentIndex, 'nestedItem', {
+                                          itemName: '',
+                                          itemType: '확정',
+                                          quantity: 1,
+                                          components: [],
+                                        });
+                                      } else {
+                                        updateBonus3Component(itemIndex, componentIndex, 'itemName', value);
+                                        if (value !== '__nested__') {
+                                          updateBonus3Component(itemIndex, componentIndex, 'nestedItem', undefined);
+                                        }
+                                      }
+                                    }}
+                                    options={componentOptions}
+                                    placeholder="아이템 선택"
+                                    className="flex-1"
+                                  />
+                                </div>
+                                
+                                {component.itemName === '__nested__' && component.nestedItem && (
+                                  <div className="flex gap-2 items-center">
+                                    <input
+                                      type="text"
+                                      value={component.nestedItem.itemName}
+                                      onChange={(e) => {
+                                        const nestedItem = { ...component.nestedItem!, itemName: e.target.value };
+                                        updateBonus3Component(itemIndex, componentIndex, 'nestedItem', nestedItem);
+                                      }}
+                                      className="flex-1 px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+                                      placeholder="묶음 항목명"
+                                    />
+                                    <select
+                                      value={component.nestedItem.itemType}
+                                      onChange={(e) => {
+                                        const nestedItem = { ...component.nestedItem!, itemType: e.target.value as '확정' | '확률' | '선택' };
+                                        updateBonus3Component(itemIndex, componentIndex, 'nestedItem', nestedItem);
+                                      }}
+                                      className="px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+                                    >
+                                      <option value="확정">확정</option>
+                                      <option value="확률">확률</option>
+                                      <option value="선택">선택</option>
+                                    </select>
+                                  </div>
+                                )}
+                                
+                                <div className="flex gap-2">
+                                  <input
+                                    type="number"
+                                    value={component.quantity || ''}
+                                    onChange={(e) => updateBonus3Component(itemIndex, componentIndex, 'quantity', parseFloat(e.target.value) || 1)}
+                                    className="w-24 px-3 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+                                    placeholder="수량"
+                                    min="0.01"
+                                    step="0.01"
+                                  />
+                                  {packageItem.itemType === '확률' && (
+                                    <input
+                                      type="number"
+                                      value={component.probability !== undefined ? (component.probability * 100).toFixed(1) : ''}
+                                      onChange={(e) => {
+                                        const probValue = parseFloat(e.target.value) || 0;
+                                        updateBonus3Component(itemIndex, componentIndex, 'probability', probValue / 100);
+                                      }}
+                                      className="w-24 px-3 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+                                      placeholder="확률(%)"
+                                      min="0"
+                                      max="100"
+                                      step="0.1"
+                                    />
+                                  )}
+                                  <button
+                                    onClick={() => removeBonus3Component(itemIndex, componentIndex)}
+                                    className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                                  >
+                                    삭제
+                                  </button>
+                                </div>
+                                
+                                {(component.itemName === '__manual__' || component.itemName === '') && (
+                                  <div className="flex gap-2">
+                                    <input
+                                      type="number"
+                                      value={component.manualPrice !== null && component.manualPrice !== undefined ? component.manualPrice : ''}
+                                      onChange={(e) => updateBonus3Component(itemIndex, componentIndex, 'manualPrice', parseFloat(e.target.value) || null)}
+                                      className="flex-1 px-3 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+                                      placeholder="직접 입력 가격"
+                                      min="0"
+                                      step="0.01"
+                                    />
+                                    <select
+                                      value={component.manualUnitType || '골드'}
+                                      onChange={(e) => updateBonus3Component(itemIndex, componentIndex, 'manualUnitType', e.target.value)}
+                                      className="px-3 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+                                    >
+                                      <option value="골드">골드</option>
+                                      <option value="크리스탈">크리스탈</option>
+                                      <option value="현금">현금</option>
+                                    </select>
+                                  </div>
+                                )}
+                                
+                                {/* 단가와 가치 표시 */}
+                                {(() => {
+                                  const isManual = component.itemName === '__manual__' || component.itemName === '';
+                                  const resolved = !isManual && component.itemName ? resolveUnitPrice(component.itemName) : null;
+                                  const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined && component.manualPrice > 0)
+                                    ? { unitType: (component.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: component.manualPrice }
+                                    : resolved;
+
+                                  // 단가 계산 (패키지 가격 타입에 맞춰 변환)
+                                  let unitPriceInPackageType = 0;
+                                  let unitPriceUnit = packageData.priceType;
+                                  
+                                  if (finalUnitPrice) {
+                                    if (packageData.priceType === '골드') {
+                                      if (finalUnitPrice.unitType === '골드') {
+                                        unitPriceInPackageType = finalUnitPrice.unitPrice;
+                                      } else if (finalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
+                                        unitPriceInPackageType = (finalUnitPrice.unitPrice * crystalGoldRate) / 100;
+                                      } else if (finalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
+                                        unitPriceInPackageType = finalUnitPrice.unitPrice / goldToCashPerGold;
+                                      }
+                                    } else if (packageData.priceType === '크리스탈') {
+                                      if (finalUnitPrice.unitType === '크리스탈') {
+                                        unitPriceInPackageType = finalUnitPrice.unitPrice;
+                                      } else if (finalUnitPrice.unitType === '골드' && crystalGoldRate && crystalGoldRate > 0) {
+                                        unitPriceInPackageType = (finalUnitPrice.unitPrice * 100) / crystalGoldRate;
+                                      } else if (finalUnitPrice.unitType === '현금') {
+                                        unitPriceInPackageType = finalUnitPrice.unitPrice;
+                                      }
+                                    } else if (packageData.priceType === '현금') {
+                                      if (finalUnitPrice.unitType === '현금') {
+                                        unitPriceInPackageType = finalUnitPrice.unitPrice;
+                                      } else if (finalUnitPrice.unitType === '골드' && goldToCashPerGold && goldToCashPerGold > 0) {
+                                        unitPriceInPackageType = finalUnitPrice.unitPrice * goldToCashPerGold;
+                                      } else if (finalUnitPrice.unitType === '크리스탈') {
+                                        unitPriceInPackageType = finalUnitPrice.unitPrice;
+                                      }
+                                    }
+                                  }
+
+                                  // 구성요소 가치 계산 (1개 기준)
+                                  let itemValue = 0;
+                                  if (finalUnitPrice) {
+                                    if (packageData.priceType === '현금') {
+                                      itemValue = calculateItemPrice(
+                                        component.itemName || '직접입력',
+                                        component.quantity || 0,
+                                        'cash',
+                                        finalUnitPrice
+                                      );
+                                    } else if (packageData.priceType === '크리스탈') {
+                                      itemValue = calculateItemPrice(
+                                        component.itemName || '직접입력',
+                                        component.quantity || 0,
+                                        'crystal',
+                                        finalUnitPrice
+                                      );
+                                    } else if (packageData.priceType === '골드') {
+                                      if (finalUnitPrice.unitType === '골드') {
+                                        itemValue = finalUnitPrice.unitPrice * (component.quantity || 0);
+                                      } else if (finalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
+                                        itemValue = ((finalUnitPrice.unitPrice * crystalGoldRate) / 100) * (component.quantity || 0);
+                                      } else if (finalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
+                                        itemValue = (finalUnitPrice.unitPrice / goldToCashPerGold) * (component.quantity || 0);
+                                      }
+                                    }
+                                    
+                                    // 타입별 가치 계산
+                                    if (packageItem.itemType === '확률') {
+                                      const probability = component.probability || 0;
+                                      itemValue = itemValue * probability; // 기대값
+                                    } else if (packageItem.itemType === '선택' && !component.selected) {
+                                      itemValue = 0; // 선택되지 않은 항목은 0
+                                    }
+                                  }
+                                  
+                                  // 전체 가치 계산 (묶음 항목 수량 곱한 값)
+                                  const itemQuantity = packageItem.quantity || 1;
+                                  const totalItemValue = itemValue * itemQuantity;
+
+                                  const isIncluded = packageItem.itemType === '확정' || 
+                                                   (packageItem.itemType === '확률') ||
+                                                   (packageItem.itemType === '선택' && component.selected);
+
+                                  if (finalUnitPrice && unitPriceInPackageType > 0) {
+                                    return (
+                                      <div className="mt-2 space-y-1 text-xs">
+                                        <div className="text-gray-300">
+                                          단가 <span className="font-semibold">{formatNumberWithSignificantDigits(unitPriceInPackageType)}</span> {unitPriceUnit}
+                                        </div>
+                                        <div className="text-gray-300">
+                                          단가 <span className="font-semibold">{formatNumberWithSignificantDigits(unitPriceInPackageType)}</span> {unitPriceUnit}
+                                          {packageItem.itemType === '확률' && component.probability !== undefined && (
+                                            <span className="text-purple-400 ml-1">× {component.probability}</span>
+                                          )}
+                                          <span className="text-gray-500 mx-1">×</span>
+                                          수량 <span className="font-semibold">{formatNumberWithSignificantDigits(component.quantity || 0)}</span>
+                                          {packageItem.quantity && packageItem.quantity > 1 && (
+                                            <>
+                                              <span className="text-gray-500 mx-1">×</span>
+                                              <span className="text-blue-400">묶음 수량 {packageItem.quantity}</span>
+                                            </>
+                                          )}
+                                          <span className="text-gray-500 mx-1">=</span>
+                                          <span className={`font-semibold ${isIncluded ? 'text-green-400' : 'text-gray-600'}`}>
+                                            {isIncluded ? formatNumberWithSignificantDigits(totalItemValue) : '0'} {packageData.priceType}
+                                          </span>
+                                          {packageItem.itemType === '확률' && isIncluded && <span className="text-gray-500 ml-1">(기대값)</span>}
+                                        </div>
+                                      </div>
+                                    );
+                                  } else if (finalUnitPrice) {
+                                    return (
+                                      <div className="mt-2 space-y-1 text-xs">
+                                        <div className="text-gray-300">
+                                          수량: <span className="font-semibold">{formatNumberWithSignificantDigits(component.quantity || 0)}</span>
+                                          {isIncluded && (
+                                            <span className="text-blue-400 ml-2">
+                                              가치: <span className="font-semibold">{formatNumberWithSignificantDigits(itemValue)}</span> {packageData.priceType}
+                                              {packageItem.itemType === '확률' && <span className="text-gray-500 ml-1">(기대값)</span>}
+                                              {packageItem.quantity && packageItem.quantity > 1 && (
+                                                <span className="text-gray-500 ml-1">(1개 기준)</span>
+                                              )}
+                                            </span>
+                                          )}
+                                        </div>
+                                        {packageItem.quantity && packageItem.quantity > 1 && isIncluded && (
+                                          <div className="text-gray-300">
+                                            수량: <span className="font-semibold">{formatNumberWithSignificantDigits(component.quantity || 0)}</span>
+                                            <span className="text-gray-500 mx-1">×</span>
+                                            <span className="text-blue-400">묶음 수량 {packageItem.quantity}</span>
+                                            <span className="text-gray-500 mx-1">=</span>
+                                            <span className="font-semibold text-green-400">
+                                              {formatNumberWithSignificantDigits(totalItemValue)} {packageData.priceType}
+                                            </span>
+                                            {packageItem.itemType === '확률' && <span className="text-gray-500 ml-1">(기대값)</span>}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                })()}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {packageItem.components.length === 0 && (
+                          <div className="text-sm text-gray-500 text-center py-4 bg-gray-800/30 rounded-lg border border-dashed border-gray-700">
+                            구성 요소 없음
+                          </div>
+                        )}
+                        <button
+                          onClick={() => addBonus3Component(itemIndex)}
+                          className="w-full px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors text-sm"
+                        >
+                          구성 요소 추가
+                        </button>
+                      </div>
+                    )}
+                    
+                    {packageItem.components.length === 0 && (
+                      <button
+                        onClick={() => addBonus3Component(itemIndex)}
+                        className="w-full px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors text-sm"
+                      >
+                        구성 요소 추가
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+              {packageData.bonus3Items.length === 0 && (
+                <div className="text-sm text-gray-500 text-center py-8 bg-gray-800/30 rounded-lg border border-dashed border-gray-700">
+                  3+보너스 구성품이 없습니다. 항목을 추가해주세요.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* 계산 결과 */}
         <div className="space-y-6">
           <div className="flex items-center gap-3 mb-2">
@@ -3401,7 +3934,7 @@ export default function PackageEfficiencyClient({
           </div>
 
           {/* 구성품 내용 카드 */}
-          {packageData.packageType !== '보너스룸' && packageData.items.length > 0 && (
+          {packageData.packageType !== '보너스룸' && (packageData.items.length > 0 || (packageData.packageType === '3+보너스' && packageData.bonus3Items.length > 0)) && (
             <div className="relative bg-gradient-to-br from-gray-800/90 via-gray-800/70 to-gray-900/90 rounded-2xl border border-gray-700/50 shadow-xl p-8 overflow-hidden">
               {/* 배경 장식 */}
               <div className="absolute top-0 left-0 w-48 h-48 bg-blue-500/5 rounded-full blur-3xl"></div>
@@ -4104,6 +4637,356 @@ export default function PackageEfficiencyClient({
                   </div>
                   );
                 })}
+                {/* 3+보너스 구성품 표시 */}
+                {packageData.packageType === '3+보너스' && packageData.bonus3Items.length > 0 && packageData.bonus3Items.map((packageItem, itemIndex) => {
+                  const typeColors = {
+                    '확정': { border: 'border-blue-500/30', bg: 'bg-blue-500/5', icon: 'text-blue-400', badge: 'bg-blue-500/20 text-blue-400' },
+                    '확률': { border: 'border-purple-500/30', bg: 'bg-purple-500/5', icon: 'text-purple-400', badge: 'bg-purple-500/20 text-purple-400' },
+                    '선택': { border: 'border-yellow-500/30', bg: 'bg-yellow-500/5', icon: 'text-yellow-400', badge: 'bg-yellow-500/20 text-yellow-400' },
+                  };
+                  const colors = typeColors[packageItem.itemType as keyof typeof typeColors] || typeColors['확정'];
+                  
+                  return (
+                  <div key={`bonus3-${itemIndex}`} className={`relative bg-gray-900/70 rounded-xl p-5 border ${colors.border} ${colors.bg} hover:border-opacity-60 transition-all`}>
+                    <div className="absolute top-3 right-3">
+                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${colors.badge}`}>
+                        {packageItem.itemType}
+                      </span>
+                    </div>
+                    
+                    <div className="mb-3 pr-16">
+                      <div className="flex items-center gap-2 mb-1">
+                        <svg className={`w-4 h-4 ${colors.icon}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                        </svg>
+                        <div className="font-bold text-white text-base">
+                          {packageItem.itemName || `3+보너스 항목 ${itemIndex + 1}`}
+                        </div>
+                      </div>
+                      {packageItem.quantity && packageItem.quantity > 1 && (
+                        <div className="flex items-center gap-1 text-xs text-blue-400">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                          </svg>
+                          묶음 ×{packageItem.quantity}
+                        </div>
+                      )}
+                      {/* 묶음 항목 전체 가치 표시 (수량 1 이상) */}
+                      {packageItem.quantity && packageItem.quantity >= 1 && (() => {
+                        // 묶음 항목의 전체 가치 계산
+                        let totalPackageItemValue = 0;
+                        packageItem.components.forEach((comp) => {
+                          // 하위묶음 항목 처리
+                          if (comp.itemName === '__nested__' && comp.nestedItem) {
+                            const nestedItem = comp.nestedItem;
+                            let totalNestedValue = 0;
+                            
+                            // 하위구성요소 가치 총합 계산
+                            nestedItem.components.forEach((nestedComp) => {
+                              const isNestedManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
+                              const nestedResolved = !isNestedManual && nestedComp.itemName ? resolveUnitPrice(nestedComp.itemName) : null;
+                              const nestedFinalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined && nestedComp.manualPrice > 0)
+                                ? { unitType: (nestedComp.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: nestedComp.manualPrice }
+                                : nestedResolved;
+                              
+                              if (nestedFinalUnitPrice) {
+                                let nestedCompValue = 0;
+                                if (packageData.priceType === '현금') {
+                                  nestedCompValue = calculateItemPrice(
+                                    nestedComp.itemName || '직접입력',
+                                    nestedComp.quantity || 0,
+                                    'cash',
+                                    nestedFinalUnitPrice
+                                  );
+                                } else if (packageData.priceType === '크리스탈') {
+                                  nestedCompValue = calculateItemPrice(
+                                    nestedComp.itemName || '직접입력',
+                                    nestedComp.quantity || 0,
+                                    'crystal',
+                                    nestedFinalUnitPrice
+                                  );
+                                } else if (packageData.priceType === '골드') {
+                                  if (nestedFinalUnitPrice.unitType === '골드') {
+                                    nestedCompValue = nestedFinalUnitPrice.unitPrice * (nestedComp.quantity || 0);
+                                  } else if (nestedFinalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
+                                    nestedCompValue = ((nestedFinalUnitPrice.unitPrice * crystalGoldRate) / 100) * (nestedComp.quantity || 0);
+                                  } else if (nestedFinalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
+                                    nestedCompValue = (nestedFinalUnitPrice.unitPrice / goldToCashPerGold) * (nestedComp.quantity || 0);
+                                  }
+                                }
+                                
+                                if (nestedItem.itemType === '확률') {
+                                  const nestedProbability = nestedComp.probability || 0;
+                                  nestedCompValue = nestedCompValue * nestedProbability;
+                                } else if (nestedItem.itemType === '선택' && !nestedComp.selected) {
+                                  nestedCompValue = 0;
+                                }
+                                
+                                totalNestedValue += nestedCompValue;
+                              }
+                            });
+                            
+                            // 하위묶음 1개당 단가 × 하위묶음 수량 = 하위묶음 가치
+                            const nestedItemUnitPrice = totalNestedValue;
+                            const nestedItemQuantity = nestedItem.quantity || 1;
+                            const nestedItemTotalValue = nestedItemUnitPrice * nestedItemQuantity;
+                            
+                            // 묶음 1개당 단가 계산이므로 구성요소 수량은 곱하지 않음
+                            const compValue = nestedItemTotalValue;
+                            
+                            if (packageItem.itemType === '확률') {
+                              const probability = comp.probability || 0;
+                              totalPackageItemValue += compValue * probability;
+                            } else if (packageItem.itemType === '선택' && !comp.selected) {
+                              // 선택되지 않은 항목은 0
+                            } else {
+                              totalPackageItemValue += compValue;
+                            }
+                          } else {
+                            // 일반 구성요소 처리
+                            const isCompManual = comp.itemName === '__manual__' || comp.itemName === '';
+                            const compResolved = !isCompManual && comp.itemName ? resolveUnitPrice(comp.itemName) : null;
+                            const compFinalUnitPrice = (comp.manualPrice !== null && comp.manualPrice !== undefined && comp.manualPrice > 0)
+                              ? { unitType: (comp.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: comp.manualPrice }
+                              : compResolved;
+                            
+                            if (compFinalUnitPrice) {
+                              let compValue = 0;
+                              if (packageData.priceType === '현금') {
+                                compValue = calculateItemPrice(
+                                  comp.itemName || '직접입력',
+                                  comp.quantity || 0,
+                                  'cash',
+                                  compFinalUnitPrice
+                                );
+                              } else if (packageData.priceType === '크리스탈') {
+                                compValue = calculateItemPrice(
+                                  comp.itemName || '직접입력',
+                                  comp.quantity || 0,
+                                  'crystal',
+                                  compFinalUnitPrice
+                                );
+                              } else if (packageData.priceType === '골드') {
+                                if (compFinalUnitPrice.unitType === '골드') {
+                                  compValue = compFinalUnitPrice.unitPrice * (comp.quantity || 0);
+                                } else if (compFinalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
+                                  compValue = ((compFinalUnitPrice.unitPrice * crystalGoldRate) / 100) * (comp.quantity || 0);
+                                } else if (compFinalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
+                                  compValue = (compFinalUnitPrice.unitPrice / goldToCashPerGold) * (comp.quantity || 0);
+                                }
+                              }
+                              
+                              if (packageItem.itemType === '확률') {
+                                const probability = comp.probability || 0;
+                                compValue = compValue * probability;
+                              } else if (packageItem.itemType === '선택' && !comp.selected) {
+                                compValue = 0;
+                              }
+                              
+                              totalPackageItemValue += compValue;
+                            }
+                          }
+                        });
+                        
+                        const totalValue = totalPackageItemValue * packageItem.quantity;
+                        
+                        return totalValue > 0 ? (
+                          <div className="mt-1 text-xs text-green-400 font-medium">
+                            단가 {formatNumberWithSignificantDigits(totalPackageItemValue)} {packageData.priceType}
+                            <span className="text-gray-500 mx-1">×</span>
+                            수량 {packageItem.quantity || 1}
+                            <span className="text-gray-500 mx-1">=</span>
+                            가치 {formatNumberWithSignificantDigits(totalValue)} {packageData.priceType}
+                            {packageItem.itemType === '확률' && <span className="text-gray-400 ml-1">(기대값)</span>}
+                          </div>
+                        ) : null;
+                      })()}
+                    </div>
+                    {/* 구성 요소 펼치기/접기 버튼 */}
+                    {packageItem.components.length > 0 && (
+                      <button
+                        onClick={() => toggleItemExpanded(`bonus3-${itemIndex}`)}
+                        className="w-full flex items-center justify-between px-3 py-2 bg-gray-800/50 rounded-lg border border-gray-700 hover:bg-gray-800 transition-colors mb-2"
+                      >
+                        <span className="text-sm font-medium text-gray-300">
+                          구성 요소 {packageItem.components.length}개
+                        </span>
+                        <svg
+                          className={`w-4 h-4 text-gray-400 transition-transform ${expandedItems[`bonus3-${itemIndex}`] ? 'rotate-180' : ''}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                    )}
+                    {/* 구성 요소 */}
+                    {expandedItems[`bonus3-${itemIndex}`] && packageItem.components.length > 0 && (
+                      <div className="space-y-2">
+                        {packageItem.components.map((component, compIndex) => {
+                          const isManual = component.itemName === '__manual__' || component.itemName === '';
+                          const resolved = !isManual && component.itemName ? resolveUnitPrice(component.itemName) : null;
+                          const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined && component.manualPrice > 0)
+                            ? { unitType: (component.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: component.manualPrice }
+                            : resolved;
+
+                          let unitPriceInPackageType = 0;
+                          let unitPriceUnit = packageData.priceType;
+                          
+                          if (finalUnitPrice) {
+                            if (packageData.priceType === '골드') {
+                              if (finalUnitPrice.unitType === '골드') {
+                                unitPriceInPackageType = finalUnitPrice.unitPrice;
+                              } else if (finalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
+                                unitPriceInPackageType = (finalUnitPrice.unitPrice * crystalGoldRate) / 100;
+                              } else if (finalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
+                                unitPriceInPackageType = finalUnitPrice.unitPrice / goldToCashPerGold;
+                              }
+                            } else if (packageData.priceType === '크리스탈') {
+                              if (finalUnitPrice.unitType === '크리스탈') {
+                                unitPriceInPackageType = finalUnitPrice.unitPrice;
+                              } else if (finalUnitPrice.unitType === '골드' && crystalGoldRate && crystalGoldRate > 0) {
+                                unitPriceInPackageType = (finalUnitPrice.unitPrice * 100) / crystalGoldRate;
+                              } else if (finalUnitPrice.unitType === '현금') {
+                                unitPriceInPackageType = finalUnitPrice.unitPrice;
+                              }
+                            } else if (packageData.priceType === '현금') {
+                              if (finalUnitPrice.unitType === '현금') {
+                                unitPriceInPackageType = finalUnitPrice.unitPrice;
+                              } else if (finalUnitPrice.unitType === '골드' && goldToCashPerGold && goldToCashPerGold > 0) {
+                                unitPriceInPackageType = finalUnitPrice.unitPrice * goldToCashPerGold;
+                              } else if (finalUnitPrice.unitType === '크리스탈') {
+                                unitPriceInPackageType = finalUnitPrice.unitPrice;
+                              }
+                            }
+                          }
+
+                          let itemValue = 0;
+                          if (finalUnitPrice) {
+                            if (packageData.priceType === '현금') {
+                              itemValue = calculateItemPrice(
+                                component.itemName || '직접입력',
+                                component.quantity || 0,
+                                'cash',
+                                finalUnitPrice
+                              );
+                            } else if (packageData.priceType === '크리스탈') {
+                              itemValue = calculateItemPrice(
+                                component.itemName || '직접입력',
+                                component.quantity || 0,
+                                'crystal',
+                                finalUnitPrice
+                              );
+                            } else if (packageData.priceType === '골드') {
+                              if (finalUnitPrice.unitType === '골드') {
+                                itemValue = finalUnitPrice.unitPrice * (component.quantity || 0);
+                              } else if (finalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
+                                itemValue = ((finalUnitPrice.unitPrice * crystalGoldRate) / 100) * (component.quantity || 0);
+                              } else if (finalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
+                                itemValue = (finalUnitPrice.unitPrice / goldToCashPerGold) * (component.quantity || 0);
+                              }
+                            }
+                            
+                            if (packageItem.itemType === '확률') {
+                              const probability = component.probability || 0;
+                              itemValue = itemValue * probability;
+                            } else if (packageItem.itemType === '선택' && !component.selected) {
+                              itemValue = 0;
+                            }
+                          }
+                          
+                          const itemQuantity = packageItem.quantity || 1;
+                          const totalItemValue = itemValue * itemQuantity;
+
+                          const isIncluded = packageItem.itemType === '확정' || 
+                                           (packageItem.itemType === '확률') ||
+                                           (packageItem.itemType === '선택' && component.selected);
+
+                          const level0Colors = getLevelColors(0);
+                          return (
+                            <div key={compIndex} className={`${level0Colors.bg} rounded-lg p-3 border ${isIncluded ? level0Colors.border : 'border-gray-800'} ${!isIncluded && 'opacity-50'}`}>
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                  {packageItem.itemType === '선택' && (
+                                    <label className="flex items-center gap-2 mb-2 cursor-pointer group">
+                                      <input
+                                        type="radio"
+                                        name={`bonus3-selection-${itemIndex}`}
+                                        checked={component.selected || false}
+                                        onChange={(e) => {
+                                          if (e.target.checked) {
+                                            updateBonus3Component(itemIndex, compIndex, 'selected', true);
+                                          }
+                                        }}
+                                        className="w-4 h-4 text-yellow-500 bg-gray-700 border-gray-600 focus:ring-yellow-500 focus:ring-2"
+                                      />
+                                      <span className={`text-xs font-semibold ${component.selected ? 'text-yellow-400' : 'text-gray-500 group-hover:text-gray-400'}`}>
+                                        {component.selected ? '✓ 선택됨' : '선택'}
+                                      </span>
+                                    </label>
+                                  )}
+                                  
+                                  <div className="flex items-baseline gap-2 flex-wrap">
+                                    <span className={`text-sm font-medium ${isIncluded ? 'text-white' : 'text-gray-500 line-through'}`}>
+                                      {component.itemName === '__manual__' || component.itemName === '' ? '직접 입력' : component.itemName}
+                                    </span>
+                                    {packageItem.itemType === '확률' && component.probability !== undefined && (
+                                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full">
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                        </svg>
+                                        {(component.probability * 100).toFixed(1)}%
+                                      </span>
+                                    )}
+                                  </div>
+                                  
+                                  {finalUnitPrice && unitPriceInPackageType > 0 ? (
+                                    <div className="mt-1 text-xs text-gray-300">
+                                      단가 <span className="font-semibold">{formatNumberWithSignificantDigits(unitPriceInPackageType)}</span> {unitPriceUnit}
+                                      {packageItem.itemType === '확률' && component.probability !== undefined && (
+                                        <span className="text-purple-400 ml-1">× {component.probability}</span>
+                                      )}
+                                      <span className="text-gray-500 mx-1">×</span>
+                                      수량 <span className="font-semibold">{formatNumberWithSignificantDigits(component.quantity || 0)}</span>
+                                      <span className="text-gray-500 mx-1">=</span>
+                                      가치 <span className={`font-semibold ${isIncluded ? 'text-green-400' : 'text-gray-600'}`}>
+                                        {isIncluded ? formatNumberWithSignificantDigits(itemValue) : '0'} {packageData.priceType}
+                                      </span>
+                                      {packageItem.itemType === '확률' && isIncluded && <span className="text-gray-500 ml-1">(기대값)</span>}
+                                      {packageItem.quantity && packageItem.quantity > 1 && isIncluded && (
+                                        <span className="text-gray-500 ml-1">(1개 기준)</span>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div className="mt-1 text-xs text-gray-300">
+                                      수량: <span className="font-semibold">{formatNumberWithSignificantDigits(component.quantity || 0)}</span>
+                                      {isIncluded && finalUnitPrice && (
+                                        <span className="text-blue-400 ml-2">
+                                          가치: <span className="font-semibold">{formatNumberWithSignificantDigits(itemValue)}</span> {packageData.priceType}
+                                          {packageItem.itemType === '확률' && <span className="text-gray-500 ml-1">(기대값)</span>}
+                                          {packageItem.quantity && packageItem.quantity > 1 && (
+                                            <span className="text-gray-500 ml-1">(1개 기준)</span>
+                                          )}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {packageItem.components.length === 0 && (
+                          <div className="text-sm text-gray-500 text-center py-4 bg-gray-800/30 rounded-lg border border-dashed border-gray-700">
+                            구성 요소 없음
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  );
+                })}
               </div>
             </div>
             </div>
@@ -4466,7 +5349,18 @@ export default function PackageEfficiencyClient({
                             <span className="text-sm text-gray-300">3+1 적용</span>
                           </label>
                         )}
-                        {packageData.packageType !== '3+1' && (
+                        {packageData.packageType === '3+보너스' && (
+                          <label className="flex items-center gap-2 mt-3 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={packageData.is3PlusBonus}
+                              onChange={(e) => setPackageData((prev) => ({ ...prev, is3PlusBonus: e.target.checked }))}
+                              className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
+                            />
+                            <span className="text-sm text-gray-300">3+보너스 적용</span>
+                          </label>
+                        )}
+                        {packageData.packageType !== '3+1' && packageData.packageType !== '3+보너스' && (
                           <div className="text-xs text-gray-500 mt-3">
                             유형: {packageData.packageType}
                           </div>
