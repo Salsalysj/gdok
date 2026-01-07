@@ -1819,9 +1819,11 @@ export default function PackageEfficiencyClient({
           price: 0,
           packageType: '일반',
           is3Plus1: false,
+          is3PlusBonus: false,
           purchaseCount: 1,
           endDate: null,
           items: [],
+          bonus3Items: [],
           bonusRooms: [
             { roomName: '보너스룸1', items: [] },
             { roomName: '보너스룸2', items: [] },
