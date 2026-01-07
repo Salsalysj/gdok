@@ -365,23 +365,23 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className={`w-full ${sizeClasses} ${bgColor} text-white rounded-lg border focus:outline-none focus:border-purple-500 text-left flex items-center justify-between`}
+          className={`w-full ${sizeClasses} ${bgColor} text-white rounded border focus:outline-none focus:border-gray-600 text-left flex items-center justify-between`}
         >
           <span className={value ? "" : "text-gray-500"}>{selectedLabel}</span>
-          <svg className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className={`w-4 h-4 ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         </button>
         
         {isOpen && (
-          <div className="absolute z-50 w-full mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl max-h-60 overflow-hidden">
+          <div className="absolute z-50 w-full mt-1 bg-gray-800 border border-gray-700 rounded max-h-60 overflow-hidden">
             <div className="p-2 border-b border-gray-700">
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="검색..."
-                className="w-full px-3 py-2 bg-gray-900 text-white rounded border border-gray-600 focus:outline-none focus:border-purple-500 text-sm"
+                className="w-full px-3 py-2 bg-gray-900 text-white rounded border border-gray-600 focus:outline-none focus:border-gray-600 text-sm"
                 autoFocus
                 onClick={(e) => e.stopPropagation()}
               />
@@ -393,8 +393,8 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                     key={option.value}
                     type="button"
                     onClick={() => handleSelect(option.value)}
-                    className={`w-full px-3 py-2 text-left hover:bg-gray-700 transition-colors ${
-                      value === option.value ? 'bg-purple-600/30 text-purple-300' : 'text-white'
+                    className={`w-full px-3 py-2 text-left hover:bg-gray-700 ${
+                      value === option.value ? 'bg-gray-700 text-gray-300' : 'text-white'
                     } ${size === "small" ? "text-xs" : "text-sm"}`}
                   >
                     {option.label}
@@ -1919,11 +1919,11 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
     return (
       <div className="space-y-6">
         {/* 섹션 제목 */}
-        <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 border border-purple-500/30 rounded-xl px-5 py-4 shadow-lg flex justify-between items-center">
+        <div className="bg-gray-800 border border-gray-700 rounded px-5 py-4 flex justify-between items-center">
           <h3 className="text-xl font-bold text-white tracking-wide">{sectionTitle}</h3>
           <button
             onClick={() => handleAddRewardGroup(type)}
-            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
+            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm font-medium"
           >
             + 보상 그룹 추가
           </button>
@@ -1931,7 +1931,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
         
         {/* 섹션 요약 */}
         {summaryLabel && (
-          <div className="bg-gradient-to-r from-gray-900/80 to-gray-800/80 border-2 border-yellow-500/40 rounded-xl px-5 py-4 shadow-xl">
+          <div className="bg-gray-800 border border-gray-700 rounded px-5 py-4">
             <div className="flex flex-wrap items-center gap-4">
               <span className="font-bold text-lg text-white">{summaryLabel}</span>
               <div className="flex flex-wrap items-center gap-4 text-sm">
@@ -1954,24 +1954,24 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
         )}
         
         {groups.map((group, groupIdx) => (
-          <div key={groupIdx} className="bg-gray-800/60 rounded-xl border border-gray-700 overflow-hidden shadow-lg hover:shadow-purple-500/20 transition-shadow duration-300">
-            <div className="bg-gradient-to-r from-gray-900/70 to-gray-800/70 px-5 py-3 border-b border-gray-700/80 flex items-center justify-between">
+          <div key={groupIdx} className="bg-gray-800 rounded border border-gray-700 overflow-hidden">
+            <div className="bg-gray-800 px-5 py-3 border-b border-gray-700 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <input
                   type="text"
                   value={group.title}
                   onChange={(e) => handleUpdateGroupTitle(type, groupIdx, e.target.value)}
-                  className="text-lg font-bold text-purple-300 bg-gray-700/50 border border-gray-600 rounded px-2 py-1 focus:outline-none focus:border-purple-500"
+                  className="text-lg font-bold text-gray-300 bg-gray-700 border border-gray-600 rounded px-2 py-1 focus:outline-none focus:border-gray-600"
                 />
                 <button
                   onClick={() => {/* 레거시 함수 - 사용되지 않음 */}}
-                  className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition-colors"
+                  className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded text-xs font-medium"
                 >
                   + 아이템 추가
                 </button>
                 <button
                   onClick={() => handleRemoveRewardGroup(type, groupIdx)}
-                  className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-medium transition-colors"
+                  className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded text-xs font-medium"
                 >
                   그룹 삭제
                 </button>
@@ -1981,7 +1981,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                   <button
                     type="button"
                     onClick={() => setShowPcBangBoxDetails((prev) => !prev)}
-                    className="px-3 py-1 text-xs rounded border border-purple-500/60 text-purple-200 hover:bg-purple-500/20 transition-colors"
+                    className="px-3 py-1 text-xs rounded border border-gray-700 text-gray-300 hover:bg-gray-800"
                   >
                     {showPcBangBoxDetails ? '내역 닫기' : '내역 보기'}
                   </button>
@@ -2048,7 +2048,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                     const composition = getCompositionInfo(getItemName(item), item.quantity);
                     
                     return (
-                      <tr key={itemIdx} className="border-b border-gray-700/50 hover:bg-gray-700/40 transition-colors duration-200">
+                      <tr key={itemIdx} className="border-b border-gray-700 hover:bg-gray-800">
                         <td className="px-4 py-3 text-white">
                           <div className="flex flex-col gap-2">
                             <div className="flex flex-wrap items-center gap-3">
@@ -2056,11 +2056,11 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                 type="text"
                                 value={getItemName(item)}
                                 onChange={(e) => {/* 레거시 함수 - 사용되지 않음 */}}
-                                className="bg-gray-700/50 border border-gray-600 rounded px-2 py-1 text-sm focus:outline-none focus:border-purple-500 flex-1 min-w-[200px]"
+                                className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm focus:outline-none focus:border-gray-600 flex-1 min-w-[200px]"
                               />
                               <button
                                 onClick={() => {/* 레거시 함수 - 사용되지 않음 */}}
-                                className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-medium transition-colors"
+                                className="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded text-xs font-medium"
                               >
                                 삭제
                               </button>
@@ -2088,7 +2088,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                             type="number"
                             value={item.quantity}
                             onChange={(e) => {/* 레거시 함수 - 사용되지 않음 */}}
-                            className="bg-gray-700/50 border border-gray-600 rounded px-2 py-1 text-sm text-right focus:outline-none focus:border-purple-500 w-24"
+                            className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-right focus:outline-none focus:border-gray-600 w-24"
                           />
                           {isKurzanItem && selectedKurzanStage && (
                             <div className="text-xs text-gray-500 mt-1">
@@ -2110,7 +2110,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                   })}
                   
                   {/* 합계 행 */}
-                  <tr className="bg-gradient-to-r from-purple-900/30 to-blue-900/30 border-t-2 border-purple-500/60">
+                  <tr className="bg-gray-800 border-t border-gray-700">
                     <td className="px-4 py-4 text-white font-bold text-base">소계 (골드 환산)</td>
                     <td className="px-4 py-4"></td>
                     <td className="px-4 py-4"></td>
@@ -2152,7 +2152,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                       })()}
                     </td>
                   </tr>
-                  <tr className="bg-gradient-to-r from-green-900/20 to-emerald-900/20 border-t border-green-500/40">
+                  <tr className="bg-gray-800 border-t border-gray-700">
                     <td className="px-4 py-4 text-white font-bold text-base">소계 (현금 환산)</td>
                     <td className="px-4 py-4"></td>
                     <td className="px-4 py-4 text-xs text-gray-400 text-right">
@@ -2246,15 +2246,15 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                   <button
                                     type="button"
                                     onClick={() => togglePcBangDetail(detail.displayName)}
-                                    className={`w-8 h-4 rounded-full border transition-colors ${
+                                    className={`w-8 h-4 rounded-full border ${
                                       detailEnabled
-                                        ? 'bg-purple-600 border-purple-500'
+                                        ? 'bg-gray-600 border-gray-500'
                                         : 'bg-gray-600 border-gray-500'
                                     }`}
                                     aria-label={`${detail.displayName} 포함 여부`}
                                   >
                                     <span
-                                      className={`inline-block w-3.5 h-3.5 rounded-full bg-white transform transition-transform ${
+                                      className={`inline-block w-3.5 h-3.5 rounded-full bg-white ${
                                         detailEnabled ? 'translate-x-3' : 'translate-x-0.5'
                                       }`}
                                     />
@@ -2309,7 +2309,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                       })}
                     </tbody>
                     <tfoot>
-                      <tr className="bg-gradient-to-r from-purple-900/40 to-blue-900/40 border-t-2 border-purple-500/60">
+                      <tr className="bg-gray-800 border-t border-gray-700">
                         <td colSpan={4} className="px-2 py-2 text-gray-200 font-bold">
                           상자 1개 기대값 합계
                         </td>
@@ -2595,9 +2595,9 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
       <div className="space-y-6">
         {/* 요약 카드 */}
         {totalValue > 0 && (
-          <div className="bg-gradient-to-br from-purple-900/40 to-blue-900/40 border-2 border-purple-500/40 rounded-2xl p-6 shadow-2xl">
+          <div className="bg-gray-800 border border-gray-700 rounded p-6">
             <div className="flex items-center gap-3 mb-4">
-              <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
               </svg>
               <h3 className="text-2xl font-bold text-white">요약</h3>
@@ -2605,7 +2605,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               {/* 총 가치 */}
-              <div className="bg-gray-900/60 rounded-xl p-4 border border-purple-500/30">
+              <div className="bg-gray-800 rounded p-4 border border-gray-700">
                 <div className="text-sm text-gray-400 mb-1">총 가치</div>
                 <div className="text-3xl font-bold text-blue-400">
                   {formatNumberWithSignificantDigits(totalValue)} 골드
@@ -2614,7 +2614,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
               
               {/* 현금 환산 */}
               {goldToCashPerGold && (
-                <div className="bg-gray-900/60 rounded-xl p-4 border border-green-500/30">
+                <div className="bg-gray-800 rounded p-4 border border-gray-700">
                   <div className="text-sm text-gray-400 mb-1">현금 환산</div>
                   <div className="text-3xl font-bold text-green-400">
                     {formatNumberWithSignificantDigits(totalValue * goldToCashPerGold)} 원
@@ -2627,9 +2627,9 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
             <div className="space-y-4">
               <h4 className="text-lg font-semibold text-white">계산 과정</h4>
               {groupDetails.map((group, groupIdx) => (
-                <div key={groupIdx} className="bg-gray-900/60 rounded-xl p-4 border border-gray-700">
+                <div key={groupIdx} className="bg-gray-800 rounded p-4 border border-gray-700">
                   <div className="flex items-center justify-between mb-3">
-                    <h5 className="text-base font-semibold text-purple-300">{group.groupTitle}</h5>
+                    <h5 className="text-base font-semibold text-gray-300">{group.groupTitle}</h5>
                     <div className="text-sm text-gray-400">
                       그룹 합계: <span className="text-yellow-400 font-bold">{formatNumberWithSignificantDigits(group.groupTotal)} 골드</span>
                     </div>
@@ -2652,7 +2652,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                             )}
                             {item.nestedBundleCount > 0 && (
                               <span className="ml-2">
-                                하위 묶음: <span className="text-purple-400 font-semibold">{item.nestedBundleCount}개</span>
+                                하위 묶음: <span className="text-gray-300 font-semibold">{item.nestedBundleCount}개</span>
                               </span>
                             )}
                           </div>
@@ -2668,7 +2668,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                               {detail.probability !== undefined && (
                                 <>
                                   <span className="text-gray-500 mx-1">×</span>
-                                  <span className="text-purple-400">확률 {formatNumberWithSignificantDigits(detail.probability * 100)}%</span>
+                                  <span className="text-gray-300">확률 {formatNumberWithSignificantDigits(detail.probability * 100)}%</span>
                                 </>
                               )}
                               {detail.bundleQuantity > 1 && (
@@ -2680,7 +2680,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                               {detail.nestedItemCount > 0 && (
                                 <>
                                   <span className="text-gray-500 mx-1">×</span>
-                                  <span className="text-purple-400">하위 묶음 {detail.nestedItemCount}개</span>
+                                  <span className="text-gray-300">하위 묶음 {detail.nestedItemCount}개</span>
                                 </>
                               )}
                               <span className="text-gray-500 mx-1">=</span>
@@ -2701,11 +2701,11 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
         )}
         
         {/* 섹션 제목 및 그룹 추가 버튼 */}
-        <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 border border-purple-500/30 rounded-xl px-5 py-4 shadow-lg flex justify-between items-center">
+        <div className="bg-gray-800 border border-gray-700 rounded px-5 py-4 flex justify-between items-center">
           <h3 className="text-xl font-bold text-white tracking-wide">{sectionTitle}</h3>
           <button
             onClick={() => handleAddRewardGroup(type)}
-            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
+            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm font-medium"
           >
             + 보상 그룹 추가
           </button>
@@ -2713,7 +2713,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
         
         {/* 빈 상태 안내 */}
         {groups.length === 0 && (
-          <div className="bg-gray-800/50 rounded-xl border border-gray-700 p-8 text-center">
+          <div className="bg-gray-800 rounded border border-gray-700 p-8 text-center">
             <p className="text-gray-400 mb-4">보상 그룹이 없습니다.</p>
             <p className="text-sm text-gray-500">위의 "+ 보상 그룹 추가" 버튼을 클릭하여 보상을 추가하세요.</p>
           </div>
@@ -2721,19 +2721,19 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
         
         {/* 각 보상 그룹 */}
         {groups.map((group, groupIdx) => (
-          <div key={groupIdx} className="bg-gray-800/60 rounded-xl border border-gray-700 p-6 space-y-4">
+          <div key={groupIdx} className="bg-gray-800 rounded border border-gray-700 p-6 space-y-4">
             {/* 그룹 제목 및 그룹 삭제 버튼 */}
             <div className="flex items-center gap-3 mb-4">
               <input
                 type="text"
                 value={group.title}
                 onChange={(e) => handleUpdateGroupTitle(type, groupIdx, e.target.value)}
-                className="flex-1 px-4 py-2 bg-gray-700 text-white rounded-lg border border-gray-600 focus:outline-none focus:border-purple-500 text-lg font-bold"
+                className="flex-1 px-4 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-gray-600 text-lg font-bold"
                 placeholder="그룹 제목"
               />
               <button
                 onClick={() => handleRemoveRewardGroup(type, groupIdx)}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm font-medium"
               >
                 그룹 삭제
               </button>
@@ -2775,14 +2775,14 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                         type="text"
                         value={item.itemName}
                         onChange={(e) => handleUpdateRewardItem(type, groupIdx, itemIdx, 'itemName', e.target.value)}
-                        className="flex-1 px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+                        className="flex-1 px-4 py-2 bg-gray-800 text-white rounded border border-gray-700 focus:outline-none focus:border-gray-600"
                         placeholder="묶음 항목명"
                       />
                       <input
                         type="number"
                         value={item.quantity || ''}
                         onChange={(e) => handleUpdateRewardItem(type, groupIdx, itemIdx, 'quantity', parseFloat(e.target.value) || 1)}
-                        className="w-28 px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+                        className="w-28 px-4 py-2 bg-gray-800 text-white rounded border border-gray-700 focus:outline-none focus:border-gray-600"
                         placeholder="묶음 수량"
                         min="1"
                         step="1"
@@ -2790,14 +2790,14 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                       <select
                         value={item.itemType}
                         onChange={(e) => handleUpdateRewardItem(type, groupIdx, itemIdx, 'itemType', e.target.value as '확정' | '확률' | '선택')}
-                        className="px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+                        className="px-4 py-2 bg-gray-800 text-white rounded border border-gray-700 focus:outline-none focus:border-gray-600"
                       >
                         <option value="확정">확정</option>
                         <option value="확률">확률</option>
                         <option value="선택">선택</option>
                       </select>
                       {itemTotalValue > 0 && (
-                        <div className="px-4 py-2 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                        <div className="px-4 py-2 bg-gray-800 border border-gray-700 rounded">
                           <div className="text-xs text-gray-400">가치</div>
                           <div className="text-sm font-bold text-blue-400">
                             {formatNumberWithSignificantDigits(itemTotalValue)}G
@@ -2806,7 +2806,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                       )}
                       <button
                         onClick={() => handleRemoveRewardItem(type, groupIdx, itemIdx)}
-                        className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                        className="px-3 py-2 bg-gray-700 text-white rounded hover:bg-gray-600"
                       >
                         삭제
                       </button>
@@ -2821,14 +2821,14 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                         }, 0);
                         const isNot100Percent = Math.abs(totalProbability - 1) > 0.001;
                         return isNot100Percent ? (
-                          <div className="text-red-400 text-sm font-medium bg-red-900/20 border border-red-700 rounded p-2 mb-2">
+                          <div className="text-gray-300 text-sm font-medium bg-gray-800 border border-gray-700 rounded p-2 mb-2">
                             ⚠ 확률 합계가 {(totalProbability * 100).toFixed(1)}%입니다. (100%가 되어야 합니다)
                           </div>
                         ) : null;
                       })()}
                       
                       {item.components.map((component, compIdx) => (
-                        <div key={compIdx} className="bg-gray-900/40 rounded-lg p-3 border border-gray-700">
+                        <div key={compIdx} className="bg-gray-800 rounded p-3 border border-gray-700">
                           <div className="space-y-2">
                             {/* 첫 번째 줄: 라디오 버튼 + 드롭다운 + 삭제 버튼 */}
                             <div className="flex gap-2 items-center">
@@ -2909,7 +2909,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                     const value = e.target.value || '__manual__';
                                     handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'itemName', value);
                                   }}
-                                  className="w-full px-3 py-1.5 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500 text-sm"
+                                  className="w-full px-3 py-1.5 bg-gray-800 text-white rounded border border-gray-700 focus:outline-none focus:border-gray-600 text-sm"
                                   placeholder="아이템 이름을 입력하세요"
                                 />
                               </div>
@@ -2926,7 +2926,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                   onChange={(e) => {
                                     handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'manualUnitType', e.target.value as '골드' | '크리스탈' | '현금');
                                   }}
-                                  className="px-2 py-1.5 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500 text-sm"
+                                  className="px-2 py-1.5 bg-gray-800 text-white rounded border border-gray-700 focus:outline-none focus:border-gray-600 text-sm"
                                 >
                                   <option value="골드">골드</option>
                                   <option value="크리스탈">크리스탈</option>
@@ -2963,7 +2963,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                             
                             {/* 하위 묶음 항목 입력 */}
                             {component.itemName === '__nested__' && component.nestedItem && (
-                              <div className="space-y-3 pl-4 border-l-2 border-purple-500/50 bg-gray-800/30 rounded-lg p-3">
+                              <div className="space-y-3 pl-4 border-l-2 border-gray-700 bg-gray-800 rounded p-3">
                                 <div className="flex gap-2 items-center">
                                   <input
                                     type="text"
@@ -2972,7 +2972,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                       const nestedItem = { ...component.nestedItem!, itemName: e.target.value };
                                       handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'nestedItem', nestedItem);
                                     }}
-                                    className="flex-1 px-3 py-1.5 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500 text-sm"
+                                    className="flex-1 px-3 py-1.5 bg-gray-800 text-white rounded border border-gray-700 focus:outline-none focus:border-gray-600 text-sm"
                                     placeholder="하위 묶음 항목명"
                                   />
                                   <select
@@ -2981,7 +2981,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                       const nestedItem = { ...component.nestedItem!, itemType: e.target.value as '확정' | '확률' | '선택' };
                                       handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'nestedItem', nestedItem);
                                     }}
-                                    className="w-20 px-2 py-1.5 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500 text-sm"
+                                    className="w-20 px-2 py-1.5 bg-gray-800 text-white rounded border border-gray-700 focus:outline-none focus:border-gray-600 text-sm"
                                   >
                                     <option value="확정">확정</option>
                                     <option value="확률">확률</option>
@@ -3005,7 +3005,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                 {/* 하위 묶음 항목의 구성 요소 리스트 */}
                                 <div className="space-y-2">
                                   {component.nestedItem.components.map((nestedComp, nestedCompIdx) => (
-                                    <div key={nestedCompIdx} className="bg-gray-900/40 rounded-lg p-2 border border-gray-700">
+                                    <div key={nestedCompIdx} className="bg-gray-800 rounded p-2 border border-gray-700">
                                       <div className="space-y-2">
                                         {/* 첫 번째 줄: 라디오 버튼 + 드롭다운 + 삭제 버튼 */}
                                         <div className="flex gap-2 items-center">
@@ -3086,7 +3086,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                                 const nestedItem = { ...component.nestedItem!, components: updatedNestedComponents };
                                                 handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'nestedItem', nestedItem);
                                               }}
-                                              className="w-full px-2 py-1 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500 text-xs"
+                                              className="w-full px-2 py-1 bg-gray-800 text-white rounded border border-gray-700 focus:outline-none focus:border-gray-600 text-xs"
                                               placeholder="아이템 이름을 입력하세요"
                                             />
                                           </div>
@@ -3107,7 +3107,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                                 const nestedItem = { ...component.nestedItem!, components: updatedNestedComponents };
                                                 handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'nestedItem', nestedItem);
                                               }}
-                                              className="px-2 py-1 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500 text-xs"
+                                              className="px-2 py-1 bg-gray-800 text-white rounded border border-gray-700 focus:outline-none focus:border-gray-600 text-xs"
                                             >
                                               <option value="골드">골드</option>
                                               <option value="크리스탈">크리스탈</option>
@@ -3140,7 +3140,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                                   e.currentTarget.blur();
                                                 }
                                               }}
-                                              className="flex-1 px-2 py-1 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500 text-xs"
+                                              className="flex-1 px-2 py-1 bg-gray-800 text-white rounded border border-gray-700 focus:outline-none focus:border-gray-600 text-xs"
                                               placeholder="단가 직접 입력"
                                             />
                                           </div>
@@ -3159,7 +3159,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                               const nestedItem = { ...component.nestedItem!, components: updatedNestedComponents };
                                               handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'nestedItem', nestedItem);
                                             }}
-                                            className="w-24 px-2 py-1 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500 text-xs"
+                                            className="w-24 px-2 py-1 bg-gray-800 text-white rounded border border-gray-700 focus:outline-none focus:border-gray-600 text-xs"
                                             placeholder="수량"
                                             min="1"
                                           />
@@ -3178,7 +3178,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                                   const nestedItem = { ...component.nestedItem!, components: updatedNestedComponents };
                                                   handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'nestedItem', nestedItem);
                                                 }}
-                                                className="w-24 px-2 py-1 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500 text-xs"
+                                                className="w-24 px-2 py-1 bg-gray-800 text-white rounded border border-gray-700 focus:outline-none focus:border-gray-600 text-xs"
                                                 placeholder="0-100"
                                                 min="0"
                                                 max="100"
@@ -3246,7 +3246,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                       const nestedItem = { ...component.nestedItem!, components: updatedNestedComponents };
                                       handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'nestedItem', nestedItem);
                                     }}
-                                    className="w-full px-3 py-1.5 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors text-xs"
+                                    className="w-full px-3 py-1.5 bg-gray-700 text-gray-300 rounded hover:bg-gray-600 text-xs"
                                   >
                                     + 구성 요소 추가
                                   </button>
@@ -3261,7 +3261,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                 type="number"
                                 value={component.quantity || ''}
                                 onChange={(e) => handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'quantity', parseFloat(e.target.value) || 1)}
-                                className="w-24 px-3 py-1.5 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500 text-sm"
+                                className="w-24 px-3 py-1.5 bg-gray-800 text-white rounded border border-gray-700 focus:outline-none focus:border-gray-600 text-sm"
                                 placeholder="수량"
                                 min="1"
                               />
@@ -3274,7 +3274,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                     type="number"
                                     value={(component.probability || 0) * 100}
                                     onChange={(e) => handleUpdateComponent(type, groupIdx, itemIdx, compIdx, 'probability', parseFloat(e.target.value) / 100 || 0)}
-                                    className="w-24 px-3 py-1.5 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500 text-sm"
+                                    className="w-24 px-3 py-1.5 bg-gray-800 text-white rounded border border-gray-700 focus:outline-none focus:border-gray-600 text-sm"
                                     placeholder="0-100"
                                     min="0"
                                     max="100"
@@ -3328,7 +3328,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                       {/* 구성 요소 추가 버튼 */}
                       <button
                         onClick={() => handleAddComponent(type, groupIdx, itemIdx)}
-                        className="w-full px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors text-sm"
+                        className="w-full px-4 py-2 bg-gray-700 text-gray-300 rounded hover:bg-gray-600 text-sm"
                       >
                         + 구성 요소 추가
                       </button>
@@ -3340,7 +3340,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
               {/* 묶음 항목 추가 버튼 */}
               <button
                 onClick={() => handleAddRewardItem(type, groupIdx)}
-                className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                className="w-full px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-600"
               >
                 + 묶음 항목 추가
               </button>
@@ -3393,7 +3393,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
         
         {/* 섹션 요약 */}
         {summaryLabel && (
-          <div className="bg-gradient-to-r from-gray-900/80 to-gray-800/80 border-2 border-yellow-500/40 rounded-xl px-5 py-4 shadow-xl">
+          <div className="bg-gray-800 border border-gray-700 rounded px-5 py-4">
             <div className="flex flex-wrap items-center gap-4">
               <span className="font-bold text-lg text-white">{summaryLabel}</span>
               <div className="flex flex-wrap items-center gap-4 text-sm">
@@ -3416,8 +3416,8 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
         )}
         
         {groups.map((group, groupIdx) => (
-          <div key={groupIdx} className="bg-gray-800/60 rounded-xl border border-gray-700 overflow-hidden shadow-lg hover:shadow-purple-500/20 transition-shadow duration-300">
-            <div className="bg-gradient-to-r from-gray-900/70 to-gray-800/70 px-5 py-3 border-b border-gray-700/80 flex items-center justify-between">
+          <div key={groupIdx} className="bg-gray-800 rounded border border-gray-700 overflow-hidden">
+            <div className="bg-gray-800 px-5 py-3 border-b border-gray-700 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <h4 className="text-lg font-bold text-purple-300">{group.title}</h4>
                 
@@ -3426,7 +3426,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                   <button
                     type="button"
                     onClick={() => setShowPcBangBoxDetails((prev) => !prev)}
-                    className="px-3 py-1 text-xs rounded border border-purple-500/60 text-purple-200 hover:bg-purple-500/20 transition-colors"
+                    className="px-3 py-1 text-xs rounded border border-gray-700 text-gray-300 hover:bg-gray-800"
                   >
                     {showPcBangBoxDetails ? '내역 닫기' : '내역 보기'}
                   </button>
@@ -3493,7 +3493,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                     const composition = getCompositionInfo(getItemName(item), item.quantity);
                     
                     return (
-                      <tr key={itemIdx} className="border-b border-gray-700/50 hover:bg-gray-700/40 transition-colors duration-200">
+                      <tr key={itemIdx} className="border-b border-gray-700 hover:bg-gray-800">
                         <td className="px-4 py-3 text-white">
                           <div className="flex flex-col gap-2">
                             <div className="flex flex-wrap items-center gap-3">
@@ -3539,7 +3539,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                   })}
                   
                   {/* 합계 행 */}
-                  <tr className="bg-gradient-to-r from-purple-900/30 to-blue-900/30 border-t-2 border-purple-500/60">
+                  <tr className="bg-gray-800 border-t border-gray-700">
                     <td className="px-4 py-4 text-white font-bold text-base">소계 (골드 환산)</td>
                     <td className="px-4 py-4"></td>
                     <td className="px-4 py-4"></td>
@@ -3572,7 +3572,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                       })()}
                     </td>
                   </tr>
-                  <tr className="bg-gradient-to-r from-green-900/20 to-emerald-900/20 border-t border-green-500/40">
+                  <tr className="bg-gray-800 border-t border-gray-700">
                     <td className="px-4 py-4 text-white font-bold text-base">소계 (현금 환산)</td>
                     <td className="px-4 py-4"></td>
                     <td className="px-4 py-4 text-xs text-gray-400 text-right">
@@ -3692,7 +3692,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                       })}
                     </tbody>
                     <tfoot>
-                      <tr className="bg-gradient-to-r from-purple-900/40 to-blue-900/40 border-t-2 border-purple-500/60">
+                      <tr className="bg-gray-800 border-t border-gray-700">
                         <td colSpan={4} className="px-2 py-2 text-gray-200 font-bold">
                           총 기대값 (1회)
                         </td>
@@ -3733,7 +3733,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
-      <div className="bg-gray-900/70 border border-gray-700 rounded-2xl p-8">
+      <div className="bg-gray-800 border border-gray-700 rounded p-8">
         <div className="flex flex-col gap-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <h1 className="text-2xl font-bold text-white">PC방 이벤트</h1>
@@ -3743,7 +3743,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                 <button
                   onClick={handleSaveEventEfficiency}
                   disabled={isLoading || !eventName.trim()}
-                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm font-medium disabled:opacity-50"
                 >
                   저장
                 </button>
@@ -3756,7 +3756,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
             <div className="mb-3">
               <button
                 onClick={handleNewEventEfficiency}
-                className="px-5 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all disabled:opacity-50 font-semibold shadow-md shadow-green-500/30 hover:shadow-lg hover:shadow-green-500/50 transform hover:scale-105 active:scale-95 border border-green-500/50"
+                className="px-5 py-2.5 bg-gray-700 text-white rounded hover:bg-gray-600 disabled:opacity-50 font-semibold border border-gray-700"
                 disabled={isLoading}
               >
                 <span className="flex items-center gap-2">
@@ -3794,7 +3794,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                         setShowBasicInfo(hasActiveEvent);
                       }
                     }}
-                    className="flex-1 px-4 py-2 bg-gray-900 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+                    className="flex-1 px-4 py-2 bg-gray-900 text-white rounded border border-gray-700 focus:outline-none focus:border-gray-600"
                     disabled={isLoading}
                   >
                     <option value="">이벤트 선택...</option>
@@ -3812,7 +3812,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                           handleDeleteEventEfficiency(selectedEventEfficiencyId);
                         }
                       }}
-                      className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm"
+                      className="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm"
                       disabled={isLoading}
                     >
                       삭제
@@ -3846,7 +3846,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                   type="text"
                   value={eventName}
                   onChange={(e) => setEventName(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+                  className="w-full px-4 py-2 bg-gray-900 text-white rounded border border-gray-700 focus:outline-none focus:border-gray-600"
                   placeholder="이벤트명을 입력하세요"
                 />
               </div>
@@ -3856,7 +3856,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+                  className="w-full px-4 py-2 bg-gray-900 text-white rounded border border-gray-700 focus:outline-none focus:border-gray-600"
                 />
               </div>
               <div>
@@ -3865,7 +3865,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                   type="number"
                   value={totalWeeksInput}
                   onChange={(e) => setTotalWeeksInput(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+                  className="w-full px-4 py-2 bg-gray-900 text-white rounded border border-gray-700 focus:outline-none focus:border-gray-600"
                   placeholder="총 주수"
                   min="1"
                   step="1"
@@ -3877,7 +3877,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                   type="number"
                   value={totalHoursInput}
                   onChange={(e) => setTotalHoursInput(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+                  className="w-full px-4 py-2 bg-gray-900 text-white rounded border border-gray-700 focus:outline-none focus:border-gray-600"
                   placeholder="총 시간"
                   min="1"
                   step="1"
@@ -3894,7 +3894,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                 <button
                   key={subTab.key}
                   onClick={() => setActiveSubTab(subTab)}
-                  className={`px-4 py-2 rounded-xl border transition-all text-sm font-semibold ${
+                  className={`px-4 py-2 rounded border text-sm font-semibold ${
                     isActive
                       ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white border-transparent shadow-lg'
                       : 'text-gray-300 border-gray-700 hover:border-gray-500 hover:text-white'

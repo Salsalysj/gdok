@@ -111,11 +111,11 @@ export default function Navigation() {
           onClick={() => setLightMode(v => !v)}
           aria-pressed={switchOn}
           title="디코기준"
-          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors border ${
-            switchOn ? 'bg-purple-600 border-purple-500' : 'bg-gray-600 border-gray-500'
+          className={`relative inline-flex h-6 w-11 items-center rounded-full border ${
+            switchOn ? 'bg-gray-600 border-gray-500' : 'bg-gray-700 border-gray-600'
           }`}
         >
-          <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+          <span className={`inline-block h-5 w-5 rounded-full bg-white ${
             switchOn ? 'translate-x-5' : 'translate-x-1'
           }`} />
         </button>
@@ -125,16 +125,16 @@ export default function Navigation() {
   };
 
   return (
-    <nav className="bg-gray-900/80 backdrop-blur-sm border-b border-gray-700 sticky top-0 z-40">
+    <nav className="bg-gray-900 border-b border-gray-700 sticky top-0 z-40">
       <div className="max-w-6xl mx-auto px-3 md:px-4">
         {/* 상단 헤더 */}
         <div className="flex items-center justify-between h-14 md:h-16">
           {/* 로고 */}
-          <Link href="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
-            <span className="text-xl md:text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+          <Link href="/" className="flex items-center space-x-2">
+            <span className="text-xl md:text-2xl font-bold text-white">
               껨산기
             </span>
-            <span className="text-xs px-2 py-0.5 bg-blue-600/20 text-blue-400 border border-blue-500/50 rounded text-xs font-medium">
+            <span className="text-xs px-2 py-0.5 bg-gray-800 text-gray-300 border border-gray-700 rounded">
               오픈베타
             </span>
             <span className="text-xs text-gray-400 hidden sm:inline">
@@ -148,7 +148,7 @@ export default function Navigation() {
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="text-white p-2 hover:bg-gray-800 rounded-lg transition-colors"
+              className="text-white p-2 hover:bg-gray-800 rounded"
               aria-label="메뉴"
             >
               {mobileMenuOpen ? (
@@ -164,7 +164,7 @@ export default function Navigation() {
             <button
               type="button"
               onClick={toggleSidebar}
-              className="text-white p-2 hover:bg-gray-800 rounded-lg transition-colors"
+              className="text-white p-2 hover:bg-gray-800 rounded"
               aria-label={sidebarOpen ? '가치 계산 DB 닫기' : '가치 계산 DB 열기'}
               title="가치 계산 DB"
             >
@@ -196,15 +196,15 @@ export default function Navigation() {
                     <div key={tab.href} className={`relative ${menuClass}`}>
                       <button
                         onClick={() => setIsOpen(!isOpen)}
-                        className={`px-4 xl:px-6 py-2 rounded-lg font-medium transition-all text-sm xl:text-base flex items-center gap-1 ${
+                        className={`px-4 xl:px-6 py-2 rounded font-medium text-sm xl:text-base flex items-center gap-1 ${
                           isActive
-                            ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                            ? 'bg-gray-700 text-white'
                             : 'text-gray-400 hover:text-white hover:bg-gray-800'
                         }`}
                       >
                         {tab.name}
                         <svg 
-                          className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                          className={`w-4 h-4 ${isOpen ? 'rotate-180' : ''}`}
                           fill="none" 
                           stroke="currentColor" 
                           viewBox="0 0 24 24"
@@ -213,7 +213,7 @@ export default function Navigation() {
                         </svg>
                       </button>
                       {isOpen && (
-                        <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl min-w-[160px] z-50">
+                        <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-700 rounded min-w-[160px] z-50">
                           {subTabs.map((subTab) => {
                             const isSubActive = pathname === subTab.href || pathname.startsWith(subTab.href + '/');
                             return (
@@ -224,7 +224,7 @@ export default function Navigation() {
                                   e.stopPropagation();
                                   setIsOpen(false);
                                 }}
-                                className={`block px-4 py-2 text-sm transition-colors first:rounded-t-lg last:rounded-b-lg ${
+                                className={`block px-4 py-2 text-sm first:rounded-t last:rounded-b ${
                                   isSubActive
                                     ? 'text-white bg-gray-700'
                                     : 'text-gray-300 hover:text-white hover:bg-gray-700'
@@ -244,9 +244,9 @@ export default function Navigation() {
                   <Link
                     key={tab.href}
                     href={tab.href}
-                    className={`px-4 xl:px-6 py-2 rounded-lg font-medium transition-all text-sm xl:text-base ${
+                    className={`px-4 xl:px-6 py-2 rounded font-medium text-sm xl:text-base ${
                       isActive
-                        ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                        ? 'bg-gray-700 text-white'
                         : 'text-gray-400 hover:text-white hover:bg-gray-800'
                     }`}
                   >
@@ -259,7 +259,7 @@ export default function Navigation() {
             <button
               type="button"
               onClick={toggleSidebar}
-              className="text-gray-400 hover:text-white hover:bg-gray-800 px-3 py-2 rounded-lg transition-colors"
+              className="text-gray-400 hover:text-white hover:bg-gray-800 px-3 py-2 rounded"
               aria-label={sidebarOpen ? '가치 계산 DB 닫기' : '가치 계산 DB 열기'}
               title="가치 계산 DB"
             >
@@ -292,15 +292,15 @@ export default function Navigation() {
                   <div key={tab.href}>
                     <button
                       onClick={() => setIsOpen(!isOpen)}
-                      className={`w-full flex items-center justify-between px-4 py-3 rounded-lg font-medium transition-all ${
+                      className={`w-full flex items-center justify-between px-4 py-3 rounded font-medium ${
                         isActive
-                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                          ? 'bg-gray-700 text-white'
                           : 'text-gray-400 hover:text-white hover:bg-gray-800'
                       }`}
                     >
                       {tab.name}
                       <svg 
-                        className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                        className={`w-4 h-4 ${isOpen ? 'rotate-180' : ''}`}
                         fill="none" 
                         stroke="currentColor" 
                         viewBox="0 0 24 24"
@@ -321,7 +321,7 @@ export default function Navigation() {
                                 setIsOpen(false);
                                 setMobileMenuOpen(false);
                               }}
-                              className={`block px-4 py-2 rounded-lg text-sm transition-colors ${
+                              className={`block px-4 py-2 rounded text-sm ${
                                 isSubActive
                                   ? 'text-white bg-gray-800'
                                   : 'text-gray-400 hover:text-white hover:bg-gray-800'
@@ -345,9 +345,9 @@ export default function Navigation() {
                     // 링크 클릭은 정상적으로 처리되도록 함
                     setMobileMenuOpen(false);
                   }}
-                  className={`block px-4 py-3 rounded-lg font-medium transition-all ${
+                  className={`block px-4 py-3 rounded font-medium ${
                     isActive
-                      ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                      ? 'bg-gray-700 text-white'
                       : 'text-gray-400 hover:text-white hover:bg-gray-800'
                   }`}
                 >

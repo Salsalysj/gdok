@@ -109,13 +109,13 @@ export default function ValueDBSidebar() {
   };
 
   return (
-    <div className="h-full flex flex-col bg-gray-900/95 backdrop-blur-sm border-r border-gray-800">
+    <div className="h-full flex flex-col bg-gray-900 border-r border-gray-800">
       {/* 헤더: 제목 + 닫기 버튼 */}
       <div className="p-3 border-b border-gray-800 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-gray-300">가치 계산 DB</h2>
         <button
           onClick={closeSidebar}
-          className="text-gray-400 hover:text-white transition-colors p-1 rounded hover:bg-gray-800"
+          className="text-gray-400 hover:text-white p-1 rounded hover:bg-gray-800"
           aria-label="닫기"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -128,7 +128,7 @@ export default function ValueDBSidebar() {
       <div className="p-3 border-b border-gray-800">
         <h2 className="text-sm font-semibold text-gray-300 mb-3">가격 조정</h2>
         <div className="space-y-2">
-          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white transition-colors">
+          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white">
             <input
               type="checkbox"
               checked={state.ignoreBreakthroughStone}
@@ -137,7 +137,7 @@ export default function ValueDBSidebar() {
             />
             <span>돌파석 미반영</span>
           </label>
-          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white transition-colors">
+          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white">
             <input
               type="checkbox"
               checked={state.ignoreFragment}
@@ -146,7 +146,7 @@ export default function ValueDBSidebar() {
             />
             <span>파편 미반영</span>
           </label>
-          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white transition-colors">
+          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white">
             <input
               type="checkbox"
               checked={state.ignoreCardExp}
@@ -155,7 +155,7 @@ export default function ValueDBSidebar() {
             />
             <span>카드경험치 미반영</span>
           </label>
-          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white transition-colors">
+          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white">
             <input
               type="checkbox"
               checked={state.has97Stone}
@@ -164,7 +164,7 @@ export default function ValueDBSidebar() {
             />
             <span>97돌 오우너</span>
           </label>
-          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white transition-colors">
+          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white">
             <input
               type="checkbox"
               checked={state.hasFullRelicEngraving}
@@ -173,7 +173,7 @@ export default function ValueDBSidebar() {
             />
             <span>풀유각 오우너</span>
           </label>
-          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white transition-colors">
+          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white">
             <input
               type="checkbox"
               checked={state.cardSetGraduated}
@@ -182,7 +182,7 @@ export default function ValueDBSidebar() {
             />
             <span>카드 세트 졸업</span>
           </label>
-          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white transition-colors">
+          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white">
             <input
               type="checkbox"
               checked={state.ignoreSilver}
@@ -191,7 +191,7 @@ export default function ValueDBSidebar() {
             />
             <span>실링 미반영</span>
           </label>
-          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white transition-colors">
+          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white">
             <input
               type="checkbox"
               checked={state.ignoreDestructionGuardStone}
@@ -211,7 +211,7 @@ export default function ValueDBSidebar() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="아이템명 검색..."
-          className="w-full px-3 py-2 text-sm bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-3 py-2 text-sm bg-gray-800 border border-gray-700 rounded text-white placeholder-gray-400 focus:outline-none focus:border-gray-600"
         />
       </div>
       <div className="flex-1 overflow-y-auto">
@@ -241,7 +241,7 @@ export default function ValueDBSidebar() {
                           {hasExplanation(entry.itemName) && (
                             <button
                               onClick={(e) => handleQuestionClick(e, entry.itemName)}
-                              className="text-gray-400 hover:text-blue-400 transition-colors text-xs leading-none"
+                              className="text-gray-400 hover:text-gray-300 text-xs leading-none"
                               aria-label="계산 방법 보기"
                             >
                               ?
@@ -278,7 +278,7 @@ export default function ValueDBSidebar() {
                           {hasExplanation(entry.itemName) && (
                             <button
                               onClick={(e) => handleQuestionClick(e, entry.itemName)}
-                              className="text-gray-400 hover:text-blue-400 transition-colors text-xs leading-none"
+                              className="text-gray-400 hover:text-gray-300 text-xs leading-none"
                               aria-label="계산 방법 보기"
                             >
                               ?
@@ -315,7 +315,7 @@ export default function ValueDBSidebar() {
                           {hasExplanation(entry.itemName) && (
                             <button
                               onClick={(e) => handleQuestionClick(e, entry.itemName)}
-                              className="text-gray-400 hover:text-blue-400 transition-colors text-xs leading-none"
+                              className="text-gray-400 hover:text-gray-300 text-xs leading-none"
                               aria-label="계산 방법 보기"
                             >
                               ?
@@ -354,7 +354,7 @@ export default function ValueDBSidebar() {
                           {hasExplanation(entry.itemName) && (
                             <button
                               onClick={(e) => handleQuestionClick(e, entry.itemName)}
-                              className="text-gray-400 hover:text-blue-400 transition-colors text-xs leading-none"
+                              className="text-gray-400 hover:text-gray-300 text-xs leading-none"
                               aria-label="계산 방법 보기"
                             >
                               ?
@@ -391,7 +391,7 @@ export default function ValueDBSidebar() {
       {tooltip && (
         <div
           ref={tooltipRef}
-          className="fixed z-50 bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-3 max-w-xs text-xs text-gray-200 pointer-events-auto"
+          className="fixed z-50 bg-gray-800 border border-gray-700 rounded p-3 max-w-xs text-xs text-gray-200 pointer-events-auto"
           style={{
             left: `${tooltip.x}px`,
             top: `${tooltip.y}px`,

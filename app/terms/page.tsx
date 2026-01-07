@@ -1,6 +1,6 @@
 export default function TermsPage() {
   return (
-    <div className="min-h-full bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+    <div className="min-h-full bg-gray-950">
       <div className="max-w-4xl mx-auto px-4 py-12 md:py-16">
         <h1 className="text-4xl md:text-5xl font-bold text-white mb-8">
           이용약관
@@ -10,7 +10,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-2xl font-semibold text-white mb-4">서비스 제공</h2>
             <p className="text-lg leading-relaxed">
-              본 서비스는 <span className="font-semibold text-yellow-400">"있는 그대로"</span> 제공됩니다. 
+              본 서비스는 <span className="font-semibold">"있는 그대로"</span> 제공됩니다. 
               서비스의 정확성, 가용성, 완전성에 대해 어떠한 보장도 하지 않습니다.
             </p>
           </section>
@@ -50,4 +50,5 @@ export default function TermsPage() {
     </div>
   );
 }
+
 

@@ -29,7 +29,7 @@ export default function ValueDBClient() {
   }, [adjustedEntries, searchQuery]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4 md:p-6 lg:p-8">
+    <div className="min-h-screen bg-gray-950 p-4 md:p-6 lg:p-8">
       <div className="max-w-6xl mx-auto">
         <div className="mb-6 md:mb-10">
           <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-2">가치 계산 DB</h1>

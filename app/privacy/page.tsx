@@ -1,6 +1,6 @@
 export default function PrivacyPage() {
   return (
-    <div className="min-h-full bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+    <div className="min-h-full bg-gray-950">
       <div className="max-w-4xl mx-auto px-4 py-12 md:py-16">
         <h1 className="text-4xl md:text-5xl font-bold text-white mb-8">
           개인정보 처리방침
@@ -39,7 +39,7 @@ export default function PrivacyPage() {
               개인정보 처리방침에 대한 문의사항이 있으시면 다음 이메일로 연락해 주세요:
             </p>
             <p className="text-lg leading-relaxed mt-2">
-              <a href="mailto:snuggdok@gmail.com" className="text-blue-400 hover:text-blue-300 transition-colors">
+              <a href="mailto:snuggdok@gmail.com" className="text-gray-300 hover:text-white">
                 snuggdok@gmail.com
               </a>
             </p>
@@ -55,4 +55,5 @@ export default function PrivacyPage() {
     </div>
   );
 }
+
 

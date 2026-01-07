@@ -1,19 +1,16 @@
 export default function AboutPage() {
   return (
-    <div className="min-h-full bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+    <div className="min-h-full bg-gray-950">
       <div className="max-w-4xl mx-auto px-4 py-12 md:py-16">
         <h1 className="text-4xl md:text-5xl font-bold text-white mb-8">
-          <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-            껨산기
-          </span>
-          에 대하여
+          껨산기에 대하여
         </h1>
 
         <div className="space-y-6 text-gray-300">
           <section>
             <h2 className="text-2xl font-semibold text-white mb-4">서비스 소개</h2>
             <p className="text-lg leading-relaxed">
-              <span className="font-semibold text-blue-400">껨산기</span>는 로스트아크 게임 내 아이템의 가치를 계산하고 
+              <span className="font-semibold">껨산기</span>는 로스트아크 게임 내 아이템의 가치를 계산하고 
               효율을 분석하는 도구입니다. 컨텐츠 보상, 과금 효율, 재련 효율, 이벤트 효율, 골드 환율 등 
               다양한 측면에서 게임 내 자원의 가치를 정확하게 계산하여 최적의 선택을 돕습니다.
             </p>
@@ -39,4 +36,5 @@ export default function AboutPage() {
     </div>
   );
 }
+
 

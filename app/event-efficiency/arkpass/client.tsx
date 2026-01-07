@@ -1081,7 +1081,7 @@ export default function ArkpassGuideClient({
   };
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 py-8">
+    <div className="min-h-screen bg-gray-950 py-8">
       <div className="max-w-6xl mx-auto px-4 space-y-6">
         <div className="bg-gray-900/70 border border-gray-700 rounded-2xl p-8">
           <div className="flex flex-col gap-4">

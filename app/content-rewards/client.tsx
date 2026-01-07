@@ -288,10 +288,10 @@ export default function ContentRewardsClient({
   
   if (availableContents.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-8">
+      <div className="min-h-screen bg-gray-950 p-8">
         <div className="max-w-6xl mx-auto">
-          <div className="bg-red-900/20 border border-red-700 rounded-lg p-6">
-            <h2 className="text-2xl font-bold text-red-400 mb-2">데이터 없음</h2>
+          <div className="bg-gray-800 border border-gray-700 rounded p-6">
+            <h2 className="text-2xl font-bold text-gray-300 mb-2">데이터 없음</h2>
             <p className="text-gray-400">
               보상 데이터가 없습니다. 먼저 <code className="bg-gray-800 px-2 py-1 rounded">scripts/parse-content-rewards.js</code>를 실행하여
               Excel 파일을 JSON으로 변환하세요.
@@ -303,7 +303,7 @@ export default function ContentRewardsClient({
   }
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4 md:p-6 lg:p-8">
+    <div className="min-h-screen bg-gray-950 p-4 md:p-6 lg:p-8">
       <div className="max-w-6xl mx-auto">
         <div className="mb-6 md:mb-10">
           <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-2">
@@ -331,9 +331,9 @@ export default function ContentRewardsClient({
                     <button
                       key={level}
                       onClick={() => setActiveLevel(level)}
-                      className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                      className={`px-4 py-2 rounded font-semibold ${
                         activeLevel === level
-                          ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg'
+                          ? 'bg-gray-700 text-white'
                           : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
                       }`}
                     >
@@ -347,7 +347,7 @@ export default function ContentRewardsClient({
               <select
                 value={activeLevel}
                 onChange={(e) => setActiveLevel(e.target.value)}
-                className="px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+                className="px-4 py-2 bg-gray-800 text-white rounded border border-gray-700 focus:outline-none focus:border-gray-600"
               >
                 {levels.map(level => (
                   <option key={level} value={level}>
@@ -377,7 +377,7 @@ export default function ContentRewardsClient({
             const cashValueTotal = goldToCashPerGold ? totals.total * goldToCashPerGold : null;
             
             return (
-              <div key={idx} className="bg-gray-800/50 rounded-lg p-6 border border-gray-700">
+              <div key={idx} className="bg-gray-800 rounded p-6 border border-gray-700">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-2xl font-bold text-white">단계 {stage.stage}</h3>
                   <div className="flex flex-wrap items-end gap-4 justify-end text-right">
@@ -449,7 +449,7 @@ export default function ContentRewardsClient({
                     return (
                       <div
                         key={rewardIdx}
-                        className={`bg-gray-900/50 rounded-lg border border-gray-700 ${
+                        className={`bg-gray-900 rounded border border-gray-700 ${
                           isSimpleLayout ? 'p-3' : 'p-4 flex items-center gap-3'
                         }`}
                       >
@@ -543,7 +543,7 @@ export default function ContentRewardsClient({
                   const cubeLabel = match ? match[1] : '';
                   const list = cubeInfo.cubeStageRewards || [];
                   return (
-                    <div className="mt-4 bg-gray-900/60 border border-gray-700 rounded-lg p-4">
+                    <div className="mt-4 bg-gray-900 border border-gray-700 rounded p-4">
                       <div className="text-sm text-gray-300 mb-2">
                         에브니 큐브 보상{cubeLabel ? ` (${cubeLabel})` : ''}
                       </div>

@@ -11,7 +11,7 @@ export default async function AdvancedRefiningPage() {
 
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-8">
+      <div className="min-h-screen bg-gray-950 p-8">
         <div className="max-w-6xl mx-auto">
           <div className="text-center py-12">
             <div className="text-white">로딩 중...</div>

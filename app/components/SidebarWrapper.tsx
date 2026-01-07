@@ -16,7 +16,7 @@ export default function SidebarWrapper() {
         onClick={close}
       />
       {/* 사이드바 */}
-      <div className="fixed right-0 top-16 bottom-20 w-96 z-50 lg:top-16 lg:bottom-auto lg:h-[calc(100vh-4rem-5rem)] shadow-xl lg:right-4">
+      <div className="fixed right-0 top-16 bottom-20 w-96 z-50 lg:top-16 lg:bottom-auto lg:h-[calc(100vh-4rem-5rem)] lg:right-4">
         <ValueDBSidebar />
       </div>
     </>

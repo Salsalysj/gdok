@@ -284,7 +284,7 @@ export default function AdminPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-8">
+    <div className="min-h-screen bg-gray-950 p-8">
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
           <Link href="/market" className="text-blue-400 hover:text-blue-300 mb-4 inline-block">

@@ -215,7 +215,7 @@ export default function PackageEfficiencyClient({
           className={`w-full ${sizeClasses} ${bgColor} text-white rounded-lg border focus:outline-none focus:border-purple-500 text-left flex items-center justify-between`}
         >
           <span className={value ? "" : "text-gray-500"}>{selectedLabel}</span>
-          <svg className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className={`w-4 h-4 ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         </button>
@@ -1934,7 +1934,7 @@ export default function PackageEfficiencyClient({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-8">
+    <div className="min-h-screen bg-gray-950 p-8">
       <div className="max-w-6xl mx-auto">
         <div className="mb-10">
           <div className="flex items-center justify-between mb-2">
@@ -1990,7 +1990,7 @@ export default function PackageEfficiencyClient({
           <div className="mb-3">
             <button
               onClick={handleNewPackage}
-              className="px-5 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all disabled:opacity-50 font-semibold shadow-md shadow-green-500/30 hover:shadow-lg hover:shadow-green-500/50 transform hover:scale-105 active:scale-95 border border-green-500/50"
+              className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 font-semibold border border-green-500/50"
               disabled={isLoading}
             >
               <span className="flex items-center gap-2">
@@ -2048,9 +2048,9 @@ export default function PackageEfficiencyClient({
                           <button
                             key={pkg.id}
                             onClick={() => handleLoadPackage(pkg.id)}
-                            className={`group relative px-3 py-1.5 rounded-lg font-medium transition-all disabled:opacity-50 transform hover:scale-105 active:scale-95 text-xs ${
+                            className={`group relative px-3 py-1.5 rounded-lg font-medium disabled:opacity-50 text-xs ${
                               isSelected
-                                ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg shadow-purple-500/50 ring-2 ring-purple-400 ring-offset-1 ring-offset-gray-800'
+                                ? 'bg-purple-600 text-white border border-purple-500'
                                 : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white border border-gray-700'
                             }`}
                             disabled={isLoading}
@@ -2096,9 +2096,9 @@ export default function PackageEfficiencyClient({
                           <button
                             key={pkg.id}
                             onClick={() => handleLoadPackage(pkg.id)}
-                            className={`group relative px-3 py-1.5 rounded-lg font-medium transition-all disabled:opacity-50 transform hover:scale-105 active:scale-95 text-xs ${
+                            className={`group relative px-3 py-1.5 rounded-lg font-medium disabled:opacity-50 text-xs ${
                               isSelected
-                                ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg shadow-purple-500/50 ring-2 ring-purple-400 ring-offset-1 ring-offset-gray-800'
+                                ? 'bg-purple-600 text-white border border-purple-500'
                                 : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white border border-gray-700'
                             }`}
                             disabled={isLoading}
@@ -2149,9 +2149,9 @@ export default function PackageEfficiencyClient({
                           <button
                             key={pkg.id}
                             onClick={() => handleLoadPackage(pkg.id)}
-                            className={`group relative px-3 py-1.5 rounded-lg font-medium transition-all disabled:opacity-50 transform hover:scale-105 active:scale-95 text-xs ${
+                            className={`group relative px-3 py-1.5 rounded-lg font-medium disabled:opacity-50 text-xs ${
                               isSelected
-                                ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg shadow-purple-500/50 ring-2 ring-purple-400 ring-offset-1 ring-offset-gray-800'
+                                ? 'bg-purple-600 text-white border border-purple-500'
                                 : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white border border-gray-700'
                             }`}
                             disabled={isLoading}
@@ -2597,7 +2597,7 @@ export default function PackageEfficiencyClient({
                                           하위 구성 요소 {component.nestedItem.components.length}개
                                         </span>
                                         <svg
-                                          className={`w-3 h-3 text-blue-400 transition-transform ${expandedNestedItems[`${itemIndex}-${compIndex}`] ? 'rotate-180' : ''}`}
+                                          className={`w-3 h-3 text-blue-400 ${expandedNestedItems[`${itemIndex}-${compIndex}`] ? 'rotate-180' : ''}`}
                                           fill="none"
                                           stroke="currentColor"
                                           viewBox="0 0 24 24"
@@ -2882,7 +2882,7 @@ export default function PackageEfficiencyClient({
                       구성 요소 {packageItem.components.length}개
                     </span>
                     <svg
-                      className={`w-4 h-4 text-gray-400 transition-transform ${expandedItems[itemIndex] ? 'rotate-180' : ''}`}
+                      className={`w-4 h-4 text-gray-400 ${expandedItems[itemIndex] ? 'rotate-180' : ''}`}
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -3051,7 +3051,7 @@ export default function PackageEfficiencyClient({
                                           하위 구성 요소 {component.nestedItem.components.length}개
                               </span>
                               <svg
-                                className={`w-3 h-3 text-blue-400 transition-transform ${expandedNestedItems[`${itemIndex}-${componentIndex}`] ? 'rotate-180' : ''}`}
+                                className={`w-3 h-3 text-blue-400 ${expandedNestedItems[`${itemIndex}-${componentIndex}`] ? 'rotate-180' : ''}`}
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -3921,18 +3921,14 @@ export default function PackageEfficiencyClient({
         {/* 계산 결과 */}
         <div className="space-y-6">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-1 h-8 bg-gradient-to-b from-purple-500 to-blue-500 rounded-full"></div>
-            <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
+            <div className="w-1 h-8 bg-purple-500 rounded-full"></div>
+            <h2 className="text-3xl font-bold text-white">
               계산 결과 요약
             </h2>
           </div>
           
           {/* 패키지 개요 카드 */}
-          <div className="relative bg-gradient-to-br from-gray-800/90 via-gray-800/70 to-gray-900/90 rounded-2xl border border-gray-700/50 shadow-2xl p-8 overflow-hidden">
-            {/* 배경 장식 */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/5 rounded-full blur-3xl"></div>
-            <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl"></div>
-            
+          <div className="relative bg-gray-800/90 rounded-lg border border-gray-700 p-8">
             <div className="relative z-10">
               <div className="flex items-center gap-2 mb-6">
                 <div className="p-2 bg-purple-500/10 rounded-lg">
@@ -3942,8 +3938,8 @@ export default function PackageEfficiencyClient({
                 </div>
                 <h3 className="text-xl font-bold text-white">상품 정보</h3>
               </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div className="bg-gray-900/50 rounded-xl p-4 border border-gray-700/50 hover:border-purple-500/30 transition-all">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700/50">
                   <div className="flex items-center gap-2 mb-2">
                     <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
@@ -3959,7 +3955,7 @@ export default function PackageEfficiencyClient({
                       endDate.setHours(0, 0, 0, 0);
                       if (endDate < today) {
                         return (
-                          <span className="text-xs bg-gradient-to-r from-red-600 to-red-700 text-white px-2.5 py-1 rounded-full shadow-lg">
+                          <span className="text-xs bg-red-600 text-white px-2.5 py-1 rounded-full">
                             판매종료
                           </span>
                         );
@@ -3968,7 +3964,7 @@ export default function PackageEfficiencyClient({
                     })()}
                   </div>
                 </div>
-                <div className="bg-gray-900/50 rounded-xl p-4 border border-gray-700/50 hover:border-blue-500/30 transition-all">
+                <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700/50">
                   <div className="flex items-center gap-2 mb-2">
                     <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -3987,7 +3983,7 @@ export default function PackageEfficiencyClient({
                     {packageData.packageType}
                   </div>
                 </div>
-                <div className="bg-gray-900/50 rounded-xl p-4 border border-gray-700/50 hover:border-green-500/30 transition-all">
+                <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700/50">
                   <div className="flex items-center gap-2 mb-2">
                     <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -3998,7 +3994,7 @@ export default function PackageEfficiencyClient({
                     {packageData.purchaseCount}<span className="text-base text-gray-400 ml-1">회</span>
                   </div>
                 </div>
-                <div className="bg-gray-900/50 rounded-xl p-4 border border-gray-700/50 hover:border-yellow-500/30 transition-all">
+                <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700/50">
                   <div className="flex items-center gap-2 mb-2">
                     <svg className="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -4011,7 +4007,7 @@ export default function PackageEfficiencyClient({
                     )}
                   </div>
                 </div>
-                <div className="bg-gray-900/50 rounded-xl p-4 border border-gray-700/50 hover:border-cyan-500/30 transition-all">
+                <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700/50">
                   <div className="flex items-center gap-2 mb-2">
                     <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
@@ -4028,10 +4024,7 @@ export default function PackageEfficiencyClient({
 
           {/* 구성품 내용 카드 */}
           {packageData.packageType !== '보너스룸' && (packageData.items.length > 0 || (packageData.packageType === '3+보너스' && packageData.bonus3Items.length > 0)) && (
-            <div className="relative bg-gradient-to-br from-gray-800/90 via-gray-800/70 to-gray-900/90 rounded-2xl border border-gray-700/50 shadow-xl p-8 overflow-hidden">
-              {/* 배경 장식 */}
-              <div className="absolute top-0 left-0 w-48 h-48 bg-blue-500/5 rounded-full blur-3xl"></div>
-              
+            <div className="relative bg-gray-800/90 rounded-lg border border-gray-700 p-8">
               <div className="relative z-10">
                 <div className="flex items-center gap-2 mb-6">
                   <div className="p-2 bg-blue-500/10 rounded-lg">
@@ -4051,7 +4044,7 @@ export default function PackageEfficiencyClient({
                   const colors = typeColors[packageItem.itemType as keyof typeof typeColors] || typeColors['확정'];
                   
                   return (
-                  <div key={itemIndex} className={`relative bg-gray-900/70 rounded-xl p-5 border ${colors.border} ${colors.bg} hover:border-opacity-60 transition-all`}>
+                  <div key={itemIndex} className={`relative bg-gray-900/70 rounded-lg p-5 border ${colors.border} ${colors.bg}`}>
                     {/* 타입 배지 */}
                     <div className="absolute top-3 right-3">
                       <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${colors.badge}`}>
@@ -4222,7 +4215,7 @@ export default function PackageEfficiencyClient({
                           구성 요소 {packageItem.components.length}개
                         </span>
                         <svg
-                          className={`w-4 h-4 text-gray-400 transition-transform ${expandedItems[itemIndex] ? 'rotate-180' : ''}`}
+                          className={`w-4 h-4 text-gray-400 ${expandedItems[itemIndex] ? 'rotate-180' : ''}`}
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -4466,7 +4459,7 @@ export default function PackageEfficiencyClient({
                                           하위 구성 요소 {component.nestedItem.components.length}개
                                         </span>
                                         <svg
-                                          className={`w-3 h-3 text-blue-400 transition-transform ${expandedNestedItems[`${itemIndex}-${compIndex}`] ? 'rotate-180' : ''}`}
+                                          className={`w-3 h-3 text-blue-400 ${expandedNestedItems[`${itemIndex}-${compIndex}`] ? 'rotate-180' : ''}`}
                                           fill="none"
                                           stroke="currentColor"
                                           viewBox="0 0 24 24"
@@ -4740,7 +4733,7 @@ export default function PackageEfficiencyClient({
                   const colors = typeColors[packageItem.itemType as keyof typeof typeColors] || typeColors['확정'];
                   
                   return (
-                  <div key={`bonus3-${itemIndex}`} className={`relative bg-gray-900/70 rounded-xl p-5 border ${colors.border} ${colors.bg} hover:border-opacity-60 transition-all`}>
+                  <div key={`bonus3-${itemIndex}`} className={`relative bg-gray-900/70 rounded-lg p-5 border ${colors.border} ${colors.bg}`}>
                     <div className="absolute top-3 right-3">
                       <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${colors.badge}`}>
                         {packageItem.itemType}
@@ -5025,7 +5018,7 @@ export default function PackageEfficiencyClient({
                                       {component.itemName === '__manual__' || component.itemName === '' ? '직접 입력' : component.itemName}
                                     </span>
                                     {packageItem.itemType === '확률' && component.probability !== undefined && (
-                                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full">
+                                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded">
                                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                                         </svg>
@@ -5087,11 +5080,7 @@ export default function PackageEfficiencyClient({
 
           {/* 합산 효율 카드 */}
           {packageData.packageType === '보너스룸' ? (
-            <div className="relative bg-gradient-to-br from-gray-800/90 via-gray-800/70 to-gray-900/90 rounded-2xl border border-gray-700/50 shadow-xl p-8 overflow-hidden">
-              {/* 배경 장식 */}
-              <div className="absolute top-0 right-0 w-64 h-64 bg-orange-500/5 rounded-full blur-3xl"></div>
-              <div className="absolute bottom-0 left-0 w-64 h-64 bg-pink-500/5 rounded-full blur-3xl"></div>
-              
+            <div className="relative bg-gray-800/90 rounded-lg border border-gray-700 p-8">
               <div className="relative z-10">
                 <div className="flex items-center gap-2 mb-6">
                   <div className="p-2 bg-orange-500/10 rounded-lg">
@@ -5103,7 +5092,7 @@ export default function PackageEfficiencyClient({
                 </div>
               <div className="space-y-6">
                 {bonusRoomEfficiencies?.map((room, roomIndex) => (
-                  <div key={roomIndex} className="bg-gray-900/70 rounded-xl border border-orange-500/20 p-6 hover:border-orange-500/40 transition-all">
+                  <div key={roomIndex} className="bg-gray-900/70 rounded-lg border border-orange-500/20 p-6">
                     <div className="flex items-center gap-2 mb-4">
                       <svg className="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
@@ -5164,7 +5153,7 @@ export default function PackageEfficiencyClient({
                       </div>
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                       {room.items.map((item, itemIndex) => (
-                        <div key={itemIndex} className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50 hover:border-gray-600 transition-all">
+                        <div key={itemIndex} className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
                           {/* 항목 헤더 */}
                           <div className="flex items-start justify-between mb-3 pb-2 border-b border-gray-700/50">
                             <div className="flex-1">
@@ -5232,7 +5221,7 @@ export default function PackageEfficiencyClient({
                                   // 선택 타입: 라디오 버튼으로 선택 변경 가능
                                   <div className="space-y-1">
                                     {item.components.map((comp, compIndex) => (
-                                      <label key={compIndex} className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all ${comp.selected ? 'bg-yellow-500/10 border border-yellow-500/30' : 'bg-gray-900/30 border border-gray-700/50 hover:border-gray-600'}`}>
+                                      <label key={compIndex} className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer ${comp.selected ? 'bg-yellow-500/10 border border-yellow-500/30' : 'bg-gray-900/30 border border-gray-700/50'}`}>
                                         <input
                                           type="radio"
                                           name={`bonus-room-${roomIndex}-item-${itemIndex}-selection`}
@@ -5285,7 +5274,7 @@ export default function PackageEfficiencyClient({
                                       <div className="flex items-center justify-between mb-1">
                                         <div className="text-xs font-medium text-gray-300">{comp.itemName}</div>
                                         {comp.probability !== undefined && (
-                                          <span className="text-xs font-semibold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full">
+                                          <span className="text-xs font-semibold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded">
                                             {(comp.probability * 100).toFixed(1)}%
                                           </span>
                                         )}
@@ -5348,7 +5337,7 @@ export default function PackageEfficiencyClient({
                       setSavePackageName(packageData.packageName);
                       setShowSaveModal(true);
                     }}
-                    className="px-8 py-3 bg-purple-600 text-white text-lg font-semibold rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 shadow-lg"
+                    className="px-8 py-3 bg-purple-600 text-white text-lg font-semibold rounded-lg hover:bg-purple-700 disabled:opacity-50"
                     disabled={isLoading || !packageData.packageName.trim()}
                   >
                     {selectedPackageId ? '📝 패키지 업데이트' : '💾 패키지 저장'}
@@ -5357,11 +5346,7 @@ export default function PackageEfficiencyClient({
               )}
             </div>
           ) : (
-            <div className="relative bg-gradient-to-br from-gray-800/90 via-gray-800/70 to-gray-900/90 rounded-2xl border border-gray-700/50 shadow-xl p-8 overflow-hidden">
-              {/* 배경 장식 */}
-              <div className="absolute top-0 right-0 w-64 h-64 bg-green-500/5 rounded-full blur-3xl"></div>
-              <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/5 rounded-full blur-3xl"></div>
-              
+            <div className="relative bg-gray-800/90 rounded-lg border border-gray-700 p-8">
               <div className="relative z-10">
                 <div className="flex items-center gap-2 mb-6">
                   <div className="p-2 bg-green-500/10 rounded-lg">
@@ -5372,7 +5357,7 @@ export default function PackageEfficiencyClient({
                   <h3 className="text-xl font-bold text-white">합산 효율</h3>
                 </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-gray-900/50 rounded-xl p-6 border border-gray-700/50 hover:border-blue-500/30 transition-all">
+                <div className="bg-gray-900/50 rounded-lg p-6 border border-gray-700/50">
                   <div className="flex items-center gap-2 mb-3">
                     <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -5465,7 +5450,7 @@ export default function PackageEfficiencyClient({
                     );
                   })()}
                 </div>
-                <div className="bg-gray-900/50 rounded-xl p-6 border border-gray-700/50 hover:border-purple-500/30 transition-all">
+                <div className="bg-gray-900/50 rounded-lg p-6 border border-gray-700/50">
                   <div className="flex items-center gap-2 mb-3">
                     <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
@@ -5476,7 +5461,7 @@ export default function PackageEfficiencyClient({
                     {formatNumberWithSignificantDigits(totalValue)} {packageData.priceType}
                   </div>
                 </div>
-                <div className={`bg-gray-900/50 rounded-xl p-6 border transition-all ${efficiency !== null && efficiency >= 1 ? 'border-green-500/50 hover:border-green-500/70 shadow-lg shadow-green-500/10' : efficiency !== null ? 'border-red-500/50 hover:border-red-500/70 shadow-lg shadow-red-500/10' : 'border-gray-700/50'}`}>
+                <div className={`bg-gray-900/50 rounded-lg p-6 border ${efficiency !== null && efficiency >= 1 ? 'border-green-500/50' : efficiency !== null ? 'border-red-500/50' : 'border-gray-700/50'}`}>
                   <div className="flex items-center gap-2 mb-3">
                     <svg className={`w-4 h-4 ${efficiency !== null && efficiency >= 1 ? 'text-green-400' : 'text-red-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -5506,7 +5491,7 @@ export default function PackageEfficiencyClient({
                       setSavePackageName(packageData.packageName);
                       setShowSaveModal(true);
                     }}
-                    className="group relative px-10 py-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-lg font-bold rounded-xl hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50 shadow-2xl hover:shadow-purple-500/50 disabled:shadow-none transform hover:scale-105 disabled:hover:scale-100"
+                    className="group relative px-10 py-4 bg-purple-600 text-white text-lg font-bold rounded-lg hover:bg-purple-700 disabled:opacity-50"
                     disabled={isLoading || !packageData.packageName.trim()}
                   >
                     <span className="flex items-center gap-2">
