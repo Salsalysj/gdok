@@ -9,9 +9,12 @@ import {
   type RefiningMaterial,
   type SimulationResult,
   type OptimalStrategy,
+  findOptimalStrategyFromResults,
+  type ScenarioWithCost,
 } from '@/lib/advancedRefining';
 import type { ValueDbEntry } from '@/lib/valueDb';
-import simulationDataLevel1_2 from '@/lib/advancedRefiningData.json';
+import simulationDataLevel1 from '@/lib/advancedRefiningData.json';
+import simulationDataLevel2 from '@/lib/advancedRefiningData-level2.json';
 import simulationDataLevel3 from '@/lib/advancedRefiningData-level3.json';
 import simulationDataLevel4 from '@/lib/advancedRefiningData-level4.json';
 import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
@@ -208,9 +211,16 @@ export default function AdvancedRefiningClient({
       simulationData = simulationDataLevel3;
     } else if (activeSubTab === '상재4') {
       simulationData = simulationDataLevel4;
+    } else if (activeSubTab === '상재2') {
+      simulationData = simulationDataLevel2;
     } else {
-      simulationData = simulationDataLevel1_2;
+      simulationData = simulationDataLevel1;
     }
+    
+    // 디버깅: 데이터 소스 확인
+    console.log(`[시뮬레이션 데이터 로드] ${activeSubTab} ${gearType}`);
+    const totalDataCount = (simulationData as any).data?.length || 0;
+    console.log(`  - 전체 데이터 개수: ${totalDataCount}개`);
     
     // 상재3, 4의 경우 enhancedAncestor 관련 필드가 있음
     const isLevel3Or4 = activeSubTab === '상재3' || activeSubTab === '상재4';
@@ -239,6 +249,9 @@ export default function AdvancedRefiningClient({
         };
       }>;
     }).data.filter(item => item.gearType === gearType);
+    
+    // 디버깅: 필터링 결과 확인
+    console.log(`  - 필터링 후 ${gearType} 개수: ${filteredData.length}개`);
 
     // OptimalStrategy 형식으로 변환
     return filteredData.map(item => ({
@@ -437,18 +450,92 @@ export default function AdvancedRefiningClient({
       };
     });
 
+    // 콘솔 로그: 모든 시나리오 비용 정보
+    console.group(`[상급재련] ${activeSubTab} ${activeSubSubTab} - 모든 시나리오 비용 분석`);
+    console.log('📊 데이터 소스 확인:');
+    const dataFileName = activeSubTab === '상재2' ? 'advancedRefiningData-level2.json' : activeSubTab === '상재1' ? 'advancedRefiningData.json' : activeSubTab === '상재3' ? 'advancedRefiningData-level3.json' : 'advancedRefiningData-level4.json';
+    console.log(`  - 사용 중인 파일: ${dataFileName}`);
+    console.log(`  - 원본 데이터에서 ${activeSubSubTab} 필터링 후:`, simulationResults?.length || 0, '개');
+    console.log(`  - 비용 계산 후 allResults:`, allResults.length, '개');
+    console.log('총 시나리오 수:', allResults.length);
+    allResults.forEach((result, index) => {
+      const strategy = result.strategy;
+      const strategyDesc = [
+        `일반턴: 숨결=${strategy.normalTurn.useBreath}, 야금술=${strategy.normalTurn.useCraftsmanship}`,
+        `선조턴: 숨결=${strategy.ancestorTurn.useBreath}, 야금술=${strategy.ancestorTurn.useCraftsmanship}`,
+        strategy.enhancedAncestorTurn 
+          ? `강화선조턴: 숨결=${strategy.enhancedAncestorTurn.useBreath}, 야금술=${strategy.enhancedAncestorTurn.useCraftsmanship}`
+          : ''
+      ].filter(Boolean).join(', ');
+      
+      console.log(`[시나리오 ${index + 1}] ${strategyDesc}`);
+      console.log(`  - 총 비용: ${result.costBreakdown.totalCost.toLocaleString()} 골드`);
+      console.log(`  - 일반턴 비용: ${result.costBreakdown.normalTurnCost.toLocaleString()} × ${result.result.normalTurns.toFixed(1)} = ${result.costBreakdown.normalTurnTotal.toLocaleString()}`);
+      console.log(`  - 선조턴 비용: ${result.costBreakdown.ancestorTurnCost.toLocaleString()} × ${result.result.ancestorTurns.toFixed(1)} = ${result.costBreakdown.ancestorTurnTotal.toLocaleString()}`);
+      if (result.costBreakdown.enhancedAncestorTurnCost !== undefined && result.result.enhancedAncestorTurns !== undefined) {
+        console.log(`  - 강화선조턴 비용: ${result.costBreakdown.enhancedAncestorTurnCost.toLocaleString()} × ${result.result.enhancedAncestorTurns.toFixed(1)} = ${result.costBreakdown.enhancedAncestorTurnTotal!.toLocaleString()}`);
+      }
+      console.log(`  - 무료턴 비용: ${result.costBreakdown.freeTurnCost.toLocaleString()} × ${result.result.freeTurns.toFixed(1)} = ${result.costBreakdown.freeTurnTotal.toLocaleString()}`);
+      console.log(`  - 예상 시도 횟수: ${result.result.expectedAttempts.toFixed(2)}회`);
+      console.log('---');
+    });
+
     // 최적 전략 찾기 (총 비용이 가장 낮은 것)
-    // 모든 레벨에서 야금술/재봉술이 투입되지 않은 시나리오만 고려
-    let candidatesForOptimal = allResults.filter((r) => {
-      const noNormalCraft = !r.strategy.normalTurn.useCraftsmanship;
-      const noAncestorCraft = !r.strategy.ancestorTurn.useCraftsmanship;
-      const noEnhancedAncestorCraft = !r.strategy.enhancedAncestorTurn?.useCraftsmanship;
-      return noNormalCraft && noAncestorCraft && noEnhancedAncestorCraft;
+    // 모든 시나리오 중에서 최적 비용 찾기
+    console.log('\n[최적 전략 찾기] 모든 시나리오 중 최적 비용 찾기...');
+    const candidatesForOptimal = allResults;
+    
+    console.log(`전체 후보 수: ${candidatesForOptimal.length}개`);
+    candidatesForOptimal.forEach((candidate, index) => {
+      const strategy = candidate.strategy;
+      const strategyDesc = [
+        `일반턴: 숨결=${strategy.normalTurn.useBreath}, 야금술=${strategy.normalTurn.useCraftsmanship}`,
+        `선조턴: 숨결=${strategy.ancestorTurn.useBreath}, 야금술=${strategy.ancestorTurn.useCraftsmanship}`,
+        strategy.enhancedAncestorTurn 
+          ? `강화선조턴: 숨결=${strategy.enhancedAncestorTurn.useBreath}, 야금술=${strategy.enhancedAncestorTurn.useCraftsmanship}`
+          : ''
+      ].filter(Boolean).join(', ');
+      
+      console.log(`  [후보 ${index + 1}] ${strategyDesc} - 총 비용: ${candidate.costBreakdown.totalCost.toLocaleString()} 골드`);
+    });
+
+    const optimal = findOptimalStrategyFromResults(allResults, {
+      excludeCraftsmanship: false,
     });
     
-    const optimal = candidatesForOptimal.reduce((best, current) => {
-      return current.costBreakdown.totalCost < best.costBreakdown.totalCost ? current : best;
-    }, candidatesForOptimal[0]);
+    if (!optimal) {
+      console.warn('⚠️ 최적 전략을 찾을 수 없습니다!');
+      console.groupEnd();
+      return;
+    }
+
+    // 최적 전략 정보 출력
+    const optimalStrategyDesc = [
+      `일반턴: 숨결=${optimal.strategy.normalTurn.useBreath}, 야금술=${optimal.strategy.normalTurn.useCraftsmanship}`,
+      `선조턴: 숨결=${optimal.strategy.ancestorTurn.useBreath}, 야금술=${optimal.strategy.ancestorTurn.useCraftsmanship}`,
+      optimal.strategy.enhancedAncestorTurn 
+        ? `강화선조턴: 숨결=${optimal.strategy.enhancedAncestorTurn.useBreath}, 야금술=${optimal.strategy.enhancedAncestorTurn.useCraftsmanship}`
+        : ''
+    ].filter(Boolean).join(', ');
+
+    console.log(`\n✅ [최적 전략 선택됨]`);
+    console.log(`전략: ${optimalStrategyDesc}`);
+    console.log(`총 비용: ${optimal.costBreakdown.totalCost.toLocaleString()} 골드`);
+    console.log(`예상 시도 횟수: ${optimal.result.expectedAttempts.toFixed(2)}회`);
+    
+    // 모든 후보와 비교
+    console.log(`\n[비용 비교]`);
+    candidatesForOptimal.forEach((candidate, index) => {
+      const diff = candidate.costBreakdown.totalCost - optimal.costBreakdown.totalCost;
+      const isOptimal = candidate === optimal;
+      const sign = diff > 0 ? '+' : '';
+      console.log(
+        `후보 ${index + 1}: ${candidate.costBreakdown.totalCost.toLocaleString()} 골드 ` +
+        `${isOptimal ? '✅ (최적)' : `(${sign}${diff.toLocaleString()} 골드)`}`
+      );
+    });
+    
+    console.groupEnd();
 
     // 보조재료 미투입 시나리오 찾기 (모든 턴에서 미투입)
     const noAux = allResults.find(
@@ -603,7 +690,25 @@ export default function AdvancedRefiningClient({
     const craftsmanshipMarketPrice = getMaterialValue(craftsmanshipItemName) || 0;
     
     // materialBreakdown에서도 동일한 단계 사용
-    const craftsmanshipItemNameInBreakdown = craftsmanshipItemName;
+    // 디버깅: 실제 materialBreakdown에 있는 키 확인
+    if (allResults.length > 0 && allResults[0].result.materialBreakdown) {
+      const materialKeys = Object.keys(allResults[0].result.materialBreakdown);
+      const craftKeys = materialKeys.filter(k => k.includes('야금술') || k.includes('재봉술'));
+      console.log(`[야금술/재봉술 실제가치 계산] ${activeSubTab} ${activeSubSubTab}`);
+      console.log(`  찾는 이름: "${craftsmanshipItemName}"`);
+      console.log(`  실제 materialBreakdown에 있는 키:`, craftKeys);
+      
+      // 실제 데이터에 있는 키로 매칭 시도
+      if (craftKeys.length > 0 && !allResults.some(r => r.result.materialBreakdown[craftsmanshipItemName] !== undefined)) {
+        console.warn(`  ⚠️ "${craftsmanshipItemName}" 키가 materialBreakdown에 없습니다!`);
+        console.warn(`  → "${craftKeys[0]}" 키를 사용합니다.`);
+        var craftsmanshipItemNameInBreakdown = craftKeys[0];
+      } else {
+        var craftsmanshipItemNameInBreakdown = craftsmanshipItemName;
+      }
+    } else {
+      var craftsmanshipItemNameInBreakdown = craftsmanshipItemName;
+    }
     
     let ancestorOnlyCraftAnalysis = null;
     let bothTurnsCraftAnalysis = null;

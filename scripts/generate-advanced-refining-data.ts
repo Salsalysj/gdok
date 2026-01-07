@@ -33,6 +33,18 @@ function generateAllStrategies() {
     for (let nc = 0; nc <= 1; nc++) {
       for (let ab = 0; ab <= 1; ab++) {
         for (let ac = 0; ac <= 1; ac++) {
+          // 조건 필터링:
+          // - ancestorBreath가 True일 때만 normalBreath가 True일 수 있음
+          // - ancestorCraft가 True일 때만 normalCraft가 True일 수 있음
+          if (nb === 1 && ab === 0) {
+            // normalBreath가 true인데 ancestorBreath가 false인 경우 제외
+            continue;
+          }
+          if (nc === 1 && ac === 0) {
+            // normalCraft가 true인데 ancestorCraft가 false인 경우 제외
+            continue;
+          }
+          
           strategies.push({
             normalBreath: !!nb,
             normalCraft: !!nc,

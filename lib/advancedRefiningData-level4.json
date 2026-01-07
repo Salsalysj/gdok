@@ -1,7 +1,7 @@
 {
   "level": 4,
   "iterations": 100000,
-  "generatedAt": "2026-01-01T13:53:49.286Z",
+  "generatedAt": "2026-01-07T14:20:58.840Z",
   "data": [
     {
       "gearType": "무기",
@@ -14,215 +14,19 @@
         "enhancedAncestorCraft": false
       },
       "result": {
-        "expectedAttempts": 55.9069,
-        "normalTurns": 43.95517,
-        "ancestorTurns": 8.59257,
-        "enhancedAncestorTurns": 1.06065,
-        "freeTurns": 2.29851,
+        "expectedAttempts": 55.85147,
+        "normalTurns": 43.90862,
+        "ancestorTurns": 8.58416,
+        "enhancedAncestorTurns": 1.06064,
+        "freeTurns": 2.29805,
         "materialBreakdown": {
-          "운명의 파괴석": 75051.746,
-          "운명의 돌파석": 1715.46848,
-          "아비도스 융화 재료": 1608.2517,
-          "운명의 파편": 696909.07,
-          "실링": 3752587.3,
-          "골드": 214433.56,
+          "운명의 파괴석": 74974.788,
+          "운명의 돌파석": 1713.70944,
+          "아비도스 융화 재료": 1606.6026,
+          "운명의 파편": 696194.46,
+          "실링": 3748739.4,
+          "골드": 214213.68,
           "용암의 숨결": 0,
-          "장인의 야금술 : 4단계": 0
-        }
-      }
-    },
-    {
-      "gearType": "무기",
-      "strategy": {
-        "normalBreath": false,
-        "normalCraft": false,
-        "ancestorBreath": false,
-        "ancestorCraft": false,
-        "enhancedAncestorBreath": true,
-        "enhancedAncestorCraft": false
-      },
-      "result": {
-        "expectedAttempts": 55.03555,
-        "normalTurns": 43.26267,
-        "ancestorTurns": 8.46141,
-        "enhancedAncestorTurns": 1.04554,
-        "freeTurns": 2.26593,
-        "materialBreakdown": {
-          "운명의 파괴석": 73877.468,
-          "운명의 돌파석": 1688.62784,
-          "아비도스 융화 재료": 1583.0886,
-          "운명의 파편": 686005.06,
-          "실링": 3693873.4,
-          "골드": 211078.48,
-          "용암의 숨결": 26.1385,
-          "장인의 야금술 : 4단계": 0
-        }
-      }
-    },
-    {
-      "gearType": "무기",
-      "strategy": {
-        "normalBreath": false,
-        "normalCraft": false,
-        "ancestorBreath": true,
-        "ancestorCraft": false,
-        "enhancedAncestorBreath": false,
-        "enhancedAncestorCraft": false
-      },
-      "result": {
-        "expectedAttempts": 51.2843,
-        "normalTurns": 40.34492,
-        "ancestorTurns": 7.87758,
-        "enhancedAncestorTurns": 0.96133,
-        "freeTurns": 2.10047,
-        "materialBreakdown": {
-          "운명의 파괴석": 68857.362,
-          "운명의 돌파석": 1573.88256,
-          "아비도스 융화 재료": 1475.5149,
-          "운명의 파편": 639389.79,
-          "실링": 3442868.1,
-          "골드": 196735.32,
-          "용암의 숨결": 196.9395,
-          "장인의 야금술 : 4단계": 0
-        }
-      }
-    },
-    {
-      "gearType": "무기",
-      "strategy": {
-        "normalBreath": false,
-        "normalCraft": false,
-        "ancestorBreath": true,
-        "ancestorCraft": false,
-        "enhancedAncestorBreath": true,
-        "enhancedAncestorCraft": false
-      },
-      "result": {
-        "expectedAttempts": 50.58327,
-        "normalTurns": 39.79378,
-        "ancestorTurns": 7.76917,
-        "enhancedAncestorTurns": 0.95235,
-        "freeTurns": 2.06797,
-        "materialBreakdown": {
-          "운명의 파괴석": 67921.42,
-          "운명의 돌파석": 1552.4896,
-          "아비도스 융화 재료": 1455.459,
-          "운명의 파편": 630698.9,
-          "실링": 3396071,
-          "골드": 194061.2,
-          "용암의 숨결": 218.038,
-          "장인의 야금술 : 4단계": 0
-        }
-      }
-    },
-    {
-      "gearType": "무기",
-      "strategy": {
-        "normalBreath": true,
-        "normalCraft": false,
-        "ancestorBreath": false,
-        "ancestorCraft": false,
-        "enhancedAncestorBreath": false,
-        "enhancedAncestorCraft": false
-      },
-      "result": {
-        "expectedAttempts": 44.06772,
-        "normalTurns": 34.81647,
-        "ancestorTurns": 6.64576,
-        "enhancedAncestorTurns": 0.82067,
-        "freeTurns": 1.78482,
-        "materialBreakdown": {
-          "운명의 파괴석": 59196.06,
-          "운명의 돌파석": 1353.0528,
-          "아비도스 융화 재료": 1268.487,
-          "운명의 파편": 549677.7,
-          "실링": 2959803,
-          "골드": 169131.6,
-          "용암의 숨결": 915.03225,
-          "장인의 야금술 : 4단계": 0
-        }
-      }
-    },
-    {
-      "gearType": "무기",
-      "strategy": {
-        "normalBreath": true,
-        "normalCraft": false,
-        "ancestorBreath": false,
-        "ancestorCraft": false,
-        "enhancedAncestorBreath": true,
-        "enhancedAncestorCraft": false
-      },
-      "result": {
-        "expectedAttempts": 43.55844,
-        "normalTurns": 34.41314,
-        "ancestorTurns": 6.57414,
-        "enhancedAncestorTurns": 0.81249,
-        "freeTurns": 1.75867,
-        "materialBreakdown": {
-          "운명의 파괴석": 58519.678,
-          "운명의 돌파석": 1337.59264,
-          "아비도스 융화 재료": 1253.9931,
-          "운명의 파편": 543397.01,
-          "실링": 2925983.9,
-          "골드": 167199.08,
-          "용암의 숨결": 924.6075,
-          "장인의 야금술 : 4단계": 0
-        }
-      }
-    },
-    {
-      "gearType": "무기",
-      "strategy": {
-        "normalBreath": true,
-        "normalCraft": false,
-        "ancestorBreath": true,
-        "ancestorCraft": false,
-        "enhancedAncestorBreath": false,
-        "enhancedAncestorCraft": false
-      },
-      "result": {
-        "expectedAttempts": 41.23311,
-        "normalTurns": 32.59303,
-        "ancestorTurns": 6.22073,
-        "enhancedAncestorTurns": 0.76188,
-        "freeTurns": 1.65747,
-        "materialBreakdown": {
-          "운명의 파괴석": 55405.896,
-          "운명의 돌파석": 1266.42048,
-          "아비도스 융화 재료": 1187.2692,
-          "운명의 파편": 514483.32,
-          "실링": 2770294.8,
-          "골드": 158302.56,
-          "용암의 숨결": 1011.78075,
-          "장인의 야금술 : 4단계": 0
-        }
-      }
-    },
-    {
-      "gearType": "무기",
-      "strategy": {
-        "normalBreath": true,
-        "normalCraft": false,
-        "ancestorBreath": true,
-        "ancestorCraft": false,
-        "enhancedAncestorBreath": true,
-        "enhancedAncestorCraft": false
-      },
-      "result": {
-        "expectedAttempts": 40.74746,
-        "normalTurns": 32.21827,
-        "ancestorTurns": 6.14407,
-        "enhancedAncestorTurns": 0.75424,
-        "freeTurns": 1.63088,
-        "materialBreakdown": {
-          "운명의 파괴석": 54763.212,
-          "운명의 돌파석": 1251.73056,
-          "아비도스 융화 재료": 1173.4974,
-          "운명의 파편": 508515.54,
-          "실링": 2738160.6,
-          "골드": 156466.32,
-          "용암의 숨결": 1018.6865,
           "장인의 야금술 : 4단계": 0
         }
       }
@@ -238,20 +42,76 @@
         "enhancedAncestorCraft": true
       },
       "result": {
-        "expectedAttempts": 54.61608,
-        "normalTurns": 42.95425,
-        "ancestorTurns": 8.39421,
-        "enhancedAncestorTurns": 1.0282,
-        "freeTurns": 2.23942,
+        "expectedAttempts": 54.58995,
+        "normalTurns": 42.91714,
+        "ancestorTurns": 8.39241,
+        "enhancedAncestorTurns": 1.03172,
+        "freeTurns": 2.24868,
         "materialBreakdown": {
-          "운명의 파괴석": 73327.324,
-          "운명의 돌파석": 1676.05312,
-          "아비도스 융화 재료": 1571.2998,
-          "운명의 파편": 680896.58,
-          "실링": 3666366.2,
-          "골드": 209506.64,
+          "운명의 파괴석": 73277.778,
+          "운명의 돌파석": 1674.92064,
+          "아비도스 융화 재료": 1570.2381,
+          "운명의 파편": 680436.51,
+          "실링": 3663888.9,
+          "골드": 209365.08,
           "용암의 숨결": 0,
-          "장인의 야금술 : 4단계": 1.0282
+          "장인의 야금술 : 4단계": 1.03172
+        }
+      }
+    },
+    {
+      "gearType": "무기",
+      "strategy": {
+        "normalBreath": false,
+        "normalCraft": false,
+        "ancestorBreath": false,
+        "ancestorCraft": false,
+        "enhancedAncestorBreath": true,
+        "enhancedAncestorCraft": false
+      },
+      "result": {
+        "expectedAttempts": 55.00036,
+        "normalTurns": 43.24413,
+        "ancestorTurns": 8.45276,
+        "enhancedAncestorTurns": 1.04761,
+        "freeTurns": 2.25586,
+        "materialBreakdown": {
+          "운명의 파괴석": 73842.3,
+          "운명의 돌파석": 1687.824,
+          "아비도스 융화 재료": 1582.335,
+          "운명의 파편": 685678.5,
+          "실링": 3692115,
+          "골드": 210978,
+          "용암의 숨결": 26.19025,
+          "장인의 야금술 : 4단계": 0
+        }
+      }
+    },
+    {
+      "gearType": "무기",
+      "strategy": {
+        "normalBreath": false,
+        "normalCraft": false,
+        "ancestorBreath": false,
+        "ancestorCraft": false,
+        "enhancedAncestorBreath": true,
+        "enhancedAncestorCraft": true
+      },
+      "result": {
+        "expectedAttempts": 53.77228,
+        "normalTurns": 42.27872,
+        "ancestorTurns": 8.25874,
+        "enhancedAncestorTurns": 1.02028,
+        "freeTurns": 2.21454,
+        "materialBreakdown": {
+          "운명의 파괴석": 72180.836,
+          "운명의 돌파석": 1649.84768,
+          "아비도스 융화 재료": 1546.7322,
+          "운명의 파편": 670250.62,
+          "실링": 3609041.8,
+          "골드": 206230.96,
+          "용암의 숨결": 25.507,
+          "장인의 야금술 : 4단계": 1.02028
         }
       }
     },
@@ -266,20 +126,132 @@
         "enhancedAncestorCraft": true
       },
       "result": {
-        "expectedAttempts": 48.2855,
-        "normalTurns": 37.98585,
-        "ancestorTurns": 7.41467,
-        "enhancedAncestorTurns": 0.91181,
-        "freeTurns": 1.97317,
+        "expectedAttempts": 48.29069,
+        "normalTurns": 37.99949,
+        "ancestorTurns": 7.41672,
+        "enhancedAncestorTurns": 0.90859,
+        "freeTurns": 1.96589,
         "materialBreakdown": {
-          "운명의 파괴석": 64837.262,
-          "운명의 돌파석": 1481.99456,
-          "아비도스 융화 재료": 1389.3699,
-          "운명의 파편": 602060.29,
-          "실링": 3241863.1,
-          "골드": 185249.32,
+          "운명의 파괴석": 64854.72,
+          "운명의 돌파석": 1482.3936,
+          "아비도스 융화 재료": 1389.744,
+          "운명의 파편": 602222.4,
+          "실링": 3242736,
+          "골드": 185299.2,
           "용암의 숨결": 0,
-          "장인의 야금술 : 4단계": 8.32648
+          "장인의 야금술 : 4단계": 8.32531
+        }
+      }
+    },
+    {
+      "gearType": "무기",
+      "strategy": {
+        "normalBreath": false,
+        "normalCraft": false,
+        "ancestorBreath": false,
+        "ancestorCraft": true,
+        "enhancedAncestorBreath": true,
+        "enhancedAncestorCraft": true
+      },
+      "result": {
+        "expectedAttempts": 47.65558,
+        "normalTurns": 37.5046,
+        "ancestorTurns": 7.32242,
+        "enhancedAncestorTurns": 0.89323,
+        "freeTurns": 1.93533,
+        "materialBreakdown": {
+          "운명의 파괴석": 64008.35,
+          "운명의 돌파석": 1463.048,
+          "아비도스 융화 재료": 1371.6075,
+          "운명의 파편": 594363.25,
+          "실링": 3200417.5,
+          "골드": 182881,
+          "용암의 숨결": 22.33075,
+          "장인의 야금술 : 4단계": 8.21565
+        }
+      }
+    },
+    {
+      "gearType": "무기",
+      "strategy": {
+        "normalBreath": false,
+        "normalCraft": false,
+        "ancestorBreath": true,
+        "ancestorCraft": false,
+        "enhancedAncestorBreath": true,
+        "enhancedAncestorCraft": false
+      },
+      "result": {
+        "expectedAttempts": 50.56989,
+        "normalTurns": 39.79515,
+        "ancestorTurns": 7.7594,
+        "enhancedAncestorTurns": 0.95525,
+        "freeTurns": 2.06009,
+        "materialBreakdown": {
+          "운명의 파괴석": 67913.72,
+          "운명의 돌파석": 1552.3136,
+          "아비도스 융화 재료": 1455.294,
+          "운명의 파편": 630627.4,
+          "실링": 3395686,
+          "골드": 194039.2,
+          "용암의 숨결": 217.86625,
+          "장인의 야금술 : 4단계": 0
+        }
+      }
+    },
+    {
+      "gearType": "무기",
+      "strategy": {
+        "normalBreath": false,
+        "normalCraft": false,
+        "ancestorBreath": true,
+        "ancestorCraft": false,
+        "enhancedAncestorBreath": true,
+        "enhancedAncestorCraft": true
+      },
+      "result": {
+        "expectedAttempts": 49.52526,
+        "normalTurns": 38.96907,
+        "ancestorTurns": 7.60597,
+        "enhancedAncestorTurns": 0.93156,
+        "freeTurns": 2.01866,
+        "materialBreakdown": {
+          "운명의 파괴석": 66509.24,
+          "운명의 돌파석": 1520.2112,
+          "아비도스 융화 재료": 1425.198,
+          "운명의 파편": 617585.8,
+          "실링": 3325462,
+          "골드": 190026.4,
+          "용암의 숨결": 213.43825,
+          "장인의 야금술 : 4단계": 0.93156
+        }
+      }
+    },
+    {
+      "gearType": "무기",
+      "strategy": {
+        "normalBreath": false,
+        "normalCraft": false,
+        "ancestorBreath": true,
+        "ancestorCraft": true,
+        "enhancedAncestorBreath": true,
+        "enhancedAncestorCraft": true
+      },
+      "result": {
+        "expectedAttempts": 44.28622,
+        "normalTurns": 34.87114,
+        "ancestorTurns": 6.79269,
+        "enhancedAncestorTurns": 0.82879,
+        "freeTurns": 1.7936,
+        "materialBreakdown": {
+          "운명의 파괴석": 59489.668,
+          "운명의 돌파석": 1359.76384,
+          "아비도스 융화 재료": 1274.7786,
+          "운명의 파편": 552404.06,
+          "실링": 2974483.4,
+          "골드": 169970.48,
+          "용암의 숨결": 190.537,
+          "장인의 야금술 : 4단계": 7.62148
         }
       }
     },
@@ -294,20 +266,188 @@
         "enhancedAncestorCraft": true
       },
       "result": {
-        "expectedAttempts": 35.87996,
-        "normalTurns": 28.43062,
-        "ancestorTurns": 5.37032,
-        "enhancedAncestorTurns": 0.65691,
-        "freeTurns": 1.42211,
+        "expectedAttempts": 35.9435,
+        "normalTurns": 28.49123,
+        "ancestorTurns": 5.36695,
+        "enhancedAncestorTurns": 0.65739,
+        "freeTurns": 1.42793,
         "materialBreakdown": {
-          "운명의 파괴석": 48240.99,
-          "운명의 돌파석": 1102.6512,
-          "아비도스 융화 재료": 1033.7355,
-          "운명의 파편": 447952.05,
-          "실링": 2412049.5,
-          "골드": 137831.4,
+          "운명의 파괴석": 48321.798,
+          "운명의 돌파석": 1104.49824,
+          "아비도스 융화 재료": 1035.4671,
+          "운명의 파편": 448702.41,
+          "실링": 2416089.9,
+          "골드": 138062.28,
           "용암의 숨결": 0,
-          "장인의 야금술 : 4단계": 35.87996
+          "장인의 야금술 : 4단계": 35.9435
+        }
+      }
+    },
+    {
+      "gearType": "무기",
+      "strategy": {
+        "normalBreath": false,
+        "normalCraft": true,
+        "ancestorBreath": false,
+        "ancestorCraft": true,
+        "enhancedAncestorBreath": true,
+        "enhancedAncestorCraft": true
+      },
+      "result": {
+        "expectedAttempts": 35.56334,
+        "normalTurns": 28.18039,
+        "ancestorTurns": 5.31896,
+        "enhancedAncestorTurns": 0.65399,
+        "freeTurns": 1.41,
+        "materialBreakdown": {
+          "운명의 파괴석": 47814.676,
+          "운명의 돌파석": 1092.90688,
+          "아비도스 융화 재료": 1024.6002,
+          "운명의 파편": 443993.42,
+          "실링": 2390733.8,
+          "골드": 136613.36,
+          "용암의 숨결": 16.34975,
+          "장인의 야금술 : 4단계": 35.56334
+        }
+      }
+    },
+    {
+      "gearType": "무기",
+      "strategy": {
+        "normalBreath": false,
+        "normalCraft": true,
+        "ancestorBreath": true,
+        "ancestorCraft": true,
+        "enhancedAncestorBreath": true,
+        "enhancedAncestorCraft": true
+      },
+      "result": {
+        "expectedAttempts": 33.70065,
+        "normalTurns": 26.71872,
+        "ancestorTurns": 5.04469,
+        "enhancedAncestorTurns": 0.61194,
+        "freeTurns": 1.3253,
+        "materialBreakdown": {
+          "운명의 파괴석": 45325.49,
+          "운명의 돌파석": 1036.0112,
+          "아비도스 융화 재료": 971.2605,
+          "운명의 파편": 420879.55,
+          "실링": 2266274.5,
+          "골드": 129501.4,
+          "용암의 숨결": 141.41575,
+          "장인의 야금술 : 4단계": 33.70065
+        }
+      }
+    },
+    {
+      "gearType": "무기",
+      "strategy": {
+        "normalBreath": true,
+        "normalCraft": false,
+        "ancestorBreath": true,
+        "ancestorCraft": false,
+        "enhancedAncestorBreath": true,
+        "enhancedAncestorCraft": false
+      },
+      "result": {
+        "expectedAttempts": 40.77283,
+        "normalTurns": 32.22798,
+        "ancestorTurns": 6.1521,
+        "enhancedAncestorTurns": 0.75362,
+        "freeTurns": 1.63913,
+        "materialBreakdown": {
+          "운명의 파괴석": 54787.18,
+          "운명의 돌파석": 1252.2784,
+          "아비도스 융화 재료": 1174.011,
+          "운명의 파편": 508738.1,
+          "실링": 2739359,
+          "골드": 156534.8,
+          "용암의 숨결": 1019.32075,
+          "장인의 야금술 : 4단계": 0
+        }
+      }
+    },
+    {
+      "gearType": "무기",
+      "strategy": {
+        "normalBreath": true,
+        "normalCraft": false,
+        "ancestorBreath": true,
+        "ancestorCraft": false,
+        "enhancedAncestorBreath": true,
+        "enhancedAncestorCraft": true
+      },
+      "result": {
+        "expectedAttempts": 40.07382,
+        "normalTurns": 31.67302,
+        "ancestorTurns": 6.04877,
+        "enhancedAncestorTurns": 0.73994,
+        "freeTurns": 1.61209,
+        "materialBreakdown": {
+          "운명의 파괴석": 53846.422,
+          "운명의 돌파석": 1230.77536,
+          "아비도스 융화 재료": 1153.8519,
+          "운명의 파편": 500002.49,
+          "실링": 2692321.1,
+          "골드": 153846.92,
+          "용암의 숨결": 1001.8455,
+          "장인의 야금술 : 4단계": 0.73994
+        }
+      }
+    },
+    {
+      "gearType": "무기",
+      "strategy": {
+        "normalBreath": true,
+        "normalCraft": false,
+        "ancestorBreath": true,
+        "ancestorCraft": true,
+        "enhancedAncestorBreath": true,
+        "enhancedAncestorCraft": true
+      },
+      "result": {
+        "expectedAttempts": 36.63767,
+        "normalTurns": 28.98119,
+        "ancestorTurns": 5.52736,
+        "enhancedAncestorTurns": 0.67138,
+        "freeTurns": 1.45774,
+        "materialBreakdown": {
+          "운명의 파괴석": 49251.902,
+          "운명의 돌파석": 1125.75776,
+          "아비도스 융화 재료": 1055.3979,
+          "운명의 파편": 457339.09,
+          "실링": 2462595.1,
+          "골드": 140719.72,
+          "용암의 숨결": 915.94175,
+          "장인의 야금술 : 4단계": 6.19874
+        }
+      }
+    },
+    {
+      "gearType": "무기",
+      "strategy": {
+        "normalBreath": true,
+        "normalCraft": true,
+        "ancestorBreath": true,
+        "ancestorCraft": true,
+        "enhancedAncestorBreath": true,
+        "enhancedAncestorCraft": true
+      },
+      "result": {
+        "expectedAttempts": 29.01621,
+        "normalTurns": 23.1134,
+        "ancestorTurns": 4.26819,
+        "enhancedAncestorTurns": 0.51852,
+        "freeTurns": 1.1161,
+        "materialBreakdown": {
+          "운명의 파괴석": 39060.154,
+          "운명의 돌파석": 892.80352,
+          "아비도스 융화 재료": 837.0033,
+          "운명의 파편": 362701.43,
+          "실링": 1953007.7,
+          "골드": 111600.44,
+          "용암의 숨결": 725.40525,
+          "장인의 야금술 : 4단계": 29.01621
         }
       }
     },
@@ -322,215 +462,19 @@
         "enhancedAncestorCraft": false
       },
       "result": {
-        "expectedAttempts": 55.89978,
-        "normalTurns": 43.95147,
-        "ancestorTurns": 8.59145,
-        "enhancedAncestorTurns": 1.0575,
-        "freeTurns": 2.29936,
+        "expectedAttempts": 55.93925,
+        "normalTurns": 43.98443,
+        "ancestorTurns": 8.59636,
+        "enhancedAncestorTurns": 1.05462,
+        "freeTurns": 2.30384,
         "materialBreakdown": {
-          "운명의 수호석": 64320.504,
-          "운명의 돌파석": 1232.80966,
-          "아비도스 융화 재료": 1018.40798,
-          "운명의 파편": 428803.36,
-          "실링": 3001623.52,
-          "골드": 128641.008,
+          "운명의 수호석": 64362.492,
+          "운명의 돌파석": 1233.61443,
+          "아비도스 융화 재료": 1019.07279,
+          "운명의 파편": 429083.28,
+          "실링": 3003582.96,
+          "골드": 128724.984,
           "빙하의 숨결": 0,
-          "장인의 재봉술 : 4단계": 0
-        }
-      }
-    },
-    {
-      "gearType": "방어구",
-      "strategy": {
-        "normalBreath": false,
-        "normalCraft": false,
-        "ancestorBreath": false,
-        "ancestorCraft": false,
-        "enhancedAncestorBreath": true,
-        "enhancedAncestorCraft": false
-      },
-      "result": {
-        "expectedAttempts": 55.00927,
-        "normalTurns": 43.25769,
-        "ancestorTurns": 8.45171,
-        "enhancedAncestorTurns": 1.04082,
-        "freeTurns": 2.25905,
-        "materialBreakdown": {
-          "운명의 수호석": 63300.264,
-          "운명의 돌파석": 1213.25506,
-          "아비도스 융화 재료": 1002.25418,
-          "운명의 파편": 422001.76,
-          "실링": 2954012.32,
-          "골드": 126600.528,
-          "빙하의 숨결": 26.0205,
-          "장인의 재봉술 : 4단계": 0
-        }
-      }
-    },
-    {
-      "gearType": "방어구",
-      "strategy": {
-        "normalBreath": false,
-        "normalCraft": false,
-        "ancestorBreath": true,
-        "ancestorCraft": false,
-        "enhancedAncestorBreath": false,
-        "enhancedAncestorCraft": false
-      },
-      "result": {
-        "expectedAttempts": 51.2892,
-        "normalTurns": 40.34961,
-        "ancestorTurns": 7.87567,
-        "enhancedAncestorTurns": 0.96571,
-        "freeTurns": 2.09821,
-        "materialBreakdown": {
-          "운명의 수호석": 59029.188,
-          "운명의 돌파석": 1131.39277,
-          "아비도스 융화 재료": 934.62881,
-          "운명의 파편": 393527.92,
-          "실링": 2754695.44,
-          "골드": 118058.376,
-          "빙하의 숨결": 196.89175,
-          "장인의 재봉술 : 4단계": 0
-        }
-      }
-    },
-    {
-      "gearType": "방어구",
-      "strategy": {
-        "normalBreath": false,
-        "normalCraft": false,
-        "ancestorBreath": true,
-        "ancestorCraft": false,
-        "enhancedAncestorBreath": true,
-        "enhancedAncestorCraft": false
-      },
-      "result": {
-        "expectedAttempts": 50.56604,
-        "normalTurns": 39.76718,
-        "ancestorTurns": 7.77437,
-        "enhancedAncestorTurns": 0.95355,
-        "freeTurns": 2.07094,
-        "materialBreakdown": {
-          "운명의 수호석": 58194.12,
-          "운명의 돌파석": 1115.3873,
-          "아비도스 융화 재료": 921.4069,
-          "운명의 파편": 387960.8,
-          "실링": 2715725.6,
-          "골드": 116388.24,
-          "빙하의 숨결": 218.198,
-          "장인의 재봉술 : 4단계": 0
-        }
-      }
-    },
-    {
-      "gearType": "방어구",
-      "strategy": {
-        "normalBreath": true,
-        "normalCraft": false,
-        "ancestorBreath": false,
-        "ancestorCraft": false,
-        "enhancedAncestorBreath": false,
-        "enhancedAncestorCraft": false
-      },
-      "result": {
-        "expectedAttempts": 44.05137,
-        "normalTurns": 34.79029,
-        "ancestorTurns": 6.65416,
-        "enhancedAncestorTurns": 0.82347,
-        "freeTurns": 1.78345,
-        "materialBreakdown": {
-          "운명의 수호석": 50721.504,
-          "운명의 돌파석": 972.16216,
-          "아비도스 융화 재료": 803.09048,
-          "운명의 파편": 338143.36,
-          "실링": 2367003.52,
-          "골드": 101443.008,
-          "빙하의 숨결": 914.3435,
-          "장인의 재봉술 : 4단계": 0
-        }
-      }
-    },
-    {
-      "gearType": "방어구",
-      "strategy": {
-        "normalBreath": true,
-        "normalCraft": false,
-        "ancestorBreath": false,
-        "ancestorCraft": false,
-        "enhancedAncestorBreath": true,
-        "enhancedAncestorCraft": false
-      },
-      "result": {
-        "expectedAttempts": 43.51285,
-        "normalTurns": 34.37596,
-        "ancestorTurns": 6.57283,
-        "enhancedAncestorTurns": 0.81316,
-        "freeTurns": 1.7509,
-        "materialBreakdown": {
-          "운명의 수호석": 50114.34,
-          "운명의 돌파석": 960.52485,
-          "아비도스 융화 재료": 793.47705,
-          "운명의 파편": 334095.6,
-          "실링": 2338669.2,
-          "골드": 100228.68,
-          "빙하의 숨결": 923.5005,
-          "장인의 재봉술 : 4단계": 0
-        }
-      }
-    },
-    {
-      "gearType": "방어구",
-      "strategy": {
-        "normalBreath": true,
-        "normalCraft": false,
-        "ancestorBreath": true,
-        "ancestorCraft": false,
-        "enhancedAncestorBreath": false,
-        "enhancedAncestorCraft": false
-      },
-      "result": {
-        "expectedAttempts": 41.22967,
-        "normalTurns": 32.59286,
-        "ancestorTurns": 6.2248,
-        "enhancedAncestorTurns": 0.75641,
-        "freeTurns": 1.6556,
-        "materialBreakdown": {
-          "운명의 수호석": 47488.884,
-          "운명의 돌파석": 910.20361,
-          "아비도스 융화 재료": 751.90733,
-          "운명의 파편": 316592.56,
-          "실링": 2216147.92,
-          "골드": 94977.768,
-          "빙하의 숨결": 1011.8315,
-          "장인의 재봉술 : 4단계": 0
-        }
-      }
-    },
-    {
-      "gearType": "방어구",
-      "strategy": {
-        "normalBreath": true,
-        "normalCraft": false,
-        "ancestorBreath": true,
-        "ancestorCraft": false,
-        "enhancedAncestorBreath": true,
-        "enhancedAncestorCraft": false
-      },
-      "result": {
-        "expectedAttempts": 40.75535,
-        "normalTurns": 32.21645,
-        "ancestorTurns": 6.15138,
-        "enhancedAncestorTurns": 0.75363,
-        "freeTurns": 1.63389,
-        "materialBreakdown": {
-          "운명의 수호석": 46945.752,
-          "운명의 돌파석": 899.79358,
-          "아비도스 융화 재료": 743.30774,
-          "운명의 파편": 312971.68,
-          "실링": 2190801.76,
-          "골드": 93891.504,
-          "빙하의 숨결": 1018.88375,
           "장인의 재봉술 : 4단계": 0
         }
       }
@@ -546,20 +490,76 @@
         "enhancedAncestorCraft": true
       },
       "result": {
-        "expectedAttempts": 54.59997,
-        "normalTurns": 42.92624,
-        "ancestorTurns": 8.39093,
-        "enhancedAncestorTurns": 1.03487,
-        "freeTurns": 2.24793,
+        "expectedAttempts": 54.60938,
+        "normalTurns": 42.93921,
+        "ancestorTurns": 8.39245,
+        "enhancedAncestorTurns": 1.03607,
+        "freeTurns": 2.24165,
         "materialBreakdown": {
-          "운명의 수호석": 62822.448,
-          "운명의 돌파석": 1204.09692,
-          "아비도스 융화 재료": 994.68876,
-          "운명의 파편": 418816.32,
-          "실링": 2931714.24,
-          "골드": 125644.896,
+          "운명의 수호석": 62841.276,
+          "운명의 돌파석": 1204.45779,
+          "아비도스 융화 재료": 994.98687,
+          "운명의 파편": 418941.84,
+          "실링": 2932592.88,
+          "골드": 125682.552,
           "빙하의 숨결": 0,
-          "장인의 재봉술 : 4단계": 1.03487
+          "장인의 재봉술 : 4단계": 1.03607
+        }
+      }
+    },
+    {
+      "gearType": "방어구",
+      "strategy": {
+        "normalBreath": false,
+        "normalCraft": false,
+        "ancestorBreath": false,
+        "ancestorCraft": false,
+        "enhancedAncestorBreath": true,
+        "enhancedAncestorCraft": false
+      },
+      "result": {
+        "expectedAttempts": 55.02549,
+        "normalTurns": 43.25168,
+        "ancestorTurns": 8.45784,
+        "enhancedAncestorTurns": 1.04353,
+        "freeTurns": 2.27244,
+        "materialBreakdown": {
+          "운명의 수호석": 63303.66,
+          "운명의 돌파석": 1213.32015,
+          "아비도스 융화 재료": 1002.30795,
+          "운명의 파편": 422024.4,
+          "실링": 2954170.8,
+          "골드": 126607.32,
+          "빙하의 숨결": 26.08825,
+          "장인의 재봉술 : 4단계": 0
+        }
+      }
+    },
+    {
+      "gearType": "방어구",
+      "strategy": {
+        "normalBreath": false,
+        "normalCraft": false,
+        "ancestorBreath": false,
+        "ancestorCraft": false,
+        "enhancedAncestorBreath": true,
+        "enhancedAncestorCraft": true
+      },
+      "result": {
+        "expectedAttempts": 53.81265,
+        "normalTurns": 42.31059,
+        "ancestorTurns": 8.26921,
+        "enhancedAncestorTurns": 1.01853,
+        "freeTurns": 2.21432,
+        "materialBreakdown": {
+          "운명의 수호석": 61917.996,
+          "운명의 돌파석": 1186.76159,
+          "아비도스 융화 재료": 980.36827,
+          "운명의 파편": 412786.64,
+          "실링": 2889506.48,
+          "골드": 123835.992,
+          "빙하의 숨결": 25.46325,
+          "장인의 재봉술 : 4단계": 1.01853
         }
       }
     },
@@ -574,20 +574,132 @@
         "enhancedAncestorCraft": true
       },
       "result": {
-        "expectedAttempts": 48.25376,
-        "normalTurns": 37.97425,
-        "ancestorTurns": 7.40754,
-        "enhancedAncestorTurns": 0.90688,
-        "freeTurns": 1.96509,
+        "expectedAttempts": 48.27311,
+        "normalTurns": 37.9866,
+        "ancestorTurns": 7.41409,
+        "enhancedAncestorTurns": 0.90574,
+        "freeTurns": 1.96668,
         "materialBreakdown": {
-          "운명의 수호석": 55546.404,
-          "운명의 돌파석": 1064.63941,
-          "아비도스 융화 재료": 879.48473,
-          "운명의 파편": 370309.36,
-          "실링": 2592165.52,
-          "골드": 111092.808,
+          "운명의 수호석": 55567.716,
+          "운명의 돌파석": 1065.04789,
+          "아비도스 융화 재료": 879.82217,
+          "운명의 파편": 370451.44,
+          "실링": 2593160.08,
+          "골드": 111135.432,
           "빙하의 숨결": 0,
-          "장인의 재봉술 : 4단계": 8.31442
+          "장인의 재봉술 : 4단계": 8.31983
+        }
+      }
+    },
+    {
+      "gearType": "방어구",
+      "strategy": {
+        "normalBreath": false,
+        "normalCraft": false,
+        "ancestorBreath": false,
+        "ancestorCraft": true,
+        "enhancedAncestorBreath": true,
+        "enhancedAncestorCraft": true
+      },
+      "result": {
+        "expectedAttempts": 47.61677,
+        "normalTurns": 37.47241,
+        "ancestorTurns": 7.30988,
+        "enhancedAncestorTurns": 0.89596,
+        "freeTurns": 1.93852,
+        "materialBreakdown": {
+          "운명의 수호석": 54813.9,
+          "운명의 돌파석": 1050.59975,
+          "아비도스 융화 재료": 867.88675,
+          "운명의 파편": 365426,
+          "실링": 2557982,
+          "골드": 109627.8,
+          "빙하의 숨결": 22.399,
+          "장인의 재봉술 : 4단계": 8.20584
+        }
+      }
+    },
+    {
+      "gearType": "방어구",
+      "strategy": {
+        "normalBreath": false,
+        "normalCraft": false,
+        "ancestorBreath": true,
+        "ancestorCraft": false,
+        "enhancedAncestorBreath": true,
+        "enhancedAncestorCraft": false
+      },
+      "result": {
+        "expectedAttempts": 50.59057,
+        "normalTurns": 39.79842,
+        "ancestorTurns": 7.76988,
+        "enhancedAncestorTurns": 0.95308,
+        "freeTurns": 2.06919,
+        "materialBreakdown": {
+          "운명의 수호석": 58225.656,
+          "운명의 돌파석": 1115.99174,
+          "아비도스 융화 재료": 921.90622,
+          "운명의 파편": 388171.04,
+          "실링": 2717197.28,
+          "골드": 116451.312,
+          "빙하의 숨결": 218.074,
+          "장인의 재봉술 : 4단계": 0
+        }
+      }
+    },
+    {
+      "gearType": "방어구",
+      "strategy": {
+        "normalBreath": false,
+        "normalCraft": false,
+        "ancestorBreath": true,
+        "ancestorCraft": false,
+        "enhancedAncestorBreath": true,
+        "enhancedAncestorCraft": true
+      },
+      "result": {
+        "expectedAttempts": 49.49694,
+        "normalTurns": 38.94254,
+        "ancestorTurns": 7.60318,
+        "enhancedAncestorTurns": 0.93502,
+        "freeTurns": 2.0162,
+        "materialBreakdown": {
+          "운명의 수호석": 56976.888,
+          "운명의 돌파석": 1092.05702,
+          "아비도스 융화 재료": 902.13406,
+          "운명의 파편": 379845.92,
+          "실링": 2658921.44,
+          "골드": 113953.776,
+          "빙하의 숨결": 213.455,
+          "장인의 재봉술 : 4단계": 0.93502
+        }
+      }
+    },
+    {
+      "gearType": "방어구",
+      "strategy": {
+        "normalBreath": false,
+        "normalCraft": false,
+        "ancestorBreath": true,
+        "ancestorCraft": true,
+        "enhancedAncestorBreath": true,
+        "enhancedAncestorCraft": true
+      },
+      "result": {
+        "expectedAttempts": 44.31435,
+        "normalTurns": 34.89672,
+        "ancestorTurns": 6.80006,
+        "enhancedAncestorTurns": 0.82524,
+        "freeTurns": 1.79233,
+        "materialBreakdown": {
+          "운명의 수호석": 51026.424,
+          "운명의 돌파석": 978.00646,
+          "아비도스 융화 재료": 807.91838,
+          "운명의 파편": 340176.16,
+          "실링": 2381233.12,
+          "골드": 102052.848,
+          "빙하의 숨결": 190.6325,
+          "장인의 재봉술 : 4단계": 7.6253
         }
       }
     },
@@ -602,20 +714,188 @@
         "enhancedAncestorCraft": true
       },
       "result": {
-        "expectedAttempts": 35.89888,
-        "normalTurns": 28.46111,
-        "ancestorTurns": 5.36237,
-        "enhancedAncestorTurns": 0.65606,
-        "freeTurns": 1.41934,
+        "expectedAttempts": 35.92172,
+        "normalTurns": 28.47439,
+        "ancestorTurns": 5.37106,
+        "enhancedAncestorTurns": 0.65515,
+        "freeTurns": 1.42112,
         "materialBreakdown": {
-          "운명의 수호석": 41375.448,
-          "운명의 돌파석": 793.02942,
-          "아비도스 융화 재료": 655.11126,
-          "운명의 파편": 275836.32,
-          "실링": 1930854.24,
-          "골드": 82750.896,
+          "운명의 수호석": 41400.72,
+          "운명의 돌파석": 793.5138,
+          "아비도스 융화 재료": 655.5114,
+          "운명의 파편": 276004.8,
+          "실링": 1932033.6,
+          "골드": 82801.44,
           "빙하의 숨결": 0,
-          "장인의 재봉술 : 4단계": 35.89888
+          "장인의 재봉술 : 4단계": 35.92172
+        }
+      }
+    },
+    {
+      "gearType": "방어구",
+      "strategy": {
+        "normalBreath": false,
+        "normalCraft": true,
+        "ancestorBreath": false,
+        "ancestorCraft": true,
+        "enhancedAncestorBreath": true,
+        "enhancedAncestorCraft": true
+      },
+      "result": {
+        "expectedAttempts": 35.55889,
+        "normalTurns": 28.18733,
+        "ancestorTurns": 5.31237,
+        "enhancedAncestorTurns": 0.64933,
+        "freeTurns": 1.40986,
+        "materialBreakdown": {
+          "운명의 수호석": 40978.836,
+          "운명의 돌파석": 785.42769,
+          "아비도스 융화 재료": 648.83157,
+          "운명의 파편": 273192.24,
+          "실링": 1912345.68,
+          "골드": 81957.672,
+          "빙하의 숨결": 16.23325,
+          "장인의 재봉술 : 4단계": 35.55889
+        }
+      }
+    },
+    {
+      "gearType": "방어구",
+      "strategy": {
+        "normalBreath": false,
+        "normalCraft": true,
+        "ancestorBreath": true,
+        "ancestorCraft": true,
+        "enhancedAncestorBreath": true,
+        "enhancedAncestorCraft": true
+      },
+      "result": {
+        "expectedAttempts": 33.68528,
+        "normalTurns": 26.7157,
+        "ancestorTurns": 5.03402,
+        "enhancedAncestorTurns": 0.61267,
+        "freeTurns": 1.32289,
+        "materialBreakdown": {
+          "운명의 수호석": 38834.868,
+          "운명의 돌파석": 744.33497,
+          "아비도스 융화 재료": 614.88541,
+          "운명의 파편": 258899.12,
+          "실링": 1812293.84,
+          "골드": 77669.736,
+          "빙하의 숨결": 141.16725,
+          "장인의 재봉술 : 4단계": 33.68528
+        }
+      }
+    },
+    {
+      "gearType": "방어구",
+      "strategy": {
+        "normalBreath": true,
+        "normalCraft": false,
+        "ancestorBreath": true,
+        "ancestorCraft": false,
+        "enhancedAncestorBreath": true,
+        "enhancedAncestorCraft": false
+      },
+      "result": {
+        "expectedAttempts": 40.75727,
+        "normalTurns": 32.21837,
+        "ancestorTurns": 6.14803,
+        "enhancedAncestorTurns": 0.75289,
+        "freeTurns": 1.63798,
+        "materialBreakdown": {
+          "운명의 수호석": 46943.148,
+          "운명의 돌파석": 899.74367,
+          "아비도스 융화 재료": 743.26651,
+          "운명의 파편": 312954.32,
+          "실링": 2190680.24,
+          "골드": 93886.296,
+          "빙하의 숨결": 1018.93175,
+          "장인의 재봉술 : 4단계": 0
+        }
+      }
+    },
+    {
+      "gearType": "방어구",
+      "strategy": {
+        "normalBreath": true,
+        "normalCraft": false,
+        "ancestorBreath": true,
+        "ancestorCraft": false,
+        "enhancedAncestorBreath": true,
+        "enhancedAncestorCraft": true
+      },
+      "result": {
+        "expectedAttempts": 40.09065,
+        "normalTurns": 31.6875,
+        "ancestorTurns": 6.04593,
+        "enhancedAncestorTurns": 0.74398,
+        "freeTurns": 1.61324,
+        "materialBreakdown": {
+          "운명의 수호석": 46172.892,
+          "운명의 돌파석": 884.98043,
+          "아비도스 융화 재료": 731.07079,
+          "운명의 파편": 307819.28,
+          "실링": 2154734.96,
+          "골드": 92345.784,
+          "빙하의 숨결": 1002.26625,
+          "장인의 재봉술 : 4단계": 0.74398
+        }
+      }
+    },
+    {
+      "gearType": "방어구",
+      "strategy": {
+        "normalBreath": true,
+        "normalCraft": false,
+        "ancestorBreath": true,
+        "ancestorCraft": true,
+        "enhancedAncestorBreath": true,
+        "enhancedAncestorCraft": true
+      },
+      "result": {
+        "expectedAttempts": 36.63004,
+        "normalTurns": 28.97276,
+        "ancestorTurns": 5.52663,
+        "enhancedAncestorTurns": 0.6734,
+        "freeTurns": 1.45725,
+        "materialBreakdown": {
+          "운명의 수호석": 42207.348,
+          "운명의 돌파석": 808.97417,
+          "아비도스 융화 재료": 668.28301,
+          "운명의 파편": 281382.32,
+          "실링": 1969676.24,
+          "골드": 84414.696,
+          "빙하의 숨결": 915.751,
+          "장인의 재봉술 : 4단계": 6.20003
+        }
+      }
+    },
+    {
+      "gearType": "방어구",
+      "strategy": {
+        "normalBreath": true,
+        "normalCraft": true,
+        "ancestorBreath": true,
+        "ancestorCraft": true,
+        "enhancedAncestorBreath": true,
+        "enhancedAncestorCraft": true
+      },
+      "result": {
+        "expectedAttempts": 29.00809,
+        "normalTurns": 23.10723,
+        "ancestorTurns": 4.26123,
+        "enhancedAncestorTurns": 0.52115,
+        "freeTurns": 1.11848,
+        "materialBreakdown": {
+          "운명의 수호석": 33467.532,
+          "운명의 돌파석": 641.46103,
+          "아비도스 융화 재료": 529.90259,
+          "운명의 파편": 223116.88,
+          "실링": 1561818.16,
+          "골드": 66935.064,
+          "빙하의 숨결": 725.20225,
+          "장인의 재봉술 : 4단계": 29.00809
         }
       }
     }

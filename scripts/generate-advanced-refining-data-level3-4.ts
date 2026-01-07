@@ -324,27 +324,77 @@ function simulateRefinement(
   };
 }
 
+function generateAllStrategies() {
+  const strategies: SimulationStrategy[] = [];
+  
+  // 64가지 조합 생성 (6개 필드 각각 true/false)
+  for (let nb = 0; nb <= 1; nb++) {
+    for (let nc = 0; nc <= 1; nc++) {
+      for (let ab = 0; ab <= 1; ab++) {
+        for (let ac = 0; ac <= 1; ac++) {
+          for (let eab = 0; eab <= 1; eab++) {
+            for (let eac = 0; eac <= 1; eac++) {
+              const normalBreath = !!nb;
+              const normalCraft = !!nc;
+              const ancestorBreath = !!ab;
+              const ancestorCraft = !!ac;
+              const enhancedAncestorBreath = !!eab;
+              const enhancedAncestorCraft = !!eac;
+              
+              // 필터링 조건:
+              // - ancestorBreath가 True일 때만 normalBreath가 True일 수 있음
+              // - enhancedAncestorBreath가 True일 때만 ancestorBreath가 True일 수 있음
+              // - ancestorCraft가 True일 때만 normalCraft가 True일 수 있음
+              // - enhancedAncestorCraft가 True일 때만 ancestorCraft가 True일 수 있음
+              if (normalBreath && !ancestorBreath) {
+                // normalBreath가 true인데 ancestorBreath가 false인 경우 제외
+                continue;
+              }
+              if (ancestorBreath && !enhancedAncestorBreath) {
+                // ancestorBreath가 true인데 enhancedAncestorBreath가 false인 경우 제외
+                continue;
+              }
+              if (normalCraft && !ancestorCraft) {
+                // normalCraft가 true인데 ancestorCraft가 false인 경우 제외
+                continue;
+              }
+              if (ancestorCraft && !enhancedAncestorCraft) {
+                // ancestorCraft가 true인데 enhancedAncestorCraft가 false인 경우 제외
+                continue;
+              }
+              
+              strategies.push({
+                normalTurn: {
+                  useBreath: normalBreath,
+                  useCraftsmanship: normalCraft,
+                },
+                ancestorTurn: {
+                  useBreath: ancestorBreath,
+                  useCraftsmanship: ancestorCraft,
+                },
+                enhancedAncestorTurn: {
+                  useBreath: enhancedAncestorBreath,
+                  useCraftsmanship: enhancedAncestorCraft,
+                },
+              });
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  return strategies;
+}
+
 function runSimulations(iterations: number, level: 3 | 4) {
   console.log(`상재${level} 시뮬레이션 시작 (${iterations}회)...`);
   
   const gearTypes: GearType[] = ['무기', '방어구'];
   
-  // 11가지 시나리오 정의
-  const strategies: SimulationStrategy[] = [
-    // 1-8: 숨결 조합 (야금술/재봉술 없음)
-    { normalTurn: { useBreath: false, useCraftsmanship: false }, ancestorTurn: { useBreath: false, useCraftsmanship: false }, enhancedAncestorTurn: { useBreath: false, useCraftsmanship: false } },
-    { normalTurn: { useBreath: false, useCraftsmanship: false }, ancestorTurn: { useBreath: false, useCraftsmanship: false }, enhancedAncestorTurn: { useBreath: true, useCraftsmanship: false } },
-    { normalTurn: { useBreath: false, useCraftsmanship: false }, ancestorTurn: { useBreath: true, useCraftsmanship: false }, enhancedAncestorTurn: { useBreath: false, useCraftsmanship: false } },
-    { normalTurn: { useBreath: false, useCraftsmanship: false }, ancestorTurn: { useBreath: true, useCraftsmanship: false }, enhancedAncestorTurn: { useBreath: true, useCraftsmanship: false } },
-    { normalTurn: { useBreath: true, useCraftsmanship: false }, ancestorTurn: { useBreath: false, useCraftsmanship: false }, enhancedAncestorTurn: { useBreath: false, useCraftsmanship: false } },
-    { normalTurn: { useBreath: true, useCraftsmanship: false }, ancestorTurn: { useBreath: false, useCraftsmanship: false }, enhancedAncestorTurn: { useBreath: true, useCraftsmanship: false } },
-    { normalTurn: { useBreath: true, useCraftsmanship: false }, ancestorTurn: { useBreath: true, useCraftsmanship: false }, enhancedAncestorTurn: { useBreath: false, useCraftsmanship: false } },
-    { normalTurn: { useBreath: true, useCraftsmanship: false }, ancestorTurn: { useBreath: true, useCraftsmanship: false }, enhancedAncestorTurn: { useBreath: true, useCraftsmanship: false } },
-    // 9-11: 야금술/재봉술 조합 (숨결 없음)
-    { normalTurn: { useBreath: false, useCraftsmanship: false }, ancestorTurn: { useBreath: false, useCraftsmanship: false }, enhancedAncestorTurn: { useBreath: false, useCraftsmanship: true } },
-    { normalTurn: { useBreath: false, useCraftsmanship: false }, ancestorTurn: { useBreath: false, useCraftsmanship: true }, enhancedAncestorTurn: { useBreath: false, useCraftsmanship: true } },
-    { normalTurn: { useBreath: false, useCraftsmanship: true }, ancestorTurn: { useBreath: false, useCraftsmanship: true }, enhancedAncestorTurn: { useBreath: false, useCraftsmanship: true } },
-  ];
+  // 모든 전략 조합 생성 및 필터링
+  const strategies = generateAllStrategies();
+  console.log(`총 ${strategies.length}가지 전략 조합 생성됨`);
   
   const allResults: any[] = [];
   

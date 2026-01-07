@@ -329,7 +329,57 @@ export function runSimulation(
   return result;
 }
 
-// 최적 전략 찾기 (4가지 조합)
+// 비용 정보가 포함된 시나리오 결과 타입
+export type ScenarioWithCost = {
+  strategy: OptimalStrategy;
+  result: SimulationResult;
+  costBreakdown: {
+    totalCost: number;
+    normalTurnCost: number;
+    ancestorTurnCost: number;
+    enhancedAncestorTurnCost?: number;
+    freeTurnCost: number;
+    normalTurnTotal: number;
+    ancestorTurnTotal: number;
+    enhancedAncestorTurnTotal?: number;
+    freeTurnTotal: number;
+  };
+};
+
+// 이미 계산된 비용 정보를 사용하여 최적 전략 찾기
+export function findOptimalStrategyFromResults(
+  allResults: ScenarioWithCost[],
+  options?: {
+    // 야금술/재봉술이 투입되지 않은 시나리오만 고려할지 여부
+    excludeCraftsmanship?: boolean;
+  }
+): ScenarioWithCost | null {
+  if (allResults.length === 0) {
+    return null;
+  }
+
+  // 필터링 조건 적용
+  let candidates = allResults;
+  if (options?.excludeCraftsmanship) {
+    candidates = allResults.filter((r) => {
+      const noNormalCraft = !r.strategy.normalTurn.useCraftsmanship;
+      const noAncestorCraft = !r.strategy.ancestorTurn.useCraftsmanship;
+      const noEnhancedAncestorCraft = !r.strategy.enhancedAncestorTurn?.useCraftsmanship;
+      return noNormalCraft && noAncestorCraft && noEnhancedAncestorCraft;
+    });
+  }
+
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  // 총 비용이 가장 낮은 시나리오 찾기
+  return candidates.reduce((best, current) => {
+    return current.costBreakdown.totalCost < best.costBreakdown.totalCost ? current : best;
+  }, candidates[0]);
+}
+
+// 최적 전략 찾기 (4가지 조합) - 레거시 함수 (하위 호환성 유지)
 export function findOptimalStrategy(gearType: GearType): {
   strategy: OptimalStrategy;
   result: SimulationResult;
