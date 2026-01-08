@@ -9,7 +9,7 @@ export default function Home() {
         <div className="text-center mb-12 md:mb-14 space-y-4">
           <div>
             <span className="inline-block px-3 py-1 border border-gray-700 rounded text-sm text-gray-300">
-              Version 0.3.0 (Open Beta)
+              (Open Beta)
             </span>
           </div>
           <h1 className="text-3xl font-semibold tracking-tight text-white">

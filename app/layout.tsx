@@ -21,7 +21,7 @@ import {
 
 export const metadata: Metadata = {
   title: '껨산기 by 스누껨독',
-  description: '로스트아크 효율 계산 도구 (컨텐츠 보상, 과금 효율, 재련 효율, 이벤트 효율, 골드 환율)',
+  description: '로스트아크 효율 계산 도구 (컨텐츠 보상, 과금 효율, 재련 효율, 이벤트 효율)',
   icons: {
     icon: '/favicon.ico',
     shortcut: '/favicon.ico',
