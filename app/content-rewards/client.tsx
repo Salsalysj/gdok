@@ -289,7 +289,7 @@ export default function ContentRewardsClient({
   if (availableContents.length === 0) {
     return (
       <div className="min-h-screen bg-gray-950 p-8">
-        <div className="max-w-6xl mx-auto">
+        <div>
           <div className="bg-gray-800 border border-gray-700 rounded p-6">
             <h2 className="text-2xl font-bold text-gray-300 mb-2">데이터 없음</h2>
             <p className="text-gray-400">
@@ -304,12 +304,12 @@ export default function ContentRewardsClient({
   
   return (
     <div className="min-h-screen bg-gray-950 p-4 md:p-6 lg:p-8">
-      <div className="max-w-6xl mx-auto">
+      <div>
         <div className="mb-6 md:mb-10">
-          <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-2">
+          <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">
             {activeContent ? `${activeContent} 보상 계산기` : '컨텐츠 보상 계산기'}
           </h1>
-          <p className="text-sm md:text-base text-gray-400">컨텐츠별 보상과 골드 가치를 확인하세요.</p>
+          <p className="text-base text-gray-400">컨텐츠별 보상과 골드 가치를 확인하세요.</p>
         </div>
 
         {/* 레벨 선택 */}

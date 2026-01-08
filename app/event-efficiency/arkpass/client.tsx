@@ -1082,39 +1082,41 @@ export default function ArkpassGuideClient({
   
   return (
     <div className="min-h-screen bg-gray-950 py-8">
-      <div className="max-w-6xl mx-auto px-4 space-y-6">
-        <div className="bg-gray-900/70 border border-gray-700 rounded-2xl p-8">
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <h1 className="text-2xl font-bold text-white">아크패스 선택 가이드</h1>
-              <div className="flex flex-wrap gap-2">
-                {/* 저장 버튼 (로컬에서만 표시) */}
-                {allowSave && (
-                  <button
-                    onClick={() => {
-                      const selectedItem = savedGuides.find(item => item.id === selectedGuideId);
-                      // 업데이트 시에는 기존 이름, 새로 저장 시에는 패스 이름을 기본값으로 사용
-                      setSaveGuideName(selectedItem?.name || passName || '');
-                      setShowSaveModal(true);
-                    }}
-                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors"
-                  >
-                    {selectedGuideId ? '업데이트' : '저장'}
-                  </button>
-                )}
-                
-                {/* 새로 만들기 버튼 (로컬에서만 표시) */}
-                {allowSave && (
-                  <button
-                    onClick={handleNew}
+      <div className="px-4 space-y-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">아크패스 선택 가이드</h1>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {/* 저장 버튼 (로컬에서만 표시) */}
+            {allowSave && (
+              <button
+                onClick={() => {
+                  const selectedItem = savedGuides.find(item => item.id === selectedGuideId);
+                  // 업데이트 시에는 기존 이름, 새로 저장 시에는 패스 이름을 기본값으로 사용
+                  setSaveGuideName(selectedItem?.name || passName || '');
+                  setShowSaveModal(true);
+                }}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                {selectedGuideId ? '업데이트' : '저장'}
+              </button>
+            )}
+            
+            {/* 새로 만들기 버튼 (로컬에서만 표시) */}
+            {allowSave && (
+              <button
+                onClick={handleNew}
                     className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
                   >
                     새로 만들기
                   </button>
                 )}
               </div>
-            </div>
-            
+        </div>
+        
+        <div className="bg-gray-900/70 border border-gray-700 rounded-2xl p-8">
+          <div className="flex flex-col gap-4">
             {/* 저장된 가이드 목록 */}
             {savedGuides.length > 0 ? (
               <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-4">

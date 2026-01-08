@@ -79,7 +79,6 @@ export default function Navigation() {
     { name: '과금 효율', href: '/package-efficiency' },
     { name: '재련 효율', href: '/refining-simulation', hasSubmenu: true },
     { name: '골드 환율', href: '/crystal-gold' },
-    { name: '관리자', href: '/admin' },
   ];
 
   const contentRewardsSubTabs = [
@@ -176,8 +175,6 @@ export default function Navigation() {
           <div className="hidden lg:flex items-center gap-3">
             <div className="flex items-center space-x-1 relative">
               {tabs.map((tab) => {
-                if (tab.name === '관리자') return null;
-                
                 const isActive = pathname === tab.href || 
                   (tab.href === '/content-rewards' && pathname.startsWith('/content-rewards')) ||
                   (tab.href === '/refining-simulation' && (pathname.startsWith('/refining-simulation') || pathname.startsWith('/advanced-refining'))) ||
@@ -273,8 +270,6 @@ export default function Navigation() {
         {mobileMenuOpen && (
           <div className="lg:hidden py-4 space-y-2 border-t border-gray-700">
             {tabs.map((tab) => {
-              if (tab.name === '관리자') return null;
-              
               const isActive = pathname === tab.href || 
                 (tab.href === '/content-rewards' && pathname.startsWith('/content-rewards')) ||
                 (tab.href === '/refining-simulation' && (pathname.startsWith('/refining-simulation') || pathname.startsWith('/advanced-refining'))) ||

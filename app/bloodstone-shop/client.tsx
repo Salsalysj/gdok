@@ -1353,9 +1353,9 @@ export default function BloodstoneShopClient({
 
   return (
     <div className="min-h-screen bg-gray-950 text-white p-6">
-      <div className="max-w-7xl mx-auto">
+      <div>
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-4xl font-bold">길드 혈석 상점 교환 효율</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">길드 혈석 상점 교환 효율</h1>
           {allowShopSave && (
             <div className="flex gap-2">
               <button

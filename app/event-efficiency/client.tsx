@@ -3732,24 +3732,26 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
   // 대신 경고 메시지를 표시하거나 기본정보 카드만 숨김
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
+    <div className="px-4 py-8 space-y-6">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">PC방 이벤트</h1>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {/* 저장 버튼 (로컬에서만 표시) */}
+          {allowEventEfficiencySave && (
+            <button
+              onClick={handleSaveEventEfficiency}
+              disabled={isLoading || !eventName.trim()}
+              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm font-medium disabled:opacity-50"
+            >
+              저장
+            </button>
+          )}
+        </div>
+      </div>
       <div className="bg-gray-800 border border-gray-700 rounded p-8">
         <div className="flex flex-col gap-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <h1 className="text-2xl font-bold text-white">PC방 이벤트</h1>
-            <div className="flex flex-wrap gap-2">
-              {/* 저장 버튼 (로컬에서만 표시) */}
-              {allowEventEfficiencySave && (
-                <button
-                  onClick={handleSaveEventEfficiency}
-                  disabled={isLoading || !eventName.trim()}
-                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm font-medium disabled:opacity-50"
-                >
-                  저장
-                </button>
-              )}
-            </div>
-          </div>
           
           {/* 새로 만들기 버튼 (로컬에서만 표시) */}
           {allowEventEfficiencySave && (

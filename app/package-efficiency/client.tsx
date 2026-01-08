@@ -1935,12 +1935,12 @@ export default function PackageEfficiencyClient({
 
   return (
     <div className="min-h-screen bg-gray-950 p-8">
-      <div className="max-w-6xl mx-auto">
+      <div>
         <div className="mb-10">
           <div className="flex items-center justify-between mb-2">
-            <h1 className="text-4xl font-bold text-white">과금 효율 계산기</h1>
+            <h1 className="text-3xl font-semibold tracking-tight text-white">과금 효율 계산기</h1>
           </div>
-          <p className="text-gray-400">과금 상품을 스스로 계산해볼 수 있습니다.</p>
+          <p className="text-base text-gray-400">과금 상품을 스스로 계산해볼 수 있습니다.</p>
         </div>
 
         {/* 저장 모달 */}

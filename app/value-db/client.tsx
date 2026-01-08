@@ -30,10 +30,10 @@ export default function ValueDBClient() {
 
   return (
     <div className="min-h-screen bg-gray-950 p-4 md:p-6 lg:p-8">
-      <div className="max-w-6xl mx-auto">
+      <div>
         <div className="mb-6 md:mb-10">
-          <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-2">가치 계산 DB</h1>
-          <p className="text-sm md:text-base text-gray-400 mb-4">
+          <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">가치 계산 DB</h1>
+          <p className="text-base text-gray-400 mb-4">
             과금 효율 탭에서 선택 가능한 아이템들의 기준 가치를 확인합니다. 크리스탈/골드/현금 항목은
             각 단위로 표시되며, 별도 정보가 없으면 시장가(골드 기준)가 사용됩니다.
           </p>

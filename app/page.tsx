@@ -5,17 +5,17 @@ import Link from 'next/link';
 export default function Home() {
   return (
     <div className="min-h-screen bg-gray-950">
-      <div className="max-w-5xl mx-auto px-4 py-12 md:py-16">
+      <div className="py-12 md:py-16">
         <div className="text-center mb-12 md:mb-14 space-y-4">
           <div>
             <span className="inline-block px-3 py-1 border border-gray-700 rounded text-sm text-gray-300">
               Version 0.3.0 (Open Beta)
             </span>
           </div>
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-semibold text-white">
+          <h1 className="text-3xl font-semibold tracking-tight text-white">
             껨산기에 오신 것을 환영합니다
           </h1>
-          <p className="text-base md:text-lg text-gray-400 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-base text-gray-400 max-w-2xl mx-auto">
             로스트아크 게임 내 아이템 가치를 계산하고 효율을 분석하는 도구입니다.
           </p>
         </div>
@@ -77,7 +77,7 @@ export default function Home() {
         </div>
 
         <div className="bg-gray-900 border border-gray-800 rounded-lg p-7 md:p-9">
-          <h2 className="text-xl md:text-2xl font-semibold text-white mb-3 text-center">
+          <h2 className="text-lg font-semibold text-white mb-3 text-center">
             사이트 소개
           </h2>
           <p className="text-base text-gray-300 text-center leading-relaxed mb-6">

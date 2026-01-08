@@ -901,12 +901,12 @@ export default function AdvancedRefiningClient({
 
   return (
     <div className="min-h-screen bg-gray-950 p-4 md:p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto">
+      <div>
         <div className="mb-6 md:mb-10">
-          <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-2">
+          <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">
             상급 재련 시뮬레이션
           </h1>
-          <p className="text-sm md:text-base text-gray-400">
+          <p className="text-base text-gray-400">
             상급 재련의 효율을 시뮬레이션하고 최적의 전략을 제시합니다
           </p>
         </div>

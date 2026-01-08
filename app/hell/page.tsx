@@ -1,6 +1,7 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+
 import HellClient from './client';
 import { getContentRewardsData } from '@/lib/contentRewards';
 import { getValueDbData } from '@/lib/valueDb';

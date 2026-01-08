@@ -65,8 +65,21 @@ export default async function RootLayout({
     OPTIONAL_METALLURGY_ITEMS_ARMOR
   );
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: '껨산기',
+    url: 'https://gcalc.kr',
+  };
+
   return (
     <html lang="ko" suppressHydrationWarning>
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
       <body suppressHydrationWarning className="flex flex-col min-h-screen">
         <SidebarProvider>
           <PriceOverrideProvider>
@@ -91,7 +104,9 @@ export default async function RootLayout({
             >
               <Navigation />
               <div className="flex-1 overflow-y-auto min-w-0">
-                {children}
+                <div className="mx-auto w-full max-w-[1320px] px-6">
+                  {children}
+                </div>
               </div>
               <SidebarWrapper />
               <Footer />

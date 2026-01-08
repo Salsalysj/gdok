@@ -63,22 +63,10 @@ export async function GET(request: NextRequest) {
       priority: 0.8,
     },
     {
-      url: `${baseUrl}/market`,
-      lastModified: currentDate,
-      changeFrequency: 'hourly',
-      priority: 0.7,
-    },
-    {
       url: `${baseUrl}/crystal-gold`,
       lastModified: currentDate,
       changeFrequency: 'hourly',
       priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/admin`,
-      lastModified: currentDate,
-      changeFrequency: 'weekly',
-      priority: 0.5,
     },
   ];
 

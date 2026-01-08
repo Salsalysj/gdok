@@ -186,10 +186,10 @@ export default function CrystalGoldPage() {
 
   return (
     <div className="min-h-screen bg-gray-950 p-8">
-      <div className="max-w-6xl mx-auto">
+      <div>
         <div className="mb-10">
-          <h1 className={`text-4xl font-bold ${titleText} mb-2`}>골드 환율</h1>
-          <p className={descText}>골드 환율 정보를 확인하세요.</p>
+          <h1 className={`text-3xl font-semibold tracking-tight ${titleText} mb-2`}>골드 환율</h1>
+          <p className={`text-base ${descText}`}>골드 환율 정보를 확인하세요.</p>
         </div>
 
         {error && (

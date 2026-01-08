@@ -2168,10 +2168,10 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
 
   return (
     <div className="min-h-screen bg-gray-950 py-8 px-4">
-      <div className="max-w-6xl mx-auto space-y-8">
-        <header className="space-y-3">
+      <div className="space-y-8">
+        <header className="space-y-3 mb-8">
           <div className="space-y-2">
-            <h1 className="text-3xl font-bold text-white">재련 효율</h1>
+            <h1 className="text-3xl font-semibold tracking-tight text-white">재련 효율</h1>
             {lastUpdated && (
               <p className="text-xs text-gray-500">시세 기준 시각: {new Date(lastUpdated).toLocaleString('ko-KR')}</p>
             )}

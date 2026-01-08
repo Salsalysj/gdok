@@ -737,24 +737,6 @@ export function calculateAdjustedEntries(params: CalculateAdjustedEntriesParams)
     }
   }
 
-  // 상재3, 4의 보조재료 실제 가치 계산
-  const advancedRefiningRealValues: Record<string, number | null> = {};
-  
-  // 장인의 야금술 : 3단계 (실제가치) - 상재3, 무기, 야금술
-  advancedRefiningRealValues['장인의 야금술 : 3단계 (실제가치)'] = 
-    calculateAdvancedRefiningRealValue(3, '무기', 'craft', adjustPrice, marketPriceMap, etcListData, entries);
-  
-  // 장인의 재봉술 : 3단계 (실제가치) - 상재3, 방어구, 재봉술
-  advancedRefiningRealValues['장인의 재봉술 : 3단계 (실제가치)'] = 
-    calculateAdvancedRefiningRealValue(3, '방어구', 'craft', adjustPrice, marketPriceMap, etcListData, entries);
-  
-  // 장인의 야금술 : 4단계 (실제가치) - 상재4, 무기, 야금술
-  advancedRefiningRealValues['장인의 야금술 : 4단계 (실제가치)'] = 
-    calculateAdvancedRefiningRealValue(4, '무기', 'craft', adjustPrice, marketPriceMap, etcListData, entries);
-  
-  // 장인의 재봉술 : 4단계 (실제가치) - 상재4, 방어구, 재봉술
-  advancedRefiningRealValues['장인의 재봉술 : 4단계 (실제가치)'] = 
-    calculateAdvancedRefiningRealValue(4, '방어구', 'craft', adjustPrice, marketPriceMap, etcListData, entries);
 
   // 쿠르잔 관련 항목 재계산
   Object.entries(kurzanStageRewards).forEach(([stageKey, rewards]) => {
@@ -872,55 +854,6 @@ export function calculateAdjustedEntries(params: CalculateAdjustedEntriesParams)
       unitValue: adjustedValue,
     };
   });
-  
-  // 상재3, 4 보조재료 실제 가치 항목 추가
-  console.log('\n=== 실제 가치 항목 추가 ===');
-  console.log('advancedRefiningRealValues:', advancedRefiningRealValues);
-  
-  // 새로운 항목들
-  const newEntries: ValueDbEntry[] = [
-    {
-      itemName: '장인의 야금술 : 3단계 (실제가치)',
-      unitType: '골드',
-      unitValue: advancedRefiningRealValues['장인의 야금술 : 3단계 (실제가치)'],
-      note: '상재3 전체 턴 평균 실제 가치'
-    },
-    {
-      itemName: '장인의 재봉술 : 3단계 (실제가치)',
-      unitType: '골드',
-      unitValue: advancedRefiningRealValues['장인의 재봉술 : 3단계 (실제가치)'],
-      note: '상재3 전체 턴 평균 실제 가치'
-    },
-    {
-      itemName: '장인의 야금술 : 4단계 (실제가치)',
-      unitType: '골드',
-      unitValue: advancedRefiningRealValues['장인의 야금술 : 4단계 (실제가치)'],
-      note: '상재4 전체 턴 평균 실제 가치'
-    },
-    {
-      itemName: '장인의 재봉술 : 4단계 (실제가치)',
-      unitType: '골드',
-      unitValue: advancedRefiningRealValues['장인의 재봉술 : 4단계 (실제가치)'],
-      note: '상재4 전체 턴 평균 실제 가치'
-    }
-  ];
-  
-  console.log('추가할 newEntries:', newEntries);
-  
-  // "장인의 재봉술 : 4단계" 항목 찾기
-  const sewingCraft4Index = resultEntries.findIndex(e => e.itemName === '장인의 재봉술 : 4단계');
-  console.log('sewingCraft4Index:', sewingCraft4Index);
-  
-  if (sewingCraft4Index !== -1) {
-    // "장인의 재봉술 : 4단계" 다음에 삽입
-    resultEntries.splice(sewingCraft4Index + 1, 0, ...newEntries);
-    console.log('항목 추가 완료 (재봉술 4단계 다음에 삽입)');
-  } else {
-    // 찾지 못하면 끝에 추가
-    resultEntries.push(...newEntries);
-    console.log('항목 추가 완료 (끝에 추가)');
-  }
-  console.log('=== 항목 추가 완료 ===\n');
   
   return resultEntries;
 }

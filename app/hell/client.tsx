@@ -274,7 +274,7 @@ export default function HellClient({
   if (!data) {
     return (
       <div className="min-h-screen bg-gray-950 p-8">
-        <div className="max-w-6xl mx-auto">
+        <div>
           <div className="bg-red-900/20 border border-red-700 rounded-lg p-6">
             <h2 className="text-2xl font-bold text-red-400 mb-2">데이터 없음</h2>
             <p className="text-gray-400">
@@ -288,10 +288,10 @@ export default function HellClient({
   
   return (
     <div className="min-h-screen bg-gray-950 p-4 md:p-6 lg:p-8">
-      <div className="max-w-6xl mx-auto">
+      <div>
         <div className="mb-6 md:mb-10">
-          <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-2">지옥 보상 계산기</h1>
-          <p className="text-sm md:text-base text-gray-400">지옥 보상과 골드 가치를 확인하세요.</p>
+          <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">지옥 보상 계산기</h1>
+          <p className="text-base text-gray-400">지옥 보상과 골드 가치를 확인하세요.</p>
         </div>
         
         {/* 지옥 선택 UI */}
