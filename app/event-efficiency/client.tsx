@@ -687,8 +687,8 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
 
   const daysPerWeek = useMemo(() => {
     if (totalDaysNumber == null) return null;
-    return totalDaysNumber / 7;
-  }, [totalDaysNumber]);
+    return totalDaysNumber / totalWeeksNumber;
+  }, [totalDaysNumber, totalWeeksNumber]);
 
   const pcBangLuckyBoxQuantity = useMemo(() => {
     if (!totalDaysNumber || totalDaysNumber <= 0) return 0;
