@@ -24,19 +24,19 @@ export default function LeftSidebarPlaceholder() {
             href="#"
             className="block px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded"
           >
-            공지
+            공지 (예정)
           </Link>
           <Link
             href="#"
             className="block px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded"
           >
-            업데이트
+            업데이트 (예정)
           </Link>
           <Link
             href="#"
             className="block px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded"
           >
-            가이드
+            Contact (예정)
           </Link>
         </nav>
       </div>

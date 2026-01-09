@@ -138,8 +138,18 @@ export default function Navigation() {
             </button>
           </div>
 
-          {/* 데스크톱: 네비게이션 탭 (1024px 이상) - 가운데 정렬 */}
+          {/* 데스크톱: 홈 링크 + 네비게이션 탭 (1024px 이상) - 가운데 정렬 */}
           <div className="hidden lg:flex items-center gap-3 absolute left-1/2 transform -translate-x-1/2">
+            {/* 홈 링크 (집 이모지) */}
+            <Link 
+              href="/" 
+              className="flex items-center justify-center w-10 h-10 text-white hover:bg-gray-800 rounded transition-colors"
+              aria-label="홈으로 이동"
+              title="홈"
+            >
+              <span className="text-xl">🏠︎</span>
+            </Link>
+            
             <div className="flex items-center space-x-1 relative">
               {tabs.map((tab) => {
                 const isActive = pathname === tab.href || 

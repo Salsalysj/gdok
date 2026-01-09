@@ -490,7 +490,7 @@ export default function ValueDBSidebar() {
       {/* 검색어가 없을 때 표시할 영역 */}
       {!searchQuery.trim() && (
         <div className="flex-1 overflow-y-auto flex items-center justify-center">
-          <div className="text-gray-400 text-sm">테스트</div>
+          <div className="text-gray-400 text-sm">여긴 뭐 넣을까...흠</div>
         </div>
       )}
       
