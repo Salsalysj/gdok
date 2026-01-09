@@ -68,7 +68,7 @@
         ]
       }
     ],
-    "티어4": [
+    "에브니 큐브": [
       {
         "stage": "1해금",
         "rewards": [
@@ -182,6 +182,37 @@
           {
             "itemName": "실링",
             "quantity": 180000
+          }
+        ]
+      }
+    ],
+    "할의 모래시계": [
+      {
+        "stage": "모래시계 1",
+        "rewards": [
+          {
+            "itemName": "1레벨 보석 (4T)",
+            "quantity": 45
+          },
+          {
+            "itemName": "위대한 운명의 돌파석",
+            "quantity": 10
+          },
+          {
+            "itemName": "용암의 숨결",
+            "quantity": 10
+          },
+          {
+            "itemName": "빙하의 숨결",
+            "quantity": 10
+          },
+          {
+            "itemName": "카드 경험치",
+            "quantity": 16000
+          },
+          {
+            "itemName": "실링",
+            "quantity": 200000
           }
         ]
       }

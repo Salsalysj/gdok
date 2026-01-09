@@ -115,10 +115,10 @@ async function getMarketPriceMap(): Promise<Record<string, number>> {
         const bundlePrice = (it as any).CurrentMinPrice || (it as any).RecentPrice || 0;
         if (!name || bundlePrice <= 0) continue;
         
-        // 운명의 파괴석, 운명의 수호석은 100개 묶음이므로 단가로 변환
+        // 운명의 파괴석, 운명의 수호석, 운명의 파괴석 결정, 운명의 수호석 결정은 100개 묶음이므로 단가로 변환
         const bundleCount = (it as any).BundleCount || 1;
         let unitPrice = bundlePrice;
-        if (name === '운명의 파괴석' || name === '운명의 수호석') {
+        if (name === '운명의 파괴석' || name === '운명의 수호석' || name === '운명의 파괴석 결정' || name === '운명의 수호석 결정') {
           unitPrice = bundleCount > 0 ? bundlePrice / bundleCount : bundlePrice;
         } else {
           unitPrice = bundlePrice;
@@ -444,7 +444,7 @@ async function buildManualOverrides(
 
   Object.entries(kurzanStageTotals).forEach(([stageName, value]) => {
     if (value == null) return;
-    if (stageName.includes('네프타 2')) {
+    if (stageName.includes('1730') && stageName.includes('심연의 역류 I')) {
       base['공명의 기운 회복 비약'] = {
         itemName: '공명의 기운 회복 비약',
         unitType: '골드',

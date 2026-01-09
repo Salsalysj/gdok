@@ -34,7 +34,7 @@ export default function ValueDBSidebar() {
   // 카테고리별 그룹화
   const categorizedEntries = useMemo(() => {
     const currencyItems = ['크리스탈', '실링', '페온', '1레벨 보석 (4T)', '8레벨 보석 (4T)'];
-    const growthItems = ['운명의 파괴석', '운명의 수호석', '운명의 돌파석', '순환 돌파석', '운명의 파편 주머니(소)', '운명의 파편 1개당', '아비도스 융화 재료', '용암의 숨결', '빙하의 숨결', '유물 각인서 선택', '유물 각인서 랜덤', '젬 가공 초기화권'];
+    const growthItems = ['운명의 파괴석', '운명의 수호석', '운명의 돌파석', '운명의 파괴석 결정', '운명의 수호석 결정', '위대한 운명의 돌파석', '운명의 파편 주머니(소)', '운명의 파편 1개당', '아비도스 융화 재료', '용암의 숨결', '빙하의 숨결'];
     const cardItems = ['전설 카드팩 (확률)', '전설~고급 카드팩', '전설~영웅 카드팩', '전설~희귀 카드팩', '전체 카드팩', '전설 카드 선택팩', '메넬리크의 서', '영겁의 정수', '영혼의 잎사귀', '태초의 조각', '카드경험치 1당'];
 
     const currency: ValueDbEntry[] = [];
@@ -131,6 +131,24 @@ export default function ValueDBSidebar() {
           <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white">
             <input
               type="checkbox"
+              checked={state.ignoreSilver}
+              onChange={(e) => setState((prev) => ({ ...prev, ignoreSilver: e.target.checked }))}
+              className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
+            />
+            <span>실링 미반영</span>
+          </label>
+          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white">
+            <input
+              type="checkbox"
+              checked={state.ignoreDestructionGuardStone}
+              onChange={(e) => setState((prev) => ({ ...prev, ignoreDestructionGuardStone: e.target.checked }))}
+              className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
+            />
+            <span>파괴석/수호석 미반영</span>
+          </label>
+          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white">
+            <input
+              type="checkbox"
               checked={state.ignoreBreakthroughStone}
               onChange={(e) => setState((prev) => ({ ...prev, ignoreBreakthroughStone: e.target.checked }))}
               className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
@@ -149,6 +167,15 @@ export default function ValueDBSidebar() {
           <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white">
             <input
               type="checkbox"
+              checked={state.cardSetGraduated}
+              onChange={(e) => setState((prev) => ({ ...prev, cardSetGraduated: e.target.checked }))}
+              className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
+            />
+            <span>전설 카드 미반영</span>
+          </label>
+          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white">
+            <input
+              type="checkbox"
               checked={state.ignoreCardExp}
               onChange={(e) => setState((prev) => ({ ...prev, ignoreCardExp: e.target.checked }))}
               className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
@@ -162,7 +189,7 @@ export default function ValueDBSidebar() {
               onChange={(e) => setState((prev) => ({ ...prev, has97Stone: e.target.checked }))}
               className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
             />
-            <span>97돌 오우너</span>
+            <span>어빌리티 스톤 미반영</span>
           </label>
           <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white">
             <input
@@ -171,34 +198,7 @@ export default function ValueDBSidebar() {
               onChange={(e) => setState((prev) => ({ ...prev, hasFullRelicEngraving: e.target.checked }))}
               className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
             />
-            <span>풀유각 오우너</span>
-          </label>
-          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white">
-            <input
-              type="checkbox"
-              checked={state.cardSetGraduated}
-              onChange={(e) => setState((prev) => ({ ...prev, cardSetGraduated: e.target.checked }))}
-              className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
-            />
-            <span>카드 세트 졸업</span>
-          </label>
-          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white">
-            <input
-              type="checkbox"
-              checked={state.ignoreSilver}
-              onChange={(e) => setState((prev) => ({ ...prev, ignoreSilver: e.target.checked }))}
-              className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
-            />
-            <span>실링 미반영</span>
-          </label>
-          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white">
-            <input
-              type="checkbox"
-              checked={state.ignoreDestructionGuardStone}
-              onChange={(e) => setState((prev) => ({ ...prev, ignoreDestructionGuardStone: e.target.checked }))}
-              className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
-            />
-            <span>파괴석/수호석 미반영</span>
+            <span>유물 각인서 미반영</span>
           </label>
         </div>
       </div>

@@ -459,11 +459,28 @@ export function calculateAdjustedEntries(params: CalculateAdjustedEntriesParams)
         }
       } else {
         // 다른 보상의 경우 원본 가격 찾기
-        const etc = etcListData[reward.itemName];
-        if (etc?.gold != null) {
-          originalPrice = etc.gold;
-        } else if (marketPriceMap[reward.itemName] != null) {
-          originalPrice = marketPriceMap[reward.itemName];
+        // 운명의 파편인 경우 가치계산DB의 '운명의 파편 1개당' 가격 사용
+        if (reward.itemName === '운명의 파편') {
+          const fragmentEntry = entries.find(e => e.itemName === '운명의 파편 1개당');
+          if (fragmentEntry && fragmentEntry.unitValue != null) {
+            originalPrice = fragmentEntry.unitValue;
+          }
+        }
+        // 실링인 경우 가치계산DB에서 가격 사용
+        else if (reward.itemName === '실링') {
+          const silverEntry = entries.find(e => e.itemName === '실링');
+          if (silverEntry && silverEntry.unitValue != null) {
+            originalPrice = silverEntry.unitValue;
+          }
+        }
+        // fallback: etcListData나 marketPriceMap에서 찾기
+        if (originalPrice == null) {
+          const etc = etcListData[reward.itemName];
+          if (etc?.gold != null) {
+            originalPrice = etc.gold;
+          } else if (marketPriceMap[reward.itemName] != null) {
+            originalPrice = marketPriceMap[reward.itemName];
+          }
         }
       }
       
@@ -740,11 +757,11 @@ export function calculateAdjustedEntries(params: CalculateAdjustedEntriesParams)
 
   // 쿠르잔 관련 항목 재계산
   Object.entries(kurzanStageRewards).forEach(([stageKey, rewards]) => {
-    if (stageKey.includes('네프타 2')) {
+    if (stageKey.includes('1730') && stageKey.includes('심연의 역류 I')) {
       let sum = 0;
       for (const reward of rewards) {
-        // 에브니 큐브 입장권인 경우 내부 보상(cubeStageRewards) 처리
-        if (reward.itemName.startsWith('에브니 큐브 입장권') && reward.cubeStageRewards && reward.cubeStageRewards.length > 0) {
+        // 에브니 큐브 입장권 또는 시련의 모래인 경우 내부 보상(cubeStageRewards) 처리
+        if ((reward.itemName.startsWith('에브니 큐브 입장권') || reward.itemName.startsWith('시련의 모래')) && reward.cubeStageRewards && reward.cubeStageRewards.length > 0) {
           // 에브니 큐브 입장권의 내부 보상들 처리
           let cubeSum = 0;
           for (const cubeReward of reward.cubeStageRewards) {
@@ -758,9 +775,45 @@ export function calculateAdjustedEntries(params: CalculateAdjustedEntriesParams)
               } else {
                 originalPrice = cubeReward.price ?? null;
               }
+            } else if (cubeReward.itemName === '운명의 파편') {
+              // 운명의 파편인 경우 가치계산DB의 '운명의 파편 1개당' 가격 사용
+              const fragmentEntry = entries.find(e => e.itemName === '운명의 파편 1개당');
+              if (fragmentEntry && fragmentEntry.unitValue != null) {
+                originalPrice = fragmentEntry.unitValue;
+              } else {
+                // fallback: price가 있으면 사용, 없으면 etcListData나 marketPriceMap에서 찾기
+                if ('price' in cubeReward && cubeReward.price != null) {
+                  originalPrice = cubeReward.price;
+                } else {
+                  const etc = etcListData[cubeReward.itemName];
+                  if (etc?.gold != null) {
+                    originalPrice = etc.gold;
+                  } else if (marketPriceMap[cubeReward.itemName] != null) {
+                    originalPrice = marketPriceMap[cubeReward.itemName];
+                  }
+                }
+              }
+            } else if (cubeReward.itemName === '실링') {
+              // 실링인 경우 가치계산DB에서 가격 사용
+              const silverEntry = entries.find(e => e.itemName === '실링');
+              if (silverEntry && silverEntry.unitValue != null) {
+                originalPrice = silverEntry.unitValue;
+              } else {
+                // fallback: price가 있으면 사용, 없으면 etcListData나 marketPriceMap에서 찾기
+                if ('price' in cubeReward && cubeReward.price != null) {
+                  originalPrice = cubeReward.price;
+                } else {
+                  const etc = etcListData[cubeReward.itemName];
+                  if (etc?.gold != null) {
+                    originalPrice = etc.gold;
+                  } else if (marketPriceMap[cubeReward.itemName] != null) {
+                    originalPrice = marketPriceMap[cubeReward.itemName];
+                  }
+                }
+              }
             } else {
               // 다른 보상의 경우 원본 가격 찾기
-              if (cubeReward.price != null) {
+              if ('price' in cubeReward && cubeReward.price != null) {
                 originalPrice = cubeReward.price;
               } else {
                 const etc = etcListData[cubeReward.itemName];
@@ -773,12 +826,15 @@ export function calculateAdjustedEntries(params: CalculateAdjustedEntriesParams)
             }
             
             // adjustPrice로 가격 조정
-            const adjustedPrice = adjustPrice(cubeReward.itemName, originalPrice);
+            // 운명의 파편인 경우 '운명의 파편 1개당'으로 adjustPrice 호출
+            // 실링은 그대로 '실링'으로 호출 (가격 조정 스위치 적용)
+            const adjustItemName = cubeReward.itemName === '운명의 파편' ? '운명의 파편 1개당' : cubeReward.itemName;
+            const adjustedPrice = adjustPrice(adjustItemName, originalPrice);
             if (adjustedPrice != null && adjustedPrice > 0) {
               cubeSum += adjustedPrice * cubeReward.quantity;
             }
           }
-          // 에브니 큐브 입장권의 수량(0.1)을 곱해야 함
+          // 에브니 큐브 입장권 또는 시련의 모래의 수량을 곱해야 함
           sum += cubeSum * (reward.quantity || 0.1);
         } else {
           // 일반 보상 처리
@@ -789,6 +845,14 @@ export function calculateAdjustedEntries(params: CalculateAdjustedEntriesParams)
             const cardExpEntry = entries.find(e => e.itemName === '카드경험치 1당');
             if (cardExpEntry && cardExpEntry.unitValue != null) {
               originalPrice = cardExpEntry.unitValue;
+            } else {
+              originalPrice = reward.price ?? null;
+            }
+          } else if (reward.itemName === '운명의 파편') {
+            // 운명의 파편인 경우 가치계산DB의 '운명의 파편 1개당' 가격 사용
+            const fragmentEntry = entries.find(e => e.itemName === '운명의 파편 1개당');
+            if (fragmentEntry && fragmentEntry.unitValue != null) {
+              originalPrice = fragmentEntry.unitValue;
             } else {
               originalPrice = reward.price ?? null;
             }
@@ -807,7 +871,9 @@ export function calculateAdjustedEntries(params: CalculateAdjustedEntriesParams)
           }
           
           // adjustPrice로 가격 조정 (카드경험치 미반영, 돌파석 미반영, 파편 미반영 등)
-          const adjustedPrice = adjustPrice(reward.itemName, originalPrice);
+          // 운명의 파편인 경우 '운명의 파편 1개당'으로 adjustPrice 호출
+          const adjustItemName = reward.itemName === '운명의 파편' ? '운명의 파편 1개당' : reward.itemName;
+          const adjustedPrice = adjustPrice(adjustItemName, originalPrice);
           if (adjustedPrice != null && adjustedPrice > 0) {
             sum += adjustedPrice * reward.quantity;
           }

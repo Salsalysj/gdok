@@ -37,11 +37,12 @@ export function applyPriceOverride(itemName: string, originalPrice: number | nul
   const state = getPriceOverrideState();
   if (!state) return originalPrice;
 
-  // 돌파석 미반영 (운명의 돌파석, 찬란한 명예의 돌파석만)
+  // 돌파석 미반영 (운명의 돌파석, 찬란한 명예의 돌파석, 위대한 운명의 돌파석)
   if (state.ignoreBreakthroughStone) {
     if (
       itemName === '운명의 돌파석' ||
-      itemName === '찬란한 명예의 돌파석'
+      itemName === '찬란한 명예의 돌파석' ||
+      itemName === '위대한 운명의 돌파석'
     ) {
       return 0;
     }
@@ -94,6 +95,18 @@ export function applyPriceOverride(itemName: string, originalPrice: number | nul
   // 풀유각 오우너 (유물 각인서 43종)
   if (state.hasFullRelicEngraving) {
     if (itemName.includes('유물 각인서') || itemName.includes('각인서')) {
+      return 0;
+    }
+  }
+
+  // 파괴석/수호석 미반영
+  if (state.ignoreDestructionGuardStone) {
+    if (
+      itemName === '운명의 파괴석' ||
+      itemName === '운명의 수호석' ||
+      itemName === '운명의 파괴석 결정' ||
+      itemName === '운명의 수호석 결정'
+    ) {
       return 0;
     }
   }

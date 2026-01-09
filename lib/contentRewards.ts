@@ -70,6 +70,7 @@ const eponaCubeMapping: { [stage: string]: string } = {
   '아비도스 3작전': '2해금',
   '네프타 1작전': '3해금',
   '네프타 2작전': '4해금',
+  '심연의 역류 I': '모래시계 1',
 };
 
 const itemNameMapping: { [original: string]: string } = {
@@ -93,6 +94,8 @@ const itemsWithBundlePrice = [
   '정제된 수호강석',
   '운명의 파괴석',
   '운명의 수호석',
+  '운명의 파괴석 결정',
+  '운명의 수호석 결정',
 ];
 
 const GEM_SELECTION_CANDIDATE_NAMES = [
@@ -415,11 +418,14 @@ async function processCubeStages(
   const totals: Record<string, number> = {};
   const rewardsMap: Record<string, RewardItem[]> = {};
 
-  const tiers = ['티어4'];
-  for (const tier of tiers) {
-    const stages = csvRewards['에브니 큐브']?.[tier];
-    if (!stages) continue;
+  const processStages = async (stages: any[], tier: string) => {
+    if (!stages) {
+      console.log('[processCubeStages] processStages: stages is null/undefined');
+      return;
+    }
+    console.log(`[processCubeStages] processStages called with tier: ${tier}, stages count: ${stages.length}`);
     for (const stage of stages) {
+      console.log(`[processCubeStages] Processing stage: ${stage.stage}`);
       const processedRewards = await Promise.all(
         stage.rewards.map(async (reward: RewardItem) => {
           let finalName = reward.itemName;
@@ -433,7 +439,43 @@ async function processCubeStages(
             return { itemName: finalName, quantity: reward.quantity, price };
           }
           if (finalName === '실링') {
-            return { itemName: finalName, quantity: reward.quantity, price: null };
+            let price: number | null = null;
+            // 가치계산DB에서 실링 가격 확인 (우선순위 1)
+            if (valueDbEntryMap && valueDbEntryMap['실링']) {
+              const silverEntry = valueDbEntryMap['실링'];
+              if (silverEntry.unitType === '골드' && silverEntry.unitValue != null) {
+                price = silverEntry.unitValue;
+              } else if (silverEntry.unitType === '현금' && silverEntry.unitValue != null) {
+                // 현금 단위인 경우 골드로 변환
+                const cashToGoldRate = rates.exchange && rates.exchange > 0
+                  ? rates.exchange / 2750
+                  : rates.discord && rates.discord > 0
+                    ? 100 / rates.discord
+                    : null;
+                if (cashToGoldRate) {
+                  price = silverEntry.unitValue * cashToGoldRate;
+                }
+              }
+            }
+            // 가치계산DB에 없으면 etcListData에서 가져오기
+            if (price == null) {
+              const etcItems = await getEtcListItems();
+              const silverItem = etcItems.find((item) => item.itemName === '실링');
+              if (silverItem?.cash != null && silverItem.cash > 0) {
+                // 현금 단위를 골드로 변환
+                const cashToGoldRate = rates.exchange && rates.exchange > 0
+                  ? rates.exchange / 2750
+                  : rates.discord && rates.discord > 0
+                    ? 100 / rates.discord
+                    : null;
+                if (cashToGoldRate) {
+                  price = silverItem.cash * cashToGoldRate;
+                }
+              } else if (silverItem?.gold != null && silverItem.gold > 0) {
+                price = silverItem.gold;
+              }
+            }
+            return { itemName: finalName, quantity: reward.quantity, price };
           }
           const price = findItemPrice(finalName, marketData);
           return { itemName: finalName, quantity: reward.quantity, price };
@@ -445,13 +487,43 @@ async function processCubeStages(
       totals[stageKey] = stageTotal;
       // rewardsMap의 키를 스테이지 이름과 큐브 타입 모두로 저장
       rewardsMap[stage.stage] = processedRewards;
+      console.log(`[processCubeStages] Saved to rewardsMap[${stage.stage}], rewards count: ${processedRewards.length}`);
       // eponaCubeMapping의 역매핑을 사용하여 큐브 타입으로도 저장
       const cubeType = Object.entries(eponaCubeMapping).find(([stageName]) => stageName === stage.stage)?.[1];
       if (cubeType) {
         rewardsMap[cubeType] = processedRewards;
+        console.log(`[processCubeStages] Also saved to rewardsMap[${cubeType}]`);
       }
     }
+  };
+
+  // 에브니 큐브 티어4 처리
+  console.log('[processCubeStages] csvRewards keys:', Object.keys(csvRewards || {}));
+  console.log('[processCubeStages] csvRewards[에브니 큐브]:', csvRewards['에브니 큐브'] ? Object.keys(csvRewards['에브니 큐브']) : 'null');
+  
+  // csv-rewards.json 구조: "에브니 큐브" > "에브니 큐브" 배열에 티어4 데이터가 있음
+  const eponaCubeTier4Stages = csvRewards['에브니 큐브']?.['에브니 큐브'];
+  console.log(`[processCubeStages] Processing 에브니 큐브 (티어4), stages:`, eponaCubeTier4Stages ? `${eponaCubeTier4Stages.length} stages` : 'null');
+  if (eponaCubeTier4Stages && Array.isArray(eponaCubeTier4Stages)) {
+    await processStages(eponaCubeTier4Stages, '티어4');
   }
+
+  // 할의 모래시계 처리 (모래시계 1 등)
+  const hourglassStages = csvRewards['에브니 큐브']?.['할의 모래시계'];
+  console.log('[processCubeStages] 할의 모래시계:', hourglassStages ? `${hourglassStages.length} stages` : 'null');
+  if (hourglassStages && Array.isArray(hourglassStages)) {
+    await processStages(hourglassStages, '티어4');
+  }
+
+  // 디버깅: rewardsMap 키 목록 출력
+  console.log('[processCubeStages] rewardsMap keys:', Object.keys(rewardsMap));
+  console.log('[processCubeStages] rewardsMap sample:', {
+    '1해금': rewardsMap['1해금']?.length,
+    '2해금': rewardsMap['2해금']?.length,
+    '3해금': rewardsMap['3해금']?.length,
+    '4해금': rewardsMap['4해금']?.length,
+    '모래시계 1': rewardsMap['모래시계 1']?.length,
+  });
 
   return { totals, rewardsMap };
 }
@@ -476,12 +548,25 @@ async function processRewardForKurzan(
     const cubeType = eponaCubeMapping[stage.stage];
     finalItemName = cubeType ? `에브니 큐브 입장권 (${cubeType})` : '에브니 큐브 입장권';
     let cubePrice: number | null = null;
-    // 스테이지 이름 또는 큐브 타입으로 보상 목록 찾기
-    const cubeStageRewards = cubeRewardsMap[stage.stage] || (cubeType ? cubeRewardsMap[cubeType] : null) || null;
+    // 큐브 타입으로 보상 목록 찾기 (cubeRewardsMap의 키는 stage.stage 또는 cubeType)
+    const cubeStageRewards = cubeType ? cubeRewardsMap[cubeType] || null : null;
+
+    // 디버깅 로그
+    console.log('[processRewardForKurzan] 에브니 큐브 입장권:', {
+      stage: stage.stage,
+      cubeType,
+      cubeRewardsMapKeys: Object.keys(cubeRewardsMap),
+      foundRewards: cubeStageRewards ? cubeStageRewards.length : null,
+    });
 
     if (cubeType) {
       const stageKeyTier4 = `티어4_${cubeType}`;
       cubePrice = cubeTotals[stageKeyTier4] ?? null;
+      console.log('[processRewardForKurzan] 가격:', {
+        stageKeyTier4,
+        cubePrice,
+        cubeTotalsKeys: Object.keys(cubeTotals),
+      });
     }
 
     return {
@@ -490,6 +575,44 @@ async function processRewardForKurzan(
       price: cubePrice,
       cubeStageRewards: cubeStageRewards || undefined,
     };
+  }
+
+  // 시련의 모래 (n단계) → 모래시계 n 보상 매칭
+  if (reward.itemName.startsWith('시련의 모래')) {
+    const match = reward.itemName.match(/시련의 모래\s*\((\d+)단계\)/);
+    if (match) {
+      const step = match[1];
+      const hourglassType = `모래시계 ${step}`;
+      let hourglassPrice: number | null = null;
+      // 모래시계 n의 보상 목록 찾기
+      const hourglassStageRewards = cubeRewardsMap[hourglassType] || null;
+
+      // 디버깅 로그
+      console.log('[processRewardForKurzan] 시련의 모래:', {
+        rewardItemName: reward.itemName,
+        step,
+        hourglassType,
+        cubeRewardsMapKeys: Object.keys(cubeRewardsMap),
+        foundRewards: hourglassStageRewards ? hourglassStageRewards.length : null,
+      });
+
+      if (hourglassType) {
+        const stageKeyTier4 = `티어4_${hourglassType}`;
+        hourglassPrice = cubeTotals[stageKeyTier4] ?? null;
+        console.log('[processRewardForKurzan] 시련의 모래 가격:', {
+          stageKeyTier4,
+          hourglassPrice,
+          cubeTotalsKeys: Object.keys(cubeTotals),
+        });
+      }
+
+      return {
+        itemName: reward.itemName,
+        quantity: reward.quantity,
+        price: hourglassPrice,
+        cubeStageRewards: hourglassStageRewards || undefined,
+      };
+    }
   }
 
   if (finalItemName === '1레벨 보석 (4T)' || finalItemName === '1레벨 보석 (3T)') {
@@ -579,6 +702,47 @@ async function processRewardForKurzan(
   // 귀속 골드: 골드와 1:1 동일한 가치
   if (finalItemName === '귀속 골드') {
     return { itemName: finalItemName, quantity: reward.quantity, price: 1 };
+  }
+
+  // 실링: etcListData에서 가격 가져오기 (현금 단위를 골드로 변환)
+  if (finalItemName === '실링') {
+    let price: number | null = null;
+    // 가치계산DB에서 실링 가격 확인 (우선순위 1)
+    if (valueDbEntryMap && valueDbEntryMap['실링']) {
+      const silverEntry = valueDbEntryMap['실링'];
+      if (silverEntry.unitType === '골드' && silverEntry.unitValue != null) {
+        price = silverEntry.unitValue;
+      } else if (silverEntry.unitType === '현금' && silverEntry.unitValue != null) {
+        // 현금 단위인 경우 골드로 변환
+        const cashToGoldRate = rates.exchange && rates.exchange > 0
+          ? rates.exchange / 2750
+          : rates.discord && rates.discord > 0
+            ? 100 / rates.discord
+            : null;
+        if (cashToGoldRate) {
+          price = silverEntry.unitValue * cashToGoldRate;
+        }
+      }
+    }
+    // 가치계산DB에 없으면 etcListData에서 가져오기
+    if (price == null) {
+      const etcItems = await getEtcListItems();
+      const silverItem = etcItems.find((item) => item.itemName === '실링');
+      if (silverItem?.cash != null && silverItem.cash > 0) {
+        // 현금 단위를 골드로 변환
+        const cashToGoldRate = rates.exchange && rates.exchange > 0
+          ? rates.exchange / 2750
+          : rates.discord && rates.discord > 0
+            ? 100 / rates.discord
+            : null;
+        if (cashToGoldRate) {
+          price = silverItem.cash * cashToGoldRate;
+        }
+      } else if (silverItem?.gold != null && silverItem.gold > 0) {
+        price = silverItem.gold;
+      }
+    }
+    return { itemName: finalItemName, quantity: reward.quantity, price };
   }
 
   const price = findItemPrice(finalItemName, marketData);
@@ -909,12 +1073,48 @@ export async function getContentRewardsData(
             selectedComponent: selectedComponent || undefined,
           };
         }
-        // 실링: 가격 없음
+        // 실링: etcListData에서 가격 가져오기 (현금 단위를 골드로 변환)
         if (reward.itemName === '실링') {
+          let price: number | null = null;
+          // 가치계산DB에서 실링 가격 확인 (우선순위 1)
+          if (valueDbEntryMap && valueDbEntryMap['실링']) {
+            const silverEntry = valueDbEntryMap['실링'];
+            if (silverEntry.unitType === '골드' && silverEntry.unitValue != null) {
+              price = silverEntry.unitValue;
+            } else if (silverEntry.unitType === '현금' && silverEntry.unitValue != null) {
+              // 현금 단위인 경우 골드로 변환
+              const cashToGoldRate = rates.exchange && rates.exchange > 0
+                ? rates.exchange / 2750
+                : rates.discord && rates.discord > 0
+                  ? 100 / rates.discord
+                  : null;
+              if (cashToGoldRate) {
+                price = silverEntry.unitValue * cashToGoldRate;
+              }
+            }
+          }
+          // 가치계산DB에 없으면 etcListData에서 가져오기
+          if (price == null) {
+            const etcItems = await getEtcListItems();
+            const silverItem = etcItems.find((item) => item.itemName === '실링');
+            if (silverItem?.cash != null && silverItem.cash > 0) {
+              // 현금 단위를 골드로 변환
+              const cashToGoldRate = rates.exchange && rates.exchange > 0
+                ? rates.exchange / 2750
+                : rates.discord && rates.discord > 0
+                  ? 100 / rates.discord
+                  : null;
+              if (cashToGoldRate) {
+                price = silverItem.cash * cashToGoldRate;
+              }
+            } else if (silverItem?.gold != null && silverItem.gold > 0) {
+              price = silverItem.gold;
+            }
+          }
           return {
             itemName: reward.itemName,
             quantity: reward.quantity,
-            price: null,
+            price,
             category: reward.category,
           };
         }
@@ -987,9 +1187,45 @@ export async function getContentRewardsData(
                 const price = await calculateCardExpPrice(marketData, rates, valueDbEntryMap);
                 return { itemName: finalItemName, quantity: reward.quantity, price };
               }
-              if (finalItemName === '실링') {
-                return { itemName: finalItemName, quantity: reward.quantity, price: null };
+          if (finalItemName === '실링') {
+            let price: number | null = null;
+            // 가치계산DB에서 실링 가격 확인 (우선순위 1)
+            if (valueDbEntryMap && valueDbEntryMap['실링']) {
+              const silverEntry = valueDbEntryMap['실링'];
+              if (silverEntry.unitType === '골드' && silverEntry.unitValue != null) {
+                price = silverEntry.unitValue;
+              } else if (silverEntry.unitType === '현금' && silverEntry.unitValue != null) {
+                // 현금 단위인 경우 골드로 변환
+                const cashToGoldRate = rates.exchange && rates.exchange > 0
+                  ? rates.exchange / 2750
+                  : rates.discord && rates.discord > 0
+                    ? 100 / rates.discord
+                    : null;
+                if (cashToGoldRate) {
+                  price = silverEntry.unitValue * cashToGoldRate;
+                }
               }
+            }
+            // 가치계산DB에 없으면 etcListData에서 가져오기
+            if (price == null) {
+              const etcItems = await getEtcListItems();
+              const silverItem = etcItems.find((item) => item.itemName === '실링');
+              if (silverItem?.cash != null && silverItem.cash > 0) {
+                // 현금 단위를 골드로 변환
+                const cashToGoldRate = rates.exchange && rates.exchange > 0
+                  ? rates.exchange / 2750
+                  : rates.discord && rates.discord > 0
+                    ? 100 / rates.discord
+                    : null;
+                if (cashToGoldRate) {
+                  price = silverItem.cash * cashToGoldRate;
+                }
+              } else if (silverItem?.gold != null && silverItem.gold > 0) {
+                price = silverItem.gold;
+              }
+            }
+            return { itemName: finalItemName, quantity: reward.quantity, price };
+          }
               const price = findItemPrice(finalItemName, marketData);
               return { itemName: finalItemName, quantity: reward.quantity, price };
             })

@@ -49,12 +49,16 @@ function calculateStageTotals(
     // 에브니 큐브 입장권: 내부 보상 기준으로 거래가능/전체 분리 계산
     if (reward.cubeStageRewards && reward.cubeStageRewards.length > 0) {
       const tradableUnit = reward.cubeStageRewards.reduce((sum, r) => {
+        // 거래가능하고 제외되지 않은 항목만 거래가능 합계에 포함
+        if (isExcludedForTotalFn(r.itemName)) return sum;
         const amount = (r.price || 0) * (r.quantity || 0);
         return sum + (isTradableFn(r.itemName) ? amount : 0);
       }, 0);
       const totalUnit = reward.cubeStageRewards.reduce((sum, r) => {
+        // 제외되지 않은 모든 항목을 전체 합계에 포함
+        if (isExcludedForTotalFn(r.itemName)) return sum;
         const amount = (r.price || 0) * (r.quantity || 0);
-        return sum + (isExcludedForTotalFn(r.itemName) ? 0 : amount);
+        return sum + amount;
       }, 0);
       tradable += tradableUnit * qty;
       total += totalUnit * qty;
@@ -63,8 +67,14 @@ function calculateStageTotals(
 
     // 일반 아이템
     const amount = (reward.price || 0) * qty;
-    total += isExcludedForTotalFn(reward.itemName) ? 0 : amount;
-    if (isTradableFn(reward.itemName)) tradable += amount;
+    // 제외되지 않은 항목만 전체 합계에 포함
+    if (!isExcludedForTotalFn(reward.itemName)) {
+      total += amount;
+      // 거래가능한 항목은 거래가능 합계에도 포함
+      if (isTradableFn(reward.itemName)) {
+        tradable += amount;
+      }
+    }
   }
   return { tradable, total };
 }
@@ -143,21 +153,23 @@ export default function ContentRewardsClient({
   }, [availableContents]);
   
   const contentData = activeContent ? data[activeContent] : null;
-  const levels = contentData ? Object.keys(contentData) : [];
+  const levels = contentData ? Object.keys(contentData).sort((a, b) => {
+    // 숫자로 파싱해서 정렬
+    const numA = parseInt(a) || 0;
+    const numB = parseInt(b) || 0;
+    return numA - numB;
+  }) : [];
   const [activeLevel, setActiveLevel] = useState<string>('');
   
-  // 첫 로드 시 첫 번째 레벨 선택 (에브니 큐브 제외)
+  // 첫 로드 시 첫 번째 레벨 선택
   useEffect(() => {
-    if (levels.length > 0 && activeContent !== '에브니 큐브') {
+    if (levels.length > 0) {
       setActiveLevel(prev => {
         if (!prev || !levels.includes(prev)) {
           return levels[0];
         }
         return prev;
       });
-    } else if (activeContent === '에브니 큐브') {
-      // 에브니 큐브는 레벨 선택이 없으므로 빈 문자열 유지
-      setActiveLevel('');
     }
   }, [levels, activeContent]);
   
@@ -178,23 +190,75 @@ export default function ContentRewardsClient({
               // 가치계산DB의 '카드경험치 1당' 가격을 사용 (수량을 곱하지 않음, 수량은 나중에 곱함)
               finalPrice = cardExpEntry.unitValue;
             }
+          } else if (reward.itemName === '운명의 파편' && valueDbEntryMap) {
+            // 운명의 파편인 경우 가치계산DB의 '운명의 파편 1개당' 가격 사용
+            const fragmentEntry = valueDbEntryMap['운명의 파편 1개당'];
+            if (fragmentEntry && fragmentEntry.unitValue != null) {
+              finalPrice = fragmentEntry.unitValue;
+            }
+          } else if (reward.itemName === '실링' && valueDbEntryMap) {
+            // 실링인 경우 가치계산DB에서 가격 사용
+            const silverEntry = valueDbEntryMap['실링'];
+            if (silverEntry && silverEntry.unitValue != null) {
+              // 현금 단위인 경우 골드로 변환
+              if (silverEntry.unitType === '현금') {
+                const cashToGoldRate = rates?.exchange && rates.exchange > 0
+                  ? rates.exchange / 2750
+                  : rates?.discord && rates.discord > 0
+                    ? 100 / rates.discord
+                    : null;
+                if (cashToGoldRate) {
+                  finalPrice = silverEntry.unitValue * cashToGoldRate;
+                } else {
+                  finalPrice = silverEntry.unitValue;
+                }
+              } else if (silverEntry.unitType === '골드') {
+                finalPrice = silverEntry.unitValue;
+              }
+            }
           }
           
           return {
             ...reward,
-            price: adjustPrice(reward.itemName, finalPrice),
+            price: adjustPrice(reward.itemName === '운명의 파편' ? '운명의 파편 1개당' : reward.itemName, finalPrice),
             cubeStageRewards: reward.cubeStageRewards?.map(r => {
-              // cubeStageRewards 내부의 카드 경험치도 동일하게 처리
+              // cubeStageRewards 내부의 카드 경험치, 운명의 파편, 실링도 동일하게 처리
               let rPrice = r.price ?? null;
               if (r.itemName === '카드 경험치' && valueDbEntryMap) {
                 const cardExpEntry = valueDbEntryMap['카드경험치 1당'];
                 if (cardExpEntry && cardExpEntry.unitValue != null) {
                   rPrice = cardExpEntry.unitValue;
                 }
+              } else if (r.itemName === '운명의 파편' && valueDbEntryMap) {
+                // 운명의 파편인 경우 가치계산DB의 '운명의 파편 1개당' 가격 사용
+                const fragmentEntry = valueDbEntryMap['운명의 파편 1개당'];
+                if (fragmentEntry && fragmentEntry.unitValue != null) {
+                  rPrice = fragmentEntry.unitValue;
+                }
+              } else if (r.itemName === '실링' && valueDbEntryMap) {
+                // 실링인 경우 가치계산DB에서 가격 사용
+                const silverEntry = valueDbEntryMap['실링'];
+                if (silverEntry && silverEntry.unitValue != null) {
+                  // 현금 단위인 경우 골드로 변환
+                  if (silverEntry.unitType === '현금') {
+                    const cashToGoldRate = rates?.exchange && rates.exchange > 0
+                      ? rates.exchange / 2750
+                      : rates?.discord && rates.discord > 0
+                        ? 100 / rates.discord
+                        : null;
+                    if (cashToGoldRate) {
+                      rPrice = silverEntry.unitValue * cashToGoldRate;
+                    } else {
+                      rPrice = silverEntry.unitValue;
+                    }
+                  } else if (silverEntry.unitType === '골드') {
+                    rPrice = silverEntry.unitValue;
+                  }
+                }
               }
               return {
                 ...r,
-                price: adjustPrice(r.itemName, rPrice),
+                price: adjustPrice(r.itemName === '운명의 파편' ? '운명의 파편 1개당' : r.itemName, rPrice),
               };
             }),
           };
@@ -207,17 +271,6 @@ export default function ContentRewardsClient({
   // 현재 표시할 데이터 결정
   const currentLevelData: Stage[] = useMemo(() => {
     if (!adjustedData) return [];
-    if (activeContent === '에브니 큐브') {
-      // 에브니 큐브는 레벨 선택이 없으므로 모든 레벨 데이터를 합침
-      const allStages: Stage[] = [];
-      Object.keys(adjustedData).forEach(level => {
-        const levelStages = adjustedData[level];
-        if (Array.isArray(levelStages)) {
-          allStages.push(...levelStages);
-        }
-      });
-      return allStages;
-    }
     if (activeLevel && adjustedData[activeLevel]) {
       const levelData = adjustedData[activeLevel];
       return Array.isArray(levelData) ? levelData : [];
@@ -252,9 +305,10 @@ export default function ContentRewardsClient({
 
   const isExcludedForTotal = (name: string) => {
     if (activeContent === '가디언 토벌') return false;
-    if (priceOverrideState.ignoreBreakthroughStone && (name === '찬란한 명예의 돌파석' || name === '운명의 돌파석')) return true;
+    if (priceOverrideState.ignoreBreakthroughStone && (name === '찬란한 명예의 돌파석' || name === '운명의 돌파석' || name === '위대한 운명의 돌파석')) return true;
     if (priceOverrideState.ignoreFragment && (name === '명예의 파편' || name === '운명의 파편')) return true;
     if (priceOverrideState.ignoreCardExp && name === '카드 경험치') return true;
+    if (priceOverrideState.ignoreDestructionGuardStone && (name === '운명의 파괴석' || name === '운명의 수호석' || name === '운명의 파괴석 결정' || name === '운명의 수호석 결정')) return true;
     return false;
   };
 
@@ -307,16 +361,16 @@ export default function ContentRewardsClient({
       <div>
         <div className="mb-6 md:mb-10">
           <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">
-            {activeContent ? `${activeContent} 보상 계산기` : '컨텐츠 보상 계산기'}
+            {activeContent ? `${activeContent === '쿠르잔 전선' ? '전선&균열' : activeContent === '에브니 큐브' ? '큐브&모래시계' : activeContent} 보상 계산기` : '컨텐츠 보상 계산기'}
           </h1>
           <p className="text-base text-gray-400">컨텐츠별 보상과 골드 가치를 확인하세요.</p>
         </div>
 
         {/* 레벨 선택 */}
-        {levels.length > 0 && activeContent !== '에브니 큐브' && (
+        {levels.length > 0 && (
           <div className="mb-6">
-            {activeContent === '쿠르잔 전선' || activeContent === '가디언 토벌' ? (
-              // 쿠르잔 전선, 가디언 토벌: 버튼형 선택
+            {activeContent === '쿠르잔 전선' || activeContent === '에브니 큐브' || activeContent === '가디언 토벌' ? (
+              // 전선&균열, 큐브&모래시계, 가디언 토벌: 버튼형 선택
               <div className="flex flex-wrap gap-2">
                 {levels.map(level => {
                   // 가디언 토벌의 경우 스테이지 이름 표시
@@ -422,7 +476,7 @@ export default function ContentRewardsClient({
                     const priceStr = reward.price ? formatNumberWithSignificantDigits(reward.price) : '';
                     const itemTotalStr = formatNumberWithSignificantDigits(itemTotal);
                     const isGuardianTab = activeContent === '가디언 토벌';
-                    const isCubeTicket = !!reward.cubeStageRewards && reward.cubeStageRewards.length > 0 && reward.itemName.startsWith('에브니 큐브 입장권');
+                    const isCubeTicket = !!reward.cubeStageRewards && reward.cubeStageRewards.length > 0;
 
                     // 에브니 큐브 입장권: 단가(거래가능/전체) 계산
                     let cubeUnitTradable: number | null = null;
@@ -535,7 +589,7 @@ export default function ContentRewardsClient({
                   })}
                 </div>
 
-                {/* 에브니 큐브 보상: 별도 박스로 구분 표시 (아이템 카드 높이에 영향 없음) */}
+                {/* 큐브&모래시계 보상: 별도 박스로 구분 표시 (아이템 카드 높이에 영향 없음) */}
                 {(() => {
                   const cubeInfo = stage.rewards.find(r => r.cubeStageRewards && r.cubeStageRewards.length > 0);
                   if (!cubeInfo) return null;
@@ -543,9 +597,9 @@ export default function ContentRewardsClient({
                   const cubeLabel = match ? match[1] : '';
                   const list = cubeInfo.cubeStageRewards || [];
                   return (
-                    <div className="mt-4 bg-gray-900 border border-gray-700 rounded p-4">
+                      <div className="mt-4 bg-gray-900 border border-gray-700 rounded p-4">
                       <div className="text-sm text-gray-300 mb-2">
-                        에브니 큐브 보상{cubeLabel ? ` (${cubeLabel})` : ''}
+                        큐브&모래시계 보상{cubeLabel ? ` (${cubeLabel})` : ''}
                       </div>
                       {list.length === 0 ? (
                         <div className="text-xs text-gray-500">표시할 보상이 없습니다.</div>

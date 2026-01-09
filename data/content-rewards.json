@@ -322,6 +322,49 @@
           }
         ]
       }
+    ],
+    "1730": [
+      {
+        "stage": "심연의 역류 I",
+        "rewards": [
+          {
+            "itemName": "운명의 파괴석 결정",
+            "quantity": 430.7
+          },
+          {
+            "itemName": "운명의 수호석 결정",
+            "quantity": 1116
+          },
+          {
+            "itemName": "위대한 운명의 돌파석",
+            "quantity": 14.9
+          },
+          {
+            "itemName": "운명의 파편",
+            "quantity": 38078
+          },
+          {
+            "itemName": "실링",
+            "quantity": 205750
+          },
+          {
+            "itemName": "영웅 젬",
+            "quantity": 0.1
+          },
+          {
+            "itemName": "희귀 젬",
+            "quantity": 0.3
+          },
+          {
+            "itemName": "고급 젬",
+            "quantity": 1.6
+          },
+          {
+            "itemName": "시련의 모래 (1단계)",
+            "quantity": 0.1
+          }
+        ]
+      }
     ]
   },
   "에브니 큐브": {},
