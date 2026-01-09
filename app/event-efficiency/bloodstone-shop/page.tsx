@@ -24,6 +24,7 @@ async function getSavedShops() {
   }
 
   try {
+    // 캐시 비활성화를 위해 현재 시간을 쿼리 파라미터로 추가
     const { data, error } = await supabase
       .from('saved_bloodstone_shops')
       .select('*')

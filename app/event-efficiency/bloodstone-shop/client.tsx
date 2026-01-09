@@ -950,7 +950,10 @@ export default function BloodstoneShopClient({
   // 저장된 상점 목록 새로고침
   const refreshSavedShops = useCallback(async () => {
     try {
-      const res = await fetch('/api/bloodstone-shops');
+      // 캐시 비활성화를 위해 타임스탬프를 쿼리 파라미터로 추가
+      const res = await fetch(`/api/bloodstone-shops?t=${Date.now()}`, {
+        cache: 'no-store',
+      });
       
       // 응답이 JSON인지 확인
       const contentType = res.headers.get('content-type');
@@ -1516,6 +1519,63 @@ export default function BloodstoneShopClient({
           </div>
         )}
 
+        {/* 저장된 상점 목록 */}
+        {allowShopSave && savedShops.length > 0 && (
+          <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">저장된 상점</h2>
+              <button
+                onClick={refreshSavedShops}
+                className="px-3 py-1 text-sm bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors disabled:opacity-50"
+                disabled={isLoading}
+              >
+                새로고침
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {savedShops.map((shop) => {
+                const isSelected = selectedShopId === shop.id;
+                return (
+                  <div 
+                    key={shop.id} 
+                    className={`bg-gray-700/50 rounded-lg p-4 border transition-colors ${
+                      isSelected 
+                        ? 'border-blue-500 bg-blue-900/20 ring-2 ring-blue-500/50' 
+                        : 'border-gray-600 hover:border-gray-500'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div 
+                        onClick={() => handleLoadShop(shop.id)}
+                        className="flex-1 cursor-pointer"
+                      >
+                        <div className={`font-medium ${isSelected ? 'text-blue-300' : 'text-white'}`}>
+                          {shop.shop_name}
+                          {isSelected && (
+                            <span className="ml-2 text-xs text-blue-400">✓ 선택됨</span>
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-400 mt-1">
+                          {new Date(shop.created_at).toLocaleDateString('ko-KR')}
+                        </div>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteShop(shop.id);
+                        }}
+                        className="ml-2 px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors disabled:opacity-50"
+                        disabled={isLoading}
+                      >
+                        삭제
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
         
         {/* 요약 카드 */}
         <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">

@@ -27,7 +27,17 @@ export async function GET() {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ shops: data || [] });
+    // 캐시 비활성화 헤더 추가
+    return NextResponse.json(
+      { shops: data || [] },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      }
+    );
   } catch (error: any) {
     console.error('혈석 상점 조회 실패:', error);
     return NextResponse.json({ error: '혈석 상점 조회에 실패했습니다.' }, { status: 500 });
