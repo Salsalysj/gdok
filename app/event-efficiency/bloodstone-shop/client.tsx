@@ -947,6 +947,40 @@ export default function BloodstoneShopClient({
     }
   }, [initialSavedShops]);
 
+  // 저장된 상점 목록 새로고침
+  const refreshSavedShops = useCallback(async () => {
+    try {
+      const res = await fetch('/api/bloodstone-shops');
+      
+      // 응답이 JSON인지 확인
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await res.text();
+        console.error('예상치 못한 응답:', text);
+        return;
+      }
+      
+      const data = await res.json();
+      if (data.shops) {
+        setSavedShops(data.shops);
+      }
+    } catch (error) {
+      console.error('저장된 상점 목록 조회 실패:', error);
+    }
+  }, []);
+
+  // initialSavedShops가 변경될 때 savedShops 상태 업데이트
+  useEffect(() => {
+    if (initialSavedShops) {
+      setSavedShops(initialSavedShops);
+    }
+  }, [initialSavedShops]);
+
+  // 페이지 마운트 시 저장된 상점 목록 새로고침
+  useEffect(() => {
+    refreshSavedShops();
+  }, [refreshSavedShops]);
+
   // 상점 저장
   const handleSaveShop = async () => {
     if (!saveShopName.trim()) {
@@ -981,6 +1015,14 @@ export default function BloodstoneShopClient({
         });
       }
 
+      // 응답이 JSON인지 확인
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await res.text();
+        console.error('예상치 못한 응답:', text);
+        throw new Error('서버에서 JSON 응답을 받지 못했습니다.');
+      }
+      
       const data = await res.json();
       
       if (!res.ok) {
@@ -993,6 +1035,7 @@ export default function BloodstoneShopClient({
 
       setShowSaveModal(false);
       setSaveShopName('');
+      await refreshSavedShops();
       alert(selectedShopId ? '상점이 업데이트되었습니다.' : '상점이 저장되었습니다.');
     } catch (error: any) {
       console.error('상점 저장 실패:', error);
@@ -1007,7 +1050,20 @@ export default function BloodstoneShopClient({
     setIsLoading(true);
     try {
       const res = await fetch(`/api/bloodstone-shops/${shopId}`);
+      
+      // 응답이 JSON인지 확인
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await res.text();
+        console.error('예상치 못한 응답:', text);
+        throw new Error('서버에서 JSON 응답을 받지 못했습니다.');
+      }
+      
       const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || '상점을 불러오는데 실패했습니다.');
+      }
       
       if (data.shop && data.shop.shop_data) {
         setShopData(data.shop.shop_data);
@@ -1035,9 +1091,18 @@ export default function BloodstoneShopClient({
       const res = await fetch(`/api/bloodstone-shops/${shopId}`, {
         method: 'DELETE',
       });
+      
+      // 응답이 JSON인지 확인
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await res.text();
+        console.error('예상치 못한 응답:', text);
+        throw new Error('서버에서 JSON 응답을 받지 못했습니다.');
+      }
+      
+      const data = await res.json();
 
       if (!res.ok) {
-        const data = await res.json();
         throw new Error(data.error || '삭제에 실패했습니다.');
       }
 
@@ -1050,6 +1115,7 @@ export default function BloodstoneShopClient({
         });
       }
 
+      await refreshSavedShops();
       alert('상점이 삭제되었습니다.');
     } catch (error: any) {
       console.error('상점 삭제 실패:', error);
