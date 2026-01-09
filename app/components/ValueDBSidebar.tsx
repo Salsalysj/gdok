@@ -21,10 +21,70 @@ export default function ValueDBSidebar() {
   const [searchQuery, setSearchQuery] = useState('');
   const [tooltip, setTooltip] = useState<TooltipState>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
+  const [lightMode, setLightMode] = useState<boolean>(false);
+  const [discordRate, setDiscordRate] = useState<number | null>(null);
 
-  // 검색 필터링
+  // 디코기준 스위치 상태 동기화
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('themeLight');
+      if (saved != null) {
+        setLightMode(saved === '1');
+      }
+    } catch {}
+    
+    const handleThemeChange = (e: CustomEvent<{ light: boolean }>) => {
+      setLightMode(e.detail.light);
+    };
+    
+    window.addEventListener('theme-change', handleThemeChange as EventListener);
+    return () => {
+      window.removeEventListener('theme-change', handleThemeChange as EventListener);
+    };
+  }, []);
+
+  // 디스코드 환율 정보 가져오기
+  useEffect(() => {
+    async function fetchDiscordRate() {
+      try {
+        const res = await fetch('/api/admin/crystal-gold');
+        const data = await res.json();
+        const rates = data.exchangeRates || [];
+        if (rates.length > 0) {
+          const latest = rates[rates.length - 1];
+          setDiscordRate(latest.discord || null);
+        }
+      } catch (error) {
+        console.error('디스코드 환율 조회 실패:', error);
+      }
+    }
+    fetchDiscordRate();
+  }, []);
+
+  // 현금(원) 1원당 골드 계산
+  const goldPerWon = useMemo(() => {
+    // 디코기준 스위치가 켜져있으면 (lightMode가 false이면 디코기준 ON)
+    if (!lightMode && discordRate && discordRate > 0) {
+      // 디스코드 환율 = 100 : n
+      // 1원당 골드 = 100 / n
+      return 100 / discordRate;
+    }
+    
+    // 디코기준 스위치가 꺼져있으면 크리스탈 환율 사용
+    const crystalEntry = adjustedEntries.find(entry => entry.itemName === '크리스탈');
+    if (crystalEntry && crystalEntry.unitValue != null && crystalEntry.unitValue > 0) {
+      // 크리스탈 1개당 골드 = unitValue
+      // 2750원 = 100크리
+      // 1원 = 100/2750 크리
+      // 1원당 골드 = (100/2750) * unitValue
+      return (100 / 2750) * crystalEntry.unitValue;
+    }
+    return null;
+  }, [adjustedEntries, lightMode, discordRate]);
+
+  // 검색 필터링 (검색어가 있을 때만 필터링)
   const filteredEntries = useMemo(() => {
-    if (!searchQuery.trim()) return adjustedEntries;
+    if (!searchQuery.trim()) return [];
     const query = searchQuery.toLowerCase().trim();
     return adjustedEntries.filter(entry =>
       entry.itemName.toLowerCase().includes(query)
@@ -110,12 +170,49 @@ export default function ValueDBSidebar() {
 
   return (
     <div className="h-full flex flex-col bg-gray-900 border-r border-gray-800">
-      {/* 헤더: 제목 + 닫기 버튼 */}
-      <div className="p-3 border-b border-gray-800 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-gray-300">가치 계산 DB</h2>
+      {/* 헤더: 골드 환율 + 디코기준 스위치 + 닫기 버튼 */}
+      <div className="p-3 border-b border-gray-800 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-3 flex-1">
+          <div className="text-sm font-semibold text-gray-300">
+            {goldPerWon != null 
+              ? `현재 1원당 ${formatNumberWithSignificantDigits(goldPerWon)}골드`
+              : '현재 1원당 골드 계산 중...'}
+          </div>
+          {/* 디코기준 스위치 */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                const newLightMode = !lightMode;
+                setLightMode(newLightMode);
+                try {
+                  localStorage.setItem('themeLight', newLightMode ? '1' : '0');
+                  window.dispatchEvent(new CustomEvent('theme-change', { detail: { light: newLightMode } }));
+                  if (newLightMode) {
+                    document.documentElement.classList.add('light');
+                    document.documentElement.classList.remove('dark');
+                  } else {
+                    document.documentElement.classList.add('dark');
+                    document.documentElement.classList.remove('light');
+                  }
+                } catch {}
+              }}
+              aria-pressed={!lightMode}
+              title="디코기준"
+              className={`relative inline-flex h-6 w-11 items-center rounded-full border ${
+                !lightMode ? 'bg-gray-600 border-gray-500' : 'bg-gray-700 border-gray-600'
+              }`}
+            >
+              <span className={`inline-block h-5 w-5 rounded-full bg-white ${
+                !lightMode ? 'translate-x-5' : 'translate-x-1'
+              }`} />
+            </button>
+            <span className="text-xs text-gray-300">디코기준</span>
+          </div>
+        </div>
         <button
           onClick={closeSidebar}
-          className="text-gray-400 hover:text-white p-1 rounded hover:bg-gray-800"
+          className="text-gray-400 hover:text-white p-1 rounded hover:bg-gray-800 flex-shrink-0"
           aria-label="닫기"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -204,7 +301,7 @@ export default function ValueDBSidebar() {
       </div>
       
       {/* 가치 계산 DB 섹션 */}
-      <div className="p-3 border-b border-gray-800">
+      <div className="p-3 border-b border-gray-800 relative">
         <h2 className="text-lg font-bold text-white mb-2">가치 계산 DB</h2>
         <input
           type="text"
@@ -213,10 +310,11 @@ export default function ValueDBSidebar() {
           placeholder="아이템명 검색..."
           className="w-full px-3 py-2 text-sm bg-gray-800 border border-gray-700 rounded text-white placeholder-gray-400 focus:outline-none focus:border-gray-600"
         />
-      </div>
-      <div className="flex-1 overflow-y-auto">
-        <div className="p-2">
-          <table className="w-full text-xs divide-y divide-gray-800">
+        {/* 검색 결과 오버레이 드롭다운 (검색어가 있을 때만 표시) */}
+        {searchQuery.trim() && (
+          <div className="absolute top-full left-0 right-0 mt-1 bg-gray-900 border border-gray-700 rounded shadow-xl z-50 max-h-[400px] overflow-y-auto">
+            <div className="p-2">
+              <table className="w-full text-xs divide-y divide-gray-800">
             <thead className="bg-gray-800/60 sticky top-0">
               <tr>
                 <th className="px-2 py-2 text-left font-semibold text-gray-200">아이템명</th>
@@ -375,7 +473,7 @@ export default function ValueDBSidebar() {
                 </>
               )}
 
-              {filteredEntries.length === 0 && (
+              {searchQuery.trim() && filteredEntries.length === 0 && (
                 <tr>
                   <td colSpan={3} className="px-2 py-4 text-center text-gray-400 text-xs">
                     검색 결과 없음
@@ -386,6 +484,15 @@ export default function ValueDBSidebar() {
           </table>
         </div>
       </div>
+        )}
+      </div>
+      
+      {/* 검색어가 없을 때 표시할 영역 */}
+      {!searchQuery.trim() && (
+        <div className="flex-1 overflow-y-auto flex items-center justify-center">
+          <div className="text-gray-400 text-sm">테스트</div>
+        </div>
+      )}
       
       {/* 툴팁 */}
       {tooltip && (

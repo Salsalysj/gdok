@@ -3,6 +3,8 @@ import './globals.css'
 import Navigation from './components/Navigation'
 import Footer from '../components/Footer'
 import SidebarWrapper from './components/SidebarWrapper'
+import LeftSidebarPlaceholder from './components/LeftSidebarPlaceholder'
+import ValueDBSidebar from './components/ValueDBSidebar'
 import { SidebarProvider } from './contexts/SidebarContext'
 import { PriceOverrideProvider } from './contexts/PriceOverrideContext'
 import { ValueDbProvider } from './contexts/ValueDbContext'
@@ -102,14 +104,44 @@ export default async function RootLayout({
               cubeStageTotals={valueDbData.cubeStageTotals}
               explanationMap={valueDbData.explanationMap}
             >
+              {/* Header */}
               <Navigation />
-              <div className="flex-1 overflow-y-auto min-w-0">
-                <div className="mx-auto w-full max-w-[1320px] px-6">
-                  {children}
+              
+              {/* Body: 3-column grid layout */}
+              <div className="flex-1 min-w-0">
+                <div className="max-w-[1800px] mx-auto px-6">
+                  <div className="grid lg:grid-cols-[280px,1fr,360px] gap-3">
+                    {/* Left Sidebar */}
+                    <aside className="hidden lg:block">
+                      <div className="sticky top-14 md:top-16 h-[calc(100dvh-3.5rem)] md:h-[calc(100dvh-4rem)]">
+                        <LeftSidebarPlaceholder />
+                      </div>
+                    </aside>
+                    
+                    {/* Main Content */}
+                    <main className="min-w-0 pt-14 md:pt-16 pb-6">
+                      {children}
+                    </main>
+                    
+                    {/* Right Sidebar */}
+                    <aside className="hidden lg:block">
+                      <div className="sticky top-14 md:top-16 h-[calc(100dvh-3.5rem)] md:h-[calc(100dvh-4rem)]">
+                        <ValueDBSidebar />
+                      </div>
+                    </aside>
+                  </div>
                 </div>
               </div>
+              
+              {/* Mobile Sidebar Wrapper (for toggle functionality) */}
               <SidebarWrapper />
-              <Footer />
+              
+              {/* Footer */}
+              <div className="w-full">
+                <div className="max-w-[1800px] mx-auto px-6">
+                  <Footer />
+                </div>
+              </div>
             </ValueDbProvider>
           </PriceOverrideProvider>
         </SidebarProvider>

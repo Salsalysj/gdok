@@ -100,36 +100,13 @@ export default function Navigation() {
     { name: '혈석 상점 교환', href: '/event-efficiency/bloodstone-shop' },
   ];
 
-  // 디코기준 스위치 컴포넌트
-  const ThemeSwitch = ({ className = '' }: { className?: string }) => {
-    const switchOn = !lightMode;
-    return (
-      <div className={`flex items-center gap-2 ${className}`}>
-        <button
-          type="button"
-          onClick={() => setLightMode(v => !v)}
-          aria-pressed={switchOn}
-          title="디코기준"
-          className={`relative inline-flex h-6 w-11 items-center rounded-full border ${
-            switchOn ? 'bg-gray-600 border-gray-500' : 'bg-gray-700 border-gray-600'
-          }`}
-        >
-          <span className={`inline-block h-5 w-5 rounded-full bg-white ${
-            switchOn ? 'translate-x-5' : 'translate-x-1'
-          }`} />
-        </button>
-        <span className="text-xs md:text-sm text-gray-300">디코기준</span>
-      </div>
-    );
-  };
-
   return (
-    <nav className="bg-gray-900 border-b border-gray-700 sticky top-0 z-40">
-      <div className="max-w-6xl mx-auto px-3 md:px-4">
+    <nav className="bg-gray-900 border-b border-gray-700 fixed top-0 left-0 right-0 z-40">
+      <div className="w-full">
         {/* 상단 헤더 */}
-        <div className="flex items-center justify-between h-14 md:h-16">
-          {/* 로고 */}
-          <Link href="/" className="flex items-center space-x-2">
+        <div className="flex items-center h-14 md:h-16 px-3 md:px-4">
+          {/* 모바일 로고 - 데스크톱에서는 숨김 (좌측 사이드바로 이동) */}
+          <Link href="/" className="flex lg:hidden items-center space-x-2 flex-shrink-0">
             <span className="text-xl md:text-2xl font-bold text-white">
               껨산기
             </span>
@@ -141,9 +118,8 @@ export default function Navigation() {
             </span>
           </Link>
 
-          {/* 모바일: 테마 스위치 + 햄버거 + 사이드바 토글 */}
-          <div className="flex items-center gap-3 lg:hidden">
-            <ThemeSwitch />
+          {/* 모바일: 햄버거 메뉴 */}
+          <div className="flex items-center gap-3 lg:hidden ml-auto">
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -160,19 +136,10 @@ export default function Navigation() {
                 </svg>
               )}
             </button>
-            <button
-              type="button"
-              onClick={toggleSidebar}
-              className="text-white p-2 hover:bg-gray-800 rounded"
-              aria-label={sidebarOpen ? '가치 계산 DB 닫기' : '가치 계산 DB 열기'}
-              title="가치 계산 DB"
-            >
-              <span className="text-xl" aria-hidden="true">⚙️</span>
-            </button>
           </div>
 
-          {/* 데스크톱: 네비게이션 탭 (1024px 이상) */}
-          <div className="hidden lg:flex items-center gap-3">
+          {/* 데스크톱: 네비게이션 탭 (1024px 이상) - 가운데 정렬 */}
+          <div className="hidden lg:flex items-center gap-3 absolute left-1/2 transform -translate-x-1/2">
             <div className="flex items-center space-x-1 relative">
               {tabs.map((tab) => {
                 const isActive = pathname === tab.href || 
@@ -252,16 +219,6 @@ export default function Navigation() {
                 );
               })}
             </div>
-            <ThemeSwitch />
-            <button
-              type="button"
-              onClick={toggleSidebar}
-              className="text-gray-400 hover:text-white hover:bg-gray-800 px-3 py-2 rounded"
-              aria-label={sidebarOpen ? '가치 계산 DB 닫기' : '가치 계산 DB 열기'}
-              title="가치 계산 DB"
-            >
-              <span className="text-lg" aria-hidden="true">⚙️</span>
-            </button>
           </div>
         </div>
 
