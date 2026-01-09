@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
-import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
-import { useValueDb } from '../contexts/ValueDbContext';
-import { usePriceOverride } from '../contexts/PriceOverrideContext';
+import { formatNumberWithSignificantDigits } from '../../utils/formatNumber';
+import { usePriceAdjustment } from '../../hooks/usePriceAdjustment';
+import { useValueDb } from '../../contexts/ValueDbContext';
+import { usePriceOverride } from '../../contexts/PriceOverrideContext';
 import type { ValueDbEntry } from '@/lib/valueDb';
 
 type ComponentItem = {
@@ -857,13 +857,21 @@ export default function BloodstoneShopClient({
 
   // 각 섹션별 묶음 항목 상세 정보
   const sectionDetails = useMemo(() => {
-    const getSectionDetails = (items: BundleItem[], sectionName: string) => {
+    // 먼저 모든 섹션의 항목을 합쳐서 전체 기준으로 등수 계산
+    const allItems: Array<{ section: 'ticketItems' | 'refiningItems' | 'silverItems'; valuePerBloodstone: number; id: number }> = [];
+    let itemIdCounter = 0;
+    
+    const getSectionDetails = (items: BundleItem[], section: 'ticketItems' | 'refiningItems' | 'silverItems') => {
       return items.map((item) => {
         const value = calculateBundleItemValue(item);
         const bloodstoneCost = item.bloodstoneCost || 0;
         const valuePerBloodstone = bloodstoneCost > 0 ? (value / bloodstoneCost) * 100 : 0;
+        const id = itemIdCounter++;
+        
+        allItems.push({ section, valuePerBloodstone, id });
         
         return {
+          id,
           itemName: item.itemName || '(미입력)',
           quantity: item.quantity || 1,
           value,
@@ -873,10 +881,35 @@ export default function BloodstoneShopClient({
       });
     };
     
+    const ticketItems = getSectionDetails(shopData.ticketItems, 'ticketItems');
+    const refiningItems = getSectionDetails(shopData.refiningItems, 'refiningItems');
+    const silverItems = getSectionDetails(shopData.silverItems, 'silverItems');
+    
+    // 전체 기준으로 등수 계산
+    const sortedAllItems = [...allItems].sort((a, b) => b.valuePerBloodstone - a.valuePerBloodstone);
+    
+    // 각 항목 ID에 대한 등수 맵 생성 (상위 5개만)
+    const rankMap = new Map<number, number>();
+    sortedAllItems.forEach((item, index) => {
+      if (index < 5) {
+        rankMap.set(item.id, index + 1);
+      }
+    });
+    
+    // 각 섹션의 항목에 등수 정보 추가
     return {
-      ticketItems: getSectionDetails(shopData.ticketItems, '입장권 및 보조 재료'),
-      refiningItems: getSectionDetails(shopData.refiningItems, '재련 재료'),
-      silverItems: getSectionDetails(shopData.silverItems, '실링'),
+      ticketItems: ticketItems.map((item) => ({
+        ...item,
+        rank: rankMap.get(item.id) || null,
+      })),
+      refiningItems: refiningItems.map((item) => ({
+        ...item,
+        rank: rankMap.get(item.id) || null,
+      })),
+      silverItems: silverItems.map((item) => ({
+        ...item,
+        rank: rankMap.get(item.id) || null,
+      })),
     };
   }, [shopData, calculateBundleItemValue, goldToCashPerGold]);
 
@@ -1420,7 +1453,7 @@ export default function BloodstoneShopClient({
         
         {/* 요약 카드 */}
         <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
-          <h2 className="text-2xl font-semibold mb-4">요약</h2>
+          <h2 className="text-xl font-semibold mb-10">※ 혈석 100개당 50골드 미만 항목들은 교환 비추</h2>
           <div className="space-y-6">
             {/* 입장권 및 보조 재료 */}
             <div>
@@ -1437,22 +1470,35 @@ export default function BloodstoneShopClient({
                       </tr>
                     </thead>
                     <tbody>
-                      {sectionDetails.ticketItems.map((item, index) => (
-                        <tr key={index} className="border-b border-gray-700/50 hover:bg-gray-900/30">
-                          <td className="py-2 px-4 text-sm text-gray-300">
-                            {item.itemName} × {item.quantity}
-                          </td>
-                          <td className="py-2 px-4 text-sm text-right text-yellow-300">
-                            {formatNumberWithSignificantDigits(item.value)} 골드
-                          </td>
-                          <td className="py-2 px-4 text-sm text-right text-blue-300">
-                            {formatNumberWithSignificantDigits(item.bloodstoneCost)}
-                          </td>
-                          <td className="py-2 px-4 text-sm text-right text-green-300">
-                            {item.bloodstoneCost > 0 ? formatNumberWithSignificantDigits(item.valuePerBloodstone) : '0'} 골드
-                          </td>
-                        </tr>
-                      ))}
+                      {sectionDetails.ticketItems.map((item, index) => {
+                        const isLowValue = item.valuePerBloodstone < 50;
+                        return (
+                          <tr key={index} className={`border-b border-gray-700/50 hover:bg-gray-900/30 ${isLowValue ? 'opacity-60' : ''}`}>
+                            <td className="py-2 px-4 text-sm text-gray-300">
+                              <div className="flex items-center gap-2">
+                                <span>{item.itemName} × {item.quantity}</span>
+                                {item.rank && (
+                                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-yellow-500 text-yellow-900 text-xs font-bold">
+                                    {item.rank}
+                                  </span>
+                                )}
+                                {isLowValue && (
+                                  <span className="text-red-400 font-bold text-lg">✕</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-2 px-4 text-sm text-right text-yellow-300">
+                              {formatNumberWithSignificantDigits(item.value)} 골드
+                            </td>
+                            <td className="py-2 px-4 text-sm text-right text-blue-300">
+                              {formatNumberWithSignificantDigits(item.bloodstoneCost)}
+                            </td>
+                            <td className="py-2 px-4 text-sm text-right text-green-300">
+                              {item.bloodstoneCost > 0 ? formatNumberWithSignificantDigits(item.valuePerBloodstone) : '0'} 골드
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -1476,22 +1522,35 @@ export default function BloodstoneShopClient({
                       </tr>
                     </thead>
                     <tbody>
-                      {sectionDetails.refiningItems.map((item, index) => (
-                        <tr key={index} className="border-b border-gray-700/50 hover:bg-gray-900/30">
-                          <td className="py-2 px-4 text-sm text-gray-300">
-                            {item.itemName} × {item.quantity}
-                          </td>
-                          <td className="py-2 px-4 text-sm text-right text-yellow-300">
-                            {formatNumberWithSignificantDigits(item.value)} 골드
-                          </td>
-                          <td className="py-2 px-4 text-sm text-right text-blue-300">
-                            {formatNumberWithSignificantDigits(item.bloodstoneCost)}
-                          </td>
-                          <td className="py-2 px-4 text-sm text-right text-green-300">
-                            {item.bloodstoneCost > 0 ? formatNumberWithSignificantDigits(item.valuePerBloodstone) : '0'} 골드
-                          </td>
-                        </tr>
-                      ))}
+                      {sectionDetails.refiningItems.map((item, index) => {
+                        const isLowValue = item.valuePerBloodstone < 50;
+                        return (
+                          <tr key={index} className={`border-b border-gray-700/50 hover:bg-gray-900/30 ${isLowValue ? 'opacity-60' : ''}`}>
+                            <td className="py-2 px-4 text-sm text-gray-300">
+                              <div className="flex items-center gap-2">
+                                <span>{item.itemName} × {item.quantity}</span>
+                                {item.rank && (
+                                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-yellow-500 text-yellow-900 text-xs font-bold">
+                                    {item.rank}
+                                  </span>
+                                )}
+                                {isLowValue && (
+                                  <span className="text-red-400 font-bold text-lg">✕</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-2 px-4 text-sm text-right text-yellow-300">
+                              {formatNumberWithSignificantDigits(item.value)} 골드
+                            </td>
+                            <td className="py-2 px-4 text-sm text-right text-blue-300">
+                              {formatNumberWithSignificantDigits(item.bloodstoneCost)}
+                            </td>
+                            <td className="py-2 px-4 text-sm text-right text-green-300">
+                              {item.bloodstoneCost > 0 ? formatNumberWithSignificantDigits(item.valuePerBloodstone) : '0'} 골드
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -1515,22 +1574,35 @@ export default function BloodstoneShopClient({
                       </tr>
                     </thead>
                     <tbody>
-                      {sectionDetails.silverItems.map((item, index) => (
-                        <tr key={index} className="border-b border-gray-700/50 hover:bg-gray-900/30">
-                          <td className="py-2 px-4 text-sm text-gray-300">
-                            {item.itemName} × {item.quantity}
-                          </td>
-                          <td className="py-2 px-4 text-sm text-right text-yellow-300">
-                            {formatNumberWithSignificantDigits(item.value)} 골드
-                          </td>
-                          <td className="py-2 px-4 text-sm text-right text-blue-300">
-                            {formatNumberWithSignificantDigits(item.bloodstoneCost)}
-                          </td>
-                          <td className="py-2 px-4 text-sm text-right text-green-300">
-                            {item.bloodstoneCost > 0 ? formatNumberWithSignificantDigits(item.valuePerBloodstone) : '0'} 골드
-                          </td>
-                        </tr>
-                      ))}
+                      {sectionDetails.silverItems.map((item, index) => {
+                        const isLowValue = item.valuePerBloodstone < 50;
+                        return (
+                          <tr key={index} className={`border-b border-gray-700/50 hover:bg-gray-900/30 ${isLowValue ? 'opacity-60' : ''}`}>
+                            <td className="py-2 px-4 text-sm text-gray-300">
+                              <div className="flex items-center gap-2">
+                                <span>{item.itemName} × {item.quantity}</span>
+                                {item.rank && (
+                                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-yellow-500 text-yellow-900 text-xs font-bold">
+                                    {item.rank}
+                                  </span>
+                                )}
+                                {isLowValue && (
+                                  <span className="text-red-400 font-bold text-lg">✕</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-2 px-4 text-sm text-right text-yellow-300">
+                              {formatNumberWithSignificantDigits(item.value)} 골드
+                            </td>
+                            <td className="py-2 px-4 text-sm text-right text-blue-300">
+                              {formatNumberWithSignificantDigits(item.bloodstoneCost)}
+                            </td>
+                            <td className="py-2 px-4 text-sm text-right text-green-300">
+                              {item.bloodstoneCost > 0 ? formatNumberWithSignificantDigits(item.valuePerBloodstone) : '0'} 골드
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

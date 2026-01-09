@@ -1,7 +1,12 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-import BloodstoneShopClient from '../../bloodstone-shop/client';
+export const metadata = {
+  title: '혈석 상점 - 껨산기',
+  description: '로스트아크 혈석 상점 교환 효율을 계산하고 최적의 교환 아이템을 추천합니다.',
+};
+
+import BloodstoneShopClient from './client';
 import { getValueDbData } from '@/lib/valueDb';
 import { getContentRewardsData } from '@/lib/contentRewards';
 import { createClient } from '@supabase/supabase-js';

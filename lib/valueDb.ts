@@ -623,6 +623,40 @@ function resolveEntry(
     };
   }
 
+  // 질서의 젬 / 혼돈의 젬 등급별 처리
+  const gemGradeMatch = itemName.match(/^(질서의 젬 : (?:불변|견고|안정)|혼돈의 젬 : (?:침식|왜곡|붕괴))\s*\(([^)]+)\)$/);
+  if (gemGradeMatch) {
+    const baseGemName = gemGradeMatch[1];
+    const grade = gemGradeMatch[2];
+    
+    if (grade === '고급' || grade === '희귀' || grade === '영웅') {
+      const allItems = [
+        ...(marketData?.tier4Results || []),
+        ...(marketData?.tier3Results || []),
+        ...(marketData?.gemResults || []),
+        ...(marketData?.otherResults || []),
+        ...(marketData?.relicEngravingResults || []),
+      ];
+      
+      const gem = allItems.find((item: MarketItem) => {
+        const name = (item.displayName || item.Name || '').trim();
+        const itemGrade = item.Grade || '';
+        return name === baseGemName && itemGrade === grade;
+      });
+      
+      if (gem) {
+        const price = gem.CurrentMinPrice || gem.RecentPrice;
+        if (price != null && price > 0) {
+          return {
+            itemName,
+            unitType: '골드',
+            unitValue: price,
+          };
+        }
+      }
+    }
+  }
+
   if (itemName.startsWith('에브니 큐브 입장권')) {
     const match = itemName.match(/\(([^)]+)\)/);
     const key = match ? match[1] : '';
@@ -930,6 +964,24 @@ export async function getValueDbData(): Promise<ValueDbData> {
     '장인의 재봉술 : 3단계',
     '장인의 야금술 : 4단계',
     '장인의 재봉술 : 4단계',
+    '질서의 젬 : 불변 (고급)',
+    '질서의 젬 : 불변 (희귀)',
+    '질서의 젬 : 불변 (영웅)',
+    '질서의 젬 : 견고 (고급)',
+    '질서의 젬 : 견고 (희귀)',
+    '질서의 젬 : 견고 (영웅)',
+    '질서의 젬 : 안정 (고급)',
+    '질서의 젬 : 안정 (희귀)',
+    '질서의 젬 : 안정 (영웅)',
+    '혼돈의 젬 : 침식 (고급)',
+    '혼돈의 젬 : 침식 (희귀)',
+    '혼돈의 젬 : 침식 (영웅)',
+    '혼돈의 젬 : 왜곡 (고급)',
+    '혼돈의 젬 : 왜곡 (희귀)',
+    '혼돈의 젬 : 왜곡 (영웅)',
+    '혼돈의 젬 : 붕괴 (고급)',
+    '혼돈의 젬 : 붕괴 (희귀)',
+    '혼돈의 젬 : 붕괴 (영웅)',
   ];
 
   // etc_list.csv의 모든 항목도 포함
