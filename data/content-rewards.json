@@ -452,6 +452,33 @@
           }
         ]
       }
+    ],
+    "1730": [
+      {
+        "stage": "가디언의 잔영",
+        "rewards": [
+          {
+            "itemName": "1레벨 보석 (4T)",
+            "quantity": 10.7
+          },
+          {
+            "itemName": "영웅 젬",
+            "quantity": 0.2
+          },
+          {
+            "itemName": "희귀 젬",
+            "quantity": 0.6
+          },
+          {
+            "itemName": "고급 젬",
+            "quantity": 3.2
+          },
+          {
+            "itemName": "실링",
+            "quantity": 53767
+          }
+        ]
+      }
     ]
   }
 }
