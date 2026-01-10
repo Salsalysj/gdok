@@ -1,6 +1,10 @@
 export const metadata = {
   title: '개인정보 처리방침 - 껨산기',
   description: '껨산기 개인정보 처리방침을 확인하세요.',
+  robots: {
+    index: false,
+    follow: true,
+  },
 };
 
 export default function PrivacyPage() {

@@ -1,6 +1,10 @@
 export const metadata = {
   title: '이용약관 - 껨산기',
   description: '껨산기 서비스 이용약관을 확인하세요.',
+  robots: {
+    index: false,
+    follow: true,
+  },
 };
 
 export default function TermsPage() {

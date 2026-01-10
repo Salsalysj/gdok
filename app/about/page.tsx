@@ -1,6 +1,10 @@
 export const metadata = {
   title: '껨산기 by 스누껨독',
   description: '껨산기는 로스트아크 게임 내 가치를 계산하고 효율을 분석하는 도구입니다.',
+  robots: {
+    index: false,
+    follow: true,
+  },
 };
 
 export default function AboutPage() {

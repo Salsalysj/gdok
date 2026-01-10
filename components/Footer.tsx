@@ -12,15 +12,15 @@ export default function Footer() {
           </div>
           <div className="flex items-center gap-2 md:gap-4">
             <Link href="/about" className="hover:text-gray-300">
-              About
+              사이트 소개
             </Link>
             <span>·</span>
             <Link href="/privacy" className="hover:text-gray-300">
-              Privacy Policy
+              개인정보처리방침
             </Link>
             <span>·</span>
             <Link href="/terms" className="hover:text-gray-300">
-              Terms of Service
+              이용약관
             </Link>
             <span>·</span>
             <span>Version: v0.9.0</span>
