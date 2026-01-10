@@ -13,7 +13,7 @@ export default function Home() {
             </span>
           </div>
           <h1 className="text-3xl font-semibold tracking-tight text-white">
-            껨산기에 오신 것을 환영합니다
+            껨산기
           </h1>
           <p className="text-base text-gray-400 max-w-2xl mx-auto">
             로스트아크 게임 내 아이템 가치를 계산하고 효율을 분석하는 도구입니다.
