@@ -25,9 +25,12 @@ export const metadata: Metadata = {
   title: '껨산기 by 스누껨독',
   description: '로스트아크 효율 계산 도구 (컨텐츠 보상, 과금 효율, 재련 효율, 이벤트 효율)',
   icons: {
-    icon: '/favicon.ico',
-    shortcut: '/favicon.ico',
-    apple: '/apple-touch-icon.png',
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/icon.png', type: 'image/png', sizes: '128x128' },
+    ],
+    shortcut: ['/favicon.ico'],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '128x128' }],
   },
   other: {
     'naver-site-verification': '8f08231fdf313560e91a3a0594db9fc420681267',
