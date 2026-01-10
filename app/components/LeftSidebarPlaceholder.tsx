@@ -20,24 +20,22 @@ export default function LeftSidebarPlaceholder() {
       </div>
       <div className="flex-1 overflow-y-auto p-4">
         <nav className="space-y-2">
-          <Link
-            href="#"
+          <a
+            href="https://www.youtube.com/channel/UCjTgPJoznJgeUta2qTI60SQ"
+            target="_blank"
+            rel="noopener noreferrer"
             className="block px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded"
           >
-            공지 (예정)
-          </Link>
-          <Link
-            href="#"
+            유튜브 스누껨독
+          </a>
+          <a
+            href="https://discord.gg/Bd7BGwsbV7"
+            target="_blank"
+            rel="noopener noreferrer"
             className="block px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded"
           >
-            업데이트 (예정)
-          </Link>
-          <Link
-            href="#"
-            className="block px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded"
-          >
-            Contact (예정)
-          </Link>
+            오류 / 건의사항
+          </a>
         </nav>
       </div>
     </div>
