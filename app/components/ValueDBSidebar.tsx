@@ -23,6 +23,7 @@ export default function ValueDBSidebar() {
   const tooltipRef = useRef<HTMLDivElement>(null);
   const [lightMode, setLightMode] = useState<boolean>(false);
   const [discordRate, setDiscordRate] = useState<number | null>(null);
+  const [isSearchFocused, setIsSearchFocused] = useState<boolean>(false);
 
   // 디코기준 스위치 상태 동기화
   useEffect(() => {
@@ -82,9 +83,9 @@ export default function ValueDBSidebar() {
     return null;
   }, [adjustedEntries, lightMode, discordRate]);
 
-  // 검색 필터링 (검색어가 있을 때만 필터링)
+  // 검색 필터링 (검색어가 있으면 필터링, 없으면 전체 리스트)
   const filteredEntries = useMemo(() => {
-    if (!searchQuery.trim()) return [];
+    if (!searchQuery.trim()) return adjustedEntries;
     const query = searchQuery.toLowerCase().trim();
     return adjustedEntries.filter(entry =>
       entry.itemName.toLowerCase().includes(query)
@@ -224,7 +225,8 @@ export default function ValueDBSidebar() {
       {/* 가격 조정 섹션 */}
       <div className="p-3 border-b border-gray-800">
         <h2 className="text-sm font-semibold text-gray-300 mb-3">가격 조정</h2>
-        <div className="space-y-2">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+          {/* 1단 */}
           <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white">
             <input
               type="checkbox"
@@ -261,6 +263,7 @@ export default function ValueDBSidebar() {
             />
             <span>파편 미반영</span>
           </label>
+          {/* 2단 */}
           <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white">
             <input
               type="checkbox"
@@ -307,12 +310,23 @@ export default function ValueDBSidebar() {
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
+          onFocus={() => setIsSearchFocused(true)}
+          onBlur={() => {
+            // 약간의 지연을 두어 드롭다운 클릭 가능하게 함
+            setTimeout(() => setIsSearchFocused(false), 200);
+          }}
           placeholder="아이템명 검색..."
           className="w-full px-3 py-2 text-sm bg-gray-800 border border-gray-700 rounded text-white placeholder-gray-400 focus:outline-none focus:border-gray-600"
         />
-        {/* 검색 결과 오버레이 드롭다운 (검색어가 있을 때만 표시) */}
-        {searchQuery.trim() && (
-          <div className="absolute top-full left-0 right-0 mt-1 bg-gray-900 border border-gray-700 rounded shadow-xl z-50 max-h-[400px] overflow-y-auto">
+        {/* 검색 결과 오버레이 드롭다운 (검색어가 있거나 포커스 상태일 때 표시) */}
+        {(searchQuery.trim() || isSearchFocused) && (
+          <div 
+            className="absolute top-full left-0 right-0 mt-1 bg-gray-900 border border-gray-700 rounded shadow-xl z-50 max-h-[400px] overflow-y-auto"
+            onMouseDown={(e) => {
+              // 드롭다운 클릭 시 포커스 유지
+              e.preventDefault();
+            }}
+          >
             <div className="p-2">
               <table className="w-full text-xs divide-y divide-gray-800">
             <thead className="bg-gray-800/60 sticky top-0">
@@ -480,6 +494,13 @@ export default function ValueDBSidebar() {
                   </td>
                 </tr>
               )}
+              {!searchQuery.trim() && filteredEntries.length === 0 && (
+                <tr>
+                  <td colSpan={3} className="px-2 py-4 text-center text-gray-400 text-xs">
+                    데이터 없음
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -487,8 +508,8 @@ export default function ValueDBSidebar() {
         )}
       </div>
       
-      {/* 검색어가 없을 때 표시할 영역 */}
-      {!searchQuery.trim() && (
+      {/* 검색어가 없고 포커스되지 않았을 때 표시할 영역 */}
+      {!searchQuery.trim() && !isSearchFocused && (
         <div className="flex-1 overflow-y-auto flex items-center justify-center">
           <div className="text-gray-400 text-sm">여긴 뭐 넣을까...흠</div>
         </div>

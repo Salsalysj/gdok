@@ -1274,9 +1274,9 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
 
   const dailyBenefits: RewardGroup[] = [
     {
-      title: '카오스 던전/쿠르잔 전선 1회 공짜',
+      title: '쿠르잔 전선 / 혼돈의 균열 1회 공짜',
       items: [
-        { name: '쿠르잔 전선 보상 (휴식게이지 2배)', quantity: 1, type: 'kurzan' },
+        { name: '심연의 역류 I 보상 (휴식게이지 2배)', quantity: 1, type: 'kurzan' },
       ],
     },
     {
@@ -3498,19 +3498,6 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                           <div className="flex flex-col gap-2">
                             <div className="flex flex-wrap items-center gap-3">
                               <span>{getItemName(item)}</span>
-                              {isKurzanItem && kurzanStageOptions.length > 0 && (
-                                <select
-                                  value={selectedKurzanKey}
-                                  onChange={(e) => setSelectedKurzanKey(e.target.value)}
-                                  className="bg-gray-700 text-white border border-gray-600 rounded px-2 py-1 text-xs"
-                                >
-                                  {kurzanStageOptions.map((option) => (
-                                    <option key={option.key} value={option.key}>
-                                      {option.level} / {option.stage}
-                                    </option>
-                                  ))}
-                                </select>
-                              )}
                             </div>
                             {composition.perUnit && !isKurzanItem && !isPcBangLuckyBox && (
                               <div className="text-xs text-gray-400 mt-1">1개당 {composition.perUnit}</div>
@@ -3519,11 +3506,6 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                         </td>
                         <td className="px-4 py-3 text-right text-gray-300">
                           <div>{formatNumberWithSignificantDigits(item.quantity)}</div>
-                          {isKurzanItem && selectedKurzanStage && (
-                            <div className="text-xs text-gray-500 mt-1">
-                              ({selectedKurzanStage.level} / {selectedKurzanStage.stage})
-                            </div>
-                          )}
                           {composition.total && !isKurzanItem && !isPcBangLuckyBox && (
                             <div className="text-xs text-gray-500 mt-1">({composition.total})</div>
                           )}
@@ -4205,7 +4187,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                       <tbody>
                         {aggregateRewards.filter(item => item.category === 'daily').map((item, idx) => {
                           const enabled = enabledRewards[item.name] ?? true;
-                          const isKurzanSummaryItem = item.name === '쿠르잔 전선 보상 (휴식게이지 2배)';
+                          const isKurzanSummaryItem = item.name === '심연의 역류 I 보상 (휴식게이지 2배)';
                           const isPcBangLuckyBoxSummaryItem = item.name === PC_BANG_LUCKY_SUMMARY_NAME;
                           const kurzanValue = adjustedKurzanValue;
                           const priceInfo = isKurzanSummaryItem
@@ -4335,7 +4317,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                 .reduce((sum, item) => {
                                   const enabled = enabledRewards[item.name] ?? true;
                                   if (!enabled) return sum;
-                                  const isKurzanSummaryItem = item.name === '쿠르잔 전선 보상 (휴식게이지 2배)';
+                                  const isKurzanSummaryItem = item.name === '심연의 역류 I 보상 (휴식게이지 2배)';
                                   const isPcBangLuckyBoxSummaryItem = item.name === PC_BANG_LUCKY_SUMMARY_NAME;
                                   const kurzanValue = adjustedKurzanValue;
                                   let unitPriceInGold: number | null = null;

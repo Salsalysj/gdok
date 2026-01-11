@@ -1941,6 +1941,7 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
 
   const [activeSubTab, setActiveSubTab] = useState<'simulation' | 'special' | 'character'>('simulation');
   const [activeSimulationTab, setActiveSimulationTab] = useState<'weapon' | 'armor' | 'summary'>('weapon');
+  const [selectedTier, setSelectedTier] = useState<'basic' | 'upper'>('basic');
   
   const currentStages = activeSimulationTab === 'weapon' ? weaponStages : activeSimulationTab === 'armor' ? armorStages : [];
   const [selectedLevel, setSelectedLevel] = useState<number | 'all'>(currentStages[0]?.level ?? 'all');
@@ -2179,37 +2180,37 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
         </header>
 
         {/* 서브탭 */}
-        <div className="flex gap-2 border-b border-gray-700">
+        <div className="flex gap-3 mb-6">
           <button
             onClick={() => setActiveSubTab('simulation')}
-            className={`px-6 py-3 rounded-t-lg font-semibold ${
+            className={`px-6 py-2 rounded-lg font-semibold border transition-colors ${
               activeSubTab === 'simulation'
-                ? 'bg-purple-600 text-white'
-                : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
+                ? 'bg-purple-600 text-white border-purple-600'
+                : 'bg-gray-800 text-gray-400 border-gray-600 hover:text-white hover:bg-gray-700 hover:border-gray-500'
             }`}
           >
             재련 시뮬레이션
           </button>
-                  <button
-                    onClick={() => setActiveSubTab('special')}
-                    className={`px-6 py-3 rounded-t-lg font-semibold ${
-                      activeSubTab === 'special'
-                        ? 'bg-purple-600 text-white'
-                        : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
-                    }`}
-                  >
-                    특수 재련 효율
-                  </button>
-                  <button
-                    onClick={() => setActiveSubTab('character')}
-                    className={`px-6 py-3 rounded-t-lg font-semibold ${
-                      activeSubTab === 'character'
-                        ? 'bg-purple-600 text-white'
-                        : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
-                    }`}
-                  >
-                    내 캐릭터 시뮬레이션
-                  </button>
+          <button
+            onClick={() => setActiveSubTab('special')}
+            className={`px-6 py-2 rounded-lg font-semibold border transition-colors ${
+              activeSubTab === 'special'
+                ? 'bg-purple-600 text-white border-purple-600'
+                : 'bg-gray-800 text-gray-400 border-gray-600 hover:text-white hover:bg-gray-700 hover:border-gray-500'
+            }`}
+          >
+            특수 재련 효율
+          </button>
+          <button
+            onClick={() => setActiveSubTab('character')}
+            className={`px-6 py-2 rounded-lg font-semibold border transition-colors ${
+              activeSubTab === 'character'
+                ? 'bg-purple-600 text-white border-purple-600'
+                : 'bg-gray-800 text-gray-400 border-gray-600 hover:text-white hover:bg-gray-700 hover:border-gray-500'
+            }`}
+          >
+            내 캐릭터 시뮬레이션
+          </button>
         </div>
 
         {/* 서브탭 콘텐츠 */}
@@ -2254,25 +2255,41 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
               <div className="space-y-8">
                 <div className="space-y-2">
                   <p className="text-gray-300 text-sm">
-                    upgrade1.csv 데이터를 기반으로 목표 재련 수치별 필요 재료와 1회 시도 비용을 계산합니다. 보조 재료 사용 시 성공률 증가 효과와 비용 변화를 함께 확인할 수 있습니다.
+                    목표 재련 수치별 필요 재료와 1회 시도 비용을 계산합니다. 보조 재료 사용 시 성공률 증가 효과와 비용 변화를 함께 확인할 수 있습니다.
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <label htmlFor="refine-level" className="text-sm text-gray-300">재련 단계 선택</label>
-                  <select
-                    id="refine-level"
-                    value={selectedLevel === 'all' ? 'all' : String(selectedLevel)}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setSelectedLevel(value === 'all' ? 'all' : Number(value));
-                    }}
-                    className="px-3 py-2 bg-gray-900 text-white text-sm border border-gray-700 rounded-lg focus:outline-none focus:border-purple-500"
-                  >
-                    <option value="all">전체 보기</option>
-                    {options.map(level => (
-                      <option key={level} value={level}>+{level}</option>
-                    ))}
-                  </select>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <label htmlFor="tier-select" className="text-sm text-gray-300">등급 선택</label>
+                    <select
+                      id="tier-select"
+                      value={selectedTier}
+                      onChange={(e) => {
+                        setSelectedTier(e.target.value as 'basic' | 'upper');
+                      }}
+                      className="px-3 py-2 bg-gray-900 text-white text-sm border border-gray-700 rounded-lg focus:outline-none focus:border-purple-500"
+                    >
+                      <option value="basic">티어4 기본</option>
+                      <option value="upper">티어4 상위 (세르카 장비)</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label htmlFor="refine-level" className="text-sm text-gray-300">재련 단계 선택</label>
+                    <select
+                      id="refine-level"
+                      value={selectedLevel === 'all' ? 'all' : String(selectedLevel)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setSelectedLevel(value === 'all' ? 'all' : Number(value));
+                      }}
+                      className="px-3 py-2 bg-gray-900 text-white text-sm border border-gray-700 rounded-lg focus:outline-none focus:border-purple-500"
+                    >
+                      <option value="all">전체 보기</option>
+                      {options.map(level => (
+                        <option key={level} value={level}>+{level}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 gap-5">
@@ -2288,25 +2305,41 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
               <div className="space-y-8">
                 <div className="space-y-2">
                   <p className="text-gray-300 text-sm">
-                    upgrade2.csv 데이터를 기반으로 목표 재련 수치별 필요 재료와 1회 시도 비용을 계산합니다. 보조 재료 사용 시 성공률 증가 효과와 비용 변화를 함께 확인할 수 있습니다.
+                    목표 재련 수치별 필요 재료와 1회 시도 비용을 계산합니다. 보조 재료 사용 시 성공률 증가 효과와 비용 변화를 함께 확인할 수 있습니다.
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <label htmlFor="refine-level-armor" className="text-sm text-gray-300">재련 단계 선택</label>
-                  <select
-                    id="refine-level-armor"
-                    value={selectedLevel === 'all' ? 'all' : String(selectedLevel)}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setSelectedLevel(value === 'all' ? 'all' : Number(value));
-                    }}
-                    className="px-3 py-2 bg-gray-900 text-white text-sm border border-gray-700 rounded-lg focus:outline-none focus:border-purple-500"
-                  >
-                    <option value="all">전체 보기</option>
-                    {options.map(level => (
-                      <option key={level} value={level}>+{level}</option>
-                    ))}
-                  </select>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <label htmlFor="tier-select-armor" className="text-sm text-gray-300">등급 선택</label>
+                    <select
+                      id="tier-select-armor"
+                      value={selectedTier}
+                      onChange={(e) => {
+                        setSelectedTier(e.target.value as 'basic' | 'upper');
+                      }}
+                      className="px-3 py-2 bg-gray-900 text-white text-sm border border-gray-700 rounded-lg focus:outline-none focus:border-purple-500"
+                    >
+                      <option value="basic">티어4 기본</option>
+                      <option value="upper">티어4 상위 (세르카 장비)</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label htmlFor="refine-level-armor" className="text-sm text-gray-300">재련 단계 선택</label>
+                    <select
+                      id="refine-level-armor"
+                      value={selectedLevel === 'all' ? 'all' : String(selectedLevel)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setSelectedLevel(value === 'all' ? 'all' : Number(value));
+                      }}
+                      className="px-3 py-2 bg-gray-900 text-white text-sm border border-gray-700 rounded-lg focus:outline-none focus:border-purple-500"
+                    >
+                      <option value="all">전체 보기</option>
+                      {options.map(level => (
+                        <option key={level} value={level}>+{level}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 gap-5">

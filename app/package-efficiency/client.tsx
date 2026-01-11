@@ -729,6 +729,17 @@ export default function PackageEfficiencyClient({
       return null;
     }
 
+    // 가치계산DB에서 먼저 찾기 (우선순위 - 가격 조정이 이미 적용된 데이터)
+    if (adjustedEntries && adjustedEntries.length > 0) {
+      const valueDbEntry = adjustedEntries.find(entry => entry.itemName === itemName);
+      if (valueDbEntry && valueDbEntry.unitType && valueDbEntry.unitValue != null) {
+        return {
+          unitType: valueDbEntry.unitType,
+          unitPrice: valueDbEntry.unitValue,
+        };
+      }
+    }
+
     const valueDbEntry = valueDbMap[itemName];
     if (valueDbEntry && valueDbEntry.unitType && valueDbEntry.unitValue != null) {
       let adjustedValue = valueDbEntry.unitValue;

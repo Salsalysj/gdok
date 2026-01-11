@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import ItemIcon from '../components/ItemIcon';
-import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
-import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
-import { usePriceOverride } from '../contexts/PriceOverrideContext';
+import ItemIcon from '../../components/ItemIcon';
+import { formatNumberWithSignificantDigits } from '../../utils/formatNumber';
+import { usePriceAdjustment } from '../../hooks/usePriceAdjustment';
+import { usePriceOverride } from '../../contexts/PriceOverrideContext';
 
 type RewardItem = {
   itemName: string;
@@ -25,10 +25,8 @@ type ContentData = {
 };
 
 type ContentRewards = {
-  '에브니 큐브'?: ContentData;
-  '가디언 토벌'?: ContentData;
-  '카오스 던전'?: ContentData;
-  '쿠르잔 전선'?: ContentData;
+  '필드보스'?: ContentData;
+  '카오스게이트'?: ContentData;
 };
 
 type ContentType = keyof ContentRewards;
@@ -81,7 +79,7 @@ function calculateStageTotals(
 
 type ValueDbEntryMap = Record<string, { itemName: string; unitType: '크리스탈' | '골드' | '현금' | null; unitValue: number | null; note?: string }>;
 
-export default function ContentRewardsClient({ 
+export default function BossGateClient({ 
   data, 
   rates,
   valueDbEntryMap 
@@ -94,7 +92,7 @@ export default function ContentRewardsClient({
   const { state: priceOverrideState } = usePriceOverride();
   const searchParams = useSearchParams();
   const [refreshKey, setRefreshKey] = useState(0);
-  const contentTypes: ContentType[] = ['쿠르잔 전선', '에브니 큐브', '가디언 토벌'];
+  const contentTypes: ContentType[] = ['필드보스', '카오스게이트'];
   
   // price-override-change 이벤트 리스너: 가격 조정이 변경되면 강제로 재계산
   useEffect(() => {
@@ -112,9 +110,6 @@ export default function ContentRewardsClient({
   // 사용 가능한 컨텐츠만 필터링 (useMemo로 감싸기)
   const availableContents = useMemo(() => {
     return contentTypes.filter(type => {
-      if (type === '에브니 큐브') {
-        return data[type] !== undefined; // 에브니 큐브는 데이터가 없어도 탭 표시
-      }
       return data[type] && Object.keys(data[type]!).length > 0;
     });
   }, [data]);
@@ -184,7 +179,10 @@ export default function ContentRewardsClient({
         rewards: stage.rewards.map(reward => {
           // 카드 경험치인 경우 가치계산DB에서 가격 가져오기
           let finalPrice = reward.price ?? null;
-          if (reward.itemName === '카드 경험치' && valueDbEntryMap) {
+          // 골드(귀속)인 경우 단가를 1골드로 계산
+          if (reward.itemName === '골드(귀속)') {
+            finalPrice = 1;
+          } else if (reward.itemName === '카드 경험치' && valueDbEntryMap) {
             const cardExpEntry = valueDbEntryMap['카드경험치 1당'];
             if (cardExpEntry && cardExpEntry.unitValue != null) {
               // 가치계산DB의 '카드경험치 1당' 가격을 사용 (수량을 곱하지 않음, 수량은 나중에 곱함)
@@ -224,7 +222,10 @@ export default function ContentRewardsClient({
             cubeStageRewards: reward.cubeStageRewards?.map(r => {
               // cubeStageRewards 내부의 카드 경험치, 운명의 파편, 실링도 동일하게 처리
               let rPrice = r.price ?? null;
-              if (r.itemName === '카드 경험치' && valueDbEntryMap) {
+              // 골드(귀속)인 경우 단가를 1골드로 계산
+              if (r.itemName === '골드(귀속)') {
+                rPrice = 1;
+              } else if (r.itemName === '카드 경험치' && valueDbEntryMap) {
                 const cardExpEntry = valueDbEntryMap['카드경험치 1당'];
                 if (cardExpEntry && cardExpEntry.unitValue != null) {
                   rPrice = cardExpEntry.unitValue;
@@ -282,17 +283,16 @@ export default function ContentRewardsClient({
   const tradableSet = useMemo(() => new Set<string>([
     '1레벨 보석 (3T)',
     '1레벨 보석 (4T)',
-    // 운명의 파괴석, 운명의 수호석은 귀속 (쿠르잔 전선)
+    '운명의 파괴석 결정',
+    '운명의 수호석 결정',
+    '위대한 운명의 돌파석',
+    '용암의 숨결',
+    '빙하의 숨결',
+    '운명의 파편 주머니(대)'
   ]), []);
 
   const getTradeClass = (itemName: string) => {
-    // 가디언 토벌 탭에서는 1레벨 보석 (4T)만 거래가능, 나머지는 귀속
-    let isTradable: boolean;
-    if (activeContent === '가디언 토벌') {
-      isTradable = itemName === '1레벨 보석 (4T)';
-    } else {
-      isTradable = tradableSet.has(itemName);
-    }
+    const isTradable = tradableSet.has(itemName);
     return {
       isTradable,
       nameClass: isTradable ? 'text-green-300' : 'text-red-300',
@@ -304,7 +304,6 @@ export default function ContentRewardsClient({
   };
 
   const isExcludedForTotal = (name: string) => {
-    if (activeContent === '가디언 토벌') return false;
     if (priceOverrideState.ignoreBreakthroughStone && (name === '찬란한 명예의 돌파석' || name === '운명의 돌파석' || name === '위대한 운명의 돌파석')) return true;
     if (priceOverrideState.ignoreFragment && (name === '명예의 파편' || name === '운명의 파편')) return true;
     if (priceOverrideState.ignoreCardExp && name === '카드 경험치') return true;
@@ -361,69 +360,68 @@ export default function ContentRewardsClient({
       <div>
         <div className="mb-6 md:mb-10">
           <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">
-            {activeContent ? `${activeContent === '쿠르잔 전선' ? '전선&균열' : activeContent === '에브니 큐브' ? '큐브&모래시계' : activeContent} 보상 계산기` : '컨텐츠 보상 계산기'}
+            {activeContent ? `${activeContent} 보상 계산기` : '필드보스/카오스게이트 보상 계산기'}
           </h1>
-          <p className="text-base text-gray-400">컨텐츠별 보상과 골드 가치를 확인하세요. (악세, 유각, 편린 등 일부 보상 제외)</p>
+          <p className="text-base text-gray-400">컨텐츠별 보상과 골드 가치를 확인하세요. (악세, 유각 등 일부 보상 제외)</p>
+        </div>
+
+        {/* 탭 버튼 */}
+        <div className="mb-6">
+          <div className="flex flex-wrap gap-2">
+            {contentTypes.map(type => {
+              const isAvailable = data[type] && Object.keys(data[type]!).length > 0;
+              if (!isAvailable) return null;
+              return (
+                <button
+                  key={type}
+                  onClick={() => setActiveContent(type)}
+                  className={`px-4 py-2 rounded font-semibold ${
+                    activeContent === type
+                      ? 'bg-gray-700 text-white'
+                      : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
+                  }`}
+                >
+                  {type}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* 레벨 선택 */}
         {levels.length > 0 && (
           <div className="mb-6">
-            {activeContent === '쿠르잔 전선' || activeContent === '에브니 큐브' || activeContent === '가디언 토벌' ? (
-              // 전선&균열, 큐브&모래시계, 가디언 토벌: 버튼형 선택
-              <div className="flex flex-wrap gap-2">
-                {levels.map(level => {
-                  // 가디언 토벌의 경우 스테이지 이름 표시
-                  let displayText = level;
-                  if (activeContent === '가디언 토벌' && data[activeContent]?.[level]) {
-                    const stage = data[activeContent]![level][0];
-                    if (stage) {
-                      displayText = `${stage.stage} (${level})`;
-                    }
-                  }
-                  return (
-                    <button
-                      key={level}
-                      onClick={() => setActiveLevel(level)}
-                      className={`px-4 py-2 rounded font-semibold ${
-                        activeLevel === level
-                          ? 'bg-gray-700 text-white'
-                          : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
-                      }`}
-                    >
-                      {displayText}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              // 기타: 드롭다운
-              <select
-                value={activeLevel}
-                onChange={(e) => setActiveLevel(e.target.value)}
-                className="px-4 py-2 bg-gray-800 text-white rounded border border-gray-700 focus:outline-none focus:border-gray-600"
-              >
-                {levels.map(level => (
-                  <option key={level} value={level}>
-                    {level}
-                  </option>
-                ))}
-              </select>
-            )}
+            <div className="flex flex-wrap gap-2">
+              {levels.map(level => {
+                let displayText = level;
+                if (data[activeContent!]?.[level]) {
+                  const stage = data[activeContent!]![level][0];
+                //   if (stage) {
+                //     displayText = `${stage.stage} (${level})`;
+                //   }
+                }
+                return (
+                  <button
+                    key={level}
+                    onClick={() => setActiveLevel(level)}
+                    className={`px-4 py-2 rounded font-semibold ${
+                      activeLevel === level
+                        ? 'bg-gray-700 text-white'
+                        : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
+                    }`}
+                  >
+                    {displayText}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
         
         {/* 단계별 보상 표시 */}
         <div className="space-y-6">
           {currentLevelData.map((stage, idx) => {
-            // 가디언 토벌 탭이면 전부 거래가능 처리
-            const isGuardianTab = activeContent === '가디언 토벌';
-            
-            // 가디언 토벌: 1레벨 보석 (4T)만 거래가능
             const isTradableFn = (name: string) => {
-              if (isGuardianTab) {
-                return name === '1레벨 보석 (4T)';
-              }
               return tradableSet.has(name);
             };
             const totals = calculateStageTotals(stage, isTradableFn, (name) => isExcludedForTotal(name));
@@ -461,21 +459,16 @@ export default function ContentRewardsClient({
                 </div>
 
                 {/* 보상 표시 */}
-                <div className={`grid gap-3 ${
-                  activeContent === '카오스 던전' || activeContent === '쿠르잔 전선' || activeContent === '에브니 큐브' || activeContent === '가디언 토벌'
-                    ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4' 
-                    : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
-                }`}>
+                <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
                     {stage.rewards.map((reward, rewardIdx) => {
                     // 계산은 원본 데이터로 수행
                     const itemTotal = (reward.price || 0) * reward.quantity;
-                    const isSimpleLayout = activeContent === '카오스 던전' || activeContent === '쿠르잔 전선' || activeContent === '에브니 큐브' || activeContent === '가디언 토벌';
+                    const isSimpleLayout = true;
                     
                     // 표시용: 계산 완료 후 최종 표시 시에만 유효숫자 규칙 적용
                     const quantityStr = formatNumberWithSignificantDigits(reward.quantity);
                     const priceStr = reward.price ? formatNumberWithSignificantDigits(reward.price) : '';
                     const itemTotalStr = formatNumberWithSignificantDigits(itemTotal);
-                    const isGuardianTab = activeContent === '가디언 토벌';
                     const isCubeTicket = !!reward.cubeStageRewards && reward.cubeStageRewards.length > 0;
 
                     // 에브니 큐브 입장권: 단가(거래가능/전체) 계산
@@ -486,8 +479,7 @@ export default function ContentRewardsClient({
                         const price = r.price || 0;
                         const qty = r.quantity || 0;
                         const amount = price * qty;
-                        // 가디언 토벌: 1레벨 보석 (4T)만 거래가능
-                        const tradable = isGuardianTab ? r.itemName === '1레벨 보석 (4T)' : tradableSet.has(r.itemName);
+                        const tradable = tradableSet.has(r.itemName);
                         return sum + (tradable ? amount : 0);
                       }, 0);
                       const totalSum = reward.cubeStageRewards!.reduce((sum, r) => {
@@ -498,7 +490,7 @@ export default function ContentRewardsClient({
                       cubeUnitTotal = totalSum;
                     }
                     const tradeInfo = getTradeClass(reward.itemName);
-                    const strike = (!isGuardianTab && isExcludedForTotal(reward.itemName)) ? 'line-through opacity-60' : '';
+                    const strike = isExcludedForTotal(reward.itemName) ? 'line-through opacity-60' : '';
                     
                     return (
                       <div
@@ -522,7 +514,7 @@ export default function ContentRewardsClient({
                                 <div className="text-yellow-400 text-sm">
                                   {formatNumberWithSignificantDigits(cubeUnitTotal || 0)}골드 × {quantityStr} = {formatNumberWithSignificantDigits((cubeUnitTotal || 0) * reward.quantity)}골드
                                 </div>
-                                {(activeContent === '카오스 던전' || activeContent === '쿠르잔 전선') && reward.cubeStageRewards && reward.cubeStageRewards.length > 0 && (
+                                {reward.cubeStageRewards && reward.cubeStageRewards.length > 0 && (
                                   <div className="text-xs text-gray-400 mt-2 pt-2 border-t border-gray-700">
                                     <div className="mb-1">
                                       보상:{' '}
@@ -588,39 +580,6 @@ export default function ContentRewardsClient({
                     );
                   })}
                 </div>
-
-                {/* 큐브&모래시계 보상: 별도 박스로 구분 표시 (아이템 카드 높이에 영향 없음) */}
-                {(() => {
-                  const cubeInfo = stage.rewards.find(r => r.cubeStageRewards && r.cubeStageRewards.length > 0);
-                  if (!cubeInfo) return null;
-                  const match = cubeInfo.itemName.match(/에브니 큐브\s*\(([^)]+)\)/);
-                  const cubeLabel = match ? match[1] : '';
-                  const list = cubeInfo.cubeStageRewards || [];
-                  return (
-                      <div className="mt-4 bg-gray-900 border border-gray-700 rounded p-4">
-                      <div className="text-sm text-gray-300 mb-2">
-                        큐브&모래시계 보상{cubeLabel ? ` (${cubeLabel})` : ''}
-                      </div>
-                      {list.length === 0 ? (
-                        <div className="text-xs text-gray-500">표시할 보상이 없습니다.</div>
-                      ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                          {list.map((r, i) => {
-                            const info = getTradeClass(r.itemName);
-                            const strikeCube = (!isGuardianTab && isExcludedForTotal(r.itemName)) ? 'line-through opacity-60' : '';
-                            return (
-                              <div key={i} className="text-xs">
-                                <span className={`${info.nameClass} ${strikeCube}`}>{r.itemName}</span>
-                                <span className={`ml-1 px-1 py-0.5 rounded ${info.badgeClass}`}>{info.badgeText}</span>
-                                <span className="text-gray-400"> × {formatNumberWithSignificantDigits(r.quantity)}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
               </div>
             );
           })}
@@ -630,4 +589,3 @@ export default function ContentRewardsClient({
     </div>
   );
 }
-

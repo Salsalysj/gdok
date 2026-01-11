@@ -281,15 +281,15 @@
         "stage": "네프타 2작전",
         "rewards": [
           {
-            "itemName": "정제된 파괴강석",
+            "itemName": "운명의 파괴석",
             "quantity": 757
           },
           {
-            "itemName": "정제된 수호강석",
+            "itemName": "운명의 수호석",
             "quantity": 2137
           },
           {
-            "itemName": "찬란한 명예의 돌파석",
+            "itemName": "운명의 돌파석",
             "quantity": 46
           },
           {
@@ -297,7 +297,7 @@
             "quantity": 6.2
           },
           {
-            "itemName": "파편",
+            "itemName": "운명의 파편",
             "quantity": 39012
           },
           {
@@ -305,20 +305,20 @@
             "quantity": 202260
           },
           {
-            "itemName": "에브니 큐브 (4해금)",
+            "itemName": "에브니 큐브 입장권 (4해금)",
             "quantity": 4
           },
           {
             "itemName": "영웅 젬",
-            "quantity": 0.03
+            "quantity": 0.1
           },
           {
             "itemName": "희귀 젬",
-            "quantity": 0.36
+            "quantity": 0.3
           },
           {
             "itemName": "고급 젬",
-            "quantity": 2.19
+            "quantity": 1.6
           }
         ]
       }
@@ -349,15 +349,15 @@
           },
           {
             "itemName": "영웅 젬",
-            "quantity": 0.1
+            "quantity": 0.125
           },
           {
             "itemName": "희귀 젬",
-            "quantity": 0.3
+            "quantity": 0.375
           },
           {
             "itemName": "고급 젬",
-            "quantity": 1.6
+            "quantity": 2
           },
           {
             "itemName": "시련의 모래 (1단계)",
@@ -476,6 +476,76 @@
           {
             "itemName": "실링",
             "quantity": 53767
+          }
+        ]
+      }
+    ]
+  },
+  "필드보스": { 
+    "1730": [
+      {
+        "stage": "1730",
+        "rewards": [
+          {
+            "itemName": "1레벨 보석 (4T)",
+            "quantity": 21
+          },
+          {
+            "itemName": "운명의 파괴석 결정",
+            "quantity": 470
+          },
+          {
+            "itemName": "운명의 수호석 결정",
+            "quantity": 1583
+          },
+          {
+            "itemName": "위대한 운명의 돌파석",
+            "quantity": 39
+          },
+          {
+            "itemName": "용암의 숨결",
+            "quantity": 3
+          },
+          {
+            "itemName": "빙하의 숨결",
+            "quantity": 3
+          },
+          {
+            "itemName": "카드 경험치",
+            "quantity": 2500
+          }
+        ]
+      }
+    ]
+  },
+  "카오스게이트": { 
+    "1730": [
+      {
+        "stage": "1730",
+        "rewards": [
+          {
+            "itemName": "골드(귀속)",
+            "quantity": 3500
+          },
+          {
+            "itemName": "운명의 파편 주머니(대)",
+            "quantity": 4
+          },
+          {
+            "itemName": "1레벨 보석 (4T)",
+            "quantity": 6
+          },
+          {
+            "itemName": "용암의 숨결",
+            "quantity": 6
+          },
+          {
+            "itemName": "빙하의 숨결",
+            "quantity": 6
+          },
+          {
+            "itemName": "카드 경험치",
+            "quantity": 6500
           }
         ]
       }
