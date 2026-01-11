@@ -122,6 +122,9 @@ export default function PackageEfficiencyClient({
   // 기본적으로 접혀있도록 설정 (false가 기본값이므로 명시적으로 설정하지 않아도 됨)
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
   const [expandedNestedItems, setExpandedNestedItems] = useState<Record<string, boolean>>({});
+  
+  // 입력 폼 참조 (스크롤 이동용)
+  const inputFormRef = useRef<HTMLDivElement>(null);
 
   // 레벨별 색상 팔레트
   // 레벨 0: 묶음 항목
@@ -1753,6 +1756,11 @@ export default function PackageEfficiencyClient({
       ],
     });
     setSelectedPackageId(null);
+    
+    // 입력 폼으로 스크롤 이동
+    setTimeout(() => {
+      inputFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
   };
 
   // 저장된 패키지 목록 업데이트 (서버에서 이미 가져왔지만, 저장/수정/삭제 후 최신화를 위해)
@@ -3635,7 +3643,7 @@ export default function PackageEfficiencyClient({
               
               {/* 저장 버튼 */}
               {allowPackageSave && (
-                <div className="flex justify-center mt-6">
+                <div className="flex justify-center gap-3 mt-6">
                   <button
                     onClick={() => {
                       setSavePackageName(packageData.packageName);
@@ -3646,6 +3654,15 @@ export default function PackageEfficiencyClient({
                   >
                     {selectedPackageId ? '📝 패키지 업데이트' : '💾 패키지 저장'}
                   </button>
+                  {selectedPackageId && (
+                    <button
+                      onClick={() => handleDeletePackage(selectedPackageId)}
+                      className="px-8 py-3 bg-red-600 text-white text-lg font-semibold rounded-lg hover:bg-red-700 disabled:opacity-50"
+                      disabled={isLoading}
+                    >
+                      🗑️ 패키지 삭제
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -3789,7 +3806,7 @@ export default function PackageEfficiencyClient({
               
               {/* 저장 버튼 */}
               {allowPackageSave && (
-                <div className="flex justify-center mt-8">
+                <div className="flex justify-center gap-3 mt-8">
                   <button
                     onClick={() => {
                       setSavePackageName(packageData.packageName);
@@ -3816,6 +3833,20 @@ export default function PackageEfficiencyClient({
                       )}
                     </span>
                   </button>
+                  {selectedPackageId && (
+                    <button
+                      onClick={() => handleDeletePackage(selectedPackageId)}
+                      className="group relative px-10 py-4 bg-red-600 text-white text-lg font-bold rounded-lg hover:bg-red-700 disabled:opacity-50"
+                      disabled={isLoading}
+                    >
+                      <span className="flex items-center gap-2">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        패키지 삭제
+                      </span>
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -3823,7 +3854,7 @@ export default function PackageEfficiencyClient({
           )}
         </div>
         {/* 입력 폼 */}
-        <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
+        <div ref={inputFormRef} className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
           <h2 className="text-xl font-semibold text-white mb-4">상품 정보</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
