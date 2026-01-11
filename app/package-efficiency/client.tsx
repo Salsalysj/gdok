@@ -2024,7 +2024,8 @@ export default function PackageEfficiencyClient({
           {/* 판매중인 패키지 버튼들 (기간제한, 상시, 패스로 구분) */}
           {savedPackages.filter((pkg) => {
             const pkgData = (pkg as any).package_data;
-            const endDate = pkgData?.endDate;
+            // Supabase의 end_date 컬럼이 있으면 우선 사용, 없으면 package_data.endDate 사용
+            const endDate = (pkg as any).end_date || pkgData?.endDate;
             if (!endDate) return true;
             const end = new Date(endDate);
             const today = new Date();
@@ -2046,7 +2047,8 @@ export default function PackageEfficiencyClient({
                       .filter((pkg) => {
                         const pkgData = (pkg as any).package_data;
                         const category = pkgData?.category;
-                        const endDate = pkgData?.endDate;
+                        // Supabase의 end_date 컬럼이 있으면 우선 사용, 없으면 package_data.endDate 사용
+                        const endDate = (pkg as any).end_date || pkgData?.endDate;
                         // 종료 예정일이 없으면 상시로 분류되므로 제외
                         if (!endDate) return false;
                         // 종료 예정일이 있고 구분이 패스면 패스로 분류되므로 제외
@@ -2060,7 +2062,8 @@ export default function PackageEfficiencyClient({
                       })
                       .map((pkg) => {
                         const pkgData = (pkg as any).package_data;
-                        const endDate = pkgData?.endDate;
+                        // Supabase의 end_date 컬럼이 있으면 우선 사용, 없으면 package_data.endDate 사용
+                        const endDate = (pkg as any).end_date || pkgData?.endDate;
                         const isSelected = selectedPackageId === pkg.id;
                         
                         return (
@@ -2100,7 +2103,8 @@ export default function PackageEfficiencyClient({
                     {savedPackages
                       .filter((pkg) => {
                         const pkgData = (pkg as any).package_data;
-                        const endDate = pkgData?.endDate;
+                        // Supabase의 end_date 컬럼이 있으면 우선 사용, 없으면 package_data.endDate 사용
+                        const endDate = (pkg as any).end_date || pkgData?.endDate;
                         // 종료 예정일 값이 없는 경우 -> 상시
                         if (!endDate) return true;
                         // 종료 예정일이 있으면 다른 카테고리로 분류되므로 제외
@@ -2108,7 +2112,8 @@ export default function PackageEfficiencyClient({
                       })
                       .map((pkg) => {
                         const pkgData = (pkg as any).package_data;
-                        const endDate = pkgData?.endDate;
+                        // Supabase의 end_date 컬럼이 있으면 우선 사용, 없으면 package_data.endDate 사용
+                        const endDate = (pkg as any).end_date || pkgData?.endDate;
                         const isSelected = selectedPackageId === pkg.id;
                         
                         return (
@@ -2149,7 +2154,8 @@ export default function PackageEfficiencyClient({
                       .filter((pkg) => {
                         const pkgData = (pkg as any).package_data;
                         const category = pkgData?.category;
-                        const endDate = pkgData?.endDate;
+                        // Supabase의 end_date 컬럼이 있으면 우선 사용, 없으면 package_data.endDate 사용
+                        const endDate = (pkg as any).end_date || pkgData?.endDate;
                         // 종료 예정일 값이 있고, 구분이 '패스'인 경우 -> 패스
                         if (!endDate) return false;
                         if (category !== '패스') return false;
@@ -2161,7 +2167,8 @@ export default function PackageEfficiencyClient({
                       })
                       .map((pkg) => {
                         const pkgData = (pkg as any).package_data;
-                        const endDate = pkgData?.endDate;
+                        // Supabase의 end_date 컬럼이 있으면 우선 사용, 없으면 package_data.endDate 사용
+                        const endDate = (pkg as any).end_date || pkgData?.endDate;
                         const isSelected = selectedPackageId === pkg.id;
                         
                         return (
