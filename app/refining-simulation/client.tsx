@@ -1557,7 +1557,7 @@ function StageCard({ stage, marketInfo }: StageCardProps) {
       <div className="px-5 py-3 bg-gray-800/50 border-b border-gray-700">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
           <div>
-            <h3 className="text-xl font-semibold text-white">+{stage.level} 재련</h3>
+            <h3 className="text-xl font-semibold text-white">{stage.level - 1} → {stage.level} 재련</h3>
             <p className="text-xs text-gray-300">기본 성공률: {formatRate(stage.baseSuccessRate)}</p>
           </div>
         </div>
@@ -2286,7 +2286,7 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
                     >
                       <option value="all">전체 보기</option>
                       {options.map(level => (
-                        <option key={level} value={level}>+{level}</option>
+                        <option key={level} value={level}>{level - 1} → {level}</option>
                       ))}
                     </select>
                   </div>
@@ -2336,7 +2336,7 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
                     >
                       <option value="all">전체 보기</option>
                       {options.map(level => (
-                        <option key={level} value={level}>+{level}</option>
+                        <option key={level} value={level}>{level - 1} → {level}</option>
                       ))}
                     </select>
                   </div>
@@ -2375,7 +2375,7 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
                         {summaryData.map((row, idx) => (
                           <tr key={row.level} className={idx % 2 === 0 ? 'bg-gray-900/50' : 'bg-gray-800/50'}>
                             <td className="px-4 py-3 text-white font-medium border-b border-gray-800">
-                              +{row.level}강
+                              {row.level - 1} → {row.level}강
                             </td>
                             <td className="px-4 py-3 text-gray-300 border-b border-gray-800">
                               {row.weaponCost != null ? (
@@ -2438,7 +2438,7 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
                     {specialRefiningData.map(({ level, idx, weaponValue, armorValue }) => (
                       <tr key={level} className={idx % 2 === 0 ? 'bg-gray-900/50' : 'bg-gray-800/50'}>
                         <td className="px-4 py-3 text-white font-medium border-b border-gray-800">
-                          +{level}강
+                          {level - 1} → {level}강
                         </td>
                         <td className="px-4 py-3 text-right text-blue-300 border-b border-gray-800">
                           {weaponValue != null ? formatCost(weaponValue) : '-'}

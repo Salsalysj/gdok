@@ -1696,25 +1696,27 @@ export default function EventShopClient({
       <div>
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-semibold tracking-tight">이벤트 상점 교환 효율</h1>
-          <div className="flex gap-2">
-            <button
-              onClick={handleNewShop}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
-              disabled={isLoading}
-            >
-              새로 만들기
-            </button>
-            <button
-              onClick={() => {
-                setSaveShopName(shopName || '');
-                setShowSaveModal(true);
-              }}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
-              disabled={isLoading}
-            >
-              저장
-            </button>
-          </div>
+          {process.env.NODE_ENV !== 'production' && (
+            <div className="flex gap-2">
+              <button
+                onClick={handleNewShop}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                disabled={isLoading}
+              >
+                새로 만들기
+              </button>
+              <button
+                onClick={() => {
+                  setSaveShopName(shopName || '');
+                  setShowSaveModal(true);
+                }}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+                disabled={isLoading}
+              >
+                저장
+              </button>
+            </div>
+          )}
         </div>
 
         {/* 저장 모달 */}
@@ -2033,125 +2035,131 @@ export default function EventShopClient({
         )}
 
         {/* 기본정보 카드 */}
-        <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
-          <h2 className="text-2xl font-semibold mb-4">기본정보</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">상점 이름</label>
-              <input
-                type="text"
-                value={shopName}
-                onChange={(e) => setShopName(e.target.value)}
-                placeholder="상점 이름을 입력하세요"
-                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">시작일</label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">종료일</label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* 탭 카드들 */}
-        <div className="space-y-6 mb-6">
-          {tabs.map((tab) => (
-            <div key={tab.id} className="bg-gray-800/50 rounded-lg border border-gray-700 p-6">
-              <div className="flex items-center justify-between mb-4 gap-4">
+        {process.env.NODE_ENV !== 'production' && (
+          <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
+            <h2 className="text-2xl font-semibold mb-4">기본정보</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">상점 이름</label>
                 <input
                   type="text"
-                  value={tab.name}
-                  onChange={(e) => updateTabName(tab.id, e.target.value)}
-                  className="flex-1 text-2xl font-semibold bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-white min-w-[200px]"
-                  placeholder="탭 이름 입력"
+                  value={shopName}
+                  onChange={(e) => setShopName(e.target.value)}
+                  placeholder="상점 이름을 입력하세요"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-                <button
-                  onClick={() => removeTab(tab.id)}
-                  className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex-shrink-0"
-                >
-                  탭 삭제
-                </button>
               </div>
-              <div className="flex items-center gap-4 mb-4">
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium text-gray-300 whitespace-nowrap">주화 이름</label>
-                  <input
-                    type="text"
-                    value={tab.coinName || ''}
-                    onChange={(e) => updateTab(tab.id, 'coinName', e.target.value)}
-                    className="w-40 px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
-                    placeholder="주화 이름"
-                  />
-                </div>
-                <div className="flex items-center gap-2 relative">
-                  <label className="text-sm font-medium text-gray-300 whitespace-nowrap">배율</label>
-                  <input
-                    type="number"
-                    value={tab.coinMultiplier || ''}
-                    onChange={(e) => updateTab(tab.id, 'coinMultiplier', parseFloat(e.target.value) || 0)}
-                    className="w-32 px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
-                    placeholder="배율"
-                    min="0"
-                    step="0.1"
-                  />
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowTooltip(showTooltip === tab.id ? null : tab.id);
-                      }}
-                      className="w-5 h-5 rounded-full bg-gray-600 text-white text-xs flex items-center justify-center hover:bg-gray-500 transition-colors"
-                      title="도움말"
-                    >
-                      ?
-                    </button>
-                    {showTooltip === tab.id && (
-                      <div 
-                        className="absolute top-full right-0 mt-2 p-3 bg-gray-900 border border-gray-700 rounded-lg shadow-lg z-10 max-w-xs"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <p className="text-sm text-gray-300">기본 주화 n개로 상위 주화 교환 시, n값 입력</p>
-                        <div className="absolute -top-1 right-4 w-2 h-2 bg-gray-900 border-l border-t border-gray-700 transform rotate-45"></div>
-                      </div>
-                    )}
-                  </div>
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">시작일</label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
-              <div className="space-y-4">
-                {tab.items.map((item, index) => renderBundleItem(tab.id, item, index))}
-                <button
-                  onClick={() => addBundleItem(tab.id)}
-                  className="w-full mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                >
-                  묶음 항목 추가
-                </button>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">종료일</label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
             </div>
-          ))}
-        </div>
+          </div>
+        )}
 
-        {/* 탭 추가 버튼 */}
-        <button
-          onClick={addTab}
-          className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold"
-        >
-          탭 추가
-        </button>
+        {/* 탭 카드들 */}
+        {process.env.NODE_ENV !== 'production' && (
+          <>
+            <div className="space-y-6 mb-6">
+              {tabs.map((tab) => (
+                <div key={tab.id} className="bg-gray-800/50 rounded-lg border border-gray-700 p-6">
+                  <div className="flex items-center justify-between mb-4 gap-4">
+                    <input
+                      type="text"
+                      value={tab.name}
+                      onChange={(e) => updateTabName(tab.id, e.target.value)}
+                      className="flex-1 text-2xl font-semibold bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-white min-w-[200px]"
+                      placeholder="탭 이름 입력"
+                    />
+                    <button
+                      onClick={() => removeTab(tab.id)}
+                      className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex-shrink-0"
+                    >
+                      탭 삭제
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm font-medium text-gray-300 whitespace-nowrap">주화 이름</label>
+                      <input
+                        type="text"
+                        value={tab.coinName || ''}
+                        onChange={(e) => updateTab(tab.id, 'coinName', e.target.value)}
+                        className="w-40 px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+                        placeholder="주화 이름"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 relative">
+                      <label className="text-sm font-medium text-gray-300 whitespace-nowrap">배율</label>
+                      <input
+                        type="number"
+                        value={tab.coinMultiplier || ''}
+                        onChange={(e) => updateTab(tab.id, 'coinMultiplier', parseFloat(e.target.value) || 0)}
+                        className="w-32 px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+                        placeholder="배율"
+                        min="0"
+                        step="0.1"
+                      />
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowTooltip(showTooltip === tab.id ? null : tab.id);
+                          }}
+                          className="w-5 h-5 rounded-full bg-gray-600 text-white text-xs flex items-center justify-center hover:bg-gray-500 transition-colors"
+                          title="도움말"
+                        >
+                          ?
+                        </button>
+                        {showTooltip === tab.id && (
+                          <div 
+                            className="absolute top-full right-0 mt-2 p-3 bg-gray-900 border border-gray-700 rounded-lg shadow-lg z-10 max-w-xs"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <p className="text-sm text-gray-300">기본 주화 n개로 상위 주화 교환 시, n값 입력</p>
+                            <div className="absolute -top-1 right-4 w-2 h-2 bg-gray-900 border-l border-t border-gray-700 transform rotate-45"></div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    {tab.items.map((item, index) => renderBundleItem(tab.id, item, index))}
+                    <button
+                      onClick={() => addBundleItem(tab.id)}
+                      className="w-full mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                    >
+                      묶음 항목 추가
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* 탭 추가 버튼 */}
+            <button
+              onClick={addTab}
+              className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold"
+            >
+              탭 추가
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
