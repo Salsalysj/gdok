@@ -2200,7 +2200,8 @@ export default function PackageEfficiencyClient({
           {/* 이전 과금 상품 드롭다운 */}
           {savedPackages.filter((pkg) => {
             const pkgData = (pkg as any).package_data;
-            const endDate = pkgData?.endDate;
+            // Supabase의 end_date 컬럼이 있으면 우선 사용, 없으면 package_data.endDate 사용
+            const endDate = (pkg as any).end_date || pkgData?.endDate;
             if (!endDate) return false;
             const end = new Date(endDate);
             const today = new Date();
@@ -2225,7 +2226,8 @@ export default function PackageEfficiencyClient({
                   {savedPackages
                     .filter((pkg) => {
                       const pkgData = (pkg as any).package_data;
-                      const endDate = pkgData?.endDate;
+                      // Supabase의 end_date 컬럼이 있으면 우선 사용, 없으면 package_data.endDate 사용
+                      const endDate = (pkg as any).end_date || pkgData?.endDate;
                       if (!endDate) return false;
                       const end = new Date(endDate);
                       const today = new Date();
@@ -2235,7 +2237,8 @@ export default function PackageEfficiencyClient({
                     })
                     .map((pkg) => {
                       const pkgData = (pkg as any).package_data;
-                      const endDate = pkgData?.endDate;
+                      // Supabase의 end_date 컬럼이 있으면 우선 사용, 없으면 package_data.endDate 사용
+                      const endDate = (pkg as any).end_date || pkgData?.endDate;
                       
                       return (
                         <option key={pkg.id} value={pkg.id}>

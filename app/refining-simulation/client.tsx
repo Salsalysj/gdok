@@ -2191,26 +2191,26 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
           >
             재련 시뮬레이션
           </button>
-          <button
-            onClick={() => setActiveSubTab('special')}
+                  <button
+                    onClick={() => setActiveSubTab('special')}
             className={`px-6 py-2 rounded-lg font-semibold border transition-colors ${
-              activeSubTab === 'special'
+                      activeSubTab === 'special'
                 ? 'bg-purple-600 text-white border-purple-600'
                 : 'bg-gray-800 text-gray-400 border-gray-600 hover:text-white hover:bg-gray-700 hover:border-gray-500'
-            }`}
-          >
-            특수 재련 효율
-          </button>
-          <button
-            onClick={() => setActiveSubTab('character')}
+                    }`}
+                  >
+                    특수 재련 효율
+                  </button>
+                  <button
+                    onClick={() => setActiveSubTab('character')}
             className={`px-6 py-2 rounded-lg font-semibold border transition-colors ${
-              activeSubTab === 'character'
+                      activeSubTab === 'character'
                 ? 'bg-purple-600 text-white border-purple-600'
                 : 'bg-gray-800 text-gray-400 border-gray-600 hover:text-white hover:bg-gray-700 hover:border-gray-500'
-            }`}
-          >
-            내 캐릭터 시뮬레이션
-          </button>
+                    }`}
+                  >
+                    내 캐릭터 시뮬레이션
+                  </button>
         </div>
 
         {/* 서브탭 콘텐츠 */}
@@ -2272,23 +2272,23 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
                       <option value="basic">티어4 기본</option>
                       <option value="upper">티어4 상위 (세르카 장비)</option>
                     </select>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <label htmlFor="refine-level" className="text-sm text-gray-300">재련 단계 선택</label>
-                    <select
-                      id="refine-level"
-                      value={selectedLevel === 'all' ? 'all' : String(selectedLevel)}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setSelectedLevel(value === 'all' ? 'all' : Number(value));
-                      }}
-                      className="px-3 py-2 bg-gray-900 text-white text-sm border border-gray-700 rounded-lg focus:outline-none focus:border-purple-500"
-                    >
-                      <option value="all">전체 보기</option>
-                      {options.map(level => (
+                </div>
+                <div className="flex items-center gap-2">
+                  <label htmlFor="refine-level" className="text-sm text-gray-300">재련 단계 선택</label>
+                  <select
+                    id="refine-level"
+                    value={selectedLevel === 'all' ? 'all' : String(selectedLevel)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setSelectedLevel(value === 'all' ? 'all' : Number(value));
+                    }}
+                    className="px-3 py-2 bg-gray-900 text-white text-sm border border-gray-700 rounded-lg focus:outline-none focus:border-purple-500"
+                  >
+                    <option value="all">전체 보기</option>
+                    {options.map(level => (
                         <option key={level} value={level}>{level - 1} → {level}</option>
-                      ))}
-                    </select>
+                    ))}
+                  </select>
                   </div>
                 </div>
 
@@ -2322,23 +2322,23 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
                       <option value="basic">티어4 기본</option>
                       <option value="upper">티어4 상위 (세르카 장비)</option>
                     </select>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <label htmlFor="refine-level-armor" className="text-sm text-gray-300">재련 단계 선택</label>
-                    <select
-                      id="refine-level-armor"
-                      value={selectedLevel === 'all' ? 'all' : String(selectedLevel)}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setSelectedLevel(value === 'all' ? 'all' : Number(value));
-                      }}
-                      className="px-3 py-2 bg-gray-900 text-white text-sm border border-gray-700 rounded-lg focus:outline-none focus:border-purple-500"
-                    >
-                      <option value="all">전체 보기</option>
-                      {options.map(level => (
+                </div>
+                <div className="flex items-center gap-2">
+                  <label htmlFor="refine-level-armor" className="text-sm text-gray-300">재련 단계 선택</label>
+                  <select
+                    id="refine-level-armor"
+                    value={selectedLevel === 'all' ? 'all' : String(selectedLevel)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setSelectedLevel(value === 'all' ? 'all' : Number(value));
+                    }}
+                    className="px-3 py-2 bg-gray-900 text-white text-sm border border-gray-700 rounded-lg focus:outline-none focus:border-purple-500"
+                  >
+                    <option value="all">전체 보기</option>
+                    {options.map(level => (
                         <option key={level} value={level}>{level - 1} → {level}</option>
-                      ))}
-                    </select>
+                    ))}
+                  </select>
                   </div>
                 </div>
 
