@@ -2229,7 +2229,1599 @@ export default function PackageEfficiencyClient({
             </div>
           )}
         </div>
+        {/* 계산 결과 */}
+        <div className="space-y-6">             
+          {/* 패키지 개요 카드 */}
+          <div className="relative bg-gray-800/90 rounded-lg border border-gray-700 p-8">
+            <div className="relative z-10">
+              <div className="flex items-center gap-2 mb-6">
+                <div className="p-2 bg-purple-500/10 rounded-lg">
+                  <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold text-white">상품 정보</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700/50">
+                  <div className="flex items-center gap-2 mb-2">
+                    <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                    </svg>
+                    <div className="text-xs font-medium text-purple-400/80 uppercase tracking-wider">상품명</div>
+                  </div>
+                  <div className="text-lg font-bold text-white flex items-center gap-2 flex-wrap">
+                    {packageData.packageName || '(미입력)'}
+                    {packageData.endDate && (() => {
+                      const endDate = new Date(packageData.endDate);
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      endDate.setHours(0, 0, 0, 0);
+                      if (endDate < today) {
+                        return (
+                          <span className="text-xs bg-red-600 text-white px-2.5 py-1 rounded-full">
+                            판매종료
+                          </span>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
+                </div>
+                <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700/50">
+                  <div className="flex items-center gap-2 mb-2">
+                    <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div className="text-xs font-medium text-blue-400/80 uppercase tracking-wider">패키지 가격</div>
+                  </div>
+                  <div className="text-lg font-bold text-white">
+                    {formatNumberWithSignificantDigits(packageData.price)} {packageData.priceType}
+                  </div>
+                  {packageData.packageType === '3+1' && packageData.is3Plus1 && (
+                    <div className="text-xs text-blue-400/70 mt-1">
+                      3+1: {formatNumberWithSignificantDigits((packageData.price * 3) / 4)} {packageData.priceType}
+                    </div>
+                  )}
+                  <div className="mt-2 inline-block px-2 py-1 bg-gray-800/50 rounded text-xs text-gray-400">
+                    {packageData.packageType}
+                  </div>
+                </div>
+                <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700/50">
+                  <div className="flex items-center gap-2 mb-2">
+                    <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    <div className="text-xs font-medium text-green-400/80 uppercase tracking-wider">구매 가능</div>
+                  </div>
+                  <div className="text-2xl font-bold text-white">
+                    {packageData.purchaseCount}<span className="text-base text-gray-400 ml-1">회</span>
+                  </div>
+                </div>
+                <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700/50">
+                  <div className="flex items-center gap-2 mb-2">
+                    <svg className="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <div className="text-xs font-medium text-yellow-400/80 uppercase tracking-wider">종료 예정일</div>
+                  </div>
+                  <div className="text-base font-medium text-white">
+                    {packageData.endDate || (
+                      <span className="text-gray-500">미정</span>
+                    )}
+                  </div>
+                </div>
+                <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700/50">
+                  <div className="flex items-center gap-2 mb-2">
+                    <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                    </svg>
+                    <div className="text-xs font-medium text-cyan-400/80 uppercase tracking-wider">구분</div>
+                  </div>
+                  <div className="text-base font-medium text-white">
+                    {packageData.category}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
 
+          {/* 구성품 내용 카드 */}
+          {packageData.packageType !== '보너스룸' && (packageData.items.length > 0 || (packageData.packageType === '3+보너스' && packageData.bonus3Items.length > 0)) && (
+            <div className="relative bg-gray-800/90 rounded-lg border border-gray-700 p-8">
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-6">
+                  <div className="p-2 bg-blue-500/10 rounded-lg">
+                    <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-white">구성품 내용</h3>
+                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {packageData.items.map((packageItem, itemIndex) => {
+                  const typeColors = {
+                    '확정': { border: 'border-blue-500/30', bg: 'bg-blue-500/5', icon: 'text-blue-400', badge: 'bg-blue-500/20 text-blue-400' },
+                    '확률': { border: 'border-purple-500/30', bg: 'bg-purple-500/5', icon: 'text-purple-400', badge: 'bg-purple-500/20 text-purple-400' },
+                    '선택': { border: 'border-yellow-500/30', bg: 'bg-yellow-500/5', icon: 'text-yellow-400', badge: 'bg-yellow-500/20 text-yellow-400' },
+                  };
+                  const colors = typeColors[packageItem.itemType as keyof typeof typeColors] || typeColors['확정'];
+                  
+                  return (
+                  <div key={itemIndex} className={`relative bg-gray-900/70 rounded-lg p-5 border ${colors.border} ${colors.bg}`}>
+                    {/* 타입 배지 */}
+                    <div className="absolute top-3 right-3">
+                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${colors.badge}`}>
+                        {packageItem.itemType}
+                      </span>
+                    </div>
+                    
+                    <div className="mb-3 pr-16">
+                      <div className="flex items-center gap-2 mb-1">
+                        {packageData.category === '패스' && (
+                          <span className="text-sm font-semibold text-purple-400 whitespace-nowrap">
+                            패스 레벨 {itemIndex + 1}
+                          </span>
+                        )}
+                        <svg className={`w-4 h-4 ${colors.icon}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                        </svg>
+                        <div className="font-bold text-white text-base">
+                          {packageItem.itemName || `항목 ${itemIndex + 1}`}
+                        </div>
+                      </div>
+                      {packageItem.quantity && packageItem.quantity > 1 && (
+                        <div className="flex items-center gap-1 text-xs text-blue-400">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                          </svg>
+                          묶음 ×{packageItem.quantity}
+                        </div>
+                      )}
+                      {/* 묶음 항목 전체 가치 표시 (수량 1 이상) */}
+                      {packageItem.quantity && packageItem.quantity >= 1 && (() => {
+                        // 묶음 항목의 전체 가치 계산
+                        let totalPackageItemValue = 0;
+                        packageItem.components.forEach((comp) => {
+                          // 하위묶음 항목 처리
+                          if (comp.itemName === '__nested__' && comp.nestedItem) {
+                            const nestedItem = comp.nestedItem;
+                            let totalNestedValue = 0;
+                            
+                            // 하위구성요소 가치 총합 계산
+                            nestedItem.components.forEach((nestedComp) => {
+                              const isNestedManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
+                              const nestedResolved = !isNestedManual && nestedComp.itemName ? resolveUnitPrice(nestedComp.itemName) : null;
+                              const nestedFinalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined && nestedComp.manualPrice > 0)
+                                ? { unitType: (nestedComp.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: nestedComp.manualPrice }
+                                : nestedResolved;
+                              
+                              if (nestedFinalUnitPrice) {
+                                let nestedCompValue = 0;
+                                if (packageData.priceType === '현금') {
+                                  nestedCompValue = calculateItemPrice(
+                                    nestedComp.itemName || '직접입력',
+                                    nestedComp.quantity || 0,
+                                    'cash',
+                                    nestedFinalUnitPrice
+                                  );
+                                } else if (packageData.priceType === '크리스탈') {
+                                  nestedCompValue = calculateItemPrice(
+                                    nestedComp.itemName || '직접입력',
+                                    nestedComp.quantity || 0,
+                                    'crystal',
+                                    nestedFinalUnitPrice
+                                  );
+                                } else if (packageData.priceType === '골드') {
+                                  if (nestedFinalUnitPrice.unitType === '골드') {
+                                    nestedCompValue = nestedFinalUnitPrice.unitPrice * (nestedComp.quantity || 0);
+                                  } else if (nestedFinalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
+                                    nestedCompValue = ((nestedFinalUnitPrice.unitPrice * crystalGoldRate) / 100) * (nestedComp.quantity || 0);
+                                  } else if (nestedFinalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
+                                    nestedCompValue = (nestedFinalUnitPrice.unitPrice / goldToCashPerGold) * (nestedComp.quantity || 0);
+                                  }
+                                }
+                                
+                                if (nestedItem.itemType === '확률') {
+                                  const nestedProbability = nestedComp.probability || 0;
+                                  nestedCompValue = nestedCompValue * nestedProbability;
+                                } else if (nestedItem.itemType === '선택' && !nestedComp.selected) {
+                                  nestedCompValue = 0;
+                                }
+                                
+                                totalNestedValue += nestedCompValue;
+                              }
+                            });
+                            
+                            // 하위묶음 1개당 단가 × 하위묶음 수량 = 하위묶음 가치
+                            const nestedItemUnitPrice = totalNestedValue;
+                            const nestedItemQuantity = nestedItem.quantity || 1;
+                            const nestedItemTotalValue = nestedItemUnitPrice * nestedItemQuantity;
+                            
+                            // 묶음 1개당 단가 계산이므로 구성요소 수량은 곱하지 않음
+                            const compValue = nestedItemTotalValue;
+                            
+                            if (packageItem.itemType === '확률') {
+                              const probability = comp.probability || 0;
+                              totalPackageItemValue += compValue * probability;
+                            } else if (packageItem.itemType === '선택' && !comp.selected) {
+                              // 선택되지 않은 항목은 0
+                            } else {
+                              totalPackageItemValue += compValue;
+                            }
+                          } else {
+                            // 일반 구성요소 처리
+                            const isCompManual = comp.itemName === '__manual__' || comp.itemName === '';
+                            const compResolved = !isCompManual && comp.itemName ? resolveUnitPrice(comp.itemName) : null;
+                            const compFinalUnitPrice = (comp.manualPrice !== null && comp.manualPrice !== undefined && comp.manualPrice > 0)
+                              ? { unitType: (comp.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: comp.manualPrice }
+                              : compResolved;
+                            
+                            if (compFinalUnitPrice) {
+                              let compValue = 0;
+                              if (packageData.priceType === '현금') {
+                                compValue = calculateItemPrice(
+                                  comp.itemName || '직접입력',
+                                  comp.quantity || 0,
+                                  'cash',
+                                  compFinalUnitPrice
+                                );
+                              } else if (packageData.priceType === '크리스탈') {
+                                compValue = calculateItemPrice(
+                                  comp.itemName || '직접입력',
+                                  comp.quantity || 0,
+                                  'crystal',
+                                  compFinalUnitPrice
+                                );
+                              } else if (packageData.priceType === '골드') {
+                                if (compFinalUnitPrice.unitType === '골드') {
+                                  compValue = compFinalUnitPrice.unitPrice * (comp.quantity || 0);
+                                } else if (compFinalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
+                                  compValue = ((compFinalUnitPrice.unitPrice * crystalGoldRate) / 100) * (comp.quantity || 0);
+                                } else if (compFinalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
+                                  compValue = (compFinalUnitPrice.unitPrice / goldToCashPerGold) * (comp.quantity || 0);
+                                }
+                              }
+                              
+                              if (packageItem.itemType === '확률') {
+                                const probability = comp.probability || 0;
+                                compValue = compValue * probability;
+                              } else if (packageItem.itemType === '선택' && !comp.selected) {
+                                compValue = 0;
+                              }
+                              
+                              totalPackageItemValue += compValue;
+                            }
+                          }
+                        });
+                        
+                        const totalValue = totalPackageItemValue * packageItem.quantity;
+                        
+                        return totalValue > 0 ? (
+                          <div className="mt-1 text-xs text-green-400 font-medium">
+                            단가 {formatNumberWithSignificantDigits(totalPackageItemValue)} {packageData.priceType}
+                            <span className="text-gray-500 mx-1">×</span>
+                            수량 {packageItem.quantity || 1}
+                            <span className="text-gray-500 mx-1">=</span>
+                            가치 {formatNumberWithSignificantDigits(totalValue)} {packageData.priceType}
+                            {packageItem.itemType === '확률' && <span className="text-gray-400 ml-1">(기대값)</span>}
+                          </div>
+                        ) : null;
+                      })()}
+                    </div>
+                    {/* 구성 요소 펼치기/접기 버튼 */}
+                    {packageItem.components.length > 0 && (
+                      <button
+                        onClick={() => toggleItemExpanded(itemIndex)}
+                        className="w-full flex items-center justify-between px-3 py-2 bg-gray-800/50 rounded-lg border border-gray-700 hover:bg-gray-800 transition-colors mb-2"
+                      >
+                        <span className="text-sm font-medium text-gray-300">
+                          구성 요소 {packageItem.components.length}개
+                        </span>
+                        <svg
+                          className={`w-4 h-4 text-gray-400 ${expandedItems[itemIndex] ? 'rotate-180' : ''}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                    )}
+                    {/* 구성 요소 */}
+                    {expandedItems[itemIndex] && (
+                      <div className="space-y-2">
+                        {packageItem.components.map((component, compIndex) => {
+                        const isManual = component.itemName === '__manual__' || component.itemName === '';
+                        const resolved = !isManual && component.itemName ? resolveUnitPrice(component.itemName) : null;
+                        const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined && component.manualPrice > 0)
+                          ? { unitType: (component.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: component.manualPrice }
+                          : resolved;
+
+                        // 단가 계산 (패키지 가격 타입에 맞춰 변환)
+                        let unitPriceInPackageType = 0;
+                        let unitPriceUnit = packageData.priceType;
+                        
+                        if (finalUnitPrice) {
+                          if (packageData.priceType === '골드') {
+                            if (finalUnitPrice.unitType === '골드') {
+                              unitPriceInPackageType = finalUnitPrice.unitPrice;
+                            } else if (finalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
+                              unitPriceInPackageType = (finalUnitPrice.unitPrice * crystalGoldRate) / 100;
+                            } else if (finalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
+                              unitPriceInPackageType = finalUnitPrice.unitPrice / goldToCashPerGold;
+                            }
+                          } else if (packageData.priceType === '크리스탈') {
+                            if (finalUnitPrice.unitType === '크리스탈') {
+                              unitPriceInPackageType = finalUnitPrice.unitPrice;
+                            } else if (finalUnitPrice.unitType === '골드' && crystalGoldRate && crystalGoldRate > 0) {
+                              unitPriceInPackageType = (finalUnitPrice.unitPrice * 100) / crystalGoldRate;
+                            } else if (finalUnitPrice.unitType === '현금') {
+                              // 크리스탈 → 현금 변환은 복잡하므로 단가 직접 사용
+                              unitPriceInPackageType = finalUnitPrice.unitPrice;
+                            }
+                          } else if (packageData.priceType === '현금') {
+                            if (finalUnitPrice.unitType === '현금') {
+                              unitPriceInPackageType = finalUnitPrice.unitPrice;
+                            } else if (finalUnitPrice.unitType === '골드' && goldToCashPerGold && goldToCashPerGold > 0) {
+                              unitPriceInPackageType = finalUnitPrice.unitPrice * goldToCashPerGold;
+                            } else if (finalUnitPrice.unitType === '크리스탈') {
+                              // 크리스탈 → 현금 변환은 복잡하므로 단가 직접 사용
+                              unitPriceInPackageType = finalUnitPrice.unitPrice;
+                            }
+                          }
+                        }
+
+                        // 구성요소 가치 계산 (1개 기준)
+                        let itemValue = 0;
+                        if (finalUnitPrice) {
+                          if (packageData.priceType === '현금') {
+                            itemValue = calculateItemPrice(
+                              component.itemName || '직접입력',
+                              component.quantity || 0,
+                              'cash',
+                              finalUnitPrice
+                            );
+                          } else if (packageData.priceType === '크리스탈') {
+                            itemValue = calculateItemPrice(
+                              component.itemName || '직접입력',
+                              component.quantity || 0,
+                              'crystal',
+                              finalUnitPrice
+                            );
+                          } else if (packageData.priceType === '골드') {
+                            if (finalUnitPrice.unitType === '골드') {
+                              itemValue = finalUnitPrice.unitPrice * (component.quantity || 0);
+                            } else if (finalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
+                              itemValue = ((finalUnitPrice.unitPrice * crystalGoldRate) / 100) * (component.quantity || 0);
+                            } else if (finalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
+                              itemValue = (finalUnitPrice.unitPrice / goldToCashPerGold) * (component.quantity || 0);
+                            }
+                          }
+                          
+                          // 타입별 가치 계산
+                          if (packageItem.itemType === '확률') {
+                            const probability = component.probability || 0;
+                            itemValue = itemValue * probability; // 기대값
+                          } else if (packageItem.itemType === '선택' && !component.selected) {
+                            itemValue = 0; // 선택되지 않은 항목은 0
+                          }
+                          // 묶음 항목 수량은 곱하지 않음 (1개 기준으로 표시)
+                        }
+                        
+                        // 전체 가치 계산 (묶음 항목 수량 곱한 값)
+                        const itemQuantity = packageItem.quantity || 1;
+                        const totalItemValue = itemValue * itemQuantity;
+
+                        const isIncluded = packageItem.itemType === '확정' || 
+                                         (packageItem.itemType === '확률') ||
+                                         (packageItem.itemType === '선택' && component.selected);
+
+                        const level0Colors = getLevelColors(0);
+                        return (
+                          <div key={compIndex} className={`${level0Colors.bg} rounded-lg p-3 border ${isIncluded ? level0Colors.border : 'border-gray-800'} ${!isIncluded && 'opacity-50'}`}>
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1 min-w-0">
+                                {/* 선택 라디오 버튼 */}
+                                {packageItem.itemType === '선택' && (
+                                  <label className="flex items-center gap-2 mb-2 cursor-pointer group">
+                                    <input
+                                      type="radio"
+                                      name={`selection-${itemIndex}`}
+                                      checked={component.selected || false}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          updateComponent(itemIndex, compIndex, 'selected', true);
+                                        }
+                                      }}
+                                      className="w-4 h-4 text-yellow-500 bg-gray-700 border-gray-600 focus:ring-yellow-500 focus:ring-2"
+                                    />
+                                    <span className={`text-xs font-semibold ${component.selected ? 'text-yellow-400' : 'text-gray-500 group-hover:text-gray-400'}`}>
+                                      {component.selected ? '✓ 선택됨' : '선택'}
+                                    </span>
+                                  </label>
+                                )}
+                                
+                                {/* 아이템 정보 */}
+                                {component.itemName === '__nested__' && component.nestedItem ? (
+                                  // 하위 묶음 항목 표시
+                                  <div className="space-y-2">
+                                    <div className="flex items-baseline gap-2 flex-wrap">
+                                      <span className={`text-sm font-medium ${isIncluded ? 'text-white' : 'text-gray-500 line-through'}`}>
+                                        📦 {component.nestedItem.itemName || '하위 묶음 항목'}
+                                      </span>
+                                      {packageItem.itemType === '확률' && component.probability !== undefined && (
+                                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full">
+                                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                          </svg>
+                                          {(component.probability * 100).toFixed(1)}%
+                                        </span>
+                                      )}
+                                      <span className="text-xs text-gray-400">
+                                        ({component.nestedItem.itemType})
+                                      </span>
+                                    </div>
+                                    {/* 하위 묶음 항목의 전체 가치 계산 */}
+                                    {(() => {
+                                      if (!component.nestedItem) return null;
+                                      const nestedItem = component.nestedItem;
+                                      let totalNestedValue = 0;
+                                      nestedItem.components.forEach((nestedComp) => {
+                                        const isNestedManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
+                                        const nestedResolved = !isNestedManual && nestedComp.itemName ? resolveUnitPrice(nestedComp.itemName) : null;
+                                        const nestedFinalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined && nestedComp.manualPrice > 0)
+                                          ? { unitType: (nestedComp.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: nestedComp.manualPrice }
+                                          : nestedResolved;
+                                        
+                                        if (nestedFinalUnitPrice) {
+                                          let nestedCompValue = 0;
+                                          if (packageData.priceType === '현금') {
+                                            nestedCompValue = calculateItemPrice(
+                                              nestedComp.itemName || '직접입력',
+                                              nestedComp.quantity || 0,
+                                              'cash',
+                                              nestedFinalUnitPrice
+                                            );
+                                          } else if (packageData.priceType === '크리스탈') {
+                                            nestedCompValue = calculateItemPrice(
+                                              nestedComp.itemName || '직접입력',
+                                              nestedComp.quantity || 0,
+                                              'crystal',
+                                              nestedFinalUnitPrice
+                                            );
+                                          } else if (packageData.priceType === '골드') {
+                                            if (nestedFinalUnitPrice.unitType === '골드') {
+                                              nestedCompValue = nestedFinalUnitPrice.unitPrice * (nestedComp.quantity || 0);
+                                            } else if (nestedFinalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
+                                              nestedCompValue = ((nestedFinalUnitPrice.unitPrice * crystalGoldRate) / 100) * (nestedComp.quantity || 0);
+                                            } else if (nestedFinalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
+                                              nestedCompValue = (nestedFinalUnitPrice.unitPrice / goldToCashPerGold) * (nestedComp.quantity || 0);
+                                            }
+                                          }
+                                          
+                                          if (nestedItem.itemType === '확률') {
+                                            const nestedProbability = nestedComp.probability || 0;
+                                            nestedCompValue = nestedCompValue * nestedProbability;
+                                          } else if (nestedItem.itemType === '선택' && !nestedComp.selected) {
+                                            nestedCompValue = 0;
+                                          }
+                                          
+                                          // 하위구성요소 가치는 1개 기준으로 계산 (하위묶음 수량은 곱하지 않음)
+                                          totalNestedValue += nestedCompValue;
+                                        }
+                                      });
+                                      
+                                      const nestedIsIncluded = nestedItem.itemType === '확정' || 
+                                                               (nestedItem.itemType === '확률') ||
+                                                               (nestedItem.itemType === '선택' && nestedItem.components.some(c => c.selected));
+                                      
+                                      // 하위묶음 1개당 단가 = 하위구성요소 가치 총합 (하위묶음의 확률은 이미 적용됨)
+                                      const nestedItemUnitPrice = totalNestedValue;
+                                      const nestedItemQuantity = component.nestedItem?.quantity || 1;
+                                      
+                                      // 상위 묶음 항목의 확률/선택 타입에 따라 가치 계산
+                                      let nestedItemTotalValue = nestedItemUnitPrice * nestedItemQuantity;
+                                      if (packageItem.itemType === '확률') {
+                                        // 상위 묶음 항목이 확률 타입이면 확률을 곱함
+                                        const probability = component.probability ?? 0;
+                                        nestedItemTotalValue = nestedItemUnitPrice * nestedItemQuantity * probability;
+                                      } else if (packageItem.itemType === '선택' && !component.selected) {
+                                        nestedItemTotalValue = 0;
+                                      }
+                                      
+                                      // 단가 계산 (패키지 가격 타입에 맞춰 변환)
+                                      let nestedUnitPriceInPackageType = 0;
+                                      if (nestedItemUnitPrice > 0) {
+                                        nestedUnitPriceInPackageType = nestedItemUnitPrice;
+                                      }
+                                      
+                                      return nestedItemTotalValue > 0 && nestedIsIncluded ? (
+                                        <div className="mt-1 space-y-1 text-xs">
+                                          <div className={`${isIncluded ? 'text-gray-300' : 'text-gray-600'}`}>
+                                            단가 <span className="font-semibold">{formatNumberWithSignificantDigits(nestedUnitPriceInPackageType)}</span> {packageData.priceType}
+                                            {packageItem.itemType === '확률' && component.probability !== undefined && (
+                                              <span className="text-purple-400 ml-1">× {component.probability}</span>
+                                            )}
+                                            <span className="text-gray-500 mx-1">×</span>
+                                            수량 <span className="font-semibold">{formatNumberWithSignificantDigits(nestedItemQuantity)}</span>
+                                            <span className="text-gray-500 mx-1">=</span>
+                                            가치 <span className={`font-semibold ${isIncluded ? 'text-green-400' : 'text-gray-600'}`}>
+                                              {isIncluded ? formatNumberWithSignificantDigits(nestedItemTotalValue) : '0'} {packageData.priceType}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      ) : null;
+                                    })()}
+                                    {/* 하위 묶음 항목의 구성요소 펼치기/접기 버튼 */}
+                                    {component.nestedItem && component.nestedItem.components.length > 0 && (
+                                      <button
+                                        onClick={() => toggleNestedItemExpanded(itemIndex, compIndex)}
+                                        className="w-full flex items-center justify-between px-2 py-1.5 bg-gray-800/30 rounded border border-blue-500/30 hover:bg-gray-800/50 transition-colors mt-2 text-xs"
+                                      >
+                                        <span className="text-xs font-medium text-blue-300">
+                                          하위 구성 요소 {component.nestedItem.components.length}개
+                                        </span>
+                                        <svg
+                                          className={`w-3 h-3 text-blue-400 ${expandedNestedItems[`${itemIndex}-${compIndex}`] ? 'rotate-180' : ''}`}
+                                          fill="none"
+                                          stroke="currentColor"
+                                          viewBox="0 0 24 24"
+                                        >
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                      </button>
+                                    )}
+                                    {/* 하위 묶음 항목의 구성요소 표시 */}
+                                    {component.nestedItem && component.nestedItem.components.length > 0 && expandedNestedItems[`${itemIndex}-${compIndex}`] && (() => {
+                                      const nestedItem = component.nestedItem!;
+                                      const level1Colors = getLevelColors(1);
+                                      return (
+                                        <div className="pl-4 border-l-2 border-blue-500/50 space-y-1.5 mt-2">
+                                          {nestedItem.components.map((nestedComp, nestedCompIndex) => {
+                                            const isNestedManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
+                                            const nestedResolved = !isNestedManual && nestedComp.itemName ? resolveUnitPrice(nestedComp.itemName) : null;
+                                            const nestedFinalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined && nestedComp.manualPrice > 0)
+                                              ? { unitType: (nestedComp.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: nestedComp.manualPrice }
+                                              : nestedResolved;
+                                            
+                                            let nestedItemValue = 0;
+                                            if (nestedFinalUnitPrice) {
+                                              if (packageData.priceType === '현금') {
+                                                nestedItemValue = calculateItemPrice(
+                                                  nestedComp.itemName || '직접입력',
+                                                  nestedComp.quantity || 0,
+                                                  'cash',
+                                                  nestedFinalUnitPrice
+                                                );
+                                              } else if (packageData.priceType === '크리스탈') {
+                                                nestedItemValue = calculateItemPrice(
+                                                  nestedComp.itemName || '직접입력',
+                                                  nestedComp.quantity || 0,
+                                                  'crystal',
+                                                  nestedFinalUnitPrice
+                                                );
+                                              } else if (packageData.priceType === '골드') {
+                                                if (nestedFinalUnitPrice.unitType === '골드') {
+                                                  nestedItemValue = nestedFinalUnitPrice.unitPrice * (nestedComp.quantity || 0);
+                                                } else if (nestedFinalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
+                                                  nestedItemValue = ((nestedFinalUnitPrice.unitPrice * crystalGoldRate) / 100) * (nestedComp.quantity || 0);
+                                                } else if (nestedFinalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
+                                                  nestedItemValue = (nestedFinalUnitPrice.unitPrice / goldToCashPerGold) * (nestedComp.quantity || 0);
+                                                }
+                                              }
+                                              
+                                              if (nestedItem.itemType === '확률') {
+                                                const nestedProbability = nestedComp.probability || 0;
+                                                nestedItemValue = nestedItemValue * nestedProbability;
+                                              } else if (nestedItem.itemType === '선택' && !nestedComp.selected) {
+                                                nestedItemValue = 0;
+                                              }
+                                              
+                                              // 하위구성요소 가치는 1개 기준으로 계산 (하위묶음 수량은 곱하지 않음)
+                                            }
+                                            
+                                            const nestedItemColors = getLevelColors(2); // 하위구성요소는 회색
+                                            const nestedIsIncluded = nestedItem.itemType === '확정' || 
+                                                                     (nestedItem.itemType === '확률') ||
+                                                                     (nestedItem.itemType === '선택' && nestedComp.selected);
+                                          return (
+                                            <div key={nestedCompIndex} className={`${nestedItemColors.bg} rounded p-2 border ${nestedIsIncluded ? nestedItemColors.border : 'border-gray-800'} ${!nestedIsIncluded && 'opacity-50'}`}>
+                                              {/* 선택 타입일 때 라디오 버튼 */}
+                                              {nestedItem.itemType === '선택' && (
+                                                <label className="flex items-center gap-1.5 mb-1 cursor-pointer group">
+                                                  <input
+                                                    type="radio"
+                                                    name={`nested-selection-${itemIndex}-${compIndex}`}
+                                                    checked={nestedComp.selected || false}
+                                                    onChange={(e) => {
+                                                      if (e.target.checked) {
+                                                        const nestedComponents = nestedItem.components.map((c, idx) => ({
+                                                          ...c,
+                                                          selected: idx === nestedCompIndex,
+                                                        }));
+                                                        const updatedNestedItem = { ...nestedItem, components: nestedComponents };
+                                                        updateComponent(itemIndex, compIndex, 'nestedItem', updatedNestedItem);
+                                                      }
+                                                    }}
+                                                    className="w-3 h-3 text-yellow-500 bg-gray-700 border-gray-600 focus:ring-yellow-500 focus:ring-1"
+                                                  />
+                                                  <span className={`text-[10px] font-semibold ${nestedComp.selected ? 'text-yellow-400' : 'text-gray-500 group-hover:text-gray-400'}`}>
+                                                    {nestedComp.selected ? '✓ 선택됨' : '선택'}
+                                                  </span>
+                                                </label>
+                                              )}
+                                              <div className="flex items-baseline gap-2 flex-wrap">
+                                                <span className={`${nestedIsIncluded ? 'text-gray-300' : 'text-gray-500 line-through'}`}>
+                                                  • {nestedComp.itemName || '(직접 입력)'}
+                                                </span>
+                                                {nestedItem.itemType === '확률' && nestedComp.probability !== undefined && (
+                                                  <span className="text-purple-400 text-[10px]">
+                                                    [{(nestedComp.probability * 100).toFixed(1)}%]
+                                                  </span>
+                                                )}
+                                                {nestedItem.itemType === '선택' && nestedComp.selected && (
+                                                  <span className="text-yellow-400 text-[10px]">✓</span>
+                                                )}
+                                              </div>
+                                              <div className="text-[10px] text-gray-500 ml-2">
+                                                {(() => {
+                                                  // 하위 구성요소 단가 계산
+                                                  let nestedUnitPriceInPackageType = 0;
+                                                  if (nestedFinalUnitPrice) {
+                                                    if (packageData.priceType === '골드') {
+                                                      if (nestedFinalUnitPrice.unitType === '골드') {
+                                                        nestedUnitPriceInPackageType = nestedFinalUnitPrice.unitPrice;
+                                                      } else if (nestedFinalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
+                                                        nestedUnitPriceInPackageType = (nestedFinalUnitPrice.unitPrice * crystalGoldRate) / 100;
+                                                      } else if (nestedFinalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
+                                                        nestedUnitPriceInPackageType = nestedFinalUnitPrice.unitPrice / goldToCashPerGold;
+                                                      }
+                                                    } else if (packageData.priceType === '크리스탈') {
+                                                      if (nestedFinalUnitPrice.unitType === '크리스탈') {
+                                                        nestedUnitPriceInPackageType = nestedFinalUnitPrice.unitPrice;
+                                                      } else if (nestedFinalUnitPrice.unitType === '골드' && crystalGoldRate && crystalGoldRate > 0) {
+                                                        nestedUnitPriceInPackageType = (nestedFinalUnitPrice.unitPrice * 100) / crystalGoldRate;
+                                                      }
+                                                    } else if (packageData.priceType === '현금') {
+                                                      if (nestedFinalUnitPrice.unitType === '현금') {
+                                                        nestedUnitPriceInPackageType = nestedFinalUnitPrice.unitPrice;
+                                                      } else if (nestedFinalUnitPrice.unitType === '골드' && goldToCashPerGold && goldToCashPerGold > 0) {
+                                                        nestedUnitPriceInPackageType = nestedFinalUnitPrice.unitPrice * goldToCashPerGold;
+                                                      }
+                                                    }
+                                                  }
+                                                  
+                                                  if (nestedFinalUnitPrice && nestedUnitPriceInPackageType > 0) {
+                                                    // 하위구성요소 가치 계산 (1개 기준)
+                                                    let nestedCompValue = 0;
+                                                    if (packageData.priceType === '골드') {
+                                                      if (nestedFinalUnitPrice.unitType === '골드') {
+                                                        nestedCompValue = nestedUnitPriceInPackageType * (nestedComp.quantity || 0);
+                                                      } else if (nestedFinalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
+                                                        nestedCompValue = ((nestedFinalUnitPrice.unitPrice * crystalGoldRate) / 100) * (nestedComp.quantity || 0);
+                                                      } else if (nestedFinalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
+                                                        nestedCompValue = (nestedFinalUnitPrice.unitPrice / goldToCashPerGold) * (nestedComp.quantity || 0);
+                                                      }
+                                                    } else if (packageData.priceType === '크리스탈') {
+                                                      nestedCompValue = calculateItemPrice(
+                                                        nestedComp.itemName || '직접입력',
+                                                        nestedComp.quantity || 0,
+                                                        'crystal',
+                                                        nestedFinalUnitPrice
+                                                      );
+                                                    } else if (packageData.priceType === '현금') {
+                                                      nestedCompValue = calculateItemPrice(
+                                                        nestedComp.itemName || '직접입력',
+                                                        nestedComp.quantity || 0,
+                                                        'cash',
+                                                        nestedFinalUnitPrice
+                                                      );
+                                                    }
+                                                    
+                                                    if (nestedItem.itemType === '확률') {
+                                                      const nestedProbability = nestedComp.probability || 0;
+                                                      nestedCompValue = nestedCompValue * nestedProbability;
+                                                    } else if (nestedItem.itemType === '선택' && !nestedComp.selected) {
+                                                      nestedCompValue = 0;
+                                                    }
+                                                    
+                                                    return (
+                                                      <>
+                                                        단가 {formatNumberWithSignificantDigits(nestedUnitPriceInPackageType)} {packageData.priceType}
+                                                        {nestedItem.itemType === '확률' && nestedComp.probability !== undefined && (
+                                                          <span className="text-purple-400 ml-0.5">× {nestedComp.probability}</span>
+                                                        )}
+                                                        <span className="text-gray-600 mx-0.5">×</span>
+                                                        수량 {formatNumberWithSignificantDigits(nestedComp.quantity || 0)}
+                                                        <span className="text-gray-600 mx-0.5">=</span>
+                                                        가치 <span className={`${nestedIsIncluded ? 'text-green-400' : 'text-gray-600'}`}>
+                                                          {nestedIsIncluded ? formatNumberWithSignificantDigits(nestedCompValue) : '0'} {packageData.priceType}
+                                                        </span>
+                                                      </>
+                                                    );
+                                                  } else {
+                                                    // nestedFinalUnitPrice가 없으면 가치 계산 불가
+                                                    return (
+                                                      <>
+                                                        수량: {formatNumberWithSignificantDigits(nestedComp.quantity || 0)}
+                                                      </>
+                                                    );
+                                                  }
+                                                })()}
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                        </div>
+                                      );
+                                    })()}
+                                  </div>
+                                ) : (
+                                  // 일반 구성요소 표시
+                                  <>
+                                    <div className="flex items-baseline gap-2 flex-wrap">
+                                      <span className={`text-sm font-medium ${isIncluded ? 'text-white' : 'text-gray-500 line-through'}`}>
+                                        {component.itemName || '(직접 입력)'}
+                                      </span>
+                                      {packageItem.itemType === '확률' && component.probability !== undefined && (
+                                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full">
+                                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                          </svg>
+                                          {(component.probability * 100).toFixed(1)}%
+                                        </span>
+                                      )}
+                                    </div>
+                                    
+                                {/* 수량 및 가치 */}
+                                <div className="mt-1 space-y-1 text-xs">
+                                  {finalUnitPrice && unitPriceInPackageType > 0 ? (
+                                    <div className={`${isIncluded ? 'text-gray-300' : 'text-gray-600'}`}>
+                                      단가 <span className="font-semibold">{formatNumberWithSignificantDigits(unitPriceInPackageType)}</span> {unitPriceUnit}
+                                      {packageItem.itemType === '확률' && component.probability !== undefined && (
+                                        <span className="text-purple-400 ml-1">× {component.probability}</span>
+                                      )}
+                                      <span className="text-gray-500 mx-1">×</span>
+                                      수량 <span className="font-semibold">{formatNumberWithSignificantDigits(component.quantity || 0)}</span>
+                                      <span className="text-gray-500 mx-1">=</span>
+                                      가치 <span className={`font-semibold ${isIncluded ? 'text-green-400' : 'text-gray-600'}`}>
+                                        {isIncluded ? formatNumberWithSignificantDigits(itemValue) : '0'} {packageData.priceType}
+                                      </span>
+                                      {packageItem.itemType === '확률' && isIncluded && <span className="text-gray-500 ml-1">(기대값)</span>}
+                                      {packageItem.quantity && packageItem.quantity > 1 && isIncluded && (
+                                        <span className="text-gray-500 ml-1">(1개 기준)</span>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-3">
+                                      <span className={`${isIncluded ? 'text-gray-400' : 'text-gray-600'}`}>
+                                        수량: <span className="font-semibold">{formatNumberWithSignificantDigits(component.quantity || 0)}</span>
+                                      </span>
+                                      {finalUnitPrice && (
+                                        <span className={`${isIncluded ? 'text-blue-400' : 'text-gray-600'}`}>
+                                          가치: <span className="font-semibold">{isIncluded ? formatNumberWithSignificantDigits(itemValue) : '0'}</span> {packageData.priceType}
+                                          {packageItem.itemType === '확률' && isIncluded && <span className="text-gray-500 ml-1">(기대값)</span>}
+                                          {packageItem.quantity && packageItem.quantity > 1 && isIncluded && (
+                                            <span className="text-gray-500 ml-1">(1개 기준)</span>
+                                          )}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                        })}
+                        {packageItem.components.length === 0 && (
+                          <div className="text-sm text-gray-500 text-center py-4 bg-gray-800/30 rounded-lg border border-dashed border-gray-700">
+                            구성 요소 없음
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  );
+                })}
+                {/* 3+보너스 구성품 표시 */}
+                {packageData.packageType === '3+보너스' && packageData.bonus3Items.length > 0 && packageData.bonus3Items.map((packageItem, itemIndex) => {
+                  const typeColors = {
+                    '확정': { border: 'border-blue-500/30', bg: 'bg-blue-500/5', icon: 'text-blue-400', badge: 'bg-blue-500/20 text-blue-400' },
+                    '확률': { border: 'border-purple-500/30', bg: 'bg-purple-500/5', icon: 'text-purple-400', badge: 'bg-purple-500/20 text-purple-400' },
+                    '선택': { border: 'border-yellow-500/30', bg: 'bg-yellow-500/5', icon: 'text-yellow-400', badge: 'bg-yellow-500/20 text-yellow-400' },
+                  };
+                  const colors = typeColors[packageItem.itemType as keyof typeof typeColors] || typeColors['확정'];
+                  
+                  return (
+                  <div key={`bonus3-${itemIndex}`} className={`relative bg-gray-900/70 rounded-lg p-5 border ${colors.border} ${colors.bg}`}>
+                    <div className="absolute top-3 right-3">
+                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${colors.badge}`}>
+                        {packageItem.itemType}
+                      </span>
+                    </div>
+                    
+                    <div className="mb-3 pr-16">
+                      <div className="flex items-center gap-2 mb-1">
+                        <svg className={`w-4 h-4 ${colors.icon}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                        </svg>
+                        <div className="font-bold text-white text-base">
+                          {packageItem.itemName || `3+보너스 항목 ${itemIndex + 1}`}
+                        </div>
+                      </div>
+                      {packageItem.quantity && packageItem.quantity > 1 && (
+                        <div className="flex items-center gap-1 text-xs text-blue-400">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                          </svg>
+                          묶음 ×{packageItem.quantity}
+                        </div>
+                      )}
+                      {/* 묶음 항목 전체 가치 표시 (수량 1 이상) */}
+                      {packageItem.quantity && packageItem.quantity >= 1 && (() => {
+                        // 묶음 항목의 전체 가치 계산
+                        let totalPackageItemValue = 0;
+                        packageItem.components.forEach((comp) => {
+                          // 하위묶음 항목 처리
+                          if (comp.itemName === '__nested__' && comp.nestedItem) {
+                            const nestedItem = comp.nestedItem;
+                            let totalNestedValue = 0;
+                            
+                            // 하위구성요소 가치 총합 계산
+                            nestedItem.components.forEach((nestedComp) => {
+                              const isNestedManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
+                              const nestedResolved = !isNestedManual && nestedComp.itemName ? resolveUnitPrice(nestedComp.itemName) : null;
+                              const nestedFinalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined && nestedComp.manualPrice > 0)
+                                ? { unitType: (nestedComp.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: nestedComp.manualPrice }
+                                : nestedResolved;
+                              
+                              if (nestedFinalUnitPrice) {
+                                let nestedCompValue = 0;
+                                if (packageData.priceType === '현금') {
+                                  nestedCompValue = calculateItemPrice(
+                                    nestedComp.itemName || '직접입력',
+                                    nestedComp.quantity || 0,
+                                    'cash',
+                                    nestedFinalUnitPrice
+                                  );
+                                } else if (packageData.priceType === '크리스탈') {
+                                  nestedCompValue = calculateItemPrice(
+                                    nestedComp.itemName || '직접입력',
+                                    nestedComp.quantity || 0,
+                                    'crystal',
+                                    nestedFinalUnitPrice
+                                  );
+                                } else if (packageData.priceType === '골드') {
+                                  if (nestedFinalUnitPrice.unitType === '골드') {
+                                    nestedCompValue = nestedFinalUnitPrice.unitPrice * (nestedComp.quantity || 0);
+                                  } else if (nestedFinalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
+                                    nestedCompValue = ((nestedFinalUnitPrice.unitPrice * crystalGoldRate) / 100) * (nestedComp.quantity || 0);
+                                  } else if (nestedFinalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
+                                    nestedCompValue = (nestedFinalUnitPrice.unitPrice / goldToCashPerGold) * (nestedComp.quantity || 0);
+                                  }
+                                }
+                                
+                                if (nestedItem.itemType === '확률') {
+                                  const nestedProbability = nestedComp.probability || 0;
+                                  nestedCompValue = nestedCompValue * nestedProbability;
+                                } else if (nestedItem.itemType === '선택' && !nestedComp.selected) {
+                                  nestedCompValue = 0;
+                                }
+                                
+                                totalNestedValue += nestedCompValue;
+                              }
+                            });
+                            
+                            // 하위묶음 1개당 단가 × 하위묶음 수량 = 하위묶음 가치
+                            const nestedItemUnitPrice = totalNestedValue;
+                            const nestedItemQuantity = nestedItem.quantity || 1;
+                            const nestedItemTotalValue = nestedItemUnitPrice * nestedItemQuantity;
+                            
+                            // 묶음 1개당 단가 계산이므로 구성요소 수량은 곱하지 않음
+                            const compValue = nestedItemTotalValue;
+                            
+                            if (packageItem.itemType === '확률') {
+                              const probability = comp.probability || 0;
+                              totalPackageItemValue += compValue * probability;
+                            } else if (packageItem.itemType === '선택' && !comp.selected) {
+                              // 선택되지 않은 항목은 0
+                            } else {
+                              totalPackageItemValue += compValue;
+                            }
+                          } else {
+                            // 일반 구성요소 처리
+                            const isCompManual = comp.itemName === '__manual__' || comp.itemName === '';
+                            const compResolved = !isCompManual && comp.itemName ? resolveUnitPrice(comp.itemName) : null;
+                            const compFinalUnitPrice = (comp.manualPrice !== null && comp.manualPrice !== undefined && comp.manualPrice > 0)
+                              ? { unitType: (comp.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: comp.manualPrice }
+                              : compResolved;
+                            
+                            if (compFinalUnitPrice) {
+                              let compValue = 0;
+                              if (packageData.priceType === '현금') {
+                                compValue = calculateItemPrice(
+                                  comp.itemName || '직접입력',
+                                  comp.quantity || 0,
+                                  'cash',
+                                  compFinalUnitPrice
+                                );
+                              } else if (packageData.priceType === '크리스탈') {
+                                compValue = calculateItemPrice(
+                                  comp.itemName || '직접입력',
+                                  comp.quantity || 0,
+                                  'crystal',
+                                  compFinalUnitPrice
+                                );
+                              } else if (packageData.priceType === '골드') {
+                                if (compFinalUnitPrice.unitType === '골드') {
+                                  compValue = compFinalUnitPrice.unitPrice * (comp.quantity || 0);
+                                } else if (compFinalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
+                                  compValue = ((compFinalUnitPrice.unitPrice * crystalGoldRate) / 100) * (comp.quantity || 0);
+                                } else if (compFinalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
+                                  compValue = (compFinalUnitPrice.unitPrice / goldToCashPerGold) * (comp.quantity || 0);
+                                }
+                              }
+                              
+                              if (packageItem.itemType === '확률') {
+                                const probability = comp.probability || 0;
+                                compValue = compValue * probability;
+                              } else if (packageItem.itemType === '선택' && !comp.selected) {
+                                compValue = 0;
+                              }
+                              
+                              totalPackageItemValue += compValue;
+                            }
+                          }
+                        });
+                        
+                        const totalValue = totalPackageItemValue * packageItem.quantity;
+                        
+                        return totalValue > 0 ? (
+                          <div className="mt-1 text-xs text-green-400 font-medium">
+                            단가 {formatNumberWithSignificantDigits(totalPackageItemValue)} {packageData.priceType}
+                            <span className="text-gray-500 mx-1">×</span>
+                            수량 {packageItem.quantity || 1}
+                            <span className="text-gray-500 mx-1">=</span>
+                            가치 {formatNumberWithSignificantDigits(totalValue)} {packageData.priceType}
+                            {packageItem.itemType === '확률' && <span className="text-gray-400 ml-1">(기대값)</span>}
+                          </div>
+                        ) : null;
+                      })()}
+                    </div>
+                    {/* 구성 요소 펼치기/접기 버튼 */}
+                    {packageItem.components.length > 0 && (
+                      <button
+                        onClick={() => toggleItemExpanded(`bonus3-${itemIndex}`)}
+                        className="w-full flex items-center justify-between px-3 py-2 bg-gray-800/50 rounded-lg border border-gray-700 hover:bg-gray-800 transition-colors mb-2"
+                      >
+                        <span className="text-sm font-medium text-gray-300">
+                          구성 요소 {packageItem.components.length}개
+                        </span>
+                        <svg
+                          className={`w-4 h-4 text-gray-400 transition-transform ${expandedItems[`bonus3-${itemIndex}`] ? 'rotate-180' : ''}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                    )}
+                    {/* 구성 요소 */}
+                    {expandedItems[`bonus3-${itemIndex}`] && packageItem.components.length > 0 && (
+                      <div className="space-y-2">
+                        {packageItem.components.map((component, compIndex) => {
+                          const isManual = component.itemName === '__manual__' || component.itemName === '';
+                          const resolved = !isManual && component.itemName ? resolveUnitPrice(component.itemName) : null;
+                          const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined && component.manualPrice > 0)
+                            ? { unitType: (component.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: component.manualPrice }
+                            : resolved;
+
+                          let unitPriceInPackageType = 0;
+                          let unitPriceUnit = packageData.priceType;
+                          
+                          if (finalUnitPrice) {
+                            if (packageData.priceType === '골드') {
+                              if (finalUnitPrice.unitType === '골드') {
+                                unitPriceInPackageType = finalUnitPrice.unitPrice;
+                              } else if (finalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
+                                unitPriceInPackageType = (finalUnitPrice.unitPrice * crystalGoldRate) / 100;
+                              } else if (finalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
+                                unitPriceInPackageType = finalUnitPrice.unitPrice / goldToCashPerGold;
+                              }
+                            } else if (packageData.priceType === '크리스탈') {
+                              if (finalUnitPrice.unitType === '크리스탈') {
+                                unitPriceInPackageType = finalUnitPrice.unitPrice;
+                              } else if (finalUnitPrice.unitType === '골드' && crystalGoldRate && crystalGoldRate > 0) {
+                                unitPriceInPackageType = (finalUnitPrice.unitPrice * 100) / crystalGoldRate;
+                              } else if (finalUnitPrice.unitType === '현금') {
+                                unitPriceInPackageType = finalUnitPrice.unitPrice;
+                              }
+                            } else if (packageData.priceType === '현금') {
+                              if (finalUnitPrice.unitType === '현금') {
+                                unitPriceInPackageType = finalUnitPrice.unitPrice;
+                              } else if (finalUnitPrice.unitType === '골드' && goldToCashPerGold && goldToCashPerGold > 0) {
+                                unitPriceInPackageType = finalUnitPrice.unitPrice * goldToCashPerGold;
+                              } else if (finalUnitPrice.unitType === '크리스탈') {
+                                unitPriceInPackageType = finalUnitPrice.unitPrice;
+                              }
+                            }
+                          }
+
+                          let itemValue = 0;
+                          if (finalUnitPrice) {
+                            if (packageData.priceType === '현금') {
+                              itemValue = calculateItemPrice(
+                                component.itemName || '직접입력',
+                                component.quantity || 0,
+                                'cash',
+                                finalUnitPrice
+                              );
+                            } else if (packageData.priceType === '크리스탈') {
+                              itemValue = calculateItemPrice(
+                                component.itemName || '직접입력',
+                                component.quantity || 0,
+                                'crystal',
+                                finalUnitPrice
+                              );
+                            } else if (packageData.priceType === '골드') {
+                              if (finalUnitPrice.unitType === '골드') {
+                                itemValue = finalUnitPrice.unitPrice * (component.quantity || 0);
+                              } else if (finalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
+                                itemValue = ((finalUnitPrice.unitPrice * crystalGoldRate) / 100) * (component.quantity || 0);
+                              } else if (finalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
+                                itemValue = (finalUnitPrice.unitPrice / goldToCashPerGold) * (component.quantity || 0);
+                              }
+                            }
+                            
+                            if (packageItem.itemType === '확률') {
+                              const probability = component.probability || 0;
+                              itemValue = itemValue * probability;
+                            } else if (packageItem.itemType === '선택' && !component.selected) {
+                              itemValue = 0;
+                            }
+                          }
+                          
+                          const itemQuantity = packageItem.quantity || 1;
+                          const totalItemValue = itemValue * itemQuantity;
+
+                          const isIncluded = packageItem.itemType === '확정' || 
+                                           (packageItem.itemType === '확률') ||
+                                           (packageItem.itemType === '선택' && component.selected);
+
+                          const level0Colors = getLevelColors(0);
+                          return (
+                            <div key={compIndex} className={`${level0Colors.bg} rounded-lg p-3 border ${isIncluded ? level0Colors.border : 'border-gray-800'} ${!isIncluded && 'opacity-50'}`}>
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                  {packageItem.itemType === '선택' && (
+                                    <label className="flex items-center gap-2 mb-2 cursor-pointer group">
+                                      <input
+                                        type="radio"
+                                        name={`bonus3-selection-${itemIndex}`}
+                                        checked={component.selected || false}
+                                        onChange={(e) => {
+                                          if (e.target.checked) {
+                                            updateBonus3Component(itemIndex, compIndex, 'selected', true);
+                                          }
+                                        }}
+                                        className="w-4 h-4 text-yellow-500 bg-gray-700 border-gray-600 focus:ring-yellow-500 focus:ring-2"
+                                      />
+                                      <span className={`text-xs font-semibold ${component.selected ? 'text-yellow-400' : 'text-gray-500 group-hover:text-gray-400'}`}>
+                                        {component.selected ? '✓ 선택됨' : '선택'}
+                                      </span>
+                                    </label>
+                                  )}
+                                  
+                                  <div className="flex items-baseline gap-2 flex-wrap">
+                                    <span className={`text-sm font-medium ${isIncluded ? 'text-white' : 'text-gray-500 line-through'}`}>
+                                      {component.itemName === '__manual__' || component.itemName === '' ? '직접 입력' : component.itemName}
+                                    </span>
+                                    {packageItem.itemType === '확률' && component.probability !== undefined && (
+                                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded">
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                        </svg>
+                                        {(component.probability * 100).toFixed(1)}%
+                                      </span>
+                                    )}
+                                  </div>
+                                  
+                                  {finalUnitPrice && unitPriceInPackageType > 0 ? (
+                                    <div className="mt-1 text-xs text-gray-300">
+                                      단가 <span className="font-semibold">{formatNumberWithSignificantDigits(unitPriceInPackageType)}</span> {unitPriceUnit}
+                                      {packageItem.itemType === '확률' && component.probability !== undefined && (
+                                        <span className="text-purple-400 ml-1">× {component.probability}</span>
+                                      )}
+                                      <span className="text-gray-500 mx-1">×</span>
+                                      수량 <span className="font-semibold">{formatNumberWithSignificantDigits(component.quantity || 0)}</span>
+                                      <span className="text-gray-500 mx-1">=</span>
+                                      가치 <span className={`font-semibold ${isIncluded ? 'text-green-400' : 'text-gray-600'}`}>
+                                        {isIncluded ? formatNumberWithSignificantDigits(itemValue) : '0'} {packageData.priceType}
+                                      </span>
+                                      {packageItem.itemType === '확률' && isIncluded && <span className="text-gray-500 ml-1">(기대값)</span>}
+                                      {packageItem.quantity && packageItem.quantity > 1 && isIncluded && (
+                                        <span className="text-gray-500 ml-1">(1개 기준)</span>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div className="mt-1 text-xs text-gray-300">
+                                      수량: <span className="font-semibold">{formatNumberWithSignificantDigits(component.quantity || 0)}</span>
+                                      {isIncluded && finalUnitPrice && (
+                                        <span className="text-blue-400 ml-2">
+                                          가치: <span className="font-semibold">{formatNumberWithSignificantDigits(itemValue)}</span> {packageData.priceType}
+                                          {packageItem.itemType === '확률' && <span className="text-gray-500 ml-1">(기대값)</span>}
+                                          {packageItem.quantity && packageItem.quantity > 1 && (
+                                            <span className="text-gray-500 ml-1">(1개 기준)</span>
+                                          )}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {packageItem.components.length === 0 && (
+                          <div className="text-sm text-gray-500 text-center py-4 bg-gray-800/30 rounded-lg border border-dashed border-gray-700">
+                            구성 요소 없음
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  );
+                })}
+              </div>
+            </div>
+            </div>
+          )}
+
+          {/* 합산 효율 카드 */}
+          {packageData.packageType === '보너스룸' ? (
+            <div className="relative bg-gray-800/90 rounded-lg border border-gray-700 p-8">
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-6">
+                  <div className="p-2 bg-orange-500/10 rounded-lg">
+                    <svg className="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-white">보너스룸 효율</h3>
+                </div>
+              <div className="space-y-6">
+                {bonusRoomEfficiencies?.map((room, roomIndex) => (
+                  <div key={roomIndex} className="bg-gray-900/70 rounded-lg border border-orange-500/20 p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <svg className="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                      </svg>
+                      <h4 className="text-lg font-bold text-white">{room.roomName}</h4>
+                    </div>
+                    
+                    {/* 보너스룸별 효율 */}
+                    <div className="mb-4 p-3 bg-gray-800/50 rounded border border-gray-600">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <div className="text-xs text-gray-400 mb-1">보너스룸 가격 합계</div>
+                          <div className="text-lg font-bold text-white">
+                            {formatNumberWithSignificantDigits(room.totalPrice)} 골드
+                          </div>
+                          {goldToCashPerGold && goldToCashPerGold > 0 && (
+                            <>
+                              <div className="text-sm text-gray-300 mt-1">
+                                = {formatNumberWithSignificantDigits(room.totalPrice * goldToCashPerGold)} 현금
+                              </div>
+                              <div className="text-xs text-gray-500 mt-1">
+                                {formatNumberWithSignificantDigits(room.totalPrice)} 골드 × {formatNumberWithSignificantDigits(goldToCashPerGold)} = {formatNumberWithSignificantDigits(room.totalPrice * goldToCashPerGold)} 현금
+                              </div>
+                            </>
+                          )}
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-400 mb-1">보너스룸 가치 합계</div>
+                          <div className="text-lg font-bold text-white">
+                            {formatNumberWithSignificantDigits(room.totalValue)} 골드
+                          </div>
+                        </div>
+                        <div className={`${room.efficiency !== null && room.efficiency >= 1 ? 'border-green-500/50' : room.efficiency !== null ? 'border-red-500/50' : 'border-gray-600'} border rounded p-2`}>
+                          <div className="text-xs text-gray-400 mb-1">보너스룸 효율</div>
+                          {room.efficiency !== null ? (
+                            <>
+                              <div className={`text-xl font-bold ${room.efficiency >= 1 ? 'text-green-400' : 'text-red-400'}`}>
+                                {formatNumberWithSignificantDigits(room.efficiency)}배
+                              </div>
+                              <div className={`text-xs font-medium ${room.efficiency >= 1 ? 'text-green-400' : 'text-red-400'}`}>
+                                {room.efficiency >= 1 ? '✓ 이득' : '✗ 손해'}
+                              </div>
+                            </>
+                          ) : (
+                            <div className="text-sm text-gray-500">계산 불가</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* 묶음 항목별 효율 */}
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                        <div className="text-sm font-semibold text-gray-300">묶음 항목별 효율</div>
+                      </div>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                      {room.items.map((item, itemIndex) => (
+                        <div key={itemIndex} className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+                          {/* 항목 헤더 */}
+                          <div className="flex items-start justify-between mb-3 pb-2 border-b border-gray-700/50">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                </svg>
+                                <div className="text-sm text-white font-semibold">
+                                  {item.itemName || `항목 ${itemIndex + 1}`}
+                                </div>
+                              </div>
+                              <span className="text-xs font-medium text-gray-500 bg-gray-700/50 px-2 py-0.5 rounded">
+                                {item.itemType}
+                              </span>
+                            </div>
+                            {item.efficiency !== null ? (
+                              <div className={`text-right ml-2 px-3 py-1 rounded-lg ${item.efficiency >= 1 ? 'bg-green-500/10 border border-green-500/30' : 'bg-red-500/10 border border-red-500/30'}`}>
+                                <div className={`text-lg font-bold ${item.efficiency >= 1 ? 'text-green-400' : 'text-red-400'}`}>
+                                  {formatNumberWithSignificantDigits(item.efficiency)}배
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="text-xs text-gray-500 ml-2">계산 불가</div>
+                            )}
+                          </div>
+                          
+                          {/* 가격/가치 정보 */}
+                          <div className="grid grid-cols-2 gap-3 mb-3">
+                            <div className="bg-gray-900/50 rounded-lg p-2">
+                              <div className="text-xs text-gray-500 mb-1">가격</div>
+                              <div className="text-sm font-semibold text-white">
+                                {item.priceType === '보너스' ? (
+                                  <span className="text-green-400">보너스(무료)</span>
+                                ) : (
+                                  <>
+                                    {formatNumberWithSignificantDigits(item.originalPrice)} {item.priceType}
+                                    {item.priceType !== '골드' && item.price > 0 && (
+                                      <div className="text-xs text-gray-400 mt-0.5">
+                                        = {formatNumberWithSignificantDigits(item.price)} 골드
+                                      </div>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                            <div className="bg-gray-900/50 rounded-lg p-2">
+                              <div className="text-xs text-gray-500 mb-1">가치</div>
+                              <div className="text-sm font-semibold text-blue-400">
+                                {formatNumberWithSignificantDigits(item.value)} 골드
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* 가치 계산 내역 */}
+                          {item.components && item.components.length > 0 && (
+                            <div className="mt-3 pt-3 border-t border-gray-700/50">
+                              <div className="flex items-center gap-2 mb-2">
+                                <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                </svg>
+                                <div className="text-xs font-medium text-gray-400">가치 계산 내역</div>
+                              </div>
+                              <div className="space-y-1.5">
+                                {item.itemType === '선택' ? (
+                                  // 선택 타입: 라디오 버튼으로 선택 변경 가능
+                                  <div className="space-y-1">
+                                    {item.components.map((comp, compIndex) => (
+                                      <label key={compIndex} className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer ${comp.selected ? 'bg-yellow-500/10 border border-yellow-500/30' : 'bg-gray-900/30 border border-gray-700/50'}`}>
+                                        <input
+                                          type="radio"
+                                          name={`bonus-room-${roomIndex}-item-${itemIndex}-selection`}
+                                          checked={comp.selected || false}
+                                          onChange={() => {
+                                            // 선택 변경
+                                            setPackageData((prev) => {
+                                              const newBonusRooms = [...(prev.bonusRooms || [])];
+                                              const targetItem = newBonusRooms[roomIndex].items[itemIndex];
+                                              const newComponents = targetItem.components.map((c, idx) => ({
+                                                ...c,
+                                                selected: idx === compIndex,
+                                              }));
+                                              newBonusRooms[roomIndex].items[itemIndex] = {
+                                                ...targetItem,
+                                                components: newComponents,
+                                              };
+                                              return { ...prev, bonusRooms: newBonusRooms };
+                                            });
+                                          }}
+                                          className="w-4 h-4 text-yellow-500 bg-gray-700 border-gray-600 focus:ring-yellow-500"
+                                        />
+                                        <div className="flex-1">
+                                          <div className={`text-xs font-medium mb-1 ${comp.selected ? 'text-yellow-300' : 'text-gray-300'}`}>
+                                            {comp.selected && <span className="text-yellow-400 mr-1">✓</span>}
+                                            {comp.itemName}
+                                          </div>
+                                          <div className="text-xs text-gray-500 space-x-2">
+                                            <span>수량: {formatNumberWithSignificantDigits(comp.quantity)}</span>
+                                            {comp.unitPrice > 0 && (
+                                              <span>• 단가: {formatNumberWithSignificantDigits(comp.unitPrice)} {comp.unitType}</span>
+                                            )}
+                                          </div>
+                                          {comp.valueInGold > 0 && (
+                                            <div className="text-xs text-blue-400 mt-1">
+                                              = {formatNumberWithSignificantDigits(comp.valueInGold)} 골드
+                                              {item.quantity > 1 && comp.selected && (
+                                                <span className="text-gray-500"> × {item.quantity} = {formatNumberWithSignificantDigits(comp.valueInGold * item.quantity)} 골드</span>
+                                              )}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </label>
+                                    ))}
+                                  </div>
+                                ) : item.itemType === '확률' ? (
+                                  // 확률 타입: 확률과 기대값 표시
+                                  item.components.map((comp, compIndex) => (
+                                    <div key={compIndex} className="bg-gray-900/30 border border-gray-700/50 rounded-lg p-2">
+                                      <div className="flex items-center justify-between mb-1">
+                                        <div className="text-xs font-medium text-gray-300">{comp.itemName}</div>
+                                        {comp.probability !== undefined && (
+                                          <span className="text-xs font-semibold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded">
+                                            {(comp.probability * 100).toFixed(1)}%
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="text-xs text-gray-500 space-x-2">
+                                        <span>수량: {formatNumberWithSignificantDigits(comp.quantity)}</span>
+                                        {comp.unitPrice > 0 && (
+                                          <span>• 단가: {formatNumberWithSignificantDigits(comp.unitPrice)} {comp.unitType}</span>
+                                        )}
+                                      </div>
+                                      {comp.valueInGold > 0 && comp.probability !== undefined && (
+                                        <div className="text-xs text-blue-400 mt-1">
+                                          기대값: {formatNumberWithSignificantDigits(comp.valueInGold * (comp.probability || 0))} 골드
+                                          {item.quantity > 1 && (
+                                            <span className="text-gray-500"> × {item.quantity} = {formatNumberWithSignificantDigits(comp.valueInGold * (comp.probability || 0) * item.quantity)} 골드</span>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))
+                                ) : (
+                                  // 확정 타입: 모든 구성요소 표시
+                                  item.components.map((comp, compIndex) => (
+                                    <div key={compIndex} className="bg-gray-900/30 border border-gray-700/50 rounded-lg p-2">
+                                      <div className="text-xs font-medium text-gray-300 mb-1">{comp.itemName}</div>
+                                      <div className="text-xs text-gray-500 space-x-2">
+                                        <span>수량: {formatNumberWithSignificantDigits(comp.quantity)}</span>
+                                        {comp.unitPrice > 0 && (
+                                          <span>• 단가: {formatNumberWithSignificantDigits(comp.unitPrice)} {comp.unitType}</span>
+                                        )}
+                                      </div>
+                                      {comp.valueInGold > 0 && (
+                                        <div className="text-xs text-blue-400 mt-1">
+                                          = {formatNumberWithSignificantDigits(comp.valueInGold)} 골드
+                                          {item.quantity > 1 && (
+                                            <span className="text-gray-500"> × {item.quantity} = {formatNumberWithSignificantDigits(comp.valueInGold * item.quantity)} 골드</span>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              </div>
+              
+              {/* 저장 버튼 */}
+              {allowPackageSave && (
+                <div className="flex justify-center mt-6">
+                  <button
+                    onClick={() => {
+                      setSavePackageName(packageData.packageName);
+                      setShowSaveModal(true);
+                    }}
+                    className="px-8 py-3 bg-purple-600 text-white text-lg font-semibold rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                    disabled={isLoading || !packageData.packageName.trim()}
+                  >
+                    {selectedPackageId ? '📝 패키지 업데이트' : '💾 패키지 저장'}
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="relative bg-gray-800/90 rounded-lg border border-gray-700 p-8">
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-6">
+                  <div className="p-2 bg-green-500/10 rounded-lg">
+                    <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-white">합산 효율</h3>
+                </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-gray-900/50 rounded-lg p-6 border border-gray-700/50">
+                  <div className="flex items-center gap-2 mb-3">
+                    <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div className="text-xs font-medium text-blue-400/80 uppercase tracking-wider">패키지 가격</div>
+                  </div>
+                  {(() => {
+                    let effectivePrice = packageData.price;
+                    if (packageData.packageType === '3+1' && packageData.is3Plus1) {
+                      effectivePrice = (packageData.price * 3) / 4;
+                    } else if (packageData.packageType === '3+보너스' && packageData.is3PlusBonus) {
+                      effectivePrice = packageData.price * 3;
+                    }
+                    
+                    let priceInGold = 0;
+                    let priceInCash = 0;
+                    let conversionFormula = '';
+                    
+                    if (packageData.priceType === '현금') {
+                      priceInCash = effectivePrice;
+                      if (goldToCashPerGold && goldToCashPerGold > 0) {
+                        priceInGold = effectivePrice / goldToCashPerGold;
+                        conversionFormula = `${formatNumberWithSignificantDigits(effectivePrice)} 현금 ÷ ${formatNumberWithSignificantDigits(goldToCashPerGold)} = ${formatNumberWithSignificantDigits(priceInGold)} 골드`;
+                      }
+                    } else if (packageData.priceType === '골드') {
+                      priceInGold = effectivePrice;
+                      if (goldToCashPerGold && goldToCashPerGold > 0) {
+                        priceInCash = effectivePrice * goldToCashPerGold;
+                        conversionFormula = `${formatNumberWithSignificantDigits(effectivePrice)} 골드 × ${formatNumberWithSignificantDigits(goldToCashPerGold)} = ${formatNumberWithSignificantDigits(priceInCash)} 현금`;
+                      }
+                    } else if (packageData.priceType === '크리스탈') {
+                      if (crystalGoldRate && crystalGoldRate > 0) {
+                        priceInGold = (effectivePrice * crystalGoldRate) / 100;
+                        conversionFormula = `${formatNumberWithSignificantDigits(effectivePrice)} 크리스탈 × ${formatNumberWithSignificantDigits(crystalGoldRate)} ÷ 100 = ${formatNumberWithSignificantDigits(priceInGold)} 골드`;
+                        if (goldToCashPerGold && goldToCashPerGold > 0) {
+                          priceInCash = priceInGold * goldToCashPerGold;
+                          conversionFormula += `\n${formatNumberWithSignificantDigits(priceInGold)} 골드 × ${formatNumberWithSignificantDigits(goldToCashPerGold)} = ${formatNumberWithSignificantDigits(priceInCash)} 현금`;
+                        }
+                      }
+                    }
+                    
+                    return (
+                      <>
+                        <div className="text-2xl font-bold text-white mb-2">
+                          {formatNumberWithSignificantDigits(effectivePrice)} {packageData.priceType}
+                        </div>
+                        {priceInGold > 0 && (
+                          <div className="text-sm text-gray-300 mb-1">
+                            = {formatNumberWithSignificantDigits(priceInGold)} 골드
+                          </div>
+                        )}
+                        {priceInCash > 0 && (
+                          <div className="text-sm text-gray-300 mb-2">
+                            = {formatNumberWithSignificantDigits(priceInCash)} 현금
+                          </div>
+                        )}
+                        {conversionFormula && (
+                          <div className="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-700 whitespace-pre-line">
+                            {conversionFormula}
+                          </div>
+                        )}
+                        {packageData.packageType === '3+1' && (
+                          <label className="flex items-center gap-2 mt-3 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={packageData.is3Plus1}
+                              onChange={(e) => setPackageData((prev) => ({ ...prev, is3Plus1: e.target.checked }))}
+                              className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
+                            />
+                            <span className="text-sm text-gray-300">3+1 적용</span>
+                          </label>
+                        )}
+                        {packageData.packageType === '3+보너스' && (
+                          <label className="flex items-center gap-2 mt-3 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={packageData.is3PlusBonus}
+                              onChange={(e) => setPackageData((prev) => ({ ...prev, is3PlusBonus: e.target.checked }))}
+                              className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
+                            />
+                            <span className="text-sm text-gray-300">3+보너스 적용</span>
+                          </label>
+                        )}
+                        {packageData.packageType !== '3+1' && packageData.packageType !== '3+보너스' && (
+                          <div className="text-xs text-gray-500 mt-3">
+                            유형: {packageData.packageType}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+                <div className="bg-gray-900/50 rounded-lg p-6 border border-gray-700/50">
+                  <div className="flex items-center gap-2 mb-3">
+                    <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                    <div className="text-xs font-medium text-purple-400/80 uppercase tracking-wider">구성품 합계</div>
+                  </div>
+                  <div className="text-2xl font-bold text-white">
+                    {formatNumberWithSignificantDigits(totalValue)} {packageData.priceType}
+                  </div>
+                </div>
+                <div className={`bg-gray-900/50 rounded-lg p-6 border ${efficiency !== null && efficiency >= 1 ? 'border-green-500/50' : efficiency !== null ? 'border-red-500/50' : 'border-gray-700/50'}`}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <svg className={`w-4 h-4 ${efficiency !== null && efficiency >= 1 ? 'text-green-400' : 'text-red-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                    <div className={`text-xs font-medium uppercase tracking-wider ${efficiency !== null && efficiency >= 1 ? 'text-green-400/80' : 'text-red-400/80'}`}>효율 (배수)</div>
+                  </div>
+                  {efficiency !== null ? (
+                    <>
+                      <div className={`text-3xl font-bold ${efficiency >= 1 ? 'text-green-400' : 'text-red-400'}`}>
+                        {formatNumberWithSignificantDigits(efficiency)}배
+                      </div>
+                      <div className={`text-sm font-medium mt-1 ${efficiency >= 1 ? 'text-green-400' : 'text-red-400'}`}>
+                        {efficiency >= 1 ? '✓ 이득' : '✗ 손해'}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-lg text-gray-500">계산 불가</div>
+                  )}
+                </div>
+              </div>
+              
+              {/* 저장 버튼 */}
+              {allowPackageSave && (
+                <div className="flex justify-center mt-8">
+                  <button
+                    onClick={() => {
+                      setSavePackageName(packageData.packageName);
+                      setShowSaveModal(true);
+                    }}
+                    className="group relative px-10 py-4 bg-purple-600 text-white text-lg font-bold rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                    disabled={isLoading || !packageData.packageName.trim()}
+                  >
+                    <span className="flex items-center gap-2">
+                      {selectedPackageId ? (
+                        <>
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                          패키지 업데이트
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                          </svg>
+                          패키지 저장
+                        </>
+                      )}
+                    </span>
+                  </button>
+                </div>
+              )}
+            </div>
+            </div>
+          )}
+        </div>
         {/* 입력 폼 */}
         <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
           <h2 className="text-xl font-semibold text-white mb-4">상품 정보</h2>
@@ -3918,1606 +5510,7 @@ export default function PackageEfficiencyClient({
           </div>
         )}
 
-        {/* 계산 결과 */}
-        <div className="space-y-6">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-1 h-8 bg-purple-500 rounded-full"></div>
-            <h2 className="text-3xl font-bold text-white">
-              계산 결과 요약
-            </h2>
-          </div>
-          
-          {/* 패키지 개요 카드 */}
-          <div className="relative bg-gray-800/90 rounded-lg border border-gray-700 p-8">
-            <div className="relative z-10">
-              <div className="flex items-center gap-2 mb-6">
-                <div className="p-2 bg-purple-500/10 rounded-lg">
-                  <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-white">상품 정보</h3>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700/50">
-                  <div className="flex items-center gap-2 mb-2">
-                    <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                    </svg>
-                    <div className="text-xs font-medium text-purple-400/80 uppercase tracking-wider">상품명</div>
-                  </div>
-                  <div className="text-lg font-bold text-white flex items-center gap-2 flex-wrap">
-                    {packageData.packageName || '(미입력)'}
-                    {packageData.endDate && (() => {
-                      const endDate = new Date(packageData.endDate);
-                      const today = new Date();
-                      today.setHours(0, 0, 0, 0);
-                      endDate.setHours(0, 0, 0, 0);
-                      if (endDate < today) {
-                        return (
-                          <span className="text-xs bg-red-600 text-white px-2.5 py-1 rounded-full">
-                            판매종료
-                          </span>
-                        );
-                      }
-                      return null;
-                    })()}
-                  </div>
-                </div>
-                <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700/50">
-                  <div className="flex items-center gap-2 mb-2">
-                    <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <div className="text-xs font-medium text-blue-400/80 uppercase tracking-wider">패키지 가격</div>
-                  </div>
-                  <div className="text-lg font-bold text-white">
-                    {formatNumberWithSignificantDigits(packageData.price)} {packageData.priceType}
-                  </div>
-                  {packageData.packageType === '3+1' && packageData.is3Plus1 && (
-                    <div className="text-xs text-blue-400/70 mt-1">
-                      3+1: {formatNumberWithSignificantDigits((packageData.price * 3) / 4)} {packageData.priceType}
-                    </div>
-                  )}
-                  <div className="mt-2 inline-block px-2 py-1 bg-gray-800/50 rounded text-xs text-gray-400">
-                    {packageData.packageType}
-                  </div>
-                </div>
-                <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700/50">
-                  <div className="flex items-center gap-2 mb-2">
-                    <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                    <div className="text-xs font-medium text-green-400/80 uppercase tracking-wider">구매 가능</div>
-                  </div>
-                  <div className="text-2xl font-bold text-white">
-                    {packageData.purchaseCount}<span className="text-base text-gray-400 ml-1">회</span>
-                  </div>
-                </div>
-                <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700/50">
-                  <div className="flex items-center gap-2 mb-2">
-                    <svg className="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <div className="text-xs font-medium text-yellow-400/80 uppercase tracking-wider">종료 예정일</div>
-                  </div>
-                  <div className="text-base font-medium text-white">
-                    {packageData.endDate || (
-                      <span className="text-gray-500">미정</span>
-                    )}
-                  </div>
-                </div>
-                <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700/50">
-                  <div className="flex items-center gap-2 mb-2">
-                    <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-                    </svg>
-                    <div className="text-xs font-medium text-cyan-400/80 uppercase tracking-wider">구분</div>
-                  </div>
-                  <div className="text-base font-medium text-white">
-                    {packageData.category}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
 
-          {/* 구성품 내용 카드 */}
-          {packageData.packageType !== '보너스룸' && (packageData.items.length > 0 || (packageData.packageType === '3+보너스' && packageData.bonus3Items.length > 0)) && (
-            <div className="relative bg-gray-800/90 rounded-lg border border-gray-700 p-8">
-              <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-6">
-                  <div className="p-2 bg-blue-500/10 rounded-lg">
-                    <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-white">구성품 내용</h3>
-                </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {packageData.items.map((packageItem, itemIndex) => {
-                  const typeColors = {
-                    '확정': { border: 'border-blue-500/30', bg: 'bg-blue-500/5', icon: 'text-blue-400', badge: 'bg-blue-500/20 text-blue-400' },
-                    '확률': { border: 'border-purple-500/30', bg: 'bg-purple-500/5', icon: 'text-purple-400', badge: 'bg-purple-500/20 text-purple-400' },
-                    '선택': { border: 'border-yellow-500/30', bg: 'bg-yellow-500/5', icon: 'text-yellow-400', badge: 'bg-yellow-500/20 text-yellow-400' },
-                  };
-                  const colors = typeColors[packageItem.itemType as keyof typeof typeColors] || typeColors['확정'];
-                  
-                  return (
-                  <div key={itemIndex} className={`relative bg-gray-900/70 rounded-lg p-5 border ${colors.border} ${colors.bg}`}>
-                    {/* 타입 배지 */}
-                    <div className="absolute top-3 right-3">
-                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${colors.badge}`}>
-                        {packageItem.itemType}
-                      </span>
-                    </div>
-                    
-                    <div className="mb-3 pr-16">
-                      <div className="flex items-center gap-2 mb-1">
-                        {packageData.category === '패스' && (
-                          <span className="text-sm font-semibold text-purple-400 whitespace-nowrap">
-                            패스 레벨 {itemIndex + 1}
-                          </span>
-                        )}
-                        <svg className={`w-4 h-4 ${colors.icon}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                        </svg>
-                        <div className="font-bold text-white text-base">
-                          {packageItem.itemName || `항목 ${itemIndex + 1}`}
-                        </div>
-                      </div>
-                      {packageItem.quantity && packageItem.quantity > 1 && (
-                        <div className="flex items-center gap-1 text-xs text-blue-400">
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                          </svg>
-                          묶음 ×{packageItem.quantity}
-                        </div>
-                      )}
-                      {/* 묶음 항목 전체 가치 표시 (수량 1 이상) */}
-                      {packageItem.quantity && packageItem.quantity >= 1 && (() => {
-                        // 묶음 항목의 전체 가치 계산
-                        let totalPackageItemValue = 0;
-                        packageItem.components.forEach((comp) => {
-                          // 하위묶음 항목 처리
-                          if (comp.itemName === '__nested__' && comp.nestedItem) {
-                            const nestedItem = comp.nestedItem;
-                            let totalNestedValue = 0;
-                            
-                            // 하위구성요소 가치 총합 계산
-                            nestedItem.components.forEach((nestedComp) => {
-                              const isNestedManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
-                              const nestedResolved = !isNestedManual && nestedComp.itemName ? resolveUnitPrice(nestedComp.itemName) : null;
-                              const nestedFinalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined && nestedComp.manualPrice > 0)
-                                ? { unitType: (nestedComp.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: nestedComp.manualPrice }
-                                : nestedResolved;
-                              
-                              if (nestedFinalUnitPrice) {
-                                let nestedCompValue = 0;
-                                if (packageData.priceType === '현금') {
-                                  nestedCompValue = calculateItemPrice(
-                                    nestedComp.itemName || '직접입력',
-                                    nestedComp.quantity || 0,
-                                    'cash',
-                                    nestedFinalUnitPrice
-                                  );
-                                } else if (packageData.priceType === '크리스탈') {
-                                  nestedCompValue = calculateItemPrice(
-                                    nestedComp.itemName || '직접입력',
-                                    nestedComp.quantity || 0,
-                                    'crystal',
-                                    nestedFinalUnitPrice
-                                  );
-                                } else if (packageData.priceType === '골드') {
-                                  if (nestedFinalUnitPrice.unitType === '골드') {
-                                    nestedCompValue = nestedFinalUnitPrice.unitPrice * (nestedComp.quantity || 0);
-                                  } else if (nestedFinalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
-                                    nestedCompValue = ((nestedFinalUnitPrice.unitPrice * crystalGoldRate) / 100) * (nestedComp.quantity || 0);
-                                  } else if (nestedFinalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
-                                    nestedCompValue = (nestedFinalUnitPrice.unitPrice / goldToCashPerGold) * (nestedComp.quantity || 0);
-                                  }
-                                }
-                                
-                                if (nestedItem.itemType === '확률') {
-                                  const nestedProbability = nestedComp.probability || 0;
-                                  nestedCompValue = nestedCompValue * nestedProbability;
-                                } else if (nestedItem.itemType === '선택' && !nestedComp.selected) {
-                                  nestedCompValue = 0;
-                                }
-                                
-                                totalNestedValue += nestedCompValue;
-                              }
-                            });
-                            
-                            // 하위묶음 1개당 단가 × 하위묶음 수량 = 하위묶음 가치
-                            const nestedItemUnitPrice = totalNestedValue;
-                            const nestedItemQuantity = nestedItem.quantity || 1;
-                            const nestedItemTotalValue = nestedItemUnitPrice * nestedItemQuantity;
-                            
-                            // 묶음 1개당 단가 계산이므로 구성요소 수량은 곱하지 않음
-                            const compValue = nestedItemTotalValue;
-                            
-                            if (packageItem.itemType === '확률') {
-                              const probability = comp.probability || 0;
-                              totalPackageItemValue += compValue * probability;
-                            } else if (packageItem.itemType === '선택' && !comp.selected) {
-                              // 선택되지 않은 항목은 0
-                            } else {
-                              totalPackageItemValue += compValue;
-                            }
-                          } else {
-                            // 일반 구성요소 처리
-                            const isCompManual = comp.itemName === '__manual__' || comp.itemName === '';
-                            const compResolved = !isCompManual && comp.itemName ? resolveUnitPrice(comp.itemName) : null;
-                            const compFinalUnitPrice = (comp.manualPrice !== null && comp.manualPrice !== undefined && comp.manualPrice > 0)
-                              ? { unitType: (comp.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: comp.manualPrice }
-                              : compResolved;
-                            
-                            if (compFinalUnitPrice) {
-                              let compValue = 0;
-                              if (packageData.priceType === '현금') {
-                                compValue = calculateItemPrice(
-                                  comp.itemName || '직접입력',
-                                  comp.quantity || 0,
-                                  'cash',
-                                  compFinalUnitPrice
-                                );
-                              } else if (packageData.priceType === '크리스탈') {
-                                compValue = calculateItemPrice(
-                                  comp.itemName || '직접입력',
-                                  comp.quantity || 0,
-                                  'crystal',
-                                  compFinalUnitPrice
-                                );
-                              } else if (packageData.priceType === '골드') {
-                                if (compFinalUnitPrice.unitType === '골드') {
-                                  compValue = compFinalUnitPrice.unitPrice * (comp.quantity || 0);
-                                } else if (compFinalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
-                                  compValue = ((compFinalUnitPrice.unitPrice * crystalGoldRate) / 100) * (comp.quantity || 0);
-                                } else if (compFinalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
-                                  compValue = (compFinalUnitPrice.unitPrice / goldToCashPerGold) * (comp.quantity || 0);
-                                }
-                              }
-                              
-                              if (packageItem.itemType === '확률') {
-                                const probability = comp.probability || 0;
-                                compValue = compValue * probability;
-                              } else if (packageItem.itemType === '선택' && !comp.selected) {
-                                compValue = 0;
-                              }
-                              
-                              totalPackageItemValue += compValue;
-                            }
-                          }
-                        });
-                        
-                        const totalValue = totalPackageItemValue * packageItem.quantity;
-                        
-                        return totalValue > 0 ? (
-                          <div className="mt-1 text-xs text-green-400 font-medium">
-                            단가 {formatNumberWithSignificantDigits(totalPackageItemValue)} {packageData.priceType}
-                            <span className="text-gray-500 mx-1">×</span>
-                            수량 {packageItem.quantity || 1}
-                            <span className="text-gray-500 mx-1">=</span>
-                            가치 {formatNumberWithSignificantDigits(totalValue)} {packageData.priceType}
-                            {packageItem.itemType === '확률' && <span className="text-gray-400 ml-1">(기대값)</span>}
-                          </div>
-                        ) : null;
-                      })()}
-                    </div>
-                    {/* 구성 요소 펼치기/접기 버튼 */}
-                    {packageItem.components.length > 0 && (
-                      <button
-                        onClick={() => toggleItemExpanded(itemIndex)}
-                        className="w-full flex items-center justify-between px-3 py-2 bg-gray-800/50 rounded-lg border border-gray-700 hover:bg-gray-800 transition-colors mb-2"
-                      >
-                        <span className="text-sm font-medium text-gray-300">
-                          구성 요소 {packageItem.components.length}개
-                        </span>
-                        <svg
-                          className={`w-4 h-4 text-gray-400 ${expandedItems[itemIndex] ? 'rotate-180' : ''}`}
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </button>
-                    )}
-                    {/* 구성 요소 */}
-                    {expandedItems[itemIndex] && (
-                      <div className="space-y-2">
-                        {packageItem.components.map((component, compIndex) => {
-                        const isManual = component.itemName === '__manual__' || component.itemName === '';
-                        const resolved = !isManual && component.itemName ? resolveUnitPrice(component.itemName) : null;
-                        const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined && component.manualPrice > 0)
-                          ? { unitType: (component.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: component.manualPrice }
-                          : resolved;
-
-                        // 단가 계산 (패키지 가격 타입에 맞춰 변환)
-                        let unitPriceInPackageType = 0;
-                        let unitPriceUnit = packageData.priceType;
-                        
-                        if (finalUnitPrice) {
-                          if (packageData.priceType === '골드') {
-                            if (finalUnitPrice.unitType === '골드') {
-                              unitPriceInPackageType = finalUnitPrice.unitPrice;
-                            } else if (finalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
-                              unitPriceInPackageType = (finalUnitPrice.unitPrice * crystalGoldRate) / 100;
-                            } else if (finalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
-                              unitPriceInPackageType = finalUnitPrice.unitPrice / goldToCashPerGold;
-                            }
-                          } else if (packageData.priceType === '크리스탈') {
-                            if (finalUnitPrice.unitType === '크리스탈') {
-                              unitPriceInPackageType = finalUnitPrice.unitPrice;
-                            } else if (finalUnitPrice.unitType === '골드' && crystalGoldRate && crystalGoldRate > 0) {
-                              unitPriceInPackageType = (finalUnitPrice.unitPrice * 100) / crystalGoldRate;
-                            } else if (finalUnitPrice.unitType === '현금') {
-                              // 크리스탈 → 현금 변환은 복잡하므로 단가 직접 사용
-                              unitPriceInPackageType = finalUnitPrice.unitPrice;
-                            }
-                          } else if (packageData.priceType === '현금') {
-                            if (finalUnitPrice.unitType === '현금') {
-                              unitPriceInPackageType = finalUnitPrice.unitPrice;
-                            } else if (finalUnitPrice.unitType === '골드' && goldToCashPerGold && goldToCashPerGold > 0) {
-                              unitPriceInPackageType = finalUnitPrice.unitPrice * goldToCashPerGold;
-                            } else if (finalUnitPrice.unitType === '크리스탈') {
-                              // 크리스탈 → 현금 변환은 복잡하므로 단가 직접 사용
-                              unitPriceInPackageType = finalUnitPrice.unitPrice;
-                            }
-                          }
-                        }
-
-                        // 구성요소 가치 계산 (1개 기준)
-                        let itemValue = 0;
-                        if (finalUnitPrice) {
-                          if (packageData.priceType === '현금') {
-                            itemValue = calculateItemPrice(
-                              component.itemName || '직접입력',
-                              component.quantity || 0,
-                              'cash',
-                              finalUnitPrice
-                            );
-                          } else if (packageData.priceType === '크리스탈') {
-                            itemValue = calculateItemPrice(
-                              component.itemName || '직접입력',
-                              component.quantity || 0,
-                              'crystal',
-                              finalUnitPrice
-                            );
-                          } else if (packageData.priceType === '골드') {
-                            if (finalUnitPrice.unitType === '골드') {
-                              itemValue = finalUnitPrice.unitPrice * (component.quantity || 0);
-                            } else if (finalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
-                              itemValue = ((finalUnitPrice.unitPrice * crystalGoldRate) / 100) * (component.quantity || 0);
-                            } else if (finalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
-                              itemValue = (finalUnitPrice.unitPrice / goldToCashPerGold) * (component.quantity || 0);
-                            }
-                          }
-                          
-                          // 타입별 가치 계산
-                          if (packageItem.itemType === '확률') {
-                            const probability = component.probability || 0;
-                            itemValue = itemValue * probability; // 기대값
-                          } else if (packageItem.itemType === '선택' && !component.selected) {
-                            itemValue = 0; // 선택되지 않은 항목은 0
-                          }
-                          // 묶음 항목 수량은 곱하지 않음 (1개 기준으로 표시)
-                        }
-                        
-                        // 전체 가치 계산 (묶음 항목 수량 곱한 값)
-                        const itemQuantity = packageItem.quantity || 1;
-                        const totalItemValue = itemValue * itemQuantity;
-
-                        const isIncluded = packageItem.itemType === '확정' || 
-                                         (packageItem.itemType === '확률') ||
-                                         (packageItem.itemType === '선택' && component.selected);
-
-                        const level0Colors = getLevelColors(0);
-                        return (
-                          <div key={compIndex} className={`${level0Colors.bg} rounded-lg p-3 border ${isIncluded ? level0Colors.border : 'border-gray-800'} ${!isIncluded && 'opacity-50'}`}>
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex-1 min-w-0">
-                                {/* 선택 라디오 버튼 */}
-                                {packageItem.itemType === '선택' && (
-                                  <label className="flex items-center gap-2 mb-2 cursor-pointer group">
-                                    <input
-                                      type="radio"
-                                      name={`selection-${itemIndex}`}
-                                      checked={component.selected || false}
-                                      onChange={(e) => {
-                                        if (e.target.checked) {
-                                          updateComponent(itemIndex, compIndex, 'selected', true);
-                                        }
-                                      }}
-                                      className="w-4 h-4 text-yellow-500 bg-gray-700 border-gray-600 focus:ring-yellow-500 focus:ring-2"
-                                    />
-                                    <span className={`text-xs font-semibold ${component.selected ? 'text-yellow-400' : 'text-gray-500 group-hover:text-gray-400'}`}>
-                                      {component.selected ? '✓ 선택됨' : '선택'}
-                                    </span>
-                                  </label>
-                                )}
-                                
-                                {/* 아이템 정보 */}
-                                {component.itemName === '__nested__' && component.nestedItem ? (
-                                  // 하위 묶음 항목 표시
-                                  <div className="space-y-2">
-                                    <div className="flex items-baseline gap-2 flex-wrap">
-                                      <span className={`text-sm font-medium ${isIncluded ? 'text-white' : 'text-gray-500 line-through'}`}>
-                                        📦 {component.nestedItem.itemName || '하위 묶음 항목'}
-                                      </span>
-                                      {packageItem.itemType === '확률' && component.probability !== undefined && (
-                                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full">
-                                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                          </svg>
-                                          {(component.probability * 100).toFixed(1)}%
-                                        </span>
-                                      )}
-                                      <span className="text-xs text-gray-400">
-                                        ({component.nestedItem.itemType})
-                                      </span>
-                                    </div>
-                                    {/* 하위 묶음 항목의 전체 가치 계산 */}
-                                    {(() => {
-                                      if (!component.nestedItem) return null;
-                                      const nestedItem = component.nestedItem;
-                                      let totalNestedValue = 0;
-                                      nestedItem.components.forEach((nestedComp) => {
-                                        const isNestedManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
-                                        const nestedResolved = !isNestedManual && nestedComp.itemName ? resolveUnitPrice(nestedComp.itemName) : null;
-                                        const nestedFinalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined && nestedComp.manualPrice > 0)
-                                          ? { unitType: (nestedComp.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: nestedComp.manualPrice }
-                                          : nestedResolved;
-                                        
-                                        if (nestedFinalUnitPrice) {
-                                          let nestedCompValue = 0;
-                                          if (packageData.priceType === '현금') {
-                                            nestedCompValue = calculateItemPrice(
-                                              nestedComp.itemName || '직접입력',
-                                              nestedComp.quantity || 0,
-                                              'cash',
-                                              nestedFinalUnitPrice
-                                            );
-                                          } else if (packageData.priceType === '크리스탈') {
-                                            nestedCompValue = calculateItemPrice(
-                                              nestedComp.itemName || '직접입력',
-                                              nestedComp.quantity || 0,
-                                              'crystal',
-                                              nestedFinalUnitPrice
-                                            );
-                                          } else if (packageData.priceType === '골드') {
-                                            if (nestedFinalUnitPrice.unitType === '골드') {
-                                              nestedCompValue = nestedFinalUnitPrice.unitPrice * (nestedComp.quantity || 0);
-                                            } else if (nestedFinalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
-                                              nestedCompValue = ((nestedFinalUnitPrice.unitPrice * crystalGoldRate) / 100) * (nestedComp.quantity || 0);
-                                            } else if (nestedFinalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
-                                              nestedCompValue = (nestedFinalUnitPrice.unitPrice / goldToCashPerGold) * (nestedComp.quantity || 0);
-                                            }
-                                          }
-                                          
-                                          if (nestedItem.itemType === '확률') {
-                                            const nestedProbability = nestedComp.probability || 0;
-                                            nestedCompValue = nestedCompValue * nestedProbability;
-                                          } else if (nestedItem.itemType === '선택' && !nestedComp.selected) {
-                                            nestedCompValue = 0;
-                                          }
-                                          
-                                          // 하위구성요소 가치는 1개 기준으로 계산 (하위묶음 수량은 곱하지 않음)
-                                          totalNestedValue += nestedCompValue;
-                                        }
-                                      });
-                                      
-                                      const nestedIsIncluded = nestedItem.itemType === '확정' || 
-                                                               (nestedItem.itemType === '확률') ||
-                                                               (nestedItem.itemType === '선택' && nestedItem.components.some(c => c.selected));
-                                      
-                                      // 하위묶음 1개당 단가 = 하위구성요소 가치 총합 (하위묶음의 확률은 이미 적용됨)
-                                      const nestedItemUnitPrice = totalNestedValue;
-                                      const nestedItemQuantity = component.nestedItem?.quantity || 1;
-                                      
-                                      // 상위 묶음 항목의 확률/선택 타입에 따라 가치 계산
-                                      let nestedItemTotalValue = nestedItemUnitPrice * nestedItemQuantity;
-                                      if (packageItem.itemType === '확률') {
-                                        // 상위 묶음 항목이 확률 타입이면 확률을 곱함
-                                        const probability = component.probability ?? 0;
-                                        nestedItemTotalValue = nestedItemUnitPrice * nestedItemQuantity * probability;
-                                      } else if (packageItem.itemType === '선택' && !component.selected) {
-                                        nestedItemTotalValue = 0;
-                                      }
-                                      
-                                      // 단가 계산 (패키지 가격 타입에 맞춰 변환)
-                                      let nestedUnitPriceInPackageType = 0;
-                                      if (nestedItemUnitPrice > 0) {
-                                        nestedUnitPriceInPackageType = nestedItemUnitPrice;
-                                      }
-                                      
-                                      return nestedItemTotalValue > 0 && nestedIsIncluded ? (
-                                        <div className="mt-1 space-y-1 text-xs">
-                                          <div className={`${isIncluded ? 'text-gray-300' : 'text-gray-600'}`}>
-                                            단가 <span className="font-semibold">{formatNumberWithSignificantDigits(nestedUnitPriceInPackageType)}</span> {packageData.priceType}
-                                            {packageItem.itemType === '확률' && component.probability !== undefined && (
-                                              <span className="text-purple-400 ml-1">× {component.probability}</span>
-                                            )}
-                                            <span className="text-gray-500 mx-1">×</span>
-                                            수량 <span className="font-semibold">{formatNumberWithSignificantDigits(nestedItemQuantity)}</span>
-                                            <span className="text-gray-500 mx-1">=</span>
-                                            가치 <span className={`font-semibold ${isIncluded ? 'text-green-400' : 'text-gray-600'}`}>
-                                              {isIncluded ? formatNumberWithSignificantDigits(nestedItemTotalValue) : '0'} {packageData.priceType}
-                                            </span>
-                                          </div>
-                                        </div>
-                                      ) : null;
-                                    })()}
-                                    {/* 하위 묶음 항목의 구성요소 펼치기/접기 버튼 */}
-                                    {component.nestedItem && component.nestedItem.components.length > 0 && (
-                                      <button
-                                        onClick={() => toggleNestedItemExpanded(itemIndex, compIndex)}
-                                        className="w-full flex items-center justify-between px-2 py-1.5 bg-gray-800/30 rounded border border-blue-500/30 hover:bg-gray-800/50 transition-colors mt-2 text-xs"
-                                      >
-                                        <span className="text-xs font-medium text-blue-300">
-                                          하위 구성 요소 {component.nestedItem.components.length}개
-                                        </span>
-                                        <svg
-                                          className={`w-3 h-3 text-blue-400 ${expandedNestedItems[`${itemIndex}-${compIndex}`] ? 'rotate-180' : ''}`}
-                                          fill="none"
-                                          stroke="currentColor"
-                                          viewBox="0 0 24 24"
-                                        >
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                        </svg>
-                                      </button>
-                                    )}
-                                    {/* 하위 묶음 항목의 구성요소 표시 */}
-                                    {component.nestedItem && component.nestedItem.components.length > 0 && expandedNestedItems[`${itemIndex}-${compIndex}`] && (() => {
-                                      const nestedItem = component.nestedItem!;
-                                      const level1Colors = getLevelColors(1);
-                                      return (
-                                        <div className="pl-4 border-l-2 border-blue-500/50 space-y-1.5 mt-2">
-                                          {nestedItem.components.map((nestedComp, nestedCompIndex) => {
-                                            const isNestedManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
-                                            const nestedResolved = !isNestedManual && nestedComp.itemName ? resolveUnitPrice(nestedComp.itemName) : null;
-                                            const nestedFinalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined && nestedComp.manualPrice > 0)
-                                              ? { unitType: (nestedComp.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: nestedComp.manualPrice }
-                                              : nestedResolved;
-                                            
-                                            let nestedItemValue = 0;
-                                            if (nestedFinalUnitPrice) {
-                                              if (packageData.priceType === '현금') {
-                                                nestedItemValue = calculateItemPrice(
-                                                  nestedComp.itemName || '직접입력',
-                                                  nestedComp.quantity || 0,
-                                                  'cash',
-                                                  nestedFinalUnitPrice
-                                                );
-                                              } else if (packageData.priceType === '크리스탈') {
-                                                nestedItemValue = calculateItemPrice(
-                                                  nestedComp.itemName || '직접입력',
-                                                  nestedComp.quantity || 0,
-                                                  'crystal',
-                                                  nestedFinalUnitPrice
-                                                );
-                                              } else if (packageData.priceType === '골드') {
-                                                if (nestedFinalUnitPrice.unitType === '골드') {
-                                                  nestedItemValue = nestedFinalUnitPrice.unitPrice * (nestedComp.quantity || 0);
-                                                } else if (nestedFinalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
-                                                  nestedItemValue = ((nestedFinalUnitPrice.unitPrice * crystalGoldRate) / 100) * (nestedComp.quantity || 0);
-                                                } else if (nestedFinalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
-                                                  nestedItemValue = (nestedFinalUnitPrice.unitPrice / goldToCashPerGold) * (nestedComp.quantity || 0);
-                                                }
-                                              }
-                                              
-                                              if (nestedItem.itemType === '확률') {
-                                                const nestedProbability = nestedComp.probability || 0;
-                                                nestedItemValue = nestedItemValue * nestedProbability;
-                                              } else if (nestedItem.itemType === '선택' && !nestedComp.selected) {
-                                                nestedItemValue = 0;
-                                              }
-                                              
-                                              // 하위구성요소 가치는 1개 기준으로 계산 (하위묶음 수량은 곱하지 않음)
-                                            }
-                                            
-                                            const nestedItemColors = getLevelColors(2); // 하위구성요소는 회색
-                                            const nestedIsIncluded = nestedItem.itemType === '확정' || 
-                                                                     (nestedItem.itemType === '확률') ||
-                                                                     (nestedItem.itemType === '선택' && nestedComp.selected);
-                                          return (
-                                            <div key={nestedCompIndex} className={`${nestedItemColors.bg} rounded p-2 border ${nestedIsIncluded ? nestedItemColors.border : 'border-gray-800'} ${!nestedIsIncluded && 'opacity-50'}`}>
-                                              {/* 선택 타입일 때 라디오 버튼 */}
-                                              {nestedItem.itemType === '선택' && (
-                                                <label className="flex items-center gap-1.5 mb-1 cursor-pointer group">
-                                                  <input
-                                                    type="radio"
-                                                    name={`nested-selection-${itemIndex}-${compIndex}`}
-                                                    checked={nestedComp.selected || false}
-                                                    onChange={(e) => {
-                                                      if (e.target.checked) {
-                                                        const nestedComponents = nestedItem.components.map((c, idx) => ({
-                                                          ...c,
-                                                          selected: idx === nestedCompIndex,
-                                                        }));
-                                                        const updatedNestedItem = { ...nestedItem, components: nestedComponents };
-                                                        updateComponent(itemIndex, compIndex, 'nestedItem', updatedNestedItem);
-                                                      }
-                                                    }}
-                                                    className="w-3 h-3 text-yellow-500 bg-gray-700 border-gray-600 focus:ring-yellow-500 focus:ring-1"
-                                                  />
-                                                  <span className={`text-[10px] font-semibold ${nestedComp.selected ? 'text-yellow-400' : 'text-gray-500 group-hover:text-gray-400'}`}>
-                                                    {nestedComp.selected ? '✓ 선택됨' : '선택'}
-                                                  </span>
-                                                </label>
-                                              )}
-                                              <div className="flex items-baseline gap-2 flex-wrap">
-                                                <span className={`${nestedIsIncluded ? 'text-gray-300' : 'text-gray-500 line-through'}`}>
-                                                  • {nestedComp.itemName || '(직접 입력)'}
-                                                </span>
-                                                {nestedItem.itemType === '확률' && nestedComp.probability !== undefined && (
-                                                  <span className="text-purple-400 text-[10px]">
-                                                    [{(nestedComp.probability * 100).toFixed(1)}%]
-                                                  </span>
-                                                )}
-                                                {nestedItem.itemType === '선택' && nestedComp.selected && (
-                                                  <span className="text-yellow-400 text-[10px]">✓</span>
-                                                )}
-                                              </div>
-                                              <div className="text-[10px] text-gray-500 ml-2">
-                                                {(() => {
-                                                  // 하위 구성요소 단가 계산
-                                                  let nestedUnitPriceInPackageType = 0;
-                                                  if (nestedFinalUnitPrice) {
-                                                    if (packageData.priceType === '골드') {
-                                                      if (nestedFinalUnitPrice.unitType === '골드') {
-                                                        nestedUnitPriceInPackageType = nestedFinalUnitPrice.unitPrice;
-                                                      } else if (nestedFinalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
-                                                        nestedUnitPriceInPackageType = (nestedFinalUnitPrice.unitPrice * crystalGoldRate) / 100;
-                                                      } else if (nestedFinalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
-                                                        nestedUnitPriceInPackageType = nestedFinalUnitPrice.unitPrice / goldToCashPerGold;
-                                                      }
-                                                    } else if (packageData.priceType === '크리스탈') {
-                                                      if (nestedFinalUnitPrice.unitType === '크리스탈') {
-                                                        nestedUnitPriceInPackageType = nestedFinalUnitPrice.unitPrice;
-                                                      } else if (nestedFinalUnitPrice.unitType === '골드' && crystalGoldRate && crystalGoldRate > 0) {
-                                                        nestedUnitPriceInPackageType = (nestedFinalUnitPrice.unitPrice * 100) / crystalGoldRate;
-                                                      }
-                                                    } else if (packageData.priceType === '현금') {
-                                                      if (nestedFinalUnitPrice.unitType === '현금') {
-                                                        nestedUnitPriceInPackageType = nestedFinalUnitPrice.unitPrice;
-                                                      } else if (nestedFinalUnitPrice.unitType === '골드' && goldToCashPerGold && goldToCashPerGold > 0) {
-                                                        nestedUnitPriceInPackageType = nestedFinalUnitPrice.unitPrice * goldToCashPerGold;
-                                                      }
-                                                    }
-                                                  }
-                                                  
-                                                  if (nestedFinalUnitPrice && nestedUnitPriceInPackageType > 0) {
-                                                    // 하위구성요소 가치 계산 (1개 기준)
-                                                    let nestedCompValue = 0;
-                                                    if (packageData.priceType === '골드') {
-                                                      if (nestedFinalUnitPrice.unitType === '골드') {
-                                                        nestedCompValue = nestedUnitPriceInPackageType * (nestedComp.quantity || 0);
-                                                      } else if (nestedFinalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
-                                                        nestedCompValue = ((nestedFinalUnitPrice.unitPrice * crystalGoldRate) / 100) * (nestedComp.quantity || 0);
-                                                      } else if (nestedFinalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
-                                                        nestedCompValue = (nestedFinalUnitPrice.unitPrice / goldToCashPerGold) * (nestedComp.quantity || 0);
-                                                      }
-                                                    } else if (packageData.priceType === '크리스탈') {
-                                                      nestedCompValue = calculateItemPrice(
-                                                        nestedComp.itemName || '직접입력',
-                                                        nestedComp.quantity || 0,
-                                                        'crystal',
-                                                        nestedFinalUnitPrice
-                                                      );
-                                                    } else if (packageData.priceType === '현금') {
-                                                      nestedCompValue = calculateItemPrice(
-                                                        nestedComp.itemName || '직접입력',
-                                                        nestedComp.quantity || 0,
-                                                        'cash',
-                                                        nestedFinalUnitPrice
-                                                      );
-                                                    }
-                                                    
-                                                    if (nestedItem.itemType === '확률') {
-                                                      const nestedProbability = nestedComp.probability || 0;
-                                                      nestedCompValue = nestedCompValue * nestedProbability;
-                                                    } else if (nestedItem.itemType === '선택' && !nestedComp.selected) {
-                                                      nestedCompValue = 0;
-                                                    }
-                                                    
-                                                    return (
-                                                      <>
-                                                        단가 {formatNumberWithSignificantDigits(nestedUnitPriceInPackageType)} {packageData.priceType}
-                                                        {nestedItem.itemType === '확률' && nestedComp.probability !== undefined && (
-                                                          <span className="text-purple-400 ml-0.5">× {nestedComp.probability}</span>
-                                                        )}
-                                                        <span className="text-gray-600 mx-0.5">×</span>
-                                                        수량 {formatNumberWithSignificantDigits(nestedComp.quantity || 0)}
-                                                        <span className="text-gray-600 mx-0.5">=</span>
-                                                        가치 <span className={`${nestedIsIncluded ? 'text-green-400' : 'text-gray-600'}`}>
-                                                          {nestedIsIncluded ? formatNumberWithSignificantDigits(nestedCompValue) : '0'} {packageData.priceType}
-                                                        </span>
-                                                      </>
-                                                    );
-                                                  } else {
-                                                    // nestedFinalUnitPrice가 없으면 가치 계산 불가
-                                                    return (
-                                                      <>
-                                                        수량: {formatNumberWithSignificantDigits(nestedComp.quantity || 0)}
-                                                      </>
-                                                    );
-                                                  }
-                                                })()}
-                                              </div>
-                                            </div>
-                                          );
-                                        })}
-                                        </div>
-                                      );
-                                    })()}
-                                  </div>
-                                ) : (
-                                  // 일반 구성요소 표시
-                                  <>
-                                    <div className="flex items-baseline gap-2 flex-wrap">
-                                      <span className={`text-sm font-medium ${isIncluded ? 'text-white' : 'text-gray-500 line-through'}`}>
-                                        {component.itemName || '(직접 입력)'}
-                                      </span>
-                                      {packageItem.itemType === '확률' && component.probability !== undefined && (
-                                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full">
-                                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                          </svg>
-                                          {(component.probability * 100).toFixed(1)}%
-                                        </span>
-                                      )}
-                                    </div>
-                                    
-                                {/* 수량 및 가치 */}
-                                <div className="mt-1 space-y-1 text-xs">
-                                  {finalUnitPrice && unitPriceInPackageType > 0 ? (
-                                    <div className={`${isIncluded ? 'text-gray-300' : 'text-gray-600'}`}>
-                                      단가 <span className="font-semibold">{formatNumberWithSignificantDigits(unitPriceInPackageType)}</span> {unitPriceUnit}
-                                      {packageItem.itemType === '확률' && component.probability !== undefined && (
-                                        <span className="text-purple-400 ml-1">× {component.probability}</span>
-                                      )}
-                                      <span className="text-gray-500 mx-1">×</span>
-                                      수량 <span className="font-semibold">{formatNumberWithSignificantDigits(component.quantity || 0)}</span>
-                                      <span className="text-gray-500 mx-1">=</span>
-                                      가치 <span className={`font-semibold ${isIncluded ? 'text-green-400' : 'text-gray-600'}`}>
-                                        {isIncluded ? formatNumberWithSignificantDigits(itemValue) : '0'} {packageData.priceType}
-                                      </span>
-                                      {packageItem.itemType === '확률' && isIncluded && <span className="text-gray-500 ml-1">(기대값)</span>}
-                                      {packageItem.quantity && packageItem.quantity > 1 && isIncluded && (
-                                        <span className="text-gray-500 ml-1">(1개 기준)</span>
-                                      )}
-                                    </div>
-                                  ) : (
-                                    <div className="flex items-center gap-3">
-                                      <span className={`${isIncluded ? 'text-gray-400' : 'text-gray-600'}`}>
-                                        수량: <span className="font-semibold">{formatNumberWithSignificantDigits(component.quantity || 0)}</span>
-                                      </span>
-                                      {finalUnitPrice && (
-                                        <span className={`${isIncluded ? 'text-blue-400' : 'text-gray-600'}`}>
-                                          가치: <span className="font-semibold">{isIncluded ? formatNumberWithSignificantDigits(itemValue) : '0'}</span> {packageData.priceType}
-                                          {packageItem.itemType === '확률' && isIncluded && <span className="text-gray-500 ml-1">(기대값)</span>}
-                                          {packageItem.quantity && packageItem.quantity > 1 && isIncluded && (
-                                            <span className="text-gray-500 ml-1">(1개 기준)</span>
-                                          )}
-                                        </span>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                        })}
-                        {packageItem.components.length === 0 && (
-                          <div className="text-sm text-gray-500 text-center py-4 bg-gray-800/30 rounded-lg border border-dashed border-gray-700">
-                            구성 요소 없음
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  );
-                })}
-                {/* 3+보너스 구성품 표시 */}
-                {packageData.packageType === '3+보너스' && packageData.bonus3Items.length > 0 && packageData.bonus3Items.map((packageItem, itemIndex) => {
-                  const typeColors = {
-                    '확정': { border: 'border-blue-500/30', bg: 'bg-blue-500/5', icon: 'text-blue-400', badge: 'bg-blue-500/20 text-blue-400' },
-                    '확률': { border: 'border-purple-500/30', bg: 'bg-purple-500/5', icon: 'text-purple-400', badge: 'bg-purple-500/20 text-purple-400' },
-                    '선택': { border: 'border-yellow-500/30', bg: 'bg-yellow-500/5', icon: 'text-yellow-400', badge: 'bg-yellow-500/20 text-yellow-400' },
-                  };
-                  const colors = typeColors[packageItem.itemType as keyof typeof typeColors] || typeColors['확정'];
-                  
-                  return (
-                  <div key={`bonus3-${itemIndex}`} className={`relative bg-gray-900/70 rounded-lg p-5 border ${colors.border} ${colors.bg}`}>
-                    <div className="absolute top-3 right-3">
-                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${colors.badge}`}>
-                        {packageItem.itemType}
-                      </span>
-                    </div>
-                    
-                    <div className="mb-3 pr-16">
-                      <div className="flex items-center gap-2 mb-1">
-                        <svg className={`w-4 h-4 ${colors.icon}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                        </svg>
-                        <div className="font-bold text-white text-base">
-                          {packageItem.itemName || `3+보너스 항목 ${itemIndex + 1}`}
-                        </div>
-                      </div>
-                      {packageItem.quantity && packageItem.quantity > 1 && (
-                        <div className="flex items-center gap-1 text-xs text-blue-400">
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                          </svg>
-                          묶음 ×{packageItem.quantity}
-                        </div>
-                      )}
-                      {/* 묶음 항목 전체 가치 표시 (수량 1 이상) */}
-                      {packageItem.quantity && packageItem.quantity >= 1 && (() => {
-                        // 묶음 항목의 전체 가치 계산
-                        let totalPackageItemValue = 0;
-                        packageItem.components.forEach((comp) => {
-                          // 하위묶음 항목 처리
-                          if (comp.itemName === '__nested__' && comp.nestedItem) {
-                            const nestedItem = comp.nestedItem;
-                            let totalNestedValue = 0;
-                            
-                            // 하위구성요소 가치 총합 계산
-                            nestedItem.components.forEach((nestedComp) => {
-                              const isNestedManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
-                              const nestedResolved = !isNestedManual && nestedComp.itemName ? resolveUnitPrice(nestedComp.itemName) : null;
-                              const nestedFinalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined && nestedComp.manualPrice > 0)
-                                ? { unitType: (nestedComp.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: nestedComp.manualPrice }
-                                : nestedResolved;
-                              
-                              if (nestedFinalUnitPrice) {
-                                let nestedCompValue = 0;
-                                if (packageData.priceType === '현금') {
-                                  nestedCompValue = calculateItemPrice(
-                                    nestedComp.itemName || '직접입력',
-                                    nestedComp.quantity || 0,
-                                    'cash',
-                                    nestedFinalUnitPrice
-                                  );
-                                } else if (packageData.priceType === '크리스탈') {
-                                  nestedCompValue = calculateItemPrice(
-                                    nestedComp.itemName || '직접입력',
-                                    nestedComp.quantity || 0,
-                                    'crystal',
-                                    nestedFinalUnitPrice
-                                  );
-                                } else if (packageData.priceType === '골드') {
-                                  if (nestedFinalUnitPrice.unitType === '골드') {
-                                    nestedCompValue = nestedFinalUnitPrice.unitPrice * (nestedComp.quantity || 0);
-                                  } else if (nestedFinalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
-                                    nestedCompValue = ((nestedFinalUnitPrice.unitPrice * crystalGoldRate) / 100) * (nestedComp.quantity || 0);
-                                  } else if (nestedFinalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
-                                    nestedCompValue = (nestedFinalUnitPrice.unitPrice / goldToCashPerGold) * (nestedComp.quantity || 0);
-                                  }
-                                }
-                                
-                                if (nestedItem.itemType === '확률') {
-                                  const nestedProbability = nestedComp.probability || 0;
-                                  nestedCompValue = nestedCompValue * nestedProbability;
-                                } else if (nestedItem.itemType === '선택' && !nestedComp.selected) {
-                                  nestedCompValue = 0;
-                                }
-                                
-                                totalNestedValue += nestedCompValue;
-                              }
-                            });
-                            
-                            // 하위묶음 1개당 단가 × 하위묶음 수량 = 하위묶음 가치
-                            const nestedItemUnitPrice = totalNestedValue;
-                            const nestedItemQuantity = nestedItem.quantity || 1;
-                            const nestedItemTotalValue = nestedItemUnitPrice * nestedItemQuantity;
-                            
-                            // 묶음 1개당 단가 계산이므로 구성요소 수량은 곱하지 않음
-                            const compValue = nestedItemTotalValue;
-                            
-                            if (packageItem.itemType === '확률') {
-                              const probability = comp.probability || 0;
-                              totalPackageItemValue += compValue * probability;
-                            } else if (packageItem.itemType === '선택' && !comp.selected) {
-                              // 선택되지 않은 항목은 0
-                            } else {
-                              totalPackageItemValue += compValue;
-                            }
-                          } else {
-                            // 일반 구성요소 처리
-                            const isCompManual = comp.itemName === '__manual__' || comp.itemName === '';
-                            const compResolved = !isCompManual && comp.itemName ? resolveUnitPrice(comp.itemName) : null;
-                            const compFinalUnitPrice = (comp.manualPrice !== null && comp.manualPrice !== undefined && comp.manualPrice > 0)
-                              ? { unitType: (comp.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: comp.manualPrice }
-                              : compResolved;
-                            
-                            if (compFinalUnitPrice) {
-                              let compValue = 0;
-                              if (packageData.priceType === '현금') {
-                                compValue = calculateItemPrice(
-                                  comp.itemName || '직접입력',
-                                  comp.quantity || 0,
-                                  'cash',
-                                  compFinalUnitPrice
-                                );
-                              } else if (packageData.priceType === '크리스탈') {
-                                compValue = calculateItemPrice(
-                                  comp.itemName || '직접입력',
-                                  comp.quantity || 0,
-                                  'crystal',
-                                  compFinalUnitPrice
-                                );
-                              } else if (packageData.priceType === '골드') {
-                                if (compFinalUnitPrice.unitType === '골드') {
-                                  compValue = compFinalUnitPrice.unitPrice * (comp.quantity || 0);
-                                } else if (compFinalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
-                                  compValue = ((compFinalUnitPrice.unitPrice * crystalGoldRate) / 100) * (comp.quantity || 0);
-                                } else if (compFinalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
-                                  compValue = (compFinalUnitPrice.unitPrice / goldToCashPerGold) * (comp.quantity || 0);
-                                }
-                              }
-                              
-                              if (packageItem.itemType === '확률') {
-                                const probability = comp.probability || 0;
-                                compValue = compValue * probability;
-                              } else if (packageItem.itemType === '선택' && !comp.selected) {
-                                compValue = 0;
-                              }
-                              
-                              totalPackageItemValue += compValue;
-                            }
-                          }
-                        });
-                        
-                        const totalValue = totalPackageItemValue * packageItem.quantity;
-                        
-                        return totalValue > 0 ? (
-                          <div className="mt-1 text-xs text-green-400 font-medium">
-                            단가 {formatNumberWithSignificantDigits(totalPackageItemValue)} {packageData.priceType}
-                            <span className="text-gray-500 mx-1">×</span>
-                            수량 {packageItem.quantity || 1}
-                            <span className="text-gray-500 mx-1">=</span>
-                            가치 {formatNumberWithSignificantDigits(totalValue)} {packageData.priceType}
-                            {packageItem.itemType === '확률' && <span className="text-gray-400 ml-1">(기대값)</span>}
-                          </div>
-                        ) : null;
-                      })()}
-                    </div>
-                    {/* 구성 요소 펼치기/접기 버튼 */}
-                    {packageItem.components.length > 0 && (
-                      <button
-                        onClick={() => toggleItemExpanded(`bonus3-${itemIndex}`)}
-                        className="w-full flex items-center justify-between px-3 py-2 bg-gray-800/50 rounded-lg border border-gray-700 hover:bg-gray-800 transition-colors mb-2"
-                      >
-                        <span className="text-sm font-medium text-gray-300">
-                          구성 요소 {packageItem.components.length}개
-                        </span>
-                        <svg
-                          className={`w-4 h-4 text-gray-400 transition-transform ${expandedItems[`bonus3-${itemIndex}`] ? 'rotate-180' : ''}`}
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </button>
-                    )}
-                    {/* 구성 요소 */}
-                    {expandedItems[`bonus3-${itemIndex}`] && packageItem.components.length > 0 && (
-                      <div className="space-y-2">
-                        {packageItem.components.map((component, compIndex) => {
-                          const isManual = component.itemName === '__manual__' || component.itemName === '';
-                          const resolved = !isManual && component.itemName ? resolveUnitPrice(component.itemName) : null;
-                          const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined && component.manualPrice > 0)
-                            ? { unitType: (component.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: component.manualPrice }
-                            : resolved;
-
-                          let unitPriceInPackageType = 0;
-                          let unitPriceUnit = packageData.priceType;
-                          
-                          if (finalUnitPrice) {
-                            if (packageData.priceType === '골드') {
-                              if (finalUnitPrice.unitType === '골드') {
-                                unitPriceInPackageType = finalUnitPrice.unitPrice;
-                              } else if (finalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
-                                unitPriceInPackageType = (finalUnitPrice.unitPrice * crystalGoldRate) / 100;
-                              } else if (finalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
-                                unitPriceInPackageType = finalUnitPrice.unitPrice / goldToCashPerGold;
-                              }
-                            } else if (packageData.priceType === '크리스탈') {
-                              if (finalUnitPrice.unitType === '크리스탈') {
-                                unitPriceInPackageType = finalUnitPrice.unitPrice;
-                              } else if (finalUnitPrice.unitType === '골드' && crystalGoldRate && crystalGoldRate > 0) {
-                                unitPriceInPackageType = (finalUnitPrice.unitPrice * 100) / crystalGoldRate;
-                              } else if (finalUnitPrice.unitType === '현금') {
-                                unitPriceInPackageType = finalUnitPrice.unitPrice;
-                              }
-                            } else if (packageData.priceType === '현금') {
-                              if (finalUnitPrice.unitType === '현금') {
-                                unitPriceInPackageType = finalUnitPrice.unitPrice;
-                              } else if (finalUnitPrice.unitType === '골드' && goldToCashPerGold && goldToCashPerGold > 0) {
-                                unitPriceInPackageType = finalUnitPrice.unitPrice * goldToCashPerGold;
-                              } else if (finalUnitPrice.unitType === '크리스탈') {
-                                unitPriceInPackageType = finalUnitPrice.unitPrice;
-                              }
-                            }
-                          }
-
-                          let itemValue = 0;
-                          if (finalUnitPrice) {
-                            if (packageData.priceType === '현금') {
-                              itemValue = calculateItemPrice(
-                                component.itemName || '직접입력',
-                                component.quantity || 0,
-                                'cash',
-                                finalUnitPrice
-                              );
-                            } else if (packageData.priceType === '크리스탈') {
-                              itemValue = calculateItemPrice(
-                                component.itemName || '직접입력',
-                                component.quantity || 0,
-                                'crystal',
-                                finalUnitPrice
-                              );
-                            } else if (packageData.priceType === '골드') {
-                              if (finalUnitPrice.unitType === '골드') {
-                                itemValue = finalUnitPrice.unitPrice * (component.quantity || 0);
-                              } else if (finalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
-                                itemValue = ((finalUnitPrice.unitPrice * crystalGoldRate) / 100) * (component.quantity || 0);
-                              } else if (finalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
-                                itemValue = (finalUnitPrice.unitPrice / goldToCashPerGold) * (component.quantity || 0);
-                              }
-                            }
-                            
-                            if (packageItem.itemType === '확률') {
-                              const probability = component.probability || 0;
-                              itemValue = itemValue * probability;
-                            } else if (packageItem.itemType === '선택' && !component.selected) {
-                              itemValue = 0;
-                            }
-                          }
-                          
-                          const itemQuantity = packageItem.quantity || 1;
-                          const totalItemValue = itemValue * itemQuantity;
-
-                          const isIncluded = packageItem.itemType === '확정' || 
-                                           (packageItem.itemType === '확률') ||
-                                           (packageItem.itemType === '선택' && component.selected);
-
-                          const level0Colors = getLevelColors(0);
-                          return (
-                            <div key={compIndex} className={`${level0Colors.bg} rounded-lg p-3 border ${isIncluded ? level0Colors.border : 'border-gray-800'} ${!isIncluded && 'opacity-50'}`}>
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="flex-1 min-w-0">
-                                  {packageItem.itemType === '선택' && (
-                                    <label className="flex items-center gap-2 mb-2 cursor-pointer group">
-                                      <input
-                                        type="radio"
-                                        name={`bonus3-selection-${itemIndex}`}
-                                        checked={component.selected || false}
-                                        onChange={(e) => {
-                                          if (e.target.checked) {
-                                            updateBonus3Component(itemIndex, compIndex, 'selected', true);
-                                          }
-                                        }}
-                                        className="w-4 h-4 text-yellow-500 bg-gray-700 border-gray-600 focus:ring-yellow-500 focus:ring-2"
-                                      />
-                                      <span className={`text-xs font-semibold ${component.selected ? 'text-yellow-400' : 'text-gray-500 group-hover:text-gray-400'}`}>
-                                        {component.selected ? '✓ 선택됨' : '선택'}
-                                      </span>
-                                    </label>
-                                  )}
-                                  
-                                  <div className="flex items-baseline gap-2 flex-wrap">
-                                    <span className={`text-sm font-medium ${isIncluded ? 'text-white' : 'text-gray-500 line-through'}`}>
-                                      {component.itemName === '__manual__' || component.itemName === '' ? '직접 입력' : component.itemName}
-                                    </span>
-                                    {packageItem.itemType === '확률' && component.probability !== undefined && (
-                                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded">
-                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                        </svg>
-                                        {(component.probability * 100).toFixed(1)}%
-                                      </span>
-                                    )}
-                                  </div>
-                                  
-                                  {finalUnitPrice && unitPriceInPackageType > 0 ? (
-                                    <div className="mt-1 text-xs text-gray-300">
-                                      단가 <span className="font-semibold">{formatNumberWithSignificantDigits(unitPriceInPackageType)}</span> {unitPriceUnit}
-                                      {packageItem.itemType === '확률' && component.probability !== undefined && (
-                                        <span className="text-purple-400 ml-1">× {component.probability}</span>
-                                      )}
-                                      <span className="text-gray-500 mx-1">×</span>
-                                      수량 <span className="font-semibold">{formatNumberWithSignificantDigits(component.quantity || 0)}</span>
-                                      <span className="text-gray-500 mx-1">=</span>
-                                      가치 <span className={`font-semibold ${isIncluded ? 'text-green-400' : 'text-gray-600'}`}>
-                                        {isIncluded ? formatNumberWithSignificantDigits(itemValue) : '0'} {packageData.priceType}
-                                      </span>
-                                      {packageItem.itemType === '확률' && isIncluded && <span className="text-gray-500 ml-1">(기대값)</span>}
-                                      {packageItem.quantity && packageItem.quantity > 1 && isIncluded && (
-                                        <span className="text-gray-500 ml-1">(1개 기준)</span>
-                                      )}
-                                    </div>
-                                  ) : (
-                                    <div className="mt-1 text-xs text-gray-300">
-                                      수량: <span className="font-semibold">{formatNumberWithSignificantDigits(component.quantity || 0)}</span>
-                                      {isIncluded && finalUnitPrice && (
-                                        <span className="text-blue-400 ml-2">
-                                          가치: <span className="font-semibold">{formatNumberWithSignificantDigits(itemValue)}</span> {packageData.priceType}
-                                          {packageItem.itemType === '확률' && <span className="text-gray-500 ml-1">(기대값)</span>}
-                                          {packageItem.quantity && packageItem.quantity > 1 && (
-                                            <span className="text-gray-500 ml-1">(1개 기준)</span>
-                                          )}
-                                        </span>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                        {packageItem.components.length === 0 && (
-                          <div className="text-sm text-gray-500 text-center py-4 bg-gray-800/30 rounded-lg border border-dashed border-gray-700">
-                            구성 요소 없음
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  );
-                })}
-              </div>
-            </div>
-            </div>
-          )}
-
-          {/* 합산 효율 카드 */}
-          {packageData.packageType === '보너스룸' ? (
-            <div className="relative bg-gray-800/90 rounded-lg border border-gray-700 p-8">
-              <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-6">
-                  <div className="p-2 bg-orange-500/10 rounded-lg">
-                    <svg className="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-white">보너스룸 효율</h3>
-                </div>
-              <div className="space-y-6">
-                {bonusRoomEfficiencies?.map((room, roomIndex) => (
-                  <div key={roomIndex} className="bg-gray-900/70 rounded-lg border border-orange-500/20 p-6">
-                    <div className="flex items-center gap-2 mb-4">
-                      <svg className="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                      </svg>
-                      <h4 className="text-lg font-bold text-white">{room.roomName}</h4>
-                    </div>
-                    
-                    {/* 보너스룸별 효율 */}
-                    <div className="mb-4 p-3 bg-gray-800/50 rounded border border-gray-600">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                          <div className="text-xs text-gray-400 mb-1">보너스룸 가격 합계</div>
-                          <div className="text-lg font-bold text-white">
-                            {formatNumberWithSignificantDigits(room.totalPrice)} 골드
-                          </div>
-                          {goldToCashPerGold && goldToCashPerGold > 0 && (
-                            <>
-                              <div className="text-sm text-gray-300 mt-1">
-                                = {formatNumberWithSignificantDigits(room.totalPrice * goldToCashPerGold)} 현금
-                              </div>
-                              <div className="text-xs text-gray-500 mt-1">
-                                {formatNumberWithSignificantDigits(room.totalPrice)} 골드 × {formatNumberWithSignificantDigits(goldToCashPerGold)} = {formatNumberWithSignificantDigits(room.totalPrice * goldToCashPerGold)} 현금
-                              </div>
-                            </>
-                          )}
-                        </div>
-                        <div>
-                          <div className="text-xs text-gray-400 mb-1">보너스룸 가치 합계</div>
-                          <div className="text-lg font-bold text-white">
-                            {formatNumberWithSignificantDigits(room.totalValue)} 골드
-                          </div>
-                        </div>
-                        <div className={`${room.efficiency !== null && room.efficiency >= 1 ? 'border-green-500/50' : room.efficiency !== null ? 'border-red-500/50' : 'border-gray-600'} border rounded p-2`}>
-                          <div className="text-xs text-gray-400 mb-1">보너스룸 효율</div>
-                          {room.efficiency !== null ? (
-                            <>
-                              <div className={`text-xl font-bold ${room.efficiency >= 1 ? 'text-green-400' : 'text-red-400'}`}>
-                                {formatNumberWithSignificantDigits(room.efficiency)}배
-                              </div>
-                              <div className={`text-xs font-medium ${room.efficiency >= 1 ? 'text-green-400' : 'text-red-400'}`}>
-                                {room.efficiency >= 1 ? '✓ 이득' : '✗ 손해'}
-                              </div>
-                            </>
-                          ) : (
-                            <div className="text-sm text-gray-500">계산 불가</div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* 묶음 항목별 효율 */}
-                    <div>
-                      <div className="flex items-center gap-2 mb-3">
-                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                        </svg>
-                        <div className="text-sm font-semibold text-gray-300">묶음 항목별 효율</div>
-                      </div>
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                      {room.items.map((item, itemIndex) => (
-                        <div key={itemIndex} className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
-                          {/* 항목 헤더 */}
-                          <div className="flex items-start justify-between mb-3 pb-2 border-b border-gray-700/50">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                                </svg>
-                                <div className="text-sm text-white font-semibold">
-                                  {item.itemName || `항목 ${itemIndex + 1}`}
-                                </div>
-                              </div>
-                              <span className="text-xs font-medium text-gray-500 bg-gray-700/50 px-2 py-0.5 rounded">
-                                {item.itemType}
-                              </span>
-                            </div>
-                            {item.efficiency !== null ? (
-                              <div className={`text-right ml-2 px-3 py-1 rounded-lg ${item.efficiency >= 1 ? 'bg-green-500/10 border border-green-500/30' : 'bg-red-500/10 border border-red-500/30'}`}>
-                                <div className={`text-lg font-bold ${item.efficiency >= 1 ? 'text-green-400' : 'text-red-400'}`}>
-                                  {formatNumberWithSignificantDigits(item.efficiency)}배
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="text-xs text-gray-500 ml-2">계산 불가</div>
-                            )}
-                          </div>
-                          
-                          {/* 가격/가치 정보 */}
-                          <div className="grid grid-cols-2 gap-3 mb-3">
-                            <div className="bg-gray-900/50 rounded-lg p-2">
-                              <div className="text-xs text-gray-500 mb-1">가격</div>
-                              <div className="text-sm font-semibold text-white">
-                                {item.priceType === '보너스' ? (
-                                  <span className="text-green-400">보너스(무료)</span>
-                                ) : (
-                                  <>
-                                    {formatNumberWithSignificantDigits(item.originalPrice)} {item.priceType}
-                                    {item.priceType !== '골드' && item.price > 0 && (
-                                      <div className="text-xs text-gray-400 mt-0.5">
-                                        = {formatNumberWithSignificantDigits(item.price)} 골드
-                                      </div>
-                                    )}
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                            <div className="bg-gray-900/50 rounded-lg p-2">
-                              <div className="text-xs text-gray-500 mb-1">가치</div>
-                              <div className="text-sm font-semibold text-blue-400">
-                                {formatNumberWithSignificantDigits(item.value)} 골드
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* 가치 계산 내역 */}
-                          {item.components && item.components.length > 0 && (
-                            <div className="mt-3 pt-3 border-t border-gray-700/50">
-                              <div className="flex items-center gap-2 mb-2">
-                                <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                                </svg>
-                                <div className="text-xs font-medium text-gray-400">가치 계산 내역</div>
-                              </div>
-                              <div className="space-y-1.5">
-                                {item.itemType === '선택' ? (
-                                  // 선택 타입: 라디오 버튼으로 선택 변경 가능
-                                  <div className="space-y-1">
-                                    {item.components.map((comp, compIndex) => (
-                                      <label key={compIndex} className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer ${comp.selected ? 'bg-yellow-500/10 border border-yellow-500/30' : 'bg-gray-900/30 border border-gray-700/50'}`}>
-                                        <input
-                                          type="radio"
-                                          name={`bonus-room-${roomIndex}-item-${itemIndex}-selection`}
-                                          checked={comp.selected || false}
-                                          onChange={() => {
-                                            // 선택 변경
-                                            setPackageData((prev) => {
-                                              const newBonusRooms = [...(prev.bonusRooms || [])];
-                                              const targetItem = newBonusRooms[roomIndex].items[itemIndex];
-                                              const newComponents = targetItem.components.map((c, idx) => ({
-                                                ...c,
-                                                selected: idx === compIndex,
-                                              }));
-                                              newBonusRooms[roomIndex].items[itemIndex] = {
-                                                ...targetItem,
-                                                components: newComponents,
-                                              };
-                                              return { ...prev, bonusRooms: newBonusRooms };
-                                            });
-                                          }}
-                                          className="w-4 h-4 text-yellow-500 bg-gray-700 border-gray-600 focus:ring-yellow-500"
-                                        />
-                                        <div className="flex-1">
-                                          <div className={`text-xs font-medium mb-1 ${comp.selected ? 'text-yellow-300' : 'text-gray-300'}`}>
-                                            {comp.selected && <span className="text-yellow-400 mr-1">✓</span>}
-                                            {comp.itemName}
-                                          </div>
-                                          <div className="text-xs text-gray-500 space-x-2">
-                                            <span>수량: {formatNumberWithSignificantDigits(comp.quantity)}</span>
-                                            {comp.unitPrice > 0 && (
-                                              <span>• 단가: {formatNumberWithSignificantDigits(comp.unitPrice)} {comp.unitType}</span>
-                                            )}
-                                          </div>
-                                          {comp.valueInGold > 0 && (
-                                            <div className="text-xs text-blue-400 mt-1">
-                                              = {formatNumberWithSignificantDigits(comp.valueInGold)} 골드
-                                              {item.quantity > 1 && comp.selected && (
-                                                <span className="text-gray-500"> × {item.quantity} = {formatNumberWithSignificantDigits(comp.valueInGold * item.quantity)} 골드</span>
-                                              )}
-                                            </div>
-                                          )}
-                                        </div>
-                                      </label>
-                                    ))}
-                                  </div>
-                                ) : item.itemType === '확률' ? (
-                                  // 확률 타입: 확률과 기대값 표시
-                                  item.components.map((comp, compIndex) => (
-                                    <div key={compIndex} className="bg-gray-900/30 border border-gray-700/50 rounded-lg p-2">
-                                      <div className="flex items-center justify-between mb-1">
-                                        <div className="text-xs font-medium text-gray-300">{comp.itemName}</div>
-                                        {comp.probability !== undefined && (
-                                          <span className="text-xs font-semibold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded">
-                                            {(comp.probability * 100).toFixed(1)}%
-                                          </span>
-                                        )}
-                                      </div>
-                                      <div className="text-xs text-gray-500 space-x-2">
-                                        <span>수량: {formatNumberWithSignificantDigits(comp.quantity)}</span>
-                                        {comp.unitPrice > 0 && (
-                                          <span>• 단가: {formatNumberWithSignificantDigits(comp.unitPrice)} {comp.unitType}</span>
-                                        )}
-                                      </div>
-                                      {comp.valueInGold > 0 && comp.probability !== undefined && (
-                                        <div className="text-xs text-blue-400 mt-1">
-                                          기대값: {formatNumberWithSignificantDigits(comp.valueInGold * (comp.probability || 0))} 골드
-                                          {item.quantity > 1 && (
-                                            <span className="text-gray-500"> × {item.quantity} = {formatNumberWithSignificantDigits(comp.valueInGold * (comp.probability || 0) * item.quantity)} 골드</span>
-                                          )}
-                                        </div>
-                                      )}
-                                    </div>
-                                  ))
-                                ) : (
-                                  // 확정 타입: 모든 구성요소 표시
-                                  item.components.map((comp, compIndex) => (
-                                    <div key={compIndex} className="bg-gray-900/30 border border-gray-700/50 rounded-lg p-2">
-                                      <div className="text-xs font-medium text-gray-300 mb-1">{comp.itemName}</div>
-                                      <div className="text-xs text-gray-500 space-x-2">
-                                        <span>수량: {formatNumberWithSignificantDigits(comp.quantity)}</span>
-                                        {comp.unitPrice > 0 && (
-                                          <span>• 단가: {formatNumberWithSignificantDigits(comp.unitPrice)} {comp.unitType}</span>
-                                        )}
-                                      </div>
-                                      {comp.valueInGold > 0 && (
-                                        <div className="text-xs text-blue-400 mt-1">
-                                          = {formatNumberWithSignificantDigits(comp.valueInGold)} 골드
-                                          {item.quantity > 1 && (
-                                            <span className="text-gray-500"> × {item.quantity} = {formatNumberWithSignificantDigits(comp.valueInGold * item.quantity)} 골드</span>
-                                          )}
-                                        </div>
-                                      )}
-                                    </div>
-                                  ))
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              </div>
-              
-              {/* 저장 버튼 */}
-              {allowPackageSave && (
-                <div className="flex justify-center mt-6">
-                  <button
-                    onClick={() => {
-                      setSavePackageName(packageData.packageName);
-                      setShowSaveModal(true);
-                    }}
-                    className="px-8 py-3 bg-purple-600 text-white text-lg font-semibold rounded-lg hover:bg-purple-700 disabled:opacity-50"
-                    disabled={isLoading || !packageData.packageName.trim()}
-                  >
-                    {selectedPackageId ? '📝 패키지 업데이트' : '💾 패키지 저장'}
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="relative bg-gray-800/90 rounded-lg border border-gray-700 p-8">
-              <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-6">
-                  <div className="p-2 bg-green-500/10 rounded-lg">
-                    <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-white">합산 효율</h3>
-                </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-gray-900/50 rounded-lg p-6 border border-gray-700/50">
-                  <div className="flex items-center gap-2 mb-3">
-                    <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <div className="text-xs font-medium text-blue-400/80 uppercase tracking-wider">패키지 가격</div>
-                  </div>
-                  {(() => {
-                    let effectivePrice = packageData.price;
-                    if (packageData.packageType === '3+1' && packageData.is3Plus1) {
-                      effectivePrice = (packageData.price * 3) / 4;
-                    } else if (packageData.packageType === '3+보너스' && packageData.is3PlusBonus) {
-                      effectivePrice = packageData.price * 3;
-                    }
-                    
-                    let priceInGold = 0;
-                    let priceInCash = 0;
-                    let conversionFormula = '';
-                    
-                    if (packageData.priceType === '현금') {
-                      priceInCash = effectivePrice;
-                      if (goldToCashPerGold && goldToCashPerGold > 0) {
-                        priceInGold = effectivePrice / goldToCashPerGold;
-                        conversionFormula = `${formatNumberWithSignificantDigits(effectivePrice)} 현금 ÷ ${formatNumberWithSignificantDigits(goldToCashPerGold)} = ${formatNumberWithSignificantDigits(priceInGold)} 골드`;
-                      }
-                    } else if (packageData.priceType === '골드') {
-                      priceInGold = effectivePrice;
-                      if (goldToCashPerGold && goldToCashPerGold > 0) {
-                        priceInCash = effectivePrice * goldToCashPerGold;
-                        conversionFormula = `${formatNumberWithSignificantDigits(effectivePrice)} 골드 × ${formatNumberWithSignificantDigits(goldToCashPerGold)} = ${formatNumberWithSignificantDigits(priceInCash)} 현금`;
-                      }
-                    } else if (packageData.priceType === '크리스탈') {
-                      if (crystalGoldRate && crystalGoldRate > 0) {
-                        priceInGold = (effectivePrice * crystalGoldRate) / 100;
-                        conversionFormula = `${formatNumberWithSignificantDigits(effectivePrice)} 크리스탈 × ${formatNumberWithSignificantDigits(crystalGoldRate)} ÷ 100 = ${formatNumberWithSignificantDigits(priceInGold)} 골드`;
-                        if (goldToCashPerGold && goldToCashPerGold > 0) {
-                          priceInCash = priceInGold * goldToCashPerGold;
-                          conversionFormula += `\n${formatNumberWithSignificantDigits(priceInGold)} 골드 × ${formatNumberWithSignificantDigits(goldToCashPerGold)} = ${formatNumberWithSignificantDigits(priceInCash)} 현금`;
-                        }
-                      }
-                    }
-                    
-                    return (
-                      <>
-                        <div className="text-2xl font-bold text-white mb-2">
-                          {formatNumberWithSignificantDigits(effectivePrice)} {packageData.priceType}
-                        </div>
-                        {priceInGold > 0 && (
-                          <div className="text-sm text-gray-300 mb-1">
-                            = {formatNumberWithSignificantDigits(priceInGold)} 골드
-                          </div>
-                        )}
-                        {priceInCash > 0 && (
-                          <div className="text-sm text-gray-300 mb-2">
-                            = {formatNumberWithSignificantDigits(priceInCash)} 현금
-                          </div>
-                        )}
-                        {conversionFormula && (
-                          <div className="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-700 whitespace-pre-line">
-                            {conversionFormula}
-                          </div>
-                        )}
-                        {packageData.packageType === '3+1' && (
-                          <label className="flex items-center gap-2 mt-3 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={packageData.is3Plus1}
-                              onChange={(e) => setPackageData((prev) => ({ ...prev, is3Plus1: e.target.checked }))}
-                              className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
-                            />
-                            <span className="text-sm text-gray-300">3+1 적용</span>
-                          </label>
-                        )}
-                        {packageData.packageType === '3+보너스' && (
-                          <label className="flex items-center gap-2 mt-3 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={packageData.is3PlusBonus}
-                              onChange={(e) => setPackageData((prev) => ({ ...prev, is3PlusBonus: e.target.checked }))}
-                              className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
-                            />
-                            <span className="text-sm text-gray-300">3+보너스 적용</span>
-                          </label>
-                        )}
-                        {packageData.packageType !== '3+1' && packageData.packageType !== '3+보너스' && (
-                          <div className="text-xs text-gray-500 mt-3">
-                            유형: {packageData.packageType}
-                          </div>
-                        )}
-                      </>
-                    );
-                  })()}
-                </div>
-                <div className="bg-gray-900/50 rounded-lg p-6 border border-gray-700/50">
-                  <div className="flex items-center gap-2 mb-3">
-                    <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                    </svg>
-                    <div className="text-xs font-medium text-purple-400/80 uppercase tracking-wider">구성품 합계</div>
-                  </div>
-                  <div className="text-2xl font-bold text-white">
-                    {formatNumberWithSignificantDigits(totalValue)} {packageData.priceType}
-                  </div>
-                </div>
-                <div className={`bg-gray-900/50 rounded-lg p-6 border ${efficiency !== null && efficiency >= 1 ? 'border-green-500/50' : efficiency !== null ? 'border-red-500/50' : 'border-gray-700/50'}`}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <svg className={`w-4 h-4 ${efficiency !== null && efficiency >= 1 ? 'text-green-400' : 'text-red-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                    </svg>
-                    <div className={`text-xs font-medium uppercase tracking-wider ${efficiency !== null && efficiency >= 1 ? 'text-green-400/80' : 'text-red-400/80'}`}>효율 (배수)</div>
-                  </div>
-                  {efficiency !== null ? (
-                    <>
-                      <div className={`text-3xl font-bold ${efficiency >= 1 ? 'text-green-400' : 'text-red-400'}`}>
-                        {formatNumberWithSignificantDigits(efficiency)}배
-                      </div>
-                      <div className={`text-sm font-medium mt-1 ${efficiency >= 1 ? 'text-green-400' : 'text-red-400'}`}>
-                        {efficiency >= 1 ? '✓ 이득' : '✗ 손해'}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-lg text-gray-500">계산 불가</div>
-                  )}
-                </div>
-              </div>
-              
-              {/* 저장 버튼 */}
-              {allowPackageSave && (
-                <div className="flex justify-center mt-8">
-                  <button
-                    onClick={() => {
-                      setSavePackageName(packageData.packageName);
-                      setShowSaveModal(true);
-                    }}
-                    className="group relative px-10 py-4 bg-purple-600 text-white text-lg font-bold rounded-lg hover:bg-purple-700 disabled:opacity-50"
-                    disabled={isLoading || !packageData.packageName.trim()}
-                  >
-                    <span className="flex items-center gap-2">
-                      {selectedPackageId ? (
-                        <>
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                          패키지 업데이트
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                          </svg>
-                          패키지 저장
-                        </>
-                      )}
-                    </span>
-                  </button>
-                </div>
-              )}
-            </div>
-            </div>
-          )}
-        </div>
 
       </div>
     </div>
