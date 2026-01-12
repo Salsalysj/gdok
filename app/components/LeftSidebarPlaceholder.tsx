@@ -20,6 +20,12 @@ export default function LeftSidebarPlaceholder() {
       </div>
       <div className="flex-1 overflow-y-auto p-4">
         <nav className="space-y-2">
+          <Link
+            href="/updates"
+            className="block px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded"
+          >
+            업데이트 내역
+          </Link>
           <a
             href="https://www.youtube.com/channel/UCjTgPJoznJgeUta2qTI60SQ"
             target="_blank"

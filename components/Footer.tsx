@@ -23,7 +23,7 @@ export default function Footer() {
               이용약관
             </Link>
             <span>·</span>
-            <span>Version: v0.9.0</span>
+            <span>v0.3.2</span>
           </div>
         </div>
       </div>
