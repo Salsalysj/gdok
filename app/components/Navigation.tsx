@@ -92,6 +92,7 @@ export default function Navigation() {
     { name: '가디언 토벌', href: '/content-rewards?tab=가디언 토벌' },
     { name: '큐브 & 모래시계', href: '/content-rewards?tab=에브니 큐브' },
     { name: '필보 & 카게', href: '/content-rewards/boss-gate' },
+    { name: '레이드 보상', href: '/content-rewards/raid-rewards' },
     { name: '지옥', href: '/hell' },
   ];
 

@@ -41,49 +41,49 @@ export interface OptimalStrategy {
 
 // 상재1 무기 재련 재료
 export const SANG_JAE_1_WEAPON_MATERIALS: RefiningMaterial[] = [
-  { name: '운명의 파괴석', amount: 600 },
-  { name: '운명의 돌파석', amount: 16 },
-  { name: '아비도스 융화 재료', amount: 25 },
-  { name: '운명의 파편', amount: 5000 },
-  { name: '실링', amount: 31500 },
-  { name: '골드', amount: 1125 },
-  { name: '용암의 숨결', amount: 12, isOptional: true },
+  { name: '운명의 파괴석', amount: 180 },
+  { name: '운명의 돌파석', amount: 5 },
+  { name: '아비도스 융화 재료', amount: 8 },
+  { name: '운명의 파편', amount: 500 },
+  { name: '실링', amount: 3150 },
+  { name: '골드', amount: 563 },
+  { name: '용암의 숨결', amount: 4, isOptional: true },
   { name: '장인의 야금술 : 1단계', amount: 1, isOptional: true },
 ];
 
 // 상재1 방어구 재련 재료
 export const SANG_JAE_1_ARMOR_MATERIALS: RefiningMaterial[] = [
-  { name: '운명의 수호석', amount: 500 },
-  { name: '운명의 돌파석', amount: 12 },
-  { name: '아비도스 융화 재료', amount: 15 },
-  { name: '운명의 파편', amount: 3000 },
-  { name: '실링', amount: 28500 },
-  { name: '골드', amount: 950 },
-  { name: '빙하의 숨결', amount: 12, isOptional: true },
+  { name: '운명의 수호석', amount: 150 },
+  { name: '운명의 돌파석', amount: 4 },
+  { name: '아비도스 융화 재료', amount: 5 },
+  { name: '운명의 파편', amount: 300 },
+  { name: '실링', amount: 2850 },
+  { name: '골드', amount: 475 },
+  { name: '빙하의 숨결', amount: 4, isOptional: true },
   { name: '장인의 재봉술 : 1단계', amount: 1, isOptional: true },
 ];
 
 // 상재2 무기 재련 재료
 export const SANG_JAE_2_WEAPON_MATERIALS: RefiningMaterial[] = [
-  { name: '운명의 파괴석', amount: 1100 },
-  { name: '운명의 돌파석', amount: 22 },
-  { name: '아비도스 융화 재료', amount: 27 },
-  { name: '운명의 파편', amount: 10000 },
-  { name: '실링', amount: 50000 },
-  { name: '골드', amount: 2500 },
-  { name: '용암의 숨결', amount: 18, isOptional: true },
+  { name: '운명의 파괴석', amount: 330 },
+  { name: '운명의 돌파석', amount: 7 },
+  { name: '아비도스 융화 재료', amount: 9 },
+  { name: '운명의 파편', amount: 10 },
+  { name: '실링', amount: 5000 },
+  { name: '골드', amount: 1250 },
+  { name: '용암의 숨결', amount: 6, isOptional: true },
   { name: '장인의 야금술 : 2단계', amount: 1, isOptional: true },
 ];
 
 // 상재2 방어구 재련 재료
 export const SANG_JAE_2_ARMOR_MATERIALS: RefiningMaterial[] = [
-  { name: '운명의 수호석', amount: 900 },
-  { name: '운명의 돌파석', amount: 16 },
-  { name: '아비도스 융화 재료', amount: 16 },
-  { name: '운명의 파편', amount: 6000 },
-  { name: '실링', amount: 40000 },
-  { name: '골드', amount: 1800 },
-  { name: '빙하의 숨결', amount: 18, isOptional: true },
+  { name: '운명의 수호석', amount: 270 },
+  { name: '운명의 돌파석', amount: 5 },
+  { name: '아비도스 융화 재료', amount: 5 },
+  { name: '운명의 파편', amount: 600 },
+  { name: '실링', amount: 4000 },
+  { name: '골드', amount: 900 },
+  { name: '빙하의 숨결', amount: 6, isOptional: true },
   { name: '장인의 재봉술 : 2단계', amount: 1, isOptional: true },
 ];
 
