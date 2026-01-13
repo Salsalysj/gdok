@@ -1,6 +1,11 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+export const metadata = {
+  title: '재련 효율 - 껨산기',
+  description: '로스트아크 장비 재련의 효율을 시뮬레이션하고 최적의 전략을 제시합니다.',
+};
+
 import { promises as fs } from 'fs';
 import path from 'path';
 import RefiningSimulationClient from './client';
@@ -84,7 +89,113 @@ async function parseUpgradeCsv(filePath: string, fileName: string) {
   return { levels, rowMap };
 }
 
-async function getMarketInfoMap(): Promise<{ infoMap: Record<string, MarketItemInfo>; lastUpdated: string | null }> {
+async function getSilverCashValue(): Promise<number | null> {
+  try {
+    const ETC_LIST_FILE = path.join(process.cwd(), 'etc_list.csv');
+    const content = await fs.readFile(ETC_LIST_FILE, 'utf-8');
+    const lines = content.split('\n').map((line) => line.trim()).filter((line) => line.length > 0);
+    
+    console.log('[서버] etc_list.csv 읽기 시작, 총 라인 수:', lines.length);
+    
+    for (let i = 1; i < lines.length; i++) {
+      const columns = lines[i].split(',').map((col) => col.trim());
+      if (columns.length < 4) continue;
+      const itemName = columns[0];
+      const cash = columns[3] === '' ? null : parseFloat(columns[3]);
+      
+      if (itemName === '실링') {
+        console.log('[서버] 실링 발견:', { itemName, cash, columns });
+        if (cash != null) {
+          console.log('[서버] 실링 현금 단가 반환:', cash);
+          return cash;
+        }
+      }
+    }
+    console.log('[서버] 실링을 찾을 수 없음');
+    return null;
+  } catch (error) {
+    console.error('[서버] etc_list.csv를 읽을 수 없습니다:', error);
+    return null;
+  }
+}
+
+async function getLatestRates(): Promise<{ exchange: number | null; discord: number | null }> {
+  try {
+    const RATES_FILE = path.join(process.cwd(), 'data', 'crystal-gold-rates.json');
+    const content = await fs.readFile(RATES_FILE, 'utf-8');
+    const data = JSON.parse(content);
+    const list = data?.exchangeRates || [];
+    if (list.length === 0) return { exchange: null, discord: null };
+    
+    // 날짜순 정렬
+    const sorted = [...list].sort((a: any, b: any) => b.date.localeCompare(a.date));
+    
+    // exchange가 0이 아닌 최신 데이터 찾기
+    const latestWithExchange = sorted.find((item: any) => item.exchange && item.exchange > 0);
+    const latestWithDiscord = sorted.find((item: any) => item.discord && item.discord > 0);
+    
+    return { 
+      exchange: latestWithExchange?.exchange ?? null, 
+      discord: latestWithDiscord?.discord ?? null 
+    };
+  } catch (error) {
+    console.error('[서버] 환율 데이터 읽기 실패:', error);
+    return { exchange: null, discord: null };
+  }
+}
+
+async function getLatestCrystalGoldRate(): Promise<number | null> {
+  try {
+    // Supabase에서 먼저 시도
+    try {
+      const { supabase } = await import('../utils/supabase');
+      if (supabase) {
+        const { data, error } = await supabase
+          .from('crystal_exchange_rates')
+          .select('exchange')
+          .order('timestamp', { ascending: false })
+          .limit(1)
+          .single();
+        
+        if (!error && data && data.exchange) {
+          console.log('[서버] Supabase에서 크리스탈-골드 환율:', data.exchange);
+          return Number(data.exchange);
+        }
+      }
+    } catch (supabaseError) {
+      console.log('[서버] Supabase 조회 실패, 파일에서 읽기 시도');
+    }
+    
+    // Supabase에서 가져오지 못하면 로컬 파일에서 가져오기
+    const RATES_FILE = path.join(process.cwd(), 'data', 'crystal-gold-rates.json');
+    const content = await fs.readFile(RATES_FILE, 'utf-8');
+    const data = JSON.parse(content);
+    const list = data?.exchangeRates || [];
+    if (list.length === 0) {
+      console.log('[서버] 환율 데이터가 없음');
+      return null;
+    }
+    
+    // 날짜순 정렬
+    const sorted = [...list].sort((a: any, b: any) => b.date.localeCompare(a.date));
+    
+    // exchange가 0이 아닌 최신 데이터 찾기
+    const latestWithExchange = sorted.find((item: any) => item.exchange && item.exchange > 0);
+    
+    if (latestWithExchange) {
+      console.log('[서버] 파일에서 크리스탈-골드 환율:', latestWithExchange.exchange);
+      return latestWithExchange.exchange;
+    }
+    
+    console.log('[서버] 유효한 크리스탈-골드 환율을 찾을 수 없음');
+    return null;
+  } catch (error) {
+    console.error('[서버] 크리스탈-골드 환율 읽기 실패:', error);
+    return null;
+  }
+}
+
+async function getMarketInfoMap(): Promise<{ infoMap: Record<string, MarketItemInfo>; lastUpdated: string | null; silverCashValue: number | null }> {
   try {
     const cacheResult = await getMarketCache();
     const cachedData = cacheResult?.data || {};
@@ -152,10 +263,12 @@ async function getMarketInfoMap(): Promise<{ infoMap: Record<string, MarketItemI
     infoMap[GOLD_ITEM] = { unitPrice: 1, icon: null };
     infoMap[SILVER_ITEM] = { unitPrice: 0, icon: null };
 
-    return { infoMap, lastUpdated: cacheResult?.lastUpdated || null };
+    const silverCashValue = await getSilverCashValue();
+
+    return { infoMap, lastUpdated: cacheResult?.lastUpdated || null, silverCashValue };
   } catch (error) {
     console.error('시장 캐시 데이터를 읽을 수 없습니다:', error);
-    return { infoMap: { [GOLD_ITEM]: { unitPrice: 1, icon: null }, [SILVER_ITEM]: { unitPrice: 0, icon: null } }, lastUpdated: null };
+    return { infoMap: { [GOLD_ITEM]: { unitPrice: 1, icon: null }, [SILVER_ITEM]: { unitPrice: 0, icon: null } }, lastUpdated: null, silverCashValue: null };
   }
 }
 
@@ -217,12 +330,18 @@ export default async function RefiningSimulationPage() {
   const [
     weaponData,
     armorData,
-    { infoMap, lastUpdated }
+    { infoMap, lastUpdated, silverCashValue },
+    rates,
+    crystalGoldRate
   ] = await Promise.all([
     parseUpgradeCsv(UPGRADE_FILE_WEAPON, 'upgrade1.csv'),
     parseUpgradeCsv(UPGRADE_FILE_ARMOR, 'upgrade2.csv'),
     getMarketInfoMap(),
+    getLatestRates(),
+    getLatestCrystalGoldRate(),
   ]);
+
+  console.log('[서버] 환율 정보:', { rates, crystalGoldRate });
 
   const weaponStages = createStages(
     weaponData.levels,
@@ -246,6 +365,9 @@ export default async function RefiningSimulationPage() {
       armorStages={armorStages}
       marketInfo={infoMap}
       lastUpdated={lastUpdated}
+      silverCashValue={silverCashValue}
+      initialRates={rates}
+      initialCrystalGoldRate={crystalGoldRate}
     />
   );
 }

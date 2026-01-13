@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
 import type { RefiningStage, MarketItemInfo } from './page';
 import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
+import { usePriceOverride } from '../contexts/PriceOverrideContext';
 
 type CharacterEquipment = {
   Type?: string;
@@ -37,7 +38,7 @@ type RosterCharacter = {
   [key: string]: any; // 다른 필드도 허용
 };
 
-function CharacterSimulation({ weaponStages, armorStages, marketInfo }: { weaponStages: RefiningStage[]; armorStages: RefiningStage[]; marketInfo: Record<string, MarketItemInfo> }) {
+function CharacterSimulation({ weaponStages, armorStages, marketInfo, sillingUnitPrice }: { weaponStages: RefiningStage[]; armorStages: RefiningStage[]; marketInfo: Record<string, MarketItemInfo>; sillingUnitPrice: number }) {
   const [characterName, setCharacterName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -439,8 +440,14 @@ function CharacterSimulation({ weaponStages, armorStages, marketInfo }: { weapon
         unitPrice: adjustPrice(name, info.unitPrice) ?? info.unitPrice,
       };
     }
+    // 실링의 unitPrice를 동적으로 계산된 값으로 설정 (항상 포함)
+    adjusted['실링'] = {
+      unitPrice: sillingUnitPrice,
+      icon: marketInfo['실링']?.icon || FALLBACK_ICON[SILVER_ITEM] || null,
+    };
+    console.log('[CharacterSimulation] adjustedMarketInfo 실링:', adjusted['실링'], 'sillingUnitPrice:', sillingUnitPrice);
     return adjusted;
-  }, [marketInfo, adjustPrice]);
+  }, [marketInfo, adjustPrice, sillingUnitPrice]);
 
   // 가격 조정 스위치 변경 시 equipmentWithValues 재계산을 위한 refresh key
   const [refreshKey, setRefreshKey] = useState(0);
@@ -919,6 +926,9 @@ type Props = {
   armorStages: RefiningStage[];
   marketInfo: Record<string, MarketItemInfo>;
   lastUpdated: string | null;
+  silverCashValue: number | null;
+  initialRates?: { exchange: number | null; discord: number | null };
+  initialCrystalGoldRate?: number | null;
 };
 
 type ScenarioSummary = {
@@ -1032,12 +1042,12 @@ export function calculateOptimalStrategy(
   const getUnitInfo = (name: string): MarketItemInfo => marketInfo[name] || { unitPrice: 0, icon: null };
 
   const baseMaterialsCost = stage.baseMaterials.reduce((sum, material) => {
-    if (material.name === SILVER_ITEM) return sum;
     const info = getUnitInfo(material.name);
     return sum + info.unitPrice * material.quantity;
   }, 0);
   const goldCost = stage.goldCost * (getUnitInfo(GOLD_ITEM).unitPrice || 1);
-  const perAttemptBaseCost = baseMaterialsCost + goldCost;
+  const silverCost = stage.silverCost * (getUnitInfo(SILVER_ITEM).unitPrice || 0);
+  const perAttemptBaseCost = baseMaterialsCost + goldCost + silverCost;
 
   const expInfo = stage.expMaterial ? getUnitInfo(stage.expMaterial.name) : null;
   const expMaterialCost = stage.expMaterial
@@ -1377,8 +1387,12 @@ function calculateScenarioSummaries(
   const goldInfo = getUnitInfo(GOLD_ITEM);
   const goldUnitPrice = goldInfo.unitPrice || 1;
   const goldCost = stage.goldCost * goldUnitPrice;
+  
+  const silverInfo = getUnitInfo(SILVER_ITEM);
+  const silverUnitPrice = silverInfo.unitPrice || 0;
+  const silverCost = stage.silverCost * silverUnitPrice;
 
-  const perAttemptBaseCost = baseCostBreakdown.reduce((sum, item) => sum + item.totalPrice, 0) + goldCost;
+  const perAttemptBaseCost = baseCostBreakdown.reduce((sum, item) => sum + item.totalPrice, 0) + goldCost + silverCost;
 
   const expInfo = stage.expMaterial ? getUnitInfo(stage.expMaterial.name) : null;
   const oneTimeCost = stage.expMaterial
@@ -1506,9 +1520,10 @@ function ItemIcon({ name, icon }: { name: string; icon?: string | null }) {
 type StageCardProps = {
   stage: RefiningStage;
   marketInfo: Record<string, MarketItemInfo>;
+  sillingUnitPrice: number;
 };
 
-function StageCard({ stage, marketInfo }: StageCardProps) {
+function StageCard({ stage, marketInfo, sillingUnitPrice }: StageCardProps) {
   const { adjustPrice } = usePriceAdjustment();
   
   // 가격 조정이 적용된 marketInfo 생성
@@ -1520,8 +1535,14 @@ function StageCard({ stage, marketInfo }: StageCardProps) {
         unitPrice: adjustPrice(name, info.unitPrice) ?? info.unitPrice,
       };
     }
+    // 실링의 unitPrice를 동적으로 계산된 값으로 설정 (항상 포함)
+    adjusted['실링'] = {
+      unitPrice: sillingUnitPrice,
+      icon: marketInfo['실링']?.icon || FALLBACK_ICON[SILVER_ITEM] || null,
+    };
+    console.log('[StageCard] adjustedMarketInfo 실링:', adjusted['실링'], 'sillingUnitPrice:', sillingUnitPrice);
     return adjusted;
-  }, [marketInfo, adjustPrice]);
+  }, [marketInfo, adjustPrice, sillingUnitPrice]);
 
   const { scenarios, baseCostBreakdown, oneTimeCost, optionalCosts } = useMemo(
     () => calculateScenarioSummaries(stage, adjustedMarketInfo),
@@ -1544,10 +1565,18 @@ function StageCard({ stage, marketInfo }: StageCardProps) {
     icon: adjustedMarketInfo[GOLD_ITEM]?.icon,
   };
 
+  const silverLine: CostLine = {
+    name: SILVER_ITEM,
+    quantity: stage.silverCost,
+    unitPrice: adjustedMarketInfo[SILVER_ITEM]?.unitPrice ?? 0,
+    totalPrice: stage.silverCost * (adjustedMarketInfo[SILVER_ITEM]?.unitPrice ?? 0),
+    icon: adjustedMarketInfo[SILVER_ITEM]?.icon ?? null,
+  };
+
   const essentialLeft = baseCostBreakdown.filter(item => item.name !== GOLD_ITEM && item.name !== SILVER_ITEM);
   const essentialRight: CostLine[] = [];
-  const silverLine = baseCostBreakdown.find(item => item.name === SILVER_ITEM);
-  if (silverLine) {
+  // 실링 수량이 있으면 항상 표시 (가격 조정으로 0이 되어도 수량은 표시)
+  if (stage.silverCost > 0) {
     essentialRight.push(silverLine);
   }
   essentialRight.push(goldLine);
@@ -1893,10 +1922,10 @@ function MaterialLine({
   const quantityText = formatNumberWithSignificantDigits(data.quantity);
   const isSilver = data.name === SILVER_ITEM;
   const isGold = data.name === GOLD_ITEM;
-  const unitText = !isGold && !isSilver && data.unitPrice > 0
+  const unitText = data.unitPrice > 0
     ? `${formatNumberWithSignificantDigits(data.unitPrice)} 골드`
     : '-';
-  const totalText = !isGold && !isSilver && data.totalPrice > 0
+  const totalText = data.totalPrice > 0
     ? `${formatNumberWithSignificantDigits(data.totalPrice)} 골드`
     : '-';
   const iconUrl = data.icon;
@@ -1913,7 +1942,7 @@ function MaterialLine({
           {isGold ? ' 골드' : ''}
           {isSilver ? ' 실링' : ''}
         </span>
-        {!isGold && !isSilver && (
+        {!isGold && (
           <>
             <span>단가: {unitText}</span>
             <span>합계: {totalText}</span>
@@ -1924,8 +1953,106 @@ function MaterialLine({
   );
 }
 
-export default function RefiningSimulationClient({ weaponStages, armorStages, marketInfo, lastUpdated }: Props) {
+export default function RefiningSimulationClient({ weaponStages, armorStages, marketInfo, lastUpdated, silverCashValue, initialRates, initialCrystalGoldRate }: Props) {
   const { adjustPrice } = usePriceAdjustment();
+  const { state: priceOverrideState } = usePriceOverride();
+  
+  console.log('[일반 재련 클라이언트] 초기화:', { silverCashValue, initialRates, initialCrystalGoldRate });
+  
+  // 디코기준 스위치 상태 및 환율 정보
+  const [lightMode, setLightMode] = useState<boolean>(false);
+  const [discordRate, setDiscordRate] = useState<number | null>(initialRates?.discord ?? null);
+  const [crystalGoldRate, setCrystalGoldRate] = useState<number | null>(initialCrystalGoldRate ?? null);
+
+  // 디코기준 스위치 상태 동기화
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('themeLight');
+      if (saved != null) {
+        setLightMode(saved === '1');
+      }
+    } catch {}
+    
+    const handleThemeChange = (e: CustomEvent<{ light: boolean }>) => {
+      setLightMode(e.detail.light);
+    };
+    
+    window.addEventListener('theme-change', handleThemeChange as EventListener);
+    return () => {
+      window.removeEventListener('theme-change', handleThemeChange as EventListener);
+    };
+  }, []);
+
+  // 환율 정보 업데이트 (서버에서 초기값을 받았지만, 클라이언트에서도 주기적으로 업데이트 가능)
+  useEffect(() => {
+    async function fetchRates() {
+      try {
+        // 디스코드 환율 (서버에서 받지 못한 경우에만)
+        if (!discordRate) {
+          const discordRes = await fetch('/api/admin/crystal-gold');
+          const discordData = await discordRes.json();
+          const rates = discordData.exchangeRates || [];
+          if (rates.length > 0) {
+            const latest = rates[rates.length - 1];
+            const rate = latest.discord || null;
+            console.log('[일반 재련] 디스코드 환율 (클라이언트):', rate);
+            setDiscordRate(rate);
+          }
+        }
+        
+        // 크리스탈-골드 환율 (서버에서 받지 못한 경우에만)
+        if (!crystalGoldRate) {
+          const crystalRes = await fetch('/api/crystal-gold');
+          const crystalData = await crystalRes.json();
+          if (crystalData.rate) {
+            console.log('[일반 재련] 크리스탈-골드 환율 (클라이언트):', crystalData.rate);
+            setCrystalGoldRate(crystalData.rate);
+          }
+        }
+      } catch (error) {
+        console.error('[일반 재련] 환율 정보 조회 실패:', error);
+      }
+    }
+    fetchRates();
+  }, [discordRate, crystalGoldRate]);
+
+  // 현금(원) 1원당 골드 계산
+  const goldPerWon = useMemo(() => {
+    // 디코기준 스위치가 켜져있으면 (lightMode가 false이면 디코기준 ON)
+    if (!lightMode && discordRate && discordRate > 0) {
+      // 디스코드 환율 = 100 : n
+      // 1원당 골드 = 100 / n
+      return 100 / discordRate;
+    }
+    
+    // 디코기준 스위치가 꺼져있으면 크리스탈 환율 사용
+    if (crystalGoldRate && crystalGoldRate > 0) {
+      // 크리스탈 1개당 골드 = crystalGoldRate / 100 (100크리당 골드를 1크리당으로)
+      // 2750원 = 100크리
+      // 1원 = 100/2750 크리
+      // 1원당 골드 = (100/2750) * (crystalGoldRate/100)
+      return (crystalGoldRate / 2750);
+    }
+    return null;
+  }, [lightMode, discordRate, crystalGoldRate]);
+
+  // 실링 1개당 골드 가치 계산 (가격 조정 적용 전)
+  const baseSillingUnitPrice = useMemo(() => {
+    if (silverCashValue != null && goldPerWon != null) {
+      const result = silverCashValue * goldPerWon;
+      console.log('[일반 재련] 실링 1개당 골드 가치 (기본):', result);
+      return result;
+    }
+    console.log('[일반 재련] 실링 가치 계산 실패 - 기본값 0 반환');
+    return 0; // 기본값
+  }, [silverCashValue, goldPerWon, lightMode, discordRate, crystalGoldRate]);
+
+  // 실링 1개당 골드 가치 계산 (가격 조정 적용)
+  const sillingUnitPrice = useMemo(() => {
+    const adjusted = adjustPrice('실링', baseSillingUnitPrice);
+    console.log('[일반 재련] 실링 1개당 골드 가치 (조정 후):', adjusted, 'ignoreSilver:', priceOverrideState.ignoreSilver);
+    return adjusted ?? 0;
+  }, [baseSillingUnitPrice, adjustPrice, priceOverrideState.ignoreSilver]);
   
   // 가격 조정이 적용된 marketInfo 생성 (요약표와 특수재련효율에서 사용)
   const adjustedMarketInfo = useMemo(() => {
@@ -1936,8 +2063,14 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
         unitPrice: adjustPrice(name, info.unitPrice) ?? info.unitPrice,
       };
     }
+    // 실링의 unitPrice를 동적으로 계산된 값으로 설정 (항상 포함)
+    adjusted['실링'] = {
+      unitPrice: sillingUnitPrice,
+      icon: marketInfo['실링']?.icon || FALLBACK_ICON[SILVER_ITEM] || null,
+    };
+    console.log('[일반 재련] adjustedMarketInfo 실링:', adjusted['실링'], 'sillingUnitPrice:', sillingUnitPrice);
     return adjusted;
-  }, [marketInfo, adjustPrice]);
+  }, [marketInfo, adjustPrice, sillingUnitPrice]);
 
   const [activeSubTab, setActiveSubTab] = useState<'simulation' | 'special' | 'character'>('simulation');
   const [activeSimulationTab, setActiveSimulationTab] = useState<'weapon' | 'armor' | 'summary'>('weapon');
@@ -2294,7 +2427,7 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
 
                 <div className="grid grid-cols-1 gap-5">
                   {filteredStages.map(stage => (
-                    <StageCard key={stage.level} stage={stage} marketInfo={marketInfo} />
+                    <StageCard key={stage.level} stage={stage} marketInfo={marketInfo} sillingUnitPrice={sillingUnitPrice} />
                   ))}
                 </div>
               </div>
@@ -2344,7 +2477,7 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
 
                 <div className="grid grid-cols-1 gap-5">
                   {filteredStages.map(stage => (
-                    <StageCard key={stage.level} stage={stage} marketInfo={marketInfo} />
+                    <StageCard key={stage.level} stage={stage} marketInfo={marketInfo} sillingUnitPrice={sillingUnitPrice} />
                   ))}
                 </div>
               </div>
@@ -2412,7 +2545,7 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
         )}
 
         {activeSubTab === 'character' && (
-          <CharacterSimulation weaponStages={weaponStages} armorStages={armorStages} marketInfo={marketInfo} />
+          <CharacterSimulation weaponStages={weaponStages} armorStages={armorStages} marketInfo={marketInfo} sillingUnitPrice={sillingUnitPrice} />
         )}
 
         {activeSubTab === 'special' && (

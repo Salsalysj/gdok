@@ -9,7 +9,10 @@
     "lint": "next lint",
     "generate-refining-data": "tsx scripts/generate-advanced-refining-data.ts",
     "collect-avatar-prices": "tsx scripts/collect-legendary-avatar-prices.ts",
-    "revalidate-value-db": "node scripts/revalidate-value-db.js"
+    "revalidate-value-db": "node scripts/revalidate-value-db.js",
+    "download-item-icons": "tsx scripts/download-item-icons.ts",
+    "export-calendar-csv": "tsx scripts/export-calendar-to-csv.ts",
+    "download-calendar-icons": "tsx scripts/download-calendar-item-icons.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.78.0",

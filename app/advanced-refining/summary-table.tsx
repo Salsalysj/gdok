@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useState, useEffect } from 'react';
 import {
   type GearType,
   type RefiningLevel,
@@ -18,6 +18,9 @@ import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
 
 interface SummaryTableProps {
   valueDbMap: Record<string, ValueDbEntry>;
+  silverCashValue?: number | null;
+  initialRates?: { exchange: number | null; discord: number | null };
+  initialCrystalGoldRate?: number | null;
 }
 
 type SummaryRow = {
@@ -29,8 +32,105 @@ type SummaryRow = {
   totalCost: number;
 };
 
-export default function SummaryTable({ valueDbMap }: SummaryTableProps) {
+export default function SummaryTable({ valueDbMap, silverCashValue = null, initialRates, initialCrystalGoldRate }: SummaryTableProps) {
+  console.log('[상급 재련 요약표] 초기화:', { silverCashValue, initialRates, initialCrystalGoldRate });
+  
   const { adjustPrice } = usePriceAdjustment();
+
+  // 디코기준 스위치 상태 및 환율 정보
+  const [lightMode, setLightMode] = useState<boolean>(false);
+  const [discordRate, setDiscordRate] = useState<number | null>(initialRates?.discord ?? null);
+  const [crystalGoldRate, setCrystalGoldRate] = useState<number | null>(initialCrystalGoldRate ?? null);
+
+  // 디코기준 스위치 상태 동기화
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('themeLight');
+      if (saved != null) {
+        setLightMode(saved === '1');
+      }
+    } catch {}
+    
+    const handleThemeChange = (e: CustomEvent<{ light: boolean }>) => {
+      setLightMode(e.detail.light);
+    };
+    
+    window.addEventListener('theme-change', handleThemeChange as EventListener);
+    return () => {
+      window.removeEventListener('theme-change', handleThemeChange as EventListener);
+    };
+  }, []);
+
+  // 환율 정보 업데이트 (서버에서 초기값을 받았지만, 클라이언트에서도 주기적으로 업데이트 가능)
+  useEffect(() => {
+    async function fetchRates() {
+      try {
+        // 디스코드 환율 (서버에서 받지 못한 경우에만)
+        if (!discordRate) {
+          const discordRes = await fetch('/api/admin/crystal-gold');
+          const discordData = await discordRes.json();
+          const rates = discordData.exchangeRates || [];
+          if (rates.length > 0) {
+            const latest = rates[rates.length - 1];
+            const rate = latest.discord || null;
+            console.log('[상급 재련 요약표] 디스코드 환율 (클라이언트):', rate);
+            setDiscordRate(rate);
+          }
+        }
+        
+        // 크리스탈-골드 환율 (서버에서 받지 못한 경우에만)
+        if (!crystalGoldRate) {
+          const crystalRes = await fetch('/api/crystal-gold');
+          const crystalData = await crystalRes.json();
+          if (crystalData.rate) {
+            console.log('[상급 재련 요약표] 크리스탈-골드 환율 (클라이언트):', crystalData.rate);
+            setCrystalGoldRate(crystalData.rate);
+          }
+        }
+      } catch (error) {
+        console.error('[상급 재련 요약표] 환율 정보 조회 실패:', error);
+      }
+    }
+    fetchRates();
+  }, [discordRate, crystalGoldRate]);
+
+  // 현금(원) 1원당 골드 계산
+  const goldPerWon = useMemo(() => {
+    // 디코기준 스위치가 켜져있으면 (lightMode가 false이면 디코기준 ON)
+    if (!lightMode && discordRate && discordRate > 0) {
+      // 디스코드 환율 = 100 : n
+      // 1원당 골드 = 100 / n
+      return 100 / discordRate;
+    }
+    
+    // 디코기준 스위치가 꺼져있으면 크리스탈 환율 사용
+    if (crystalGoldRate && crystalGoldRate > 0) {
+      // 크리스탈 1개당 골드 = crystalGoldRate / 100 (100크리당 골드를 1크리당으로)
+      // 2750원 = 100크리
+      // 1원 = 100/2750 크리
+      // 1원당 골드 = (100/2750) * (crystalGoldRate/100)
+      return (crystalGoldRate / 2750);
+    }
+    return null;
+  }, [lightMode, discordRate, crystalGoldRate]);
+
+  // 실링 1개당 골드 가치 계산 (가격 조정 적용 전)
+  const baseSillingUnitPrice = useMemo(() => {
+    if (silverCashValue != null && goldPerWon != null) {
+      const result = silverCashValue * goldPerWon;
+      console.log('[상급 재련 요약표] 실링 1개당 골드 가치 (기본):', result);
+      return result;
+    }
+    console.log('[상급 재련 요약표] 실링 가치 계산 실패 - 기본값 0 반환');
+    return 0; // 기본값
+  }, [silverCashValue, goldPerWon, lightMode, discordRate, crystalGoldRate]);
+
+  // 실링 1개당 골드 가치 계산 (가격 조정 적용)
+  const sillingUnitPrice = useMemo(() => {
+    const adjusted = adjustPrice('실링', baseSillingUnitPrice);
+    console.log('[상급 재련 요약표] 실링 1개당 골드 가치 (조정 후):', adjusted);
+    return adjusted ?? 0;
+  }, [baseSillingUnitPrice, adjustPrice]);
 
   // 재료 가치 계산 함수
   const getMaterialValue = useCallback(
@@ -39,7 +139,8 @@ export default function SummaryTable({ valueDbMap }: SummaryTableProps) {
         return 1;
       }
       if (itemName === '실링') {
-        return 0;
+        console.log('[상급 재련 요약표] getMaterialValue 실링 호출, 반환값:', sillingUnitPrice);
+        return sillingUnitPrice;
       }
 
       let basePrice: number | null = null;
@@ -62,7 +163,7 @@ export default function SummaryTable({ valueDbMap }: SummaryTableProps) {
 
       return null;
     },
-    [valueDbMap, adjustPrice]
+    [valueDbMap, adjustPrice, sillingUnitPrice]
   );
 
   // 보조재료 비용 계산
