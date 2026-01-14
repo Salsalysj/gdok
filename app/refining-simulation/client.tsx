@@ -2402,8 +2402,8 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
                       }}
                       className="px-3 py-2 bg-gray-900 text-white text-sm border border-gray-700 rounded-lg focus:outline-none focus:border-purple-500"
                     >
-                      <option value="basic">티어4 기본</option>
-                      <option value="upper">티어4 상위 (세르카 장비)</option>
+                      <option value="basic">카제로스 장비</option>
+                      <option value="upper">세르카 장비 (미구현)</option>
                     </select>
                 </div>
                 <div className="flex items-center gap-2">
