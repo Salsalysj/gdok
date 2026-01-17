@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/app/utils/supabase';
+import { isPackageSaveAllowed } from '@/lib/environment';
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const isLocal = process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_ALLOW_PACKAGE_SAVE === 'true';
-  if (!isLocal) {
-    return NextResponse.json({ error: '아크패스 가이드 업데이트 기능은 로컬 환경에서만 사용할 수 있습니다.' }, { status: 403 });
+  // main 브랜치 production 환경이 아닐 때 허용
+  if (!isPackageSaveAllowed()) {
+    return NextResponse.json({ error: '아크패스 가이드 업데이트 기능은 main 브랜치 production 환경에서 사용할 수 없습니다.' }, { status: 403 });
   }
   if (!supabase) {
     return NextResponse.json({ error: 'Supabase가 설정되지 않았습니다.' }, { status: 503 });
@@ -40,9 +41,9 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const isLocal = process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_ALLOW_PACKAGE_SAVE === 'true';
-  if (!isLocal) {
-    return NextResponse.json({ error: '아크패스 가이드 삭제 기능은 로컬 환경에서만 사용할 수 있습니다.' }, { status: 403 });
+  // main 브랜치 production 환경이 아닐 때 허용
+  if (!isPackageSaveAllowed()) {
+    return NextResponse.json({ error: '아크패스 가이드 삭제 기능은 main 브랜치 production 환경에서 사용할 수 없습니다.' }, { status: 403 });
   }
   if (!supabase) {
     return NextResponse.json({ error: 'Supabase가 설정되지 않았습니다.' }, { status: 503 });

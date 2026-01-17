@@ -104,8 +104,24 @@ export default function PackageEfficiencyClient({
   narak2Stages?: Stage[];
   initialSavedPackages?: Array<{ id: string; package_name: string; created_at: string; updated_at: string; package_data?: any }>;
 }) {
-  // 로컬 환경에서만 패키지 저장/업데이트 허용
-  const allowPackageSave = process.env.NEXT_PUBLIC_ALLOW_PACKAGE_SAVE === 'true' || process.env.NODE_ENV === 'development';
+  // 환경 정보를 API에서 받아와서 저장 기능 활성화 여부 결정
+  const [allowPackageSave, setAllowPackageSave] = useState<boolean>(
+    process.env.NEXT_PUBLIC_ALLOW_PACKAGE_SAVE === 'true' || process.env.NODE_ENV === 'development'
+  );
+  
+  useEffect(() => {
+    // 클라이언트에서 환경 정보 확인
+    if (typeof window !== 'undefined') {
+      fetch('/api/env/check')
+        .then(res => res.json())
+        .then(data => {
+          setAllowPackageSave(data.allowPackageSave ?? false);
+        })
+        .catch(() => {
+          // API 호출 실패 시 기본값 유지
+        });
+    }
+  }, []);
   
   const { adjustPrice, adjustRelicEngravingAverage } = usePriceAdjustment();
   const { adjustedEntries } = useValueDb();

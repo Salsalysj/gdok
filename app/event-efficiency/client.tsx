@@ -143,8 +143,24 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
   const { state: priceOverrideState } = usePriceOverride();
   const { adjustedEntries } = useValueDb();
   
-  // 로컬 환경에서만 이벤트 효율 저장/업데이트 허용
-  const allowEventEfficiencySave = process.env.NEXT_PUBLIC_ALLOW_PACKAGE_SAVE === 'true' || process.env.NODE_ENV === 'development';
+  // 환경 정보를 API에서 받아와서 저장 기능 활성화 여부 결정
+  const [allowEventEfficiencySave, setAllowEventEfficiencySave] = useState<boolean>(
+    process.env.NEXT_PUBLIC_ALLOW_PACKAGE_SAVE === 'true' || process.env.NODE_ENV === 'development'
+  );
+  
+  useEffect(() => {
+    // 클라이언트에서 환경 정보 확인
+    if (typeof window !== 'undefined') {
+      fetch('/api/env/check')
+        .then(res => res.json())
+        .then(data => {
+          setAllowEventEfficiencySave(data.allowPackageSave ?? false);
+        })
+        .catch(() => {
+          // API 호출 실패 시 기본값 유지
+        });
+    }
+  }, []);
   
   // 단가 직접 입력 필드의 임시 값 저장 (입력 중에는 문자열로 유지)
   const [manualPriceInputs, setManualPriceInputs] = useState<Record<string, string>>({});

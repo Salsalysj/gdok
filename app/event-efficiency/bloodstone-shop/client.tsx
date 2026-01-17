@@ -173,8 +173,24 @@ export default function BloodstoneShopClient({
     silverItems: [],
   });
 
-  // 저장 관련 상태
-  const allowShopSave = process.env.NEXT_PUBLIC_ALLOW_BLOODSTONE_SHOP_SAVE === 'true' || process.env.NODE_ENV === 'development';
+  // 환경 정보를 API에서 받아와서 저장 기능 활성화 여부 결정
+  const [allowShopSave, setAllowShopSave] = useState<boolean>(
+    process.env.NEXT_PUBLIC_ALLOW_BLOODSTONE_SHOP_SAVE === 'true' || process.env.NODE_ENV === 'development'
+  );
+  
+  useEffect(() => {
+    // 클라이언트에서 환경 정보 확인
+    if (typeof window !== 'undefined') {
+      fetch('/api/env/check')
+        .then(res => res.json())
+        .then(data => {
+          setAllowShopSave(data.allowBloodstoneShopSave ?? false);
+        })
+        .catch(() => {
+          // API 호출 실패 시 기본값 유지
+        });
+    }
+  }, []);
   const [savedShops, setSavedShops] = useState<Array<{ id: string; shop_name: string; created_at: string; updated_at: string; shop_data?: any }>>(initialSavedShops || []);
   const [selectedShopId, setSelectedShopId] = useState<string | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);

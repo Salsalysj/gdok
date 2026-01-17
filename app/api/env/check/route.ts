@@ -11,6 +11,10 @@ export async function GET() {
     key.includes('SUPABASE') ||
     key.includes('CRON')
   );
+  
+  // 환경 정보 반환 (클라이언트에서 저장 기능 활성화 여부 확인용)
+  const { isPackageSaveAllowed, isBloodstoneShopSaveAllowed } = await import('@/lib/environment');
+  
   return NextResponse.json({
     hasKey,
     // 길이만 노출하여 키 자체는 노출하지 않음
@@ -21,6 +25,9 @@ export async function GET() {
     rawKeyIsEmptyString: rawKey === '',
     relatedEnvKeys,
     totalEnvCount: Object.keys(process.env).length,
+    // 저장 기능 활성화 여부
+    allowPackageSave: isPackageSaveAllowed(),
+    allowBloodstoneShopSave: isBloodstoneShopSaveAllowed(),
   });
 }
 

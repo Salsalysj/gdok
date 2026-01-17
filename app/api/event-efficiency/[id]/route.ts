@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/app/utils/supabase';
+import { isPackageSaveAllowed } from '@/lib/environment';
 
 // PUT: 이벤트 효율 업데이트
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  // 로컬 환경에서만 허용
-  const isLocal = process.env.NODE_ENV === 'development' || process.env.ALLOW_PACKAGE_SAVE === 'true';
-  if (!isLocal) {
+  // main 브랜치 production 환경이 아닐 때 허용
+  if (!isPackageSaveAllowed()) {
     return NextResponse.json(
-      { error: '이벤트 효율 수정 기능은 로컬 환경에서만 사용할 수 있습니다.' },
+      { error: '이벤트 효율 수정 기능은 main 브랜치 production 환경에서 사용할 수 없습니다.' },
       { status: 403 }
     );
   }
@@ -65,11 +65,10 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  // 로컬 환경에서만 허용
-  const isLocal = process.env.NODE_ENV === 'development' || process.env.ALLOW_PACKAGE_SAVE === 'true';
-  if (!isLocal) {
+  // main 브랜치 production 환경이 아닐 때 허용
+  if (!isPackageSaveAllowed()) {
     return NextResponse.json(
-      { error: '이벤트 효율 삭제 기능은 로컬 환경에서만 사용할 수 있습니다.' },
+      { error: '이벤트 효율 삭제 기능은 main 브랜치 production 환경에서 사용할 수 없습니다.' },
       { status: 403 }
     );
   }

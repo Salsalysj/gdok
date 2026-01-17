@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/app/utils/supabase';
+import { isPackageSaveAllowed } from '@/lib/environment';
 
 // GET: 저장된 패키지 목록 조회
 export async function GET() {
@@ -30,11 +31,10 @@ export async function GET() {
 
 // POST: 새 패키지 저장
 export async function POST(request: NextRequest) {
-  // 로컬 환경에서만 허용
-  const isLocal = process.env.NODE_ENV === 'development' || process.env.ALLOW_PACKAGE_SAVE === 'true';
-  if (!isLocal) {
+  // main 브랜치 production 환경이 아닐 때 허용 (로컬 개발 환경, develop 브랜치 등)
+  if (!isPackageSaveAllowed()) {
     return NextResponse.json(
-      { error: '패키지 저장 기능은 로컬 환경에서만 사용할 수 있습니다.' },
+      { error: '패키지 저장 기능은 main 브랜치 production 환경에서 사용할 수 없습니다.' },
       { status: 403 }
     );
   }
