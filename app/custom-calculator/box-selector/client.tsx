@@ -110,6 +110,25 @@ export default function BoxSelectorClient({
     items: [],
   });
 
+  // 환경 정보를 API에서 받아와서 저장 기능 활성화 여부 결정
+  const [allowSave, setAllowSave] = useState<boolean>(
+    process.env.NEXT_PUBLIC_ALLOW_PACKAGE_SAVE === 'true' || process.env.NODE_ENV === 'development'
+  );
+  
+  useEffect(() => {
+    // 클라이언트에서 환경 정보 확인
+    if (typeof window !== 'undefined') {
+      fetch('/api/env/check')
+        .then(res => res.json())
+        .then(data => {
+          setAllowSave(data.allowPackageSave ?? false);
+        })
+        .catch(() => {
+          // API 호출 실패 시 기본값 유지
+        });
+    }
+  }, []);
+
   const [savedBoxSelectors, setSavedBoxSelectors] = useState(initialSavedBoxSelectors || []);
   const [selectedBoxId, setSelectedBoxId] = useState<string | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
@@ -1165,7 +1184,7 @@ export default function BoxSelectorClient({
                 </option>
               ))}
             </select>
-            {process.env.NODE_ENV !== 'production' && (
+            {allowSave && (
               <>
                 <button
                   onClick={() => {
@@ -1198,7 +1217,7 @@ export default function BoxSelectorClient({
         </div>
 
         {/* 저장 모달 */}
-        {process.env.NODE_ENV !== 'production' && showSaveModal && (
+        {allowSave && showSaveModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 max-w-md w-full mx-4">
               <h3 className="text-xl font-semibold text-white mb-4">

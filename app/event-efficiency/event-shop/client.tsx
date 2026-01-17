@@ -198,6 +198,25 @@ export default function EventShopClient({
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   
+  // 환경 정보를 API에서 받아와서 저장 기능 활성화 여부 결정
+  const [allowShopSave, setAllowShopSave] = useState<boolean>(
+    process.env.NEXT_PUBLIC_ALLOW_PACKAGE_SAVE === 'true' || process.env.NODE_ENV === 'development'
+  );
+  
+  useEffect(() => {
+    // 클라이언트에서 환경 정보 확인
+    if (typeof window !== 'undefined') {
+      fetch('/api/env/check')
+        .then(res => res.json())
+        .then(data => {
+          setAllowShopSave(data.allowPackageSave ?? false);
+        })
+        .catch(() => {
+          // API 호출 실패 시 기본값 유지
+        });
+    }
+  }, []);
+
   // 저장 관련 상태
   const [savedShops, setSavedShops] = useState<Array<{ id: string; shop_name: string; created_at: string; updated_at: string; shop_data?: any; start_date?: string | null; end_date?: string | null }>>(initialSavedShops || []);
   const [selectedShopId, setSelectedShopId] = useState<string | null>(null);
@@ -1696,7 +1715,7 @@ export default function EventShopClient({
       <div>
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-semibold tracking-tight">이벤트 상점 교환 효율</h1>
-          {process.env.NODE_ENV !== 'production' && (
+          {allowShopSave && (
           <div className="flex gap-2">
             <button
               onClick={handleNewShop}
@@ -1720,7 +1739,7 @@ export default function EventShopClient({
         </div>
 
         {/* 저장 모달 */}
-        {showSaveModal && (
+        {showSaveModal && allowShopSave && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 max-w-md w-full mx-4">
               <h3 className="text-xl font-semibold text-white mb-4">
@@ -2035,7 +2054,7 @@ export default function EventShopClient({
         )}
 
         {/* 기본정보 카드 */}
-        {process.env.NODE_ENV !== 'production' && (
+        {allowShopSave && (
         <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
           <h2 className="text-2xl font-semibold mb-4">기본정보</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -2072,7 +2091,7 @@ export default function EventShopClient({
         )}
 
         {/* 탭 카드들 */}
-        {process.env.NODE_ENV !== 'production' && (
+        {allowShopSave && (
           <>
         <div className="space-y-6 mb-6">
           {tabs.map((tab) => (
