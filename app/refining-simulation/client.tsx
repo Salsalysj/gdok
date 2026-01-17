@@ -38,7 +38,7 @@ type RosterCharacter = {
   [key: string]: any; // 다른 필드도 허용
 };
 
-function CharacterSimulation({ weaponStages, armorStages, marketInfo, sillingUnitPrice }: { weaponStages: RefiningStage[]; armorStages: RefiningStage[]; marketInfo: Record<string, MarketItemInfo>; sillingUnitPrice: number }) {
+function CharacterSimulation({ weaponStages, armorStages, weaponStagesSerka, armorStagesSerka, marketInfo, sillingUnitPrice }: { weaponStages: RefiningStage[]; armorStages: RefiningStage[]; weaponStagesSerka: RefiningStage[]; armorStagesSerka: RefiningStage[]; marketInfo: Record<string, MarketItemInfo>; sillingUnitPrice: number }) {
   const [characterName, setCharacterName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -468,7 +468,11 @@ function CharacterSimulation({ weaponStages, armorStages, marketInfo, sillingUni
     
     return sortedEquipment.map(eq => {
       const isWeapon = eq.type === '무기';
-      const stages = isWeapon ? weaponStages : armorStages;
+      // 장비 이름에 '운명의 전율'이 포함되면 세르카 장비
+      const isSerkaEquipment = eq.Name?.includes('운명의 전율') || false;
+      const stages = isWeapon 
+        ? (isSerkaEquipment ? weaponStagesSerka : weaponStages)
+        : (isSerkaEquipment ? armorStagesSerka : armorStages);
       // 목표 재련 단계는 현재 재련 단계 + 1
       const targetLevel = eq.level != null ? eq.level + 1 : null;
       const stage = targetLevel != null ? stages.find(s => s.level === targetLevel) : null;
@@ -533,9 +537,10 @@ function CharacterSimulation({ weaponStages, armorStages, marketInfo, sillingUni
         breathMarketPrice,
         breakthroughValue,
         targetLevel,
+        isSerkaEquipment, // 세르카 장비 여부 추가
       };
     });
-  }, [sortedEquipment, weaponStages, armorStages, adjustedMarketInfo, refreshKey]);
+  }, [sortedEquipment, weaponStages, armorStages, weaponStagesSerka, armorStagesSerka, adjustedMarketInfo, refreshKey]);
 
   // 요약 정보 계산
   const summaryValues = useMemo(() => {
@@ -545,8 +550,10 @@ function CharacterSimulation({ weaponStages, armorStages, marketInfo, sillingUni
         lavaBreathMarketPrice: null,
         iceBreathValue: null,
         iceBreathMarketPrice: null,
-        breakthroughValue: null,
-        breakthroughBestEquipment: null,
+        circularBreakthroughValue: null,
+        circularBreakthroughBestEquipment: null,
+        transitionBreakthroughValue: null,
+        transitionBreakthroughBestEquipment: null,
         craftItems: [],
       };
     }
@@ -565,18 +572,32 @@ function CharacterSimulation({ weaponStages, armorStages, marketInfo, sillingUni
     const iceBreathValue = maxIceBreath?.value ?? null;
     const iceBreathMarketPrice = maxIceBreath?.price ?? null;
 
-    // 순환 돌파석 실제 가치 (6부위 중 가장 가치가 높은 수치)
+    // 돌파석 실제 가치 (세르카 장비와 카제로스 장비를 구분하여 각각 최고 가치 계산)
     const breakthroughItems = equipmentWithValues.map(eq => ({ 
       value: eq.breakthroughValue, 
       type: eq.type,
-      targetLevel: eq.targetLevel 
-    })).filter((v): v is { value: number; type: string; targetLevel: number | null } => v.value != null);
-    const maxBreakthrough = breakthroughItems.length > 0 
-      ? breakthroughItems.reduce((max, curr) => curr.value > max.value ? curr : max, breakthroughItems[0])
+      targetLevel: eq.targetLevel,
+      isSerkaEquipment: eq.isSerkaEquipment 
+    })).filter((v): v is { value: number; type: string; targetLevel: number | null; isSerkaEquipment: boolean } => v.value != null);
+    
+    // 순환 돌파석 (카제로스 장비)
+    const kazerosBreakthroughItems = breakthroughItems.filter(item => !item.isSerkaEquipment);
+    const maxKazerosBreakthrough = kazerosBreakthroughItems.length > 0 
+      ? kazerosBreakthroughItems.reduce((max, curr) => curr.value > max.value ? curr : max, kazerosBreakthroughItems[0])
       : null;
-    const breakthroughValue = maxBreakthrough?.value ?? null;
-    const breakthroughBestEquipment = maxBreakthrough 
-      ? `${maxBreakthrough.type} +${maxBreakthrough.targetLevel ?? '?'}`
+    const circularBreakthroughValue = maxKazerosBreakthrough?.value ?? null;
+    const circularBreakthroughBestEquipment = maxKazerosBreakthrough 
+      ? `${maxKazerosBreakthrough.type} +${maxKazerosBreakthrough.targetLevel ?? '?'}`
+      : null;
+    
+    // 전이 돌파석 (세르카 장비)
+    const serkaBreakthroughItems = breakthroughItems.filter(item => item.isSerkaEquipment);
+    const maxSerkaBreakthrough = serkaBreakthroughItems.length > 0 
+      ? serkaBreakthroughItems.reduce((max, curr) => curr.value > max.value ? curr : max, serkaBreakthroughItems[0])
+      : null;
+    const transitionBreakthroughValue = maxSerkaBreakthrough?.value ?? null;
+    const transitionBreakthroughBestEquipment = maxSerkaBreakthrough 
+      ? `${maxSerkaBreakthrough.type} +${maxSerkaBreakthrough.targetLevel ?? '?'}`
       : null;
 
     // 야금술/재봉술 아이템 수집 (실제 사용되는 아이템만)
@@ -609,8 +630,10 @@ function CharacterSimulation({ weaponStages, armorStages, marketInfo, sillingUni
       lavaBreathMarketPrice,
       iceBreathValue,
       iceBreathMarketPrice,
-      breakthroughValue,
-      breakthroughBestEquipment,
+      circularBreakthroughValue,
+      circularBreakthroughBestEquipment,
+      transitionBreakthroughValue,
+      transitionBreakthroughBestEquipment,
       craftItems,
     };
   }, [equipmentWithValues]);
@@ -797,25 +820,44 @@ function CharacterSimulation({ weaponStages, armorStages, marketInfo, sillingUni
                       )}
                     </td>
                   </tr>
-                  {/* 순환 돌파석 */}
-                  <tr className={(summaryValues.craftItems.length + 2) % 2 === 0 ? 'bg-gray-900/50' : 'bg-gray-800/50'}>
-                    <td className="px-4 py-3 text-gray-300 border-b border-gray-800">순환 돌파석</td>
-                    <td className="px-4 py-3 text-right text-green-300 font-medium border-b border-gray-800">
-                      {summaryValues.breakthroughValue != null 
-                        ? `${formatNumberWithSignificantDigits(summaryValues.breakthroughValue)} 골드`
-                        : '-'}
-                    </td>
-                    <td className="px-4 py-3 text-right text-gray-400 border-b border-gray-800">-</td>
-                    <td className="px-4 py-3 text-center border-b border-gray-800">
-                      {summaryValues.breakthroughBestEquipment ? (
-                        <span className="text-gray-300">
-                          {summaryValues.breakthroughBestEquipment.replace(/\s*\+\d+.*$/, '').trim()} 부위에 우선 사용
-                        </span>
-                      ) : (
-                        <span className="text-gray-500">-</span>
-                      )}
-                    </td>
-                  </tr>
+                  {/* 순환 돌파석 (카제로스 장비) */}
+                  {summaryValues.circularBreakthroughValue != null && (
+                    <tr className={(summaryValues.craftItems.length + 3) % 2 === 0 ? 'bg-gray-900/50' : 'bg-gray-800/50'}>
+                      <td className="px-4 py-3 text-gray-300 border-b border-gray-800">순환 돌파석</td>
+                      <td className="px-4 py-3 text-right text-green-300 font-medium border-b border-gray-800">
+                        {formatNumberWithSignificantDigits(summaryValues.circularBreakthroughValue)} 골드
+                      </td>
+                      <td className="px-4 py-3 text-right text-gray-400 border-b border-gray-800">-</td>
+                      <td className="px-4 py-3 text-center border-b border-gray-800">
+                        {summaryValues.circularBreakthroughBestEquipment ? (
+                          <span className="text-gray-300">
+                            {summaryValues.circularBreakthroughBestEquipment.replace(/\s*\+\d+.*$/, '').trim()} 부위에 우선 사용
+                          </span>
+                        ) : (
+                          <span className="text-gray-500">-</span>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                  {/* 전이 돌파석 (세르카 장비) */}
+                  {summaryValues.transitionBreakthroughValue != null && (
+                    <tr className={(summaryValues.craftItems.length + 4) % 2 === 0 ? 'bg-gray-900/50' : 'bg-gray-800/50'}>
+                      <td className="px-4 py-3 text-gray-300 border-b border-gray-800">전이 돌파석</td>
+                      <td className="px-4 py-3 text-right text-green-300 font-medium border-b border-gray-800">
+                        {formatNumberWithSignificantDigits(summaryValues.transitionBreakthroughValue)} 골드
+                      </td>
+                      <td className="px-4 py-3 text-right text-gray-400 border-b border-gray-800">-</td>
+                      <td className="px-4 py-3 text-center border-b border-gray-800">
+                        {summaryValues.transitionBreakthroughBestEquipment ? (
+                          <span className="text-gray-300">
+                            {summaryValues.transitionBreakthroughBestEquipment.replace(/\s*\+\d+.*$/, '').trim()} 부위에 우선 사용
+                          </span>
+                        ) : (
+                          <span className="text-gray-500">-</span>
+                        )}
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -832,7 +874,7 @@ function CharacterSimulation({ weaponStages, armorStages, marketInfo, sillingUni
                     <th className="px-4 py-3 text-center font-medium border-b border-gray-700">목표 재련 단계</th>
                     <th className="px-4 py-3 text-right font-medium border-b border-gray-700">야금/재봉 가치</th>
                     <th className="px-4 py-3 text-right font-medium border-b border-gray-700">숨결 가치</th>
-                    <th className="px-4 py-3 text-right font-medium border-b border-gray-700">순환 돌파석 가치</th>
+                    <th className="px-4 py-3 text-right font-medium border-b border-gray-700">돌파석 가치</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -895,10 +937,19 @@ function CharacterSimulation({ weaponStages, armorStages, marketInfo, sillingUni
                             <span className="text-gray-500">-</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-right text-green-300 border-b border-gray-800">
-                          {eq.breakthroughValue != null 
-                            ? `${formatNumberWithSignificantDigits(eq.breakthroughValue)} 골드`
-                            : '-'}
+                        <td className="px-4 py-3 text-right border-b border-gray-800">
+                          {eq.breakthroughValue != null ? (
+                            <div>
+                              <div className="text-green-300 font-medium">
+                                {formatNumberWithSignificantDigits(eq.breakthroughValue)} 골드
+                              </div>
+                              <div className="text-xs text-gray-400 mt-1">
+                                {eq.isSerkaEquipment ? '전이 돌파석' : '순환 돌파석'}
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-gray-500">-</span>
+                          )}
                         </td>
                       </tr>
                     ))
@@ -924,6 +975,8 @@ function CharacterSimulation({ weaponStages, armorStages, marketInfo, sillingUni
 type Props = {
   weaponStages: RefiningStage[];
   armorStages: RefiningStage[];
+  weaponStagesSerka: RefiningStage[];
+  armorStagesSerka: RefiningStage[];
   marketInfo: Record<string, MarketItemInfo>;
   lastUpdated: string | null;
   silverCashValue: number | null;
@@ -991,6 +1044,10 @@ const FALLBACK_ICON: Record<string, string> = {
   '운명의 수호석': '🛡️',
   '운명의 돌파석': '🔷',
   '아비도스 융화 재료': '🧪',
+  '운명의 파괴석 결정': '💎',
+  '운명의 수호석 결정': '🛡️',
+  '위대한 운명의 돌파석': '🔷',
+  '상급 아비도스 융화 재료': '🧪',
   '운명의 파편': '✨',
   '운명의 파편 (경험치)': '✨',
   '야금술 : 업화 [11-14]': '🛠️',
@@ -1521,9 +1578,10 @@ type StageCardProps = {
   stage: RefiningStage;
   marketInfo: Record<string, MarketItemInfo>;
   sillingUnitPrice: number;
+  selectedTier: 'basic' | 'upper';
 };
 
-function StageCard({ stage, marketInfo, sillingUnitPrice }: StageCardProps) {
+function StageCard({ stage, marketInfo, sillingUnitPrice, selectedTier }: StageCardProps) {
   const { adjustPrice } = usePriceAdjustment();
   
   // 가격 조정이 적용된 marketInfo 생성
@@ -1597,7 +1655,7 @@ function StageCard({ stage, marketInfo, sillingUnitPrice }: StageCardProps) {
           <div>
             <h4 className="text-xs font-semibold text-purple-200 mb-2">경험치 재료 (첫 시도 1회)</h4>
             <div className="bg-gray-900/80 rounded-lg border border-gray-800 p-3">
-              <MaterialLine data={oneTimeCost} />
+              <MaterialLine data={oneTimeCost} selectedTier={selectedTier} />
             </div>
           </div>
         )}
@@ -1607,7 +1665,7 @@ function StageCard({ stage, marketInfo, sillingUnitPrice }: StageCardProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="bg-gray-900/80 rounded-lg border border-gray-800 divide-y divide-gray-800">
               {essentialLeft.map(item => (
-                <MaterialLine key={item.name} data={item} />
+                <MaterialLine key={item.name} data={item} selectedTier={selectedTier} />
               ))}
               {essentialLeft.length === 0 && (
                 <div className="px-4 py-3 text-xs text-gray-400">표시할 재료가 없습니다.</div>
@@ -1615,7 +1673,7 @@ function StageCard({ stage, marketInfo, sillingUnitPrice }: StageCardProps) {
             </div>
             <div className="bg-gray-900/80 rounded-lg border border-gray-800 divide-y divide-gray-800">
               {essentialRight.map(item => (
-                <MaterialLine key={item.name} data={item} />
+                <MaterialLine key={item.name} data={item} selectedTier={selectedTier} />
               ))}
             </div>
           </div>
@@ -1626,7 +1684,7 @@ function StageCard({ stage, marketInfo, sillingUnitPrice }: StageCardProps) {
             <h4 className="text-xs font-semibold text-purple-200 mb-2">보조 재료 (선택)</h4>
             <div className="bg-gray-900/80 rounded-lg border border-gray-800 divide-y divide-gray-800">
               {optionalCosts.map(item => (
-                <MaterialLine key={item.name} data={item} />
+                <MaterialLine key={item.name} data={item} selectedTier={selectedTier} />
               ))}
             </div>
           </div>
@@ -1916,9 +1974,26 @@ function StageCard({ stage, marketInfo, sillingUnitPrice }: StageCardProps) {
 
 function MaterialLine({
   data,
+  selectedTier,
 }: {
   data: CostLine;
+  selectedTier?: 'basic' | 'upper';
 }) {
+  // 세르카 장비일 때 재료 이름 변경
+  const getDisplayName = (name: string) => {
+    if (selectedTier === 'upper') {
+      const nameMap: Record<string, string> = {
+        '운명의 파괴석': '운명의 파괴석 결정',
+        '운명의 수호석': '운명의 수호석 결정',
+        '운명의 돌파석': '위대한 운명의 돌파석',
+        '아비도스 융화 재료': '상급 아비도스 융화 재료',
+      };
+      return nameMap[name] || name;
+    }
+    return name;
+  };
+
+  const displayName = getDisplayName(data.name);
   const quantityText = formatNumberWithSignificantDigits(data.quantity);
   const isSilver = data.name === SILVER_ITEM;
   const isGold = data.name === GOLD_ITEM;
@@ -1933,8 +2008,8 @@ function MaterialLine({
   return (
     <div className="flex items-center justify-between gap-3 px-4 py-2">
       <div className="flex items-center gap-2 text-sm text-white">
-        {isGold || isSilver ? null : <ItemIcon name={data.name} icon={iconUrl} />}
-        <span className="font-medium">{data.name}</span>
+        {isGold || isSilver ? null : <ItemIcon name={displayName} icon={iconUrl} />}
+        <span className="font-medium">{displayName}</span>
       </div>
       <div className="flex flex-col text-right text-xs text-gray-300">
         <span>
@@ -1953,7 +2028,7 @@ function MaterialLine({
   );
 }
 
-export default function RefiningSimulationClient({ weaponStages, armorStages, marketInfo, lastUpdated, silverCashValue, initialRates, initialCrystalGoldRate }: Props) {
+export default function RefiningSimulationClient({ weaponStages, armorStages, weaponStagesSerka, armorStagesSerka, marketInfo, lastUpdated, silverCashValue, initialRates, initialCrystalGoldRate }: Props) {
   const { adjustPrice } = usePriceAdjustment();
   const { state: priceOverrideState } = usePriceOverride();
   
@@ -2075,8 +2150,18 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
   const [activeSubTab, setActiveSubTab] = useState<'simulation' | 'special' | 'character'>('simulation');
   const [activeSimulationTab, setActiveSimulationTab] = useState<'weapon' | 'armor' | 'summary'>('weapon');
   const [selectedTier, setSelectedTier] = useState<'basic' | 'upper'>('basic');
+  const [activeSpecialTab, setActiveSpecialTab] = useState<'circular' | 'transition'>('circular');
   
-  const currentStages = activeSimulationTab === 'weapon' ? weaponStages : activeSimulationTab === 'armor' ? armorStages : [];
+  // selectedTier에 따라 적절한 stages 선택
+  const currentStages = useMemo(() => {
+    if (activeSimulationTab === 'weapon') {
+      return selectedTier === 'upper' ? weaponStagesSerka : weaponStages;
+    } else if (activeSimulationTab === 'armor') {
+      return selectedTier === 'upper' ? armorStagesSerka : armorStages;
+    }
+    return [];
+  }, [activeSimulationTab, selectedTier, weaponStages, armorStages, weaponStagesSerka, armorStagesSerka]);
+  
   const [selectedLevel, setSelectedLevel] = useState<number | 'all'>(currentStages[0]?.level ?? 'all');
   
   // 탭 변경 시 selectedLevel 업데이트
@@ -2137,7 +2222,7 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
     });
   }, [weaponStages, armorStages, adjustedMarketInfo]);
 
-  // 특수재련효율 데이터 계산
+  // 특수재련효율 데이터 계산 (순환 돌파석)
   const specialRefiningData = useMemo(() => {
     const allLevels = Array.from(new Set([...weaponStages.map(s => s.level), ...armorStages.map(s => s.level)])).sort((a, b) => a - b);
     
@@ -2202,6 +2287,80 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
       };
     });
   }, [weaponStages, armorStages, adjustedMarketInfo]);
+
+  // 특수재련효율 데이터 계산 (전이 돌파석 - 세르카 장비)
+  const specialRefiningDataSerka = useMemo(() => {
+    const allLevels = Array.from(new Set([...weaponStagesSerka.map(s => s.level), ...armorStagesSerka.map(s => s.level)])).sort((a, b) => a - b);
+    
+    // 전이 돌파석 소모 개수 계산
+    const getTransitionStoneCount = (level: number, type: 'weapon' | 'armor'): number => {
+      if (type === 'weapon') {
+        if (level >= 10 && level <= 11) return 25;
+        if (level >= 12 && level <= 13) return 30;
+        if (level >= 14 && level <= 16) return 35;
+        if (level >= 17 && level <= 19) return 40;
+        if (level >= 20 && level <= 21) return 45;
+        if (level >= 22 && level <= 23) return 50;
+        if (level >= 24 && level <= 25) return 55;
+      } else {
+        if (level >= 10 && level <= 11) return 10;
+        if (level >= 12 && level <= 13) return 12;
+        if (level >= 14 && level <= 16) return 14;
+        if (level >= 17 && level <= 19) return 16;
+        if (level >= 20 && level <= 21) return 18;
+        if (level >= 22 && level <= 23) return 20;
+        if (level >= 24 && level <= 25) return 22;
+      }
+      return 0;
+    };
+    
+    return allLevels.map((level, idx) => {
+      const weaponStage = weaponStagesSerka.find(s => s.level === level);
+      const armorStage = armorStagesSerka.find(s => s.level === level);
+      
+      let weaponValue: number | null = null;
+      let armorValue: number | null = null;
+      
+      if (weaponStage) {
+        const { optimalStrategy } = calculateOptimalStrategy(weaponStage, adjustedMarketInfo);
+        const expInfo = weaponStage.expMaterial ? (adjustedMarketInfo[weaponStage.expMaterial.name] || { unitPrice: 0 }) : null;
+        const expMaterialCost = weaponStage.expMaterial && expInfo
+          ? expInfo.unitPrice * weaponStage.expMaterial.quantity
+          : 0;
+        
+        const refiningCost = optimalStrategy.expectedCost - expMaterialCost;
+        const baseSuccessRate = weaponStage.baseSuccessRate / 100;
+        const stoneCount = getTransitionStoneCount(level, 'weapon');
+        
+        if (stoneCount > 0) {
+          weaponValue = (refiningCost * baseSuccessRate) / stoneCount;
+        }
+      }
+      
+      if (armorStage) {
+        const { optimalStrategy } = calculateOptimalStrategy(armorStage, adjustedMarketInfo);
+        const expInfo = armorStage.expMaterial ? (adjustedMarketInfo[armorStage.expMaterial.name] || { unitPrice: 0 }) : null;
+        const expMaterialCost = armorStage.expMaterial && expInfo
+          ? expInfo.unitPrice * armorStage.expMaterial.quantity
+          : 0;
+        
+        const refiningCost = optimalStrategy.expectedCost - expMaterialCost;
+        const baseSuccessRate = armorStage.baseSuccessRate / 100;
+        const stoneCount = getTransitionStoneCount(level, 'armor');
+        
+        if (stoneCount > 0) {
+          armorValue = (refiningCost * baseSuccessRate) / stoneCount;
+        }
+      }
+      
+      return {
+        level,
+        idx,
+        weaponValue,
+        armorValue,
+      };
+    });
+  }, [weaponStagesSerka, armorStagesSerka, adjustedMarketInfo]);
 
   // 전략 라벨을 간단한 형태로 변환
   function getStrategyLabel(description: string, stage: RefiningStage): string {
@@ -2403,7 +2562,7 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
                       className="px-3 py-2 bg-gray-900 text-white text-sm border border-gray-700 rounded-lg focus:outline-none focus:border-purple-500"
                     >
                       <option value="basic">카제로스 장비</option>
-                      <option value="upper">세르카 장비 (미구현)</option>
+                      <option value="upper">세르카 장비</option>
                     </select>
                 </div>
                 <div className="flex items-center gap-2">
@@ -2427,7 +2586,7 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
 
                 <div className="grid grid-cols-1 gap-5">
                   {filteredStages.map(stage => (
-                    <StageCard key={stage.level} stage={stage} marketInfo={marketInfo} sillingUnitPrice={sillingUnitPrice} />
+                    <StageCard key={stage.level} stage={stage} marketInfo={marketInfo} sillingUnitPrice={sillingUnitPrice} selectedTier={selectedTier} />
                   ))}
                 </div>
               </div>
@@ -2452,8 +2611,8 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
                       }}
                       className="px-3 py-2 bg-gray-900 text-white text-sm border border-gray-700 rounded-lg focus:outline-none focus:border-purple-500"
                     >
-                      <option value="basic">티어4 기본</option>
-                      <option value="upper">티어4 상위 (세르카 장비)</option>
+                      <option value="basic">카제로스 장비</option>
+                      <option value="upper">세르카 장비</option>
                     </select>
                 </div>
                 <div className="flex items-center gap-2">
@@ -2477,7 +2636,7 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
 
                 <div className="grid grid-cols-1 gap-5">
                   {filteredStages.map(stage => (
-                    <StageCard key={stage.level} stage={stage} marketInfo={marketInfo} sillingUnitPrice={sillingUnitPrice} />
+                    <StageCard key={stage.level} stage={stage} marketInfo={marketInfo} sillingUnitPrice={sillingUnitPrice} selectedTier={selectedTier} />
                   ))}
                 </div>
               </div>
@@ -2545,46 +2704,114 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, ma
         )}
 
         {activeSubTab === 'character' && (
-          <CharacterSimulation weaponStages={weaponStages} armorStages={armorStages} marketInfo={marketInfo} sillingUnitPrice={sillingUnitPrice} />
+          <CharacterSimulation weaponStages={weaponStages} armorStages={armorStages} weaponStagesSerka={weaponStagesSerka} armorStagesSerka={armorStagesSerka} marketInfo={marketInfo} sillingUnitPrice={sillingUnitPrice} />
         )}
 
         {activeSubTab === 'special' && (
           <div className="space-y-8">
-            <div className="space-y-2">
-              <p className="text-gray-300 text-sm">
-                순환 돌파석을 사용한 특수 재련의 효율을 계산합니다. 순환 돌파석 1개당 기대 가치를 확인할 수 있습니다.
-              </p>
+            {/* 탭 선택 */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setActiveSpecialTab('circular')}
+                className={`px-6 py-2 rounded-lg font-semibold border transition-colors ${
+                  activeSpecialTab === 'circular'
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-gray-800 text-gray-400 border-gray-600 hover:text-white hover:bg-gray-700 hover:border-gray-500'
+                }`}
+              >
+                순환 돌파석
+              </button>
+              <button
+                onClick={() => setActiveSpecialTab('transition')}
+                className={`px-6 py-2 rounded-lg font-semibold border transition-colors ${
+                  activeSpecialTab === 'transition'
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-gray-800 text-gray-400 border-gray-600 hover:text-white hover:bg-gray-700 hover:border-gray-500'
+                }`}
+              >
+                전이 돌파석
+              </button>
             </div>
 
-            {/* 특수 재련 효율 표 */}
-            <div className="bg-gray-900/70 rounded-lg border border-gray-700 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="min-w-full border border-gray-800 text-sm">
-                  <thead>
-                    <tr className="bg-gray-900/90 text-gray-200">
-                      <th className="px-4 py-3 text-left font-medium border-b border-gray-700">목표 재련 단계</th>
-                      <th className="px-4 py-3 text-right font-medium border-b border-gray-700">순환 돌파석 1개당 (무기)</th>
-                      <th className="px-4 py-3 text-right font-medium border-b border-gray-700">순환 돌파석 1개당 (방어구)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {specialRefiningData.map(({ level, idx, weaponValue, armorValue }) => (
-                      <tr key={level} className={idx % 2 === 0 ? 'bg-gray-900/50' : 'bg-gray-800/50'}>
-                        <td className="px-4 py-3 text-white font-medium border-b border-gray-800">
-                          {level - 1} → {level}강
-                        </td>
-                        <td className="px-4 py-3 text-right text-blue-300 border-b border-gray-800">
-                          {weaponValue != null ? formatCost(weaponValue) : '-'}
-                        </td>
-                        <td className="px-4 py-3 text-right text-purple-300 border-b border-gray-800">
-                          {armorValue != null ? formatCost(armorValue) : '-'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            {activeSpecialTab === 'circular' && (
+              <>
+                <div className="space-y-2">
+                  <p className="text-gray-300 text-sm">
+                    순환 돌파석을 사용한 특수 재련의 효율을 계산합니다. 순환 돌파석 1개당 기대 가치를 확인할 수 있습니다.
+                  </p>
+                </div>
+
+                {/* 특수 재련 효율 표 */}
+                <div className="bg-gray-900/70 rounded-lg border border-gray-700 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full border border-gray-800 text-sm">
+                      <thead>
+                        <tr className="bg-gray-900/90 text-gray-200">
+                          <th className="px-4 py-3 text-left font-medium border-b border-gray-700">목표 재련 단계</th>
+                          <th className="px-4 py-3 text-right font-medium border-b border-gray-700">순환 돌파석 1개당 (무기)</th>
+                          <th className="px-4 py-3 text-right font-medium border-b border-gray-700">순환 돌파석 1개당 (방어구)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {specialRefiningData.map(({ level, idx, weaponValue, armorValue }) => (
+                          <tr key={level} className={idx % 2 === 0 ? 'bg-gray-900/50' : 'bg-gray-800/50'}>
+                            <td className="px-4 py-3 text-white font-medium border-b border-gray-800">
+                              {level - 1} → {level}강
+                            </td>
+                            <td className="px-4 py-3 text-right text-blue-300 border-b border-gray-800">
+                              {weaponValue != null ? formatCost(weaponValue) : '-'}
+                            </td>
+                            <td className="px-4 py-3 text-right text-purple-300 border-b border-gray-800">
+                              {armorValue != null ? formatCost(armorValue) : '-'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {activeSpecialTab === 'transition' && (
+              <>
+                <div className="space-y-2">
+                  <p className="text-gray-300 text-sm">
+                    전이 돌파석을 사용한 특수 재련의 효율을 계산합니다. 전이 돌파석 1개당 기대 가치를 확인할 수 있습니다. (세르카 장비 기준)
+                  </p>
+                </div>
+
+                {/* 특수 재련 효율 표 */}
+                <div className="bg-gray-900/70 rounded-lg border border-gray-700 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full border border-gray-800 text-sm">
+                      <thead>
+                        <tr className="bg-gray-900/90 text-gray-200">
+                          <th className="px-4 py-3 text-left font-medium border-b border-gray-700">목표 재련 단계</th>
+                          <th className="px-4 py-3 text-right font-medium border-b border-gray-700">전이 돌파석 1개당 (무기)</th>
+                          <th className="px-4 py-3 text-right font-medium border-b border-gray-700">전이 돌파석 1개당 (방어구)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {specialRefiningDataSerka.map(({ level, idx, weaponValue, armorValue }) => (
+                          <tr key={level} className={idx % 2 === 0 ? 'bg-gray-900/50' : 'bg-gray-800/50'}>
+                            <td className="px-4 py-3 text-white font-medium border-b border-gray-800">
+                              {level - 1} → {level}강
+                            </td>
+                            <td className="px-4 py-3 text-right text-blue-300 border-b border-gray-800">
+                              {weaponValue != null ? formatCost(weaponValue) : '-'}
+                            </td>
+                            <td className="px-4 py-3 text-right text-purple-300 border-b border-gray-800">
+                              {armorValue != null ? formatCost(armorValue) : '-'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>

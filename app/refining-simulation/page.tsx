@@ -13,6 +13,8 @@ import { getMarketCache } from '@/lib/marketCache';
 
 const UPGRADE_FILE_WEAPON = path.join(process.cwd(), 'upgrade1.csv');
 const UPGRADE_FILE_ARMOR = path.join(process.cwd(), 'upgrade2.csv');
+const UPGRADE_FILE_WEAPON_SERKA = path.join(process.cwd(), 'upgrade3.csv');
+const UPGRADE_FILE_ARMOR_SERKA = path.join(process.cwd(), 'upgrade4.csv');
 
 // 무기용 상수
 const OPTIONAL_METALLURGY_ITEMS_WEAPON = [
@@ -47,6 +49,24 @@ const BASE_MATERIALS_ARMOR = [
   '운명의 수호석',
   '운명의 돌파석',
   '아비도스 융화 재료',
+  '운명의 파편',
+  '실링',
+];
+
+// 세르카 장비용 (무기)
+const BASE_MATERIALS_WEAPON_SERKA = [
+  '운명의 파괴석 결정',
+  '위대한 운명의 돌파석',
+  '상급 아비도스 융화 재료',
+  '운명의 파편',
+  '실링',
+];
+
+// 세르카 장비용 (방어구)
+const BASE_MATERIALS_ARMOR_SERKA = [
+  '운명의 수호석 결정',
+  '위대한 운명의 돌파석',
+  '상급 아비도스 융화 재료',
   '운명의 파편',
   '실링',
 ];
@@ -330,12 +350,16 @@ export default async function RefiningSimulationPage() {
   const [
     weaponData,
     armorData,
+    weaponDataSerka,
+    armorDataSerka,
     { infoMap, lastUpdated, silverCashValue },
     rates,
     crystalGoldRate
   ] = await Promise.all([
     parseUpgradeCsv(UPGRADE_FILE_WEAPON, 'upgrade1.csv'),
     parseUpgradeCsv(UPGRADE_FILE_ARMOR, 'upgrade2.csv'),
+    parseUpgradeCsv(UPGRADE_FILE_WEAPON_SERKA, 'upgrade3.csv'),
+    parseUpgradeCsv(UPGRADE_FILE_ARMOR_SERKA, 'upgrade4.csv'),
     getMarketInfoMap(),
     getLatestRates(),
     getLatestCrystalGoldRate(),
@@ -359,10 +383,28 @@ export default async function RefiningSimulationPage() {
     OPTIONAL_METALLURGY_ITEMS_ARMOR
   );
 
+  const weaponStagesSerka = createStages(
+    weaponDataSerka.levels,
+    weaponDataSerka.rowMap,
+    BASE_MATERIALS_WEAPON_SERKA,
+    BREATH_ITEM_WEAPON,
+    OPTIONAL_METALLURGY_ITEMS_WEAPON
+  );
+
+  const armorStagesSerka = createStages(
+    armorDataSerka.levels,
+    armorDataSerka.rowMap,
+    BASE_MATERIALS_ARMOR_SERKA,
+    BREATH_ITEM_ARMOR,
+    OPTIONAL_METALLURGY_ITEMS_ARMOR
+  );
+
   return (
     <RefiningSimulationClient
       weaponStages={weaponStages}
       armorStages={armorStages}
+      weaponStagesSerka={weaponStagesSerka}
+      armorStagesSerka={armorStagesSerka}
       marketInfo={infoMap}
       lastUpdated={lastUpdated}
       silverCashValue={silverCashValue}
