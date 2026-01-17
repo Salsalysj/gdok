@@ -1,6 +1,9 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
+export const metadata = {
+  title: '이벤트 효율 - 껨산기',
+  description: 'PC방, 아크패스, 혈석상점, 이벤트 상점 등 이벤트 효율을 계산하고 최적의 이벤트 참여 전략을 제시합니다.',
+};
 import { promises as fs } from 'fs';
 import path from 'path';
 import { createClient } from '@supabase/supabase-js';

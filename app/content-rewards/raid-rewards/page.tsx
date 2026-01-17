@@ -34,8 +34,25 @@ export default async function RaidRewardsPage() {
   const raidRewardsPath = path.join(process.cwd(), 'data', 'raid-rewards.json');
   const raidRewardsData = JSON.parse(fs.readFileSync(raidRewardsPath, 'utf-8'));
   
+  // raid-rewards-1730.json 읽기
+  const raidRewards1730Path = path.join(process.cwd(), 'data', 'raid-rewards-1730.json');
+  let raidRewards1730Data;
+  try {
+    raidRewards1730Data = JSON.parse(fs.readFileSync(raidRewards1730Path, 'utf-8'));
+  } catch (error) {
+    console.error('raid-rewards-1730.json 로드 실패:', error);
+    raidRewards1730Data = raidRewardsData; // 실패 시 기본 데이터 사용
+  }
+  
   // 환율 데이터 가져오기
   const rates = await getRates();
   
-  return <RaidRewardsClient data={raidRewardsData} valueDbEntryMap={valueDbEntryMap} rates={rates} />;
+  return (
+    <RaidRewardsClient 
+      data={raidRewardsData} 
+      data1730={raidRewards1730Data}
+      valueDbEntryMap={valueDbEntryMap} 
+      rates={rates} 
+    />
+  );
 }

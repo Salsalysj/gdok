@@ -43,10 +43,12 @@ type RatesProps = { exchange: number | null; discord: number | null };
 
 export default function RaidRewardsClient({ 
   data, 
+  data1730,
   valueDbEntryMap,
   rates
 }: { 
   data: CategoryData;
+  data1730?: CategoryData;
   valueDbEntryMap?: ValueDbEntryMap;
   rates?: RatesProps;
 }) {
@@ -54,6 +56,14 @@ export default function RaidRewardsClient({
   const { state: priceOverrideState } = usePriceOverride();
   const { adjustedEntries } = useValueDb();
   const [refreshKey, setRefreshKey] = useState(0);
+  
+  // 세르카 장비 계승 완료 스위치 상태 (UI용으로만 사용, 실제 데이터 선택에는 사용하지 않음)
+  const [isSerkaCompleted, setIsSerkaCompleted] = useState<boolean>(false);
+  // 물음표 버튼 메모 표시 상태
+  const [showSerkaTooltip, setShowSerkaTooltip] = useState<boolean>(false);
+  
+  // 항상 raid-rewards.json 데이터 사용
+  const currentData = data;
   
   // adjustedEntries를 맵으로 변환
   const adjustedEntriesMap = useMemo(() => {
@@ -76,73 +86,202 @@ export default function RaidRewardsClient({
     };
   }, []);
 
-  const categories = Object.keys(data);
+  const categories = Object.keys(currentData);
   const [activeCategory, setActiveCategory] = useState<string>(categories[0] || '');
   const [activeRaid, setActiveRaid] = useState<string>('');
-  const [activeDifficulty, setActiveDifficulty] = useState<string>('');
 
   // 카테고리 변경 시 레이드 초기화
   useEffect(() => {
-    if (activeCategory && data[activeCategory]) {
-      const raids = Object.keys(data[activeCategory]);
+    if (activeCategory && currentData[activeCategory]) {
+      const raids = Object.keys(currentData[activeCategory]);
       setActiveRaid(raids[0] || '');
     }
-  }, [activeCategory, data]);
-
-  // 레이드 변경 시 난이도 초기화
-  useEffect(() => {
-    if (activeCategory && activeRaid && data[activeCategory]?.[activeRaid]) {
-      const difficulties = Object.keys(data[activeCategory][activeRaid]);
-      setActiveDifficulty(difficulties[0] || '');
-    }
-  }, [activeCategory, activeRaid, data]);
-
-  const currentRaidData = useMemo(() => {
-    if (!activeCategory || !activeRaid || !activeDifficulty) return null;
-    const diffData = data[activeCategory]?.[activeRaid]?.[activeDifficulty];
-    return diffData?.gates || null;
-  }, [data, activeCategory, activeRaid, activeDifficulty]);
-  
-  const currentLevel = useMemo(() => {
-    if (!activeCategory || !activeRaid || !activeDifficulty) return '';
-    return data[activeCategory]?.[activeRaid]?.[activeDifficulty]?.level || '';
-  }, [data, activeCategory, activeRaid, activeDifficulty]);
+  }, [activeCategory, currentData]);
 
   const raids = useMemo(() => {
-    if (!activeCategory || !data[activeCategory]) return [];
-    return Object.keys(data[activeCategory]);
-  }, [data, activeCategory]);
+    if (!activeCategory || !currentData[activeCategory]) return [];
+    return Object.keys(currentData[activeCategory]);
+  }, [currentData, activeCategory]);
 
-  const difficulties = useMemo(() => {
-    if (!activeCategory || !activeRaid || !data[activeCategory]?.[activeRaid]) return [];
-    return Object.keys(data[activeCategory][activeRaid]);
-  }, [data, activeCategory, activeRaid]);
+  // 선택된 레이드의 모든 난이도 데이터
+  const allDifficultiesData = useMemo(() => {
+    if (!activeCategory || !activeRaid || !currentData[activeCategory]?.[activeRaid]) return [];
+    const raidData = currentData[activeCategory][activeRaid];
+    return Object.entries(raidData).map(([difficulty, diffData]) => ({
+      difficulty,
+      level: diffData.level || '',
+      gates: diffData.gates || {}
+    }));
+  }, [currentData, activeCategory, activeRaid]);
 
   // 가격 조정 함수 - adjustedEntries 사용 (가치계산DB 사이드바와 동일한 방식)
+  // 반환값: { price: number | null, method?: '거래소 기준' | '5:1 합성 기준' }
   const getAdjustedPrice = useMemo(() => {
-    return (itemName: string): number | null => {
+    return (itemName: string): { price: number | null; method?: '거래소 기준' | '5:1 합성 기준' } => {
       // 골드는 1골드로 계산
       if (itemName === '골드') {
-        return 1;
+        return { price: 1 };
+      }
+      
+      // 세르카 장비 계승 완료 시 특정 아이템들의 가격 계산 로직 적용
+      if (isSerkaCompleted) {
+        // 운명의 파괴석: 거래소 가격 vs '운명의 파괴석 결정'/5 중 더 낮은 단가
+        if (itemName === '운명의 파괴석') {
+          const marketEntry = adjustedEntriesMap[itemName];
+          const marketPrice = marketEntry?.unitValue ?? null;
+          
+          const crystalEntry = adjustedEntriesMap['운명의 파괴석 결정'];
+          const crystalPrice = crystalEntry?.unitValue != null ? crystalEntry.unitValue / 5 : null;
+          
+          if (marketPrice != null && crystalPrice != null) {
+            if (marketPrice <= crystalPrice) {
+              return { price: marketPrice, method: '거래소 기준' };
+            } else {
+              return { price: crystalPrice, method: '5:1 합성 기준' };
+            }
+          } else if (marketPrice != null) {
+            return { price: marketPrice, method: '거래소 기준' };
+          } else if (crystalPrice != null) {
+            return { price: crystalPrice, method: '5:1 합성 기준' };
+          }
+        }
+        
+        // 운명의 수호석: 거래소 가격 vs '운명의 수호석 결정'/5 중 더 낮은 단가
+        if (itemName === '운명의 수호석') {
+          const marketEntry = adjustedEntriesMap[itemName];
+          const marketPrice = marketEntry?.unitValue ?? null;
+          
+          const crystalEntry = adjustedEntriesMap['운명의 수호석 결정'];
+          const crystalPrice = crystalEntry?.unitValue != null ? crystalEntry.unitValue / 5 : null;
+          
+          if (marketPrice != null && crystalPrice != null) {
+            if (marketPrice <= crystalPrice) {
+              return { price: marketPrice, method: '거래소 기준' };
+            } else {
+              return { price: crystalPrice, method: '5:1 합성 기준' };
+            }
+          } else if (marketPrice != null) {
+            return { price: marketPrice, method: '거래소 기준' };
+          } else if (crystalPrice != null) {
+            return { price: crystalPrice, method: '5:1 합성 기준' };
+          }
+        }
+        
+        // 운명의 돌파석: 거래소 가격 vs '위대한 운명의 돌파석'/5 중 더 낮은 단가
+        if (itemName === '운명의 돌파석') {
+          const marketEntry = adjustedEntriesMap[itemName];
+          const marketPrice = marketEntry?.unitValue ?? null;
+          
+          const greatEntry = adjustedEntriesMap['위대한 운명의 돌파석'];
+          const greatPrice = greatEntry?.unitValue != null ? greatEntry.unitValue / 5 : null;
+          
+          if (marketPrice != null && greatPrice != null) {
+            if (marketPrice <= greatPrice) {
+              return { price: marketPrice, method: '거래소 기준' };
+            } else {
+              return { price: greatPrice, method: '5:1 합성 기준' };
+            }
+          } else if (marketPrice != null) {
+            return { price: marketPrice, method: '거래소 기준' };
+          } else if (greatPrice != null) {
+            return { price: greatPrice, method: '5:1 합성 기준' };
+          }
+        }
+        
+        // 순환 돌파석: 항상 '전이 돌파석'/5 단가 사용
+        if (itemName === '순환 돌파석') {
+          const transferEntry = adjustedEntriesMap['전이 돌파석'];
+          const transferPrice = transferEntry?.unitValue != null ? transferEntry.unitValue / 5 : null;
+          
+          if (transferPrice != null) {
+            return { price: transferPrice, method: '5:1 합성 기준' };
+          }
+        }
+      }
+      
+      // 운명의 파괴석 결정: 거래소 vs '운명의 파괴석'x5 중 더 저렴한 가격
+      if (itemName === '운명의 파괴석 결정') {
+        const marketEntry = adjustedEntriesMap[itemName];
+        const marketPrice = marketEntry?.unitValue ?? null;
+        
+        const sourceEntry = adjustedEntriesMap['운명의 파괴석'];
+        const synthesisPrice = sourceEntry?.unitValue != null ? sourceEntry.unitValue * 5 : null;
+        
+        if (marketPrice != null && synthesisPrice != null) {
+          if (marketPrice <= synthesisPrice) {
+            return { price: marketPrice, method: '거래소 기준' };
+          } else {
+            return { price: synthesisPrice, method: '5:1 합성 기준' };
+          }
+        } else if (marketPrice != null) {
+          return { price: marketPrice, method: '거래소 기준' };
+        } else if (synthesisPrice != null) {
+          return { price: synthesisPrice, method: '5:1 합성 기준' };
+        }
+        return { price: null };
+      }
+      
+      // 운명의 수호석 결정: 거래소 vs '운명의 수호석'x5 중 더 저렴한 가격
+      if (itemName === '운명의 수호석 결정') {
+        const marketEntry = adjustedEntriesMap[itemName];
+        const marketPrice = marketEntry?.unitValue ?? null;
+        
+        const sourceEntry = adjustedEntriesMap['운명의 수호석'];
+        const synthesisPrice = sourceEntry?.unitValue != null ? sourceEntry.unitValue * 5 : null;
+        
+        if (marketPrice != null && synthesisPrice != null) {
+          if (marketPrice <= synthesisPrice) {
+            return { price: marketPrice, method: '거래소 기준' };
+          } else {
+            return { price: synthesisPrice, method: '5:1 합성 기준' };
+          }
+        } else if (marketPrice != null) {
+          return { price: marketPrice, method: '거래소 기준' };
+        } else if (synthesisPrice != null) {
+          return { price: synthesisPrice, method: '5:1 합성 기준' };
+        }
+        return { price: null };
+      }
+      
+      // 위대한 운명의 돌파석: 거래소 vs '운명의 돌파석'x5 중 더 저렴한 가격
+      if (itemName === '위대한 운명의 돌파석') {
+        const marketEntry = adjustedEntriesMap[itemName];
+        const marketPrice = marketEntry?.unitValue ?? null;
+        
+        const sourceEntry = adjustedEntriesMap['운명의 돌파석'];
+        const synthesisPrice = sourceEntry?.unitValue != null ? sourceEntry.unitValue * 5 : null;
+        
+        if (marketPrice != null && synthesisPrice != null) {
+          if (marketPrice <= synthesisPrice) {
+            return { price: marketPrice, method: '거래소 기준' };
+          } else {
+            return { price: synthesisPrice, method: '5:1 합성 기준' };
+          }
+        } else if (marketPrice != null) {
+          return { price: marketPrice, method: '거래소 기준' };
+        } else if (synthesisPrice != null) {
+          return { price: synthesisPrice, method: '5:1 합성 기준' };
+        }
+        return { price: null };
       }
       
       // adjustedEntries에서 찾기 (이미 가격 조정이 적용됨)
       const entry = adjustedEntriesMap[itemName];
       if (entry && entry.unitValue != null) {
-        return entry.unitValue;
+        return { price: entry.unitValue };
       }
       
       // 운명의 파편 - "운명의 파편 1개당"으로도 찾기
       if (itemName === '운명의 파편') {
         const fragmentEntry = adjustedEntriesMap['운명의 파편 1개당'];
         if (fragmentEntry && fragmentEntry.unitValue != null) {
-          return fragmentEntry.unitValue;
+          return { price: fragmentEntry.unitValue };
         }
       }
       
-      return null;
+      return { price: null };
     };
-  }, [adjustedEntriesMap, refreshKey, priceOverrideState]);
+  }, [adjustedEntriesMap, refreshKey, priceOverrideState, isSerkaCompleted]);
 
   // 거래가능/귀속 판별
   const tradableSet = useMemo(() => new Set<string>([
@@ -209,9 +348,9 @@ export default function RaidRewardsClient({
     for (const [itemName, quantity] of Object.entries(rewards)) {
       if (isExcludedForTotal(itemName)) continue;
       
-      const price = getAdjustedPrice(itemName);
-      if (price !== null) {
-        const amount = price * quantity;
+      const priceInfo = getAdjustedPrice(itemName);
+      if (priceInfo.price !== null) {
+        const amount = priceInfo.price * quantity;
         total += amount;
         
         const tradeInfo = getTradeClass(itemName);
@@ -240,25 +379,72 @@ export default function RaidRewardsClient({
   return (
     <div className="min-h-screen bg-gray-950 p-4 md:p-6 lg:p-8">
       <div>
-        <div className="mb-6 md:mb-10">
-          <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">
+        <div className="mb-8 md:mb-12">
+          <h1 className="text-4xl font-bold tracking-tight text-white mb-3 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
             레이드 보상 계산기
           </h1>
-          <p className="text-base text-gray-400">레이드별 보상과 골드 가치를 확인하세요.</p>
+          <p className="text-lg text-gray-400">레이드별 보상과 골드 가치를 확인하세요.</p>
+        </div>
+
+        {/* 세르카 장비 계승 완료 스위치 */}
+        <div className="mb-8 bg-gradient-to-r from-gray-800/50 to-gray-900/50 backdrop-blur rounded-xl p-4 border border-gray-700/50 shadow-lg">
+          <div className="flex items-start gap-3">
+            <label className="flex items-center gap-3 cursor-pointer group">
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  checked={isSerkaCompleted}
+                  onChange={(e) => setIsSerkaCompleted(e.target.checked)}
+                  className="sr-only"
+                />
+                <div
+                  className={`w-16 h-8 rounded-full transition-all duration-300 shadow-inner ${
+                    isSerkaCompleted ? 'bg-gradient-to-r from-blue-500 to-blue-600 shadow-blue-500/50' : 'bg-gray-700'
+                  }`}
+                >
+                  <div
+                    className={`w-7 h-7 rounded-full bg-white shadow-lg transition-transform duration-300 transform ${
+                      isSerkaCompleted ? 'translate-x-8' : 'translate-x-0.5'
+                    } mt-0.5`}
+                  />
+                </div>
+              </div>
+              <span className="text-gray-200 font-semibold group-hover:text-white transition-colors">
+                세르카 장비 계승 완료
+              </span>
+            </label>
+            <div className="relative">
+              <button
+                onClick={() => setShowSerkaTooltip(!showSerkaTooltip)}
+                className="w-6 h-6 rounded-full bg-gradient-to-br from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 text-gray-400 hover:text-white flex items-center justify-center text-xs font-bold transition-all shadow-md hover:shadow-lg"
+                aria-label="설명 보기"
+              >
+                ?
+              </button>
+              {showSerkaTooltip && (
+                <div className="absolute left-0 top-8 z-10 p-4 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-300 w-[500px] shadow-2xl backdrop-blur">
+                  상위 재료 ÷ 5 (합성 기준) 의 가치를 반영하여 계산합니다. 예외적으로 상위 재료의 거래소 가격이 하위재료의 5배 이상일 때는 하위재료의 거래소 단가를 그대로 반영합니다.
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* 구분 선택 (에픽/카제로스/그림자) */}
         <div className="mb-6">
-          <h3 className="text-sm font-medium text-gray-400 mb-2">구분</h3>
-          <div className="flex flex-wrap gap-2">
+          <h3 className="text-base font-semibold text-gray-300 mb-3 flex items-center gap-2">
+            <span className="w-1 h-4 bg-blue-500 rounded"></span>
+            구분
+          </h3>
+          <div className="flex flex-wrap gap-3">
             {categories.map(category => (
               <button
                 key={category}
                 onClick={() => setActiveCategory(category)}
-                className={`px-4 py-2 rounded font-semibold ${
+                className={`px-5 py-2.5 rounded-lg font-semibold transition-all shadow-md hover:shadow-lg ${
                   activeCategory === category
-                    ? 'bg-gray-700 text-white'
-                    : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
+                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white scale-105 shadow-blue-500/30'
+                    : 'bg-gray-800/80 text-gray-400 hover:text-white hover:bg-gray-700/80 hover:scale-105'
                 }`}
               >
                 {category}
@@ -269,17 +455,20 @@ export default function RaidRewardsClient({
 
         {/* 레이드 선택 */}
         {raids.length > 0 && (
-          <div className="mb-6">
-            <h3 className="text-sm font-medium text-gray-400 mb-2">레이드</h3>
-            <div className="flex flex-wrap gap-2">
+          <div className="mb-8">
+            <h3 className="text-base font-semibold text-gray-300 mb-3 flex items-center gap-2">
+              <span className="w-1 h-4 bg-purple-500 rounded"></span>
+              레이드
+            </h3>
+            <div className="flex flex-wrap gap-3">
               {raids.map(raid => (
                 <button
                   key={raid}
                   onClick={() => setActiveRaid(raid)}
-                  className={`px-4 py-2 rounded font-semibold ${
+                  className={`px-5 py-2.5 rounded-lg font-semibold transition-all shadow-md hover:shadow-lg ${
                     activeRaid === raid
-                      ? 'bg-gray-700 text-white'
-                      : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
+                      ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white scale-105 shadow-purple-500/30'
+                      : 'bg-gray-800/80 text-gray-400 hover:text-white hover:bg-gray-700/80 hover:scale-105'
                   }`}
                 >
                   {raid}
@@ -289,126 +478,116 @@ export default function RaidRewardsClient({
           </div>
         )}
 
-        {/* 난이도 선택 */}
-        {difficulties.length > 0 && (
-          <div className="mb-6">
-            <h3 className="text-sm font-medium text-gray-400 mb-2">난이도</h3>
-            <div className="flex flex-wrap gap-2">
-              {difficulties.map(difficulty => {
-                const level = data[activeCategory]?.[activeRaid]?.[difficulty]?.level || '';
-                return (
-                  <button
-                    key={difficulty}
-                    onClick={() => setActiveDifficulty(difficulty)}
-                    className={`px-4 py-2 rounded font-semibold ${
-                      activeDifficulty === difficulty
-                        ? 'bg-gray-700 text-white'
-                        : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
-                    }`}
-                  >
-                    {difficulty} {level && `(${level})`}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
+        {/* 요약 카드 - 모든 난이도 합계 */}
+        {allDifficultiesData.length > 0 && (() => {
+          const difficultySummary: { difficulty: string; level: string; clearGold: number; clearBound: number; moreCost: number; moreBound: number; gates: { gate: string; moreCost: number; efficiency: number; isProfit: boolean }[] }[] = [];
 
-        {/* 요약 카드 */}
-        {currentRaidData && (() => {
-          // 전체 합계 계산
-          let totalClearGold = 0;
-          let totalClearBound = 0;
-          let totalMoreCost = 0;
-          let totalMoreBound = 0;
-          const gateEfficiency: { gate: string; efficiency: number; isProfit: boolean }[] = [];
+          allDifficultiesData.forEach(({ difficulty, level, gates }) => {
+            let clearGold = 0;
+            let clearBound = 0;
+            let moreCost = 0;
+            let moreBound = 0;
+            const gateEfficiency: { gate: string; moreCost: number; efficiency: number; isProfit: boolean }[] = [];
 
-          Object.entries(currentRaidData).forEach(([gateNumber, gateData]) => {
-            // 클리어 골드 및 귀속 아이템
-            if (gateData.클리어) {
-              const clearGold = gateData.클리어['골드'] || 0;
-              totalClearGold += clearGold;
-              
-              const boundItems = Object.entries(gateData.클리어).filter(([name]) => name !== '골드');
-              const boundTotal = boundItems.reduce((sum, [itemName, quantity]) => {
-                if (isExcludedForTotal(itemName)) return sum;
-                const price = getAdjustedPrice(itemName);
-                return sum + (price !== null ? price * quantity : 0);
-              }, 0);
-              totalClearBound += boundTotal;
-            }
+            Object.entries(gates).forEach(([gateNumber, gateData]) => {
+              // 클리어 골드 및 귀속 아이템
+              if (gateData.클리어) {
+                const gateClearGold = gateData.클리어['골드'] || 0;
+                clearGold += gateClearGold;
+                
+                const boundItems = Object.entries(gateData.클리어).filter(([name]) => name !== '골드');
+                const boundTotal = boundItems.reduce((sum, [itemName, quantity]) => {
+                  if (isExcludedForTotal(itemName)) return sum;
+                  const priceInfo = getAdjustedPrice(itemName);
+                  return sum + (priceInfo.price !== null ? priceInfo.price * quantity : 0);
+                }, 0);
+                clearBound += boundTotal;
+              }
 
-            // 더보기 비용 및 귀속 아이템
-            if (gateData.더보기) {
-              const moreCost = Math.abs(gateData.더보기['골드'] || 0);
-              totalMoreCost += moreCost;
-              
-              const boundItems = Object.entries(gateData.더보기).filter(([name]) => name !== '골드');
-              const boundTotal = boundItems.reduce((sum, [itemName, quantity]) => {
-                if (isExcludedForTotal(itemName)) return sum;
-                const price = getAdjustedPrice(itemName);
-                return sum + (price !== null ? price * quantity : 0);
-              }, 0);
-              totalMoreBound += boundTotal;
+              // 더보기 비용 및 귀속 아이템
+              if (gateData.더보기) {
+                const gateMoreCost = Math.abs(gateData.더보기['골드'] || 0);
+                moreCost += gateMoreCost;
+                
+                const boundItems = Object.entries(gateData.더보기).filter(([name]) => name !== '골드');
+                const boundTotal = boundItems.reduce((sum, [itemName, quantity]) => {
+                  if (isExcludedForTotal(itemName)) return sum;
+                  const priceInfo = getAdjustedPrice(itemName);
+                  return sum + (priceInfo.price !== null ? priceInfo.price * quantity : 0);
+                }, 0);
+                moreBound += boundTotal;
 
-              // 관문별 효율
-              const efficiency = boundTotal - moreCost;
-              gateEfficiency.push({
-                gate: gateNumber,
-                efficiency,
-                isProfit: efficiency >= 0
-              });
-            }
+                // 관문별 효율
+                const efficiency = boundTotal - gateMoreCost;
+                gateEfficiency.push({
+                  gate: gateNumber,
+                  moreCost: gateMoreCost,
+                  efficiency,
+                  isProfit: efficiency >= 0
+                });
+              }
+            });
+
+            difficultySummary.push({
+              difficulty,
+              level,
+              clearGold,
+              clearBound,
+              moreCost,
+              moreBound,
+              gates: gateEfficiency
+            });
           });
 
           return (
-            <div className="mb-6 bg-gray-800 rounded p-6 border border-gray-700">
-              <h3 className="text-2xl font-bold text-white mb-4">요약</h3>
+            <div className="mb-8 bg-gradient-to-br from-gray-800 via-gray-800 to-gray-900 rounded-xl p-6 border border-gray-700 shadow-2xl">
+              <h3 className="text-2xl font-bold text-white mb-5 flex items-center gap-2">
+                <span className="inline-block w-1 h-6 bg-blue-500 rounded"></span>
+                요약
+              </h3>
               
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {/* 좌측 - 클리어 정보 */}
-                <div className="bg-gray-900 rounded border border-gray-700 p-4">
-                  <h4 className="text-lg font-semibold text-blue-300 mb-3">클리어 보상</h4>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between py-2 border-b border-gray-700">
-                      <span className="text-green-300 font-semibold">클리어 골드 총합</span>
-                      <span className="text-green-300 font-bold">
-                        {totalClearGold.toLocaleString('ko-KR')}골드
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between py-2">
-                      <span className="text-red-300 font-semibold">귀속 아이템 총합</span>
-                      <span className="text-red-300 font-bold">
-                        {formatNumberWithSignificantDigits(totalClearBound)}골드
-                      </span>
-                    </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                {/* 좌측 - 난이도별 총합 */}
+                <div className="bg-gray-900/60 backdrop-blur rounded-lg border border-gray-700/50 p-4 shadow-lg">
+                  <div className="space-y-3">
+                    {difficultySummary.map(({ difficulty, level, clearGold, clearBound, moreCost, moreBound }) => (
+                      <div key={difficulty} className="border-b border-gray-700/50 pb-2.5 last:border-0 last:pb-0">
+                        <div className="text-gray-300 mb-2 text-base font-semibold">
+                          {difficulty} {level && `(${level})`}
+                        </div>
+                        <div className="text-green-400 font-medium text-base ml-2">
+                          클리어골드 {clearGold.toLocaleString('ko-KR')}골드
+                          <span className="text-xs text-gray-500 ml-1">
+                            (귀속재료: {formatNumberWithSignificantDigits(clearBound)}골드)
+                          </span>
+                        </div>
+                        <div className="text-orange-400 font-medium text-base ml-2">
+                          더보기비용 {moreCost.toLocaleString('ko-KR')}골드
+                          <span className="text-xs text-gray-500 ml-1">
+                            (귀속재료: {formatNumberWithSignificantDigits(moreBound)}골드)
+                          </span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
-                {/* 우측 - 더보기 정보 */}
-                <div className="bg-gray-900 rounded border border-gray-700 p-4">
-                  <h4 className="text-lg font-semibold text-purple-300 mb-3">더보기 효율</h4>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between py-2 border-b border-gray-700">
-                      <span className="text-orange-300 font-semibold">더보기 비용 총합</span>
-                      <span className="text-orange-300 font-bold">
-                        {totalMoreCost.toLocaleString('ko-KR')}골드
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between py-2 border-b border-gray-700">
-                      <span className="text-red-300 font-semibold">귀속 아이템 총합</span>
-                      <span className="text-red-300 font-bold">
-                        {formatNumberWithSignificantDigits(totalMoreBound)}골드
-                      </span>
-                    </div>
-                    
-                    {/* 관문별 효율 */}
-                    {gateEfficiency.map(({ gate, efficiency, isProfit }) => (
-                      <div key={gate} className="flex items-center justify-between py-1.5">
-                        <span className="text-gray-300">{gate}관문</span>
-                        <span className={`font-semibold ${isProfit ? 'text-green-400' : 'text-red-400'}`}>
-                          {formatNumberWithSignificantDigits(Math.abs(efficiency))}골드 {isProfit ? '이득' : '손해'}
-                        </span>
+                {/* 우측 - 관문별 효율 (난이도별) */}
+                <div className="bg-gray-900/60 backdrop-blur rounded-lg border border-gray-700/50 p-4 shadow-lg">
+                  <div className="space-y-3">
+                    {difficultySummary.map(({ difficulty, level, gates }) => (
+                      <div key={difficulty} className="border-b border-gray-700/50 pb-2.5 last:border-0 last:pb-0">
+                        <div className="text-gray-300 mb-2 text-base font-semibold">
+                          {difficulty} {level && `(${level})`}
+                        </div>
+                        {gates.map(({ gate, moreCost, efficiency, isProfit }) => (
+                          <div key={gate} className="flex items-center justify-between text-base ml-2">
+                            <span className="text-gray-300">{gate}관문 더보기비용: {formatNumberWithSignificantDigits(moreCost)}골드</span>
+                            <span className={`font-bold ${isProfit ? 'text-green-400' : 'text-red-400'}`}>
+                              {formatNumberWithSignificantDigits(Math.abs(efficiency))}골드 {isProfit ? '이득' : '손해'}
+                            </span>
+                          </div>
+                        ))}
                       </div>
                     ))}
                   </div>
@@ -418,57 +597,72 @@ export default function RaidRewardsClient({
           );
         })()}
 
-        {/* 관문별 보상 표시 */}
-        {currentRaidData && (
+        {/* 관문별 보상 표시 - 모든 난이도 */}
+        {allDifficultiesData.length > 0 && (
           <div className="space-y-6">
-            {Object.entries(currentRaidData).map(([gateNumber, gateData]) => (
-              <div key={gateNumber} className="bg-gray-800 rounded p-6 border border-gray-700">
-                <h3 className="text-2xl font-bold text-white mb-4">{gateNumber}관문</h3>
+            {allDifficultiesData.map(({ difficulty, level, gates }) => (
+              <div key={difficulty} className="bg-gradient-to-br from-gray-800 via-gray-850 to-gray-900 rounded-xl p-5 border border-gray-700/50 shadow-xl">
+                <h2 className="text-2xl font-bold text-white mb-5 flex items-center gap-2">
+                  <span className="inline-block w-1 h-6 bg-purple-500 rounded"></span>
+                  {difficulty} {level && `(${level})`}
+                </h2>
                 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="space-y-4">
+                  {Object.entries(gates).map(([gateNumber, gateData]) => (
+                    <div key={gateNumber} className="bg-gray-900/50 backdrop-blur rounded-lg p-4 border border-gray-700/30">
+                      <h3 className="text-lg font-bold text-gray-200 mb-3">{gateNumber}관문</h3>
+                
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                   {/* 클리어 보상 */}
                   {gateData.클리어 && (() => {
                     const goldReward = gateData.클리어['골드'] || 0;
                     const boundItems = Object.entries(gateData.클리어).filter(([name]) => name !== '골드');
                     const boundTotal = boundItems.reduce((sum, [itemName, quantity]) => {
                       if (isExcludedForTotal(itemName)) return sum;
-                      const price = getAdjustedPrice(itemName);
-                      return sum + (price !== null ? price * quantity : 0);
+                      const priceInfo = getAdjustedPrice(itemName);
+                      return sum + (priceInfo.price !== null ? priceInfo.price * quantity : 0);
                     }, 0);
                     
                     return (
-                      <div className="bg-gray-900 rounded border border-gray-700 p-4">
-                        <h4 className="text-xl font-bold text-blue-300 mb-4">클리어 보상</h4>
+                      <div className="bg-gray-900/80 rounded-lg border border-blue-500/20 p-3 shadow-md">
+                        <h4 className="text-base font-bold text-blue-400 mb-3">클리어 보상</h4>
                         
-                        <div className="space-y-2">
+                        <div className="space-y-1.5">
                           {/* 클리어 골드 */}
-                          <div className="flex items-center justify-between py-2 border-b border-gray-700">
-                            <span className="text-green-300 font-semibold">클리어 골드</span>
-                            <span className="text-green-300 font-bold">
+                          <div className="flex items-center justify-between py-1.5 border-b border-gray-700/50">
+                            <span className="text-green-400 font-medium text-sm">클리어 골드</span>
+                            <span className="text-green-400 font-bold text-sm">
                               {goldReward.toLocaleString('ko-KR')}골드
                             </span>
                           </div>
                           
                           {/* 귀속 아이템 총합 */}
-                          <div className="flex items-center justify-between py-2 border-b border-gray-700">
-                            <span className="text-red-300 font-semibold">귀속 아이템 총합</span>
-                            <span className="text-red-300 font-bold">
+                          <div className="flex items-center justify-between py-1.5 border-b border-gray-700/50">
+                            <span className="text-red-400 font-medium text-sm">귀속 아이템 총합</span>
+                            <span className="text-red-400 font-bold text-sm">
                               {formatNumberWithSignificantDigits(boundTotal)}골드
                             </span>
                           </div>
                           
                           {/* 각 귀속 아이템 */}
                           {boundItems.map(([itemName, quantity]) => {
-                            const price = getAdjustedPrice(itemName);
-                            const itemTotal = price !== null ? price * quantity : 0;
+                            const priceInfo = getAdjustedPrice(itemName);
+                            const itemTotal = priceInfo.price !== null ? priceInfo.price * quantity : 0;
                             const strike = isExcludedForTotal(itemName) ? 'line-through opacity-60' : '';
+                            const showMethod = (
+                              (itemName === '운명의 파괴석 결정' || itemName === '운명의 수호석 결정' || itemName === '위대한 운명의 돌파석') ||
+                              (isSerkaCompleted && (itemName === '운명의 파괴석' || itemName === '운명의 수호석' || itemName === '운명의 돌파석' || itemName === '순환 돌파석'))
+                            ) && priceInfo.method;
                             
                             return (
-                              <div key={itemName} className={`flex items-center justify-between py-1.5 pl-4 ${strike}`}>
-                                <span className="text-gray-300">
+                              <div key={itemName} className={`flex items-center justify-between py-1 pl-3 ${strike}`}>
+                                <span className="text-gray-300 text-xs">
                                   {itemName} {formatNumberWithSignificantDigits(quantity)}개
+                                  {showMethod && (
+                                    <span className="text-xs text-gray-500 font-medium ml-1.5">({priceInfo.method})</span>
+                                  )}
                                 </span>
-                                <span className="text-gray-400">
+                                <span className="text-gray-400 text-xs">
                                   ({formatNumberWithSignificantDigits(itemTotal)}골드)
                                 </span>
                               </div>
@@ -485,50 +679,57 @@ export default function RaidRewardsClient({
                     const boundItems = Object.entries(gateData.더보기).filter(([name]) => name !== '골드');
                     const boundTotal = boundItems.reduce((sum, [itemName, quantity]) => {
                       if (isExcludedForTotal(itemName)) return sum;
-                      const price = getAdjustedPrice(itemName);
-                      return sum + (price !== null ? price * quantity : 0);
+                      const priceInfo = getAdjustedPrice(itemName);
+                      return sum + (priceInfo.price !== null ? priceInfo.price * quantity : 0);
                     }, 0);
                     const efficiency = boundTotal - goldCost;
                     const isProfit = efficiency >= 0;
                     
                     return (
-                      <div className="bg-gray-900 rounded border border-gray-700 p-4">
-                        <div className="flex items-center justify-between mb-4">
-                          <h4 className="text-xl font-bold text-purple-300">더보기 효율</h4>
-                          <span className={`text-lg font-bold ${isProfit ? 'text-green-400' : 'text-red-400'}`}>
+                      <div className="bg-gray-900/80 rounded-lg border border-purple-500/20 p-3 shadow-md">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="text-base font-bold text-purple-400">더보기 효율</h4>
+                          <span className={`text-sm font-bold ${isProfit ? 'text-green-400' : 'text-red-400'}`}>
                             {isProfit ? '이득' : '손해'} {formatNumberWithSignificantDigits(Math.abs(efficiency))}골드
                           </span>
                         </div>
                         
-                        <div className="space-y-2">
+                        <div className="space-y-1.5">
                           {/* 더보기 비용 */}
-                          <div className="flex items-center justify-between py-2 border-b border-gray-700">
-                            <span className="text-orange-300 font-semibold">더보기 비용</span>
-                            <span className="text-orange-300 font-bold">
+                          <div className="flex items-center justify-between py-1.5 border-b border-gray-700/50">
+                            <span className="text-orange-400 font-medium text-sm">더보기 비용</span>
+                            <span className="text-orange-400 font-bold text-sm">
                               {goldCost.toLocaleString('ko-KR')}골드
                             </span>
                           </div>
                           
                           {/* 귀속 아이템 총합 */}
-                          <div className="flex items-center justify-between py-2 border-b border-gray-700">
-                            <span className="text-red-300 font-semibold">귀속 아이템 총합</span>
-                            <span className="text-red-300 font-bold">
+                          <div className="flex items-center justify-between py-1.5 border-b border-gray-700/50">
+                            <span className="text-red-400 font-medium text-sm">귀속 아이템 총합</span>
+                            <span className="text-red-400 font-bold text-sm">
                               {formatNumberWithSignificantDigits(boundTotal)}골드
                             </span>
                           </div>
                           
                           {/* 각 귀속 아이템 */}
                           {boundItems.map(([itemName, quantity]) => {
-                            const price = getAdjustedPrice(itemName);
-                            const itemTotal = price !== null ? price * quantity : 0;
+                            const priceInfo = getAdjustedPrice(itemName);
+                            const itemTotal = priceInfo.price !== null ? priceInfo.price * quantity : 0;
                             const strike = isExcludedForTotal(itemName) ? 'line-through opacity-60' : '';
+                            const showMethod = (
+                              (itemName === '운명의 파괴석 결정' || itemName === '운명의 수호석 결정' || itemName === '위대한 운명의 돌파석') ||
+                              (isSerkaCompleted && (itemName === '운명의 파괴석' || itemName === '운명의 수호석' || itemName === '운명의 돌파석' || itemName === '순환 돌파석'))
+                            ) && priceInfo.method;
                             
                             return (
-                              <div key={itemName} className={`flex items-center justify-between py-1.5 pl-4 ${strike}`}>
-                                <span className="text-gray-300">
+                              <div key={itemName} className={`flex items-center justify-between py-1 pl-3 ${strike}`}>
+                                <span className="text-gray-300 text-xs">
                                   {itemName} {formatNumberWithSignificantDigits(quantity)}개
+                                  {showMethod && (
+                                    <span className="text-xs text-gray-500 font-medium ml-1.5">({priceInfo.method})</span>
+                                  )}
                                 </span>
-                                <span className="text-gray-400">
+                                <span className="text-gray-400 text-xs">
                                   ({formatNumberWithSignificantDigits(itemTotal)}골드)
                                 </span>
                               </div>
@@ -538,6 +739,9 @@ export default function RaidRewardsClient({
                       </div>
                     );
                   })()}
+                </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             ))}
