@@ -100,6 +100,43 @@ CREATE POLICY "모든 사용자 읽기 허용" ON crystal_exchange_rates
 -- 실제로는 API Route에서 서비스 키를 사용하므로 이 정책은 필요 없을 수 있음
 -- 하지만 안전을 위해 읽기만 허용
 
+-- 디스코드 환율 테이블 생성
+CREATE TABLE IF NOT EXISTS discord_exchange_rates (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  timestamp TIMESTAMP WITH TIME ZONE NOT NULL UNIQUE,
+  discord NUMERIC(10, 2) NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- timestamp 인덱스 생성 (조회 성능 최적화)
+CREATE INDEX IF NOT EXISTS idx_discord_exchange_rates_timestamp ON discord_exchange_rates(timestamp DESC);
+
+-- updated_at 자동 업데이트를 위한 트리거 함수
+CREATE OR REPLACE FUNCTION update_discord_exchange_rates_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- updated_at 트리거 생성
+DROP TRIGGER IF EXISTS update_discord_exchange_rates_updated_at ON discord_exchange_rates;
+CREATE TRIGGER update_discord_exchange_rates_updated_at
+BEFORE UPDATE ON discord_exchange_rates
+FOR EACH ROW
+EXECUTE FUNCTION update_discord_exchange_rates_updated_at();
+
+-- RLS 정책 설정
+ALTER TABLE discord_exchange_rates ENABLE ROW LEVEL SECURITY;
+
+-- 모든 사용자가 읽을 수 있도록 정책 설정
+DROP POLICY IF EXISTS "모든 사용자 읽기 허용" ON discord_exchange_rates;
+CREATE POLICY "모든 사용자 읽기 허용" ON discord_exchange_rates
+  FOR SELECT
+  USING (true);
+
 -- 시장 아이템 캐시 테이블 생성
 CREATE TABLE IF NOT EXISTS market_cache (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,

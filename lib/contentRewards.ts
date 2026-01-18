@@ -2,7 +2,15 @@
 
 import { readFile } from 'fs/promises';
 import path from 'path';
+import { createClient } from '@supabase/supabase-js';
 import { getMarketCache } from './marketCache';
+
+// Supabase 클라이언트 생성 (서버 사이드에서는 서비스 키 사용)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const supabase = supabaseUrl && supabaseServiceKey
+  ? createClient(supabaseUrl, supabaseServiceKey)
+  : null;
 
 const REWARDS_FILE = path.join(process.cwd(), 'data', 'content-rewards.json');
 const CSV_REWARDS_FILE = path.join(process.cwd(), 'data', 'csv-rewards.json');
@@ -250,20 +258,45 @@ async function calculateCircularBreakthroughStoneValue(marketData: any): Promise
 }
 
 async function getLatestRates(): Promise<Rates> {
-  const data = await readJson<{ exchangeRates?: { date: string; exchange: number; discord?: number }[] }>(RATES_FILE);
-  const list = data?.exchangeRates || [];
-  if (list.length === 0) return { exchange: null, discord: null };
-  
-  // 날짜순 정렬
-  const sorted = [...list].sort((a, b) => b.date.localeCompare(a.date));
-  
-  // exchange가 0이 아닌 최신 데이터 찾기
-  const latestWithExchange = sorted.find(item => item.exchange && item.exchange > 0);
-  const latestWithDiscord = sorted.find(item => item.discord && item.discord > 0);
-  
+  // exchange는 Supabase의 crystal_exchange_rates에서 가져오기
+  let exchange: number | null = null;
+  if (supabase) {
+    try {
+      const { data } = await supabase
+        .from('crystal_exchange_rates')
+        .select('exchange')
+        .order('timestamp', { ascending: false })
+        .limit(1)
+        .single();
+      if (data?.exchange) {
+        exchange = Number(data.exchange);
+      }
+    } catch (err) {
+      // 데이터가 없거나 오류 발생 시 무시
+    }
+  }
+
+  // discord는 Supabase의 discord_exchange_rates에서 가져오기
+  let discord: number | null = null;
+  if (supabase) {
+    try {
+      const { data } = await supabase
+        .from('discord_exchange_rates')
+        .select('discord')
+        .order('timestamp', { ascending: false })
+        .limit(1)
+        .single();
+      if (data?.discord) {
+        discord = Number(data.discord);
+      }
+    } catch (err) {
+      // 데이터가 없거나 오류 발생 시 무시
+    }
+  }
+
   return { 
-    exchange: latestWithExchange?.exchange ?? null, 
-    discord: latestWithDiscord?.discord ?? null 
+    exchange, 
+    discord 
   };
 }
 
@@ -438,43 +471,9 @@ async function processCubeStages(
             return { itemName: finalName, quantity: reward.quantity, price };
           }
           if (finalName === '실링') {
-            let price: number | null = null;
-            // 가치계산DB에서 실링 가격 확인 (우선순위 1)
-            if (valueDbEntryMap && valueDbEntryMap['실링']) {
-              const silverEntry = valueDbEntryMap['실링'];
-              if (silverEntry.unitType === '골드' && silverEntry.unitValue != null) {
-                price = silverEntry.unitValue;
-              } else if (silverEntry.unitType === '현금' && silverEntry.unitValue != null) {
-                // 현금 단위인 경우 골드로 변환
-                const cashToGoldRate = rates.exchange && rates.exchange > 0
-                  ? rates.exchange / 2750
-                  : rates.discord && rates.discord > 0
-                    ? 100 / rates.discord
-                    : null;
-                if (cashToGoldRate) {
-                  price = silverEntry.unitValue * cashToGoldRate;
-                }
-              }
-            }
-            // 가치계산DB에 없으면 etcListData에서 가져오기
-            if (price == null) {
-              const etcItems = await getEtcListItems();
-              const silverItem = etcItems.find((item) => item.itemName === '실링');
-              if (silverItem?.cash != null && silverItem.cash > 0) {
-                // 현금 단위를 골드로 변환
-                const cashToGoldRate = rates.exchange && rates.exchange > 0
-                  ? rates.exchange / 2750
-                  : rates.discord && rates.discord > 0
-                    ? 100 / rates.discord
-                    : null;
-                if (cashToGoldRate) {
-                  price = silverItem.cash * cashToGoldRate;
-                }
-              } else if (silverItem?.gold != null && silverItem.gold > 0) {
-                price = silverItem.gold;
-              }
-            }
-            return { itemName: finalName, quantity: reward.quantity, price };
+            // 실링 가격 변환은 클라이언트 사이드에서 처리 (디코기준 스위치 반영)
+            // 서버에서는 price를 null로 설정하여 클라이언트에서 처리하도록 함
+            return { itemName: finalName, quantity: reward.quantity, price: null };
           }
           const price = findItemPrice(finalName, marketData);
           return { itemName: finalName, quantity: reward.quantity, price };
@@ -703,45 +702,10 @@ async function processRewardForKurzan(
     return { itemName: finalItemName, quantity: reward.quantity, price: 1 };
   }
 
-  // 실링: etcListData에서 가격 가져오기 (현금 단위를 골드로 변환)
+  // 실링: 클라이언트 사이드에서 가격 변환 처리 (디코기준 스위치 반영)
   if (finalItemName === '실링') {
-    let price: number | null = null;
-    // 가치계산DB에서 실링 가격 확인 (우선순위 1)
-    if (valueDbEntryMap && valueDbEntryMap['실링']) {
-      const silverEntry = valueDbEntryMap['실링'];
-      if (silverEntry.unitType === '골드' && silverEntry.unitValue != null) {
-        price = silverEntry.unitValue;
-      } else if (silverEntry.unitType === '현금' && silverEntry.unitValue != null) {
-        // 현금 단위인 경우 골드로 변환
-        const cashToGoldRate = rates.exchange && rates.exchange > 0
-          ? rates.exchange / 2750
-          : rates.discord && rates.discord > 0
-            ? 100 / rates.discord
-            : null;
-        if (cashToGoldRate) {
-          price = silverEntry.unitValue * cashToGoldRate;
-        }
-      }
-    }
-    // 가치계산DB에 없으면 etcListData에서 가져오기
-    if (price == null) {
-      const etcItems = await getEtcListItems();
-      const silverItem = etcItems.find((item) => item.itemName === '실링');
-      if (silverItem?.cash != null && silverItem.cash > 0) {
-        // 현금 단위를 골드로 변환
-        const cashToGoldRate = rates.exchange && rates.exchange > 0
-          ? rates.exchange / 2750
-          : rates.discord && rates.discord > 0
-            ? 100 / rates.discord
-            : null;
-        if (cashToGoldRate) {
-          price = silverItem.cash * cashToGoldRate;
-        }
-      } else if (silverItem?.gold != null && silverItem.gold > 0) {
-        price = silverItem.gold;
-      }
-    }
-    return { itemName: finalItemName, quantity: reward.quantity, price };
+    // 서버에서는 price를 null로 설정하여 클라이언트에서 처리하도록 함
+    return { itemName: finalItemName, quantity: reward.quantity, price: null };
   }
 
   const price = findItemPrice(finalItemName, marketData);
@@ -1195,43 +1159,9 @@ export async function getContentRewardsData(
                 return { itemName: finalItemName, quantity: reward.quantity, price };
               }
           if (finalItemName === '실링') {
-            let price: number | null = null;
-            // 가치계산DB에서 실링 가격 확인 (우선순위 1)
-            if (valueDbEntryMap && valueDbEntryMap['실링']) {
-              const silverEntry = valueDbEntryMap['실링'];
-              if (silverEntry.unitType === '골드' && silverEntry.unitValue != null) {
-                price = silverEntry.unitValue;
-              } else if (silverEntry.unitType === '현금' && silverEntry.unitValue != null) {
-                // 현금 단위인 경우 골드로 변환
-                const cashToGoldRate = rates.exchange && rates.exchange > 0
-                  ? rates.exchange / 2750
-                  : rates.discord && rates.discord > 0
-                    ? 100 / rates.discord
-                    : null;
-                if (cashToGoldRate) {
-                  price = silverEntry.unitValue * cashToGoldRate;
-                }
-              }
-            }
-            // 가치계산DB에 없으면 etcListData에서 가져오기
-            if (price == null) {
-              const etcItems = await getEtcListItems();
-              const silverItem = etcItems.find((item) => item.itemName === '실링');
-              if (silverItem?.cash != null && silverItem.cash > 0) {
-                // 현금 단위를 골드로 변환
-                const cashToGoldRate = rates.exchange && rates.exchange > 0
-                  ? rates.exchange / 2750
-                  : rates.discord && rates.discord > 0
-                    ? 100 / rates.discord
-                    : null;
-                if (cashToGoldRate) {
-                  price = silverItem.cash * cashToGoldRate;
-                }
-              } else if (silverItem?.gold != null && silverItem.gold > 0) {
-                price = silverItem.gold;
-              }
-            }
-            return { itemName: finalItemName, quantity: reward.quantity, price };
+            // 실링 가격 변환은 클라이언트 사이드에서 처리 (디코기준 스위치 반영)
+            // 서버에서는 price를 null로 설정하여 클라이언트에서 처리하도록 함
+            return { itemName: finalItemName, quantity: reward.quantity, price: null };
           }
               const price = findItemPrice(finalItemName, marketData);
               return { itemName: finalItemName, quantity: reward.quantity, price };

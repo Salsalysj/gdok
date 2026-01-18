@@ -108,6 +108,24 @@ export default function CrystalGoldPage() {
     return formatNumberWithSignificantDigits(price);
   };
 
+  const [allowDiscordEdit, setAllowDiscordEdit] = useState(false);
+
+  // 환경 변수 체크: 수정 버튼 표시 여부
+  useEffect(() => {
+    const checkEditPermission = async () => {
+      try {
+        const res = await fetch('/api/env/check');
+        const data = await res.json();
+        // allowPackageSave와 동일한 로직 사용
+        setAllowDiscordEdit(data.allowPackageSave || false);
+      } catch (error) {
+        console.error('환경 설정 확인 실패:', error);
+        setAllowDiscordEdit(false);
+      }
+    };
+    checkEditPermission();
+  }, []);
+
   const handleSaveDiscord = async () => {
     const discordNum = parseFloat(discordValue);
     
@@ -120,13 +138,28 @@ export default function CrystalGoldPage() {
       setSavingDiscord(true);
       setError('');
       
-      // 로컬 스토리지에 저장 (서버에는 저장하지 않음)
-      try {
-        localStorage.setItem('userDiscordRate', String(discordNum));
-        setUserDiscordValue(discordNum);
+      // Supabase에 저장
+      const res = await fetch('/api/admin/crystal-gold', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ discord: discordNum }),
+      });
+
+      const result = await res.json();
+
+      if (res.ok && result.success) {
+        // 저장 성공 후 데이터 다시 불러오기
+        await loadCrystalGold();
         setIsEditingDiscord(false);
-      } catch (err) {
-        setError('로컬 스토리지 저장에 실패했습니다.');
+        // 사용자 지정 값 초기화 (서버 값 사용)
+        setUserDiscordValue(null);
+        try {
+          localStorage.removeItem('userDiscordRate');
+        } catch (err) {
+          // 무시
+        }
+      } else {
+        setError(result.error || '디스코드 환율 저장에 실패했습니다.');
       }
     } catch (err) {
       setError('디스코드 환율 저장 중 오류가 발생했습니다.');
@@ -298,12 +331,14 @@ export default function CrystalGoldPage() {
                             <div className="text-4xl font-bold text-purple-500">
                               100 : {Math.round(displayDiscord).toLocaleString('ko-KR')}
                             </div>
-                            <button
-                              onClick={() => setIsEditingDiscord(true)}
-                              className="px-3 py-1 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded-lg"
-                            >
-                              수정
-                            </button>
+                            {allowDiscordEdit && (
+                              <button
+                                onClick={() => setIsEditingDiscord(true)}
+                                className="px-3 py-1 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded-lg"
+                              >
+                                수정
+                              </button>
+                            )}
                             {userDiscordValue != null && (
                               <button
                                 onClick={handleResetDiscord}
@@ -334,12 +369,14 @@ export default function CrystalGoldPage() {
                       ) : (
                         <div className="space-y-4">
                           <div className={descText}>디스코드 환율 정보가 없습니다.</div>
-                          <button
-                            onClick={() => setIsEditingDiscord(true)}
-                            className="px-4 py-2 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700"
-                          >
-                            환율 입력
-                          </button>
+                          {allowDiscordEdit && (
+                            <button
+                              onClick={() => setIsEditingDiscord(true)}
+                              className="px-4 py-2 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700"
+                            >
+                              환율 입력
+                            </button>
+                          )}
                         </div>
                       )}
                     </>

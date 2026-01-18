@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { createClient } from '@supabase/supabase-js';
+import { isPackageSaveAllowed } from '@/lib/environment';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -85,25 +86,109 @@ async function getLatestExchangeFromSupabase(): Promise<{
   }
 }
 
+async function getLatestDiscordFromSupabase(): Promise<{
+  discord: number;
+  timestamp: string;
+  updatedAt: string | null;
+} | null> {
+  if (!supabase) {
+    console.error('Supabase 클라이언트가 초기화되지 않았습니다.');
+    return null;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('discord_exchange_rates')
+      .select('timestamp, discord, updated_at, created_at')
+      .order('timestamp', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        // 데이터가 없음
+        return null;
+      }
+      console.error('Supabase 디스코드 환율 조회 실패:', error);
+      return null;
+    }
+
+    if (!data) {
+      return null;
+    }
+
+    return {
+      discord: Number(data.discord),
+      timestamp: data.timestamp,
+      updatedAt: data.updated_at || data.created_at || null,
+    };
+  } catch (err) {
+    console.error('Supabase 디스코드 환율 조회 중 오류:', err);
+    return null;
+  }
+}
+
+async function saveDiscordToSupabase(discord: number): Promise<boolean> {
+  if (!supabase) {
+    console.error('Supabase 클라이언트가 초기화되지 않았습니다.');
+    return false;
+  }
+
+  try {
+    // 오늘 날짜를 시작 시간으로 정규화 (같은 날짜의 중복 방지)
+    const today = new Date();
+    const normalizedTimestamp = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+      0,
+      0,
+      0,
+      0
+    ).toISOString();
+
+    const now = new Date().toISOString();
+
+    const upsertData = {
+      timestamp: normalizedTimestamp,
+      discord: discord,
+      updated_at: now,
+    };
+
+    const { error } = await supabase
+      .from('discord_exchange_rates')
+      .upsert(upsertData, {
+        onConflict: 'timestamp',
+      });
+
+    if (error) {
+      console.error('Supabase 디스코드 환율 저장 실패:', error);
+      return false;
+    }
+
+    return true;
+  } catch (err) {
+    console.error('Supabase 디스코드 환율 저장 중 오류:', err);
+    return false;
+  }
+}
+
 // GET: 환율 기록 조회
 export async function GET() {
   try {
     // Supabase에서 최신 환율 가져오기
     const cachedExchange = await getLatestExchangeFromSupabase();
-
-    // 디스코드 환율은 기존 데이터에서 가져오기 (관리자 입력)
-    const data = await readRates();
-    const latestDiscordRate = data.exchangeRates.length > 0
-      ? data.exchangeRates[data.exchangeRates.length - 1]?.discord ?? null
-      : null;
+    const cachedDiscord = await getLatestDiscordFromSupabase();
 
     return NextResponse.json({
       exchange: cachedExchange?.exchange ?? null,
       exchangeTimestamp: cachedExchange?.sourceTimestamp ?? cachedExchange?.timestamp ?? null,
       updatedAt: cachedExchange?.updatedAt ?? null, // 실제 갱신 시간
-      discord: latestDiscordRate,
-      // 하위 호환성을 위해 exchangeRates 유지 (디스코드만 사용)
-      exchangeRates: data.exchangeRates,
+      discord: cachedDiscord?.discord ?? null,
+      discordTimestamp: cachedDiscord?.timestamp ?? null,
+      discordUpdatedAt: cachedDiscord?.updatedAt ?? null,
+      // 하위 호환성을 위해 exchangeRates 유지 (빈 배열)
+      exchangeRates: [],
     });
   } catch (error) {
     console.error('환율 기록 조회 실패:', error);
@@ -114,9 +199,17 @@ export async function GET() {
   }
 }
 
-// POST: 디스코드 환율 기록 추가 (관리자 입력용, 화폐거래소 환율은 더 이상 사용하지 않음)
+// POST: 디스코드 환율 기록 추가 (관리자 입력용, Supabase에 저장)
 export async function POST(request: NextRequest) {
   try {
+    // 환경 변수 체크: main 브랜치 production에서는 차단
+    if (!isPackageSaveAllowed()) {
+      return NextResponse.json(
+        { error: '프로덕션 환경에서는 디스코드 환율을 수정할 수 없습니다.' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { discord } = body;
 
@@ -137,38 +230,25 @@ export async function POST(request: NextRequest) {
     // 디스코드 값은 정수로 변환
     const discordValue = Math.round(discord);
 
-    const data = await readRates();
+    // Supabase에 저장
+    const success = await saveDiscordToSupabase(discordValue);
     
-    // 오늘 날짜
-    const today = new Date().toISOString().split('T')[0];
-    
-    // 오늘 날짜의 기존 기록이 있으면 업데이트, 없으면 추가
-    const existingIndex = data.exchangeRates.findIndex(entry => entry.date === today);
-    
-    if (existingIndex >= 0) {
-      // 기존 기록 업데이트 (디스코드만 업데이트)
-      data.exchangeRates[existingIndex] = {
-        date: today,
-        exchange: 0, // 더 이상 사용하지 않음
-        discord: discordValue,
-      };
-    } else {
-      // 새 기록 추가
-      data.exchangeRates.push({
-        date: today,
-        exchange: 0, // 더 이상 사용하지 않음
-        discord: discordValue,
-      });
+    if (!success) {
+      return NextResponse.json(
+        { error: '디스코드 환율을 Supabase에 저장할 수 없습니다.' },
+        { status: 500 }
+      );
     }
 
-    // 날짜순으로 정렬 (오래된 것부터)
-    data.exchangeRates.sort((a, b) => a.date.localeCompare(b.date));
-
-    await writeRates(data);
+    // 저장된 데이터 반환
+    const savedData = await getLatestDiscordFromSupabase();
 
     return NextResponse.json({ 
       success: true,
-      data: data.exchangeRates[data.exchangeRates.length - 1]
+      data: savedData ? {
+        date: savedData.timestamp.split('T')[0],
+        discord: savedData.discord,
+      } : null
     });
   } catch (error) {
     console.error('환율 기록 저장 실패:', error);

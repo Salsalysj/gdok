@@ -50,10 +50,9 @@ export default function ValueDBSidebar() {
       try {
         const res = await fetch('/api/admin/crystal-gold');
         const data = await res.json();
-        const rates = data.exchangeRates || [];
-        if (rates.length > 0) {
-          const latest = rates[rates.length - 1];
-          setDiscordRate(latest.discord || null);
+        // Supabase에서 가져온 discord 값 사용
+        if (data.discord != null) {
+          setDiscordRate(data.discord);
         }
       } catch (error) {
         console.error('디스코드 환율 조회 실패:', error);

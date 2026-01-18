@@ -36,6 +36,8 @@ type CalculateAdjustedEntriesParams = {
   valueDbEntryMap?: Map<string, ValueDbEntry>;
   adjustPrice: (itemName: string, price: number | null) => number | null;
   adjustRelicEngravingAverage: (price: number | null) => number | null;
+  rates?: { exchange: number | null; discord: number | null };
+  lightMode?: boolean;
 };
 
 // 순환 돌파석 소모 개수 계산
@@ -447,6 +449,8 @@ export function calculateAdjustedEntries(params: CalculateAdjustedEntriesParams)
     valueDbEntryMap,
     adjustPrice,
     adjustRelicEngravingAverage,
+    rates,
+    lightMode = false,
   } = params;
 
   // 먼저 entries에 adjustPrice를 적용하여 기본 adjustedEntries 생성
@@ -879,10 +883,24 @@ export function calculateAdjustedEntries(params: CalculateAdjustedEntriesParams)
                 }
               }
             } else if (cubeReward.itemName === '실링') {
-              // 실링인 경우 가치계산DB에서 가격 사용
+              // 실링인 경우 가치계산DB에서 가격 사용 (컨텐츠 보상 페이지와 동일한 방식)
               const silverEntry = entries.find(e => e.itemName === '실링');
               if (silverEntry && silverEntry.unitValue != null) {
-                originalPrice = silverEntry.unitValue;
+                // 현금 단위인 경우 디코기준 스위치에 따라 골드로 변환
+                if (silverEntry.unitType === '현금') {
+                  if (!lightMode && rates?.discord && rates.discord > 0) {
+                    // 디코기준: 100골드 = discord원이므로, 1원 = 100/discord 골드
+                    originalPrice = silverEntry.unitValue * (100 / rates.discord);
+                  } else if (lightMode && rates?.exchange && rates.exchange > 0) {
+                    // 크리스탈 거래소 기준: 1원 = exchange/2750 골드
+                    originalPrice = silverEntry.unitValue * (rates.exchange / 2750);
+                  } else {
+                    // 환율 정보가 없으면 원래 값 그대로 사용
+                    originalPrice = silverEntry.unitValue;
+                  }
+                } else if (silverEntry.unitType === '골드') {
+                  originalPrice = silverEntry.unitValue;
+                }
               } else {
                 // fallback: price가 있으면 사용, 없으면 etcListData나 marketPriceMap에서 찾기
                 if ('price' in cubeReward && cubeReward.price != null) {
@@ -940,6 +958,38 @@ export function calculateAdjustedEntries(params: CalculateAdjustedEntriesParams)
               originalPrice = fragmentEntry.unitValue;
             } else {
               originalPrice = reward.price ?? null;
+            }
+          } else if (reward.itemName === '실링') {
+            // 실링인 경우 가치계산DB에서 가격 사용 (컨텐츠 보상 페이지와 동일한 방식)
+            const silverEntry = entries.find(e => e.itemName === '실링');
+            if (silverEntry && silverEntry.unitValue != null) {
+              // 현금 단위인 경우 디코기준 스위치에 따라 골드로 변환
+              if (silverEntry.unitType === '현금') {
+                if (!lightMode && rates?.discord && rates.discord > 0) {
+                  // 디코기준: 100골드 = discord원이므로, 1원 = 100/discord 골드
+                  originalPrice = silverEntry.unitValue * (100 / rates.discord);
+                } else if (lightMode && rates?.exchange && rates.exchange > 0) {
+                  // 크리스탈 거래소 기준: 1원 = exchange/2750 골드
+                  originalPrice = silverEntry.unitValue * (rates.exchange / 2750);
+                } else {
+                  // 환율 정보가 없으면 원래 값 그대로 사용
+                  originalPrice = silverEntry.unitValue;
+                }
+              } else if (silverEntry.unitType === '골드') {
+                originalPrice = silverEntry.unitValue;
+              }
+            } else {
+              // fallback: price가 있으면 사용, 없으면 etcListData나 marketPriceMap에서 찾기
+              if (reward.price != null) {
+                originalPrice = reward.price;
+              } else {
+                const etc = etcListData[reward.itemName];
+                if (etc?.gold != null) {
+                  originalPrice = etc.gold;
+                } else if (marketPriceMap[reward.itemName] != null) {
+                  originalPrice = marketPriceMap[reward.itemName];
+                }
+              }
             }
           } else {
             // 다른 보상의 경우 원본 가격 찾기

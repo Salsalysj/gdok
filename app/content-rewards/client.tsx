@@ -175,6 +175,18 @@ export default function ContentRewardsClient({
     }
   }, [levels, activeContent]);
   
+  // 디코기준 스위치 상태 동기화 (전역 테마 스위치 사용)
+  const [lightMode, setLightMode] = useState<boolean>(false);
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('themeLight');
+      if (saved != null) setLightMode(saved === '1');
+    } catch {}
+    const handler = (e: any) => setLightMode(!!e?.detail?.light);
+    window.addEventListener('theme-change', handler);
+    return () => window.removeEventListener('theme-change', handler);
+  }, []);
+  
   // 가격 조정된 데이터 생성
   // refreshKey를 의존성에 추가하여 price-override-change 이벤트 발생 시 강제로 재계산
   const adjustedData = useMemo(() => {
@@ -199,19 +211,21 @@ export default function ContentRewardsClient({
               finalPrice = fragmentEntry.unitValue;
             }
           } else if (reward.itemName === '실링' && valueDbEntryMap) {
-            // 실링인 경우 가치계산DB에서 가격 사용
+            // 실링인 경우 가치계산DB에서 가격 사용 (디코기준 스위치 반영)
             const silverEntry = valueDbEntryMap['실링'];
             if (silverEntry && silverEntry.unitValue != null) {
-              // 현금 단위인 경우 골드로 변환
               if (silverEntry.unitType === '현금') {
-                const cashToGoldRate = rates?.exchange && rates.exchange > 0
-                  ? rates.exchange / 2750
-                  : rates?.discord && rates.discord > 0
-                    ? 100 / rates.discord
-                    : null;
-                if (cashToGoldRate) {
-                  finalPrice = silverEntry.unitValue * cashToGoldRate;
+                // 현금 단위인 경우 디코기준 스위치에 따라 골드로 변환
+                // lightMode === false (어두움): 디코기준 ON → discord 사용
+                // lightMode === true (밝음): 디코기준 OFF → exchange 사용
+                if (!lightMode && rates?.discord && rates.discord > 0) {
+                  // 디코기준: 100골드 = discord원이므로, 1원 = 100/discord 골드
+                  finalPrice = silverEntry.unitValue * (100 / rates.discord);
+                } else if (lightMode && rates?.exchange && rates.exchange > 0) {
+                  // 크리스탈 거래소 기준: 1원 = exchange/2750 골드
+                  finalPrice = silverEntry.unitValue * (rates.exchange / 2750);
                 } else {
+                  // 환율 정보가 없으면 원래 값 그대로 사용
                   finalPrice = silverEntry.unitValue;
                 }
               } else if (silverEntry.unitType === '골드') {
@@ -244,19 +258,19 @@ export default function ContentRewardsClient({
                   rPrice = fragmentEntry.unitValue;
                 }
               } else if (r.itemName === '실링' && valueDbEntryMap) {
-                // 실링인 경우 가치계산DB에서 가격 사용
+                // 실링인 경우 가치계산DB에서 가격 사용 (디코기준 스위치 반영)
                 const silverEntry = valueDbEntryMap['실링'];
                 if (silverEntry && silverEntry.unitValue != null) {
-                  // 현금 단위인 경우 골드로 변환
                   if (silverEntry.unitType === '현금') {
-                    const cashToGoldRate = rates?.exchange && rates.exchange > 0
-                      ? rates.exchange / 2750
-                      : rates?.discord && rates.discord > 0
-                        ? 100 / rates.discord
-                        : null;
-                    if (cashToGoldRate) {
-                      rPrice = silverEntry.unitValue * cashToGoldRate;
+                    // 현금 단위인 경우 디코기준 스위치에 따라 골드로 변환
+                    if (!lightMode && rates?.discord && rates.discord > 0) {
+                      // 디코기준: 100골드 = discord원이므로, 1원 = 100/discord 골드
+                      rPrice = silverEntry.unitValue * (100 / rates.discord);
+                    } else if (lightMode && rates?.exchange && rates.exchange > 0) {
+                      // 크리스탈 거래소 기준: 1원 = exchange/2750 골드
+                      rPrice = silverEntry.unitValue * (rates.exchange / 2750);
                     } else {
+                      // 환율 정보가 없으면 원래 값 그대로 사용
                       rPrice = silverEntry.unitValue;
                     }
                   } else if (silverEntry.unitType === '골드') {
@@ -274,7 +288,7 @@ export default function ContentRewardsClient({
       }));
     }
     return adjusted;
-  }, [contentData, adjustPrice, valueDbEntryMap, adjustedEntries, refreshKey, priceOverrideState]);
+  }, [contentData, adjustPrice, valueDbEntryMap, adjustedEntries, refreshKey, priceOverrideState, lightMode, rates]);
   
   // 현재 표시할 데이터 결정
   const currentLevelData: Stage[] = useMemo(() => {
@@ -319,18 +333,6 @@ export default function ContentRewardsClient({
     if (priceOverrideState.ignoreDestructionGuardStone && (name === '운명의 파괴석' || name === '운명의 수호석' || name === '운명의 파괴석 결정' || name === '운명의 수호석 결정')) return true;
     return false;
   };
-
-  // 디코기준 스위치 상태 동기화 (전역 테마 스위치 사용)
-  const [lightMode, setLightMode] = useState<boolean>(false);
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('themeLight');
-      if (saved != null) setLightMode(saved === '1');
-    } catch {}
-    const handler = (e: any) => setLightMode(!!e?.detail?.light);
-    window.addEventListener('theme-change', handler);
-    return () => window.removeEventListener('theme-change', handler);
-  }, []);
 
   // 현금 환산 비율 계산
   // OFF(밝음) → 오피셜, ON(어두움) → 디코기준

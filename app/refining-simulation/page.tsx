@@ -8,6 +8,7 @@ export const metadata = {
 
 import { promises as fs } from 'fs';
 import path from 'path';
+import { createClient } from '@supabase/supabase-js';
 import RefiningSimulationClient from './client';
 import { getMarketCache } from '@/lib/marketCache';
 
@@ -140,28 +141,49 @@ async function getSilverCashValue(): Promise<number | null> {
 }
 
 async function getLatestRates(): Promise<{ exchange: number | null; discord: number | null }> {
-  try {
-    const RATES_FILE = path.join(process.cwd(), 'data', 'crystal-gold-rates.json');
-    const content = await fs.readFile(RATES_FILE, 'utf-8');
-    const data = JSON.parse(content);
-    const list = data?.exchangeRates || [];
-    if (list.length === 0) return { exchange: null, discord: null };
-    
-    // 날짜순 정렬
-    const sorted = [...list].sort((a: any, b: any) => b.date.localeCompare(a.date));
-    
-    // exchange가 0이 아닌 최신 데이터 찾기
-    const latestWithExchange = sorted.find((item: any) => item.exchange && item.exchange > 0);
-    const latestWithDiscord = sorted.find((item: any) => item.discord && item.discord > 0);
-    
-    return { 
-      exchange: latestWithExchange?.exchange ?? null, 
-      discord: latestWithDiscord?.discord ?? null 
-    };
-  } catch (error) {
-    console.error('[서버] 환율 데이터 읽기 실패:', error);
-    return { exchange: null, discord: null };
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+  const supabase = supabaseUrl && supabaseServiceKey
+    ? createClient(supabaseUrl, supabaseServiceKey)
+    : null;
+
+  // exchange는 Supabase의 crystal_exchange_rates에서 가져오기
+  let exchange: number | null = null;
+  if (supabase) {
+    try {
+      const { data } = await supabase
+        .from('crystal_exchange_rates')
+        .select('exchange')
+        .order('timestamp', { ascending: false })
+        .limit(1)
+        .single();
+      if (data?.exchange) {
+        exchange = Number(data.exchange);
+      }
+    } catch (err) {
+      // 데이터가 없거나 오류 발생 시 무시
+    }
   }
+
+  // discord는 Supabase의 discord_exchange_rates에서 가져오기
+  let discord: number | null = null;
+  if (supabase) {
+    try {
+      const { data } = await supabase
+        .from('discord_exchange_rates')
+        .select('discord')
+        .order('timestamp', { ascending: false })
+        .limit(1)
+        .single();
+      if (data?.discord) {
+        discord = Number(data.discord);
+      }
+    } catch (err) {
+      // 데이터가 없거나 오류 발생 시 무시
+    }
+  }
+
+  return { exchange, discord };
 }
 
 async function getLatestCrystalGoldRate(): Promise<number | null> {

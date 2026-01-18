@@ -129,13 +129,22 @@ type LocalCrystalGoldData = {
 };
 
 async function getLatestDiscordRate(): Promise<number | null> {
+  if (!supabase) {
+    return null;
+  }
+
   try {
-    const raw = await fs.readFile(CRYSTAL_GOLD_DATA_FILE, 'utf-8');
-    const json = JSON.parse(raw) as LocalCrystalGoldData;
-    const rates = json.exchangeRates || [];
-    if (rates.length === 0) return null;
-    const latest = rates[rates.length - 1];
-    return typeof latest.discord === 'number' ? latest.discord : null;
+    const { data } = await supabase
+      .from('discord_exchange_rates')
+      .select('discord')
+      .order('timestamp', { ascending: false })
+      .limit(1)
+      .single();
+    
+    if (data?.discord) {
+      return Number(data.discord);
+    }
+    return null;
   } catch (error) {
     return null;
   }

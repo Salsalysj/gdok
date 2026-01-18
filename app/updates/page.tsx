@@ -33,6 +33,8 @@ export default function UpdatesPage() {
                 <h3 className="text-lg font-semibold text-blue-400 mb-2">개선 사항</h3>
                 <ul className="list-disc list-inside space-y-1 text-gray-300 ml-4">
                   <li>레이드 보상 계산기 UI 개선</li>
+                  <li>일부 기능에서 실링의 가치가 제대로 반영되지 않던 문제 수정</li>
+                  <li>디스코드 환율 계산 로직 최적화</li>
                 </ul>
               </div>
             </div>

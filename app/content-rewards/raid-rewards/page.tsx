@@ -10,19 +10,52 @@ import RaidRewardsClient from './client';
 import { getValueDbData } from '@/lib/valueDb';
 import fs from 'fs';
 import path from 'path';
+import { createClient } from '@supabase/supabase-js';
 
 async function getRates() {
-  try {
-    const ratesPath = path.join(process.cwd(), 'data', 'crystal-gold-rates.json');
-    const ratesData = JSON.parse(fs.readFileSync(ratesPath, 'utf-8'));
-    return {
-      exchange: ratesData.exchange || null,
-      discord: ratesData.discord || null,
-    };
-  } catch (error) {
-    console.error('환율 데이터 로드 실패:', error);
-    return { exchange: null, discord: null };
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+  const supabase = supabaseUrl && supabaseServiceKey
+    ? createClient(supabaseUrl, supabaseServiceKey)
+    : null;
+
+  // exchange는 Supabase의 crystal_exchange_rates에서 가져오기
+  let exchange: number | null = null;
+  if (supabase) {
+    try {
+      const { data } = await supabase
+        .from('crystal_exchange_rates')
+        .select('exchange')
+        .order('timestamp', { ascending: false })
+        .limit(1)
+        .single();
+      if (data?.exchange) {
+        exchange = Number(data.exchange);
+      }
+    } catch (err) {
+      // 데이터가 없거나 오류 발생 시 무시
+    }
   }
+
+  // discord는 Supabase의 discord_exchange_rates에서 가져오기
+  let discord: number | null = null;
+  if (supabase) {
+    try {
+      const { data } = await supabase
+        .from('discord_exchange_rates')
+        .select('discord')
+        .order('timestamp', { ascending: false })
+        .limit(1)
+        .single();
+      if (data?.discord) {
+        discord = Number(data.discord);
+      }
+    } catch (err) {
+      // 데이터가 없거나 오류 발생 시 무시
+    }
+  }
+
+  return { exchange, discord };
 }
 
 export default async function RaidRewardsPage() {

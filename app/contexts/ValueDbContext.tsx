@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useMemo, ReactNode } from 'react';
+import { createContext, useContext, useMemo, useState, useEffect, ReactNode } from 'react';
 import type { ValueDbEntry } from '@/lib/valueDb';
 import type { RefiningStage, MarketItemInfo } from '../refining-simulation/page';
 import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
@@ -76,6 +76,36 @@ export function ValueDbProvider({
   explanationMap,
 }: ValueDbProviderProps) {
   const { adjustPrice, adjustRelicEngravingAverage } = usePriceAdjustment();
+  
+  // 디코기준 스위치 상태 동기화
+  const [lightMode, setLightMode] = useState<boolean>(false);
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('themeLight');
+      if (saved != null) setLightMode(saved === '1');
+    } catch {}
+    const handler = (e: any) => setLightMode(!!e?.detail?.light);
+    window.addEventListener('theme-change', handler);
+    return () => window.removeEventListener('theme-change', handler);
+  }, []);
+  
+  // 환율 정보 가져오기
+  const [rates, setRates] = useState<{ exchange: number | null; discord: number | null }>({ exchange: null, discord: null });
+  useEffect(() => {
+    async function fetchRates() {
+      try {
+        const res = await fetch('/api/admin/crystal-gold');
+        const data = await res.json();
+        setRates({
+          exchange: data.exchange || null,
+          discord: data.discord || null,
+        });
+      } catch (error) {
+        console.error('환율 정보 조회 실패:', error);
+      }
+    }
+    fetchRates();
+  }, []);
 
   const adjustedEntries = useMemo(() => {
     return calculateAdjustedEntries({
@@ -98,6 +128,8 @@ export function ValueDbProvider({
       valueDbEntryMap,
       adjustPrice,
       adjustRelicEngravingAverage,
+      rates,
+      lightMode,
     });
   }, [
     entries,
@@ -119,6 +151,8 @@ export function ValueDbProvider({
     valueDbEntryMap,
     adjustPrice,
     adjustRelicEngravingAverage,
+    rates,
+    lightMode,
   ]);
 
   const valueDbMap = valueDbEntryMap || new Map<string, ValueDbEntry>();
