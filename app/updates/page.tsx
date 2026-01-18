@@ -15,6 +15,29 @@ export default function UpdatesPage() {
         </div>
 
         <div className="space-y-8">
+          {/* v0.3.4 */}
+          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <h2 className="text-2xl font-bold text-white mb-4">v0.3.4 (2026. 01. 18)</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold text-green-400 mb-2">신규 기능</h3>
+                <ul className="list-disc list-inside space-y-1 text-gray-300 ml-4">
+                  <li>세르카 장비 재련 효율 및 전이 돌파석 가치 업데이트</li>
+                  <li>세르카 장비 계승 완료 시 하위 레이드 귀속재료 가치 조정 (5:1 합성 기준)</li>
+                  <li>내 캐릭터 시뮬레이션 기능에 세르카 장비 반영</li>
+                </ul>
+              </div>
+              
+              <div>
+                <h3 className="text-lg font-semibold text-blue-400 mb-2">개선 사항</h3>
+                <ul className="list-disc list-inside space-y-1 text-gray-300 ml-4">
+                  <li>레이드 보상 계산기 UI 개선</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
           {/* v0.3.3 */}
           <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
             <h2 className="text-2xl font-bold text-white mb-4">v0.3.3 (2026. 01. 14)</h2>

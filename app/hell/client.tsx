@@ -34,6 +34,8 @@ export default function HellClient({
   valueDbEntries = [],
   weaponStages,
   armorStages,
+  weaponStagesSerka,
+  armorStagesSerka,
   marketInfo,
 }: { 
   data: HellData | undefined; 
@@ -41,6 +43,8 @@ export default function HellClient({
   valueDbEntries?: ValueDbEntry[];
   weaponStages?: RefiningStage[];
   armorStages?: RefiningStage[];
+  weaponStagesSerka?: RefiningStage[];
+  armorStagesSerka?: RefiningStage[];
   marketInfo?: Record<string, MarketItemInfo>;
 }) {
   const hellTypes = ['지옥1', '지옥2', '지옥3', '나락1', '나락2', '나락3'];
@@ -206,12 +210,98 @@ export default function HellClient({
     }
     return null;
   }, [valueDbEntries, adjustPrice, weaponStages, armorStages, marketInfo]);
+
+  // 전이 돌파석 가치를 클라이언트에서 재계산 (가치계산DB 사이드바와 동일한 방식)
+  const transitionBreakthroughValue = useMemo(() => {
+    // weaponStagesSerka, armorStagesSerka, marketInfo가 있으면 특수 재련 효율과 동일한 방식으로 계산
+    if (weaponStagesSerka && armorStagesSerka && marketInfo && weaponStagesSerka.length > 0 && armorStagesSerka.length > 0) {
+      // 가격 조정이 적용된 marketInfo 생성
+      const adjustedMarketInfo: Record<string, MarketItemInfo> = {};
+      for (const [name, info] of Object.entries(marketInfo)) {
+        adjustedMarketInfo[name] = {
+          ...info,
+          unitPrice: adjustPrice(name, info.unitPrice) ?? info.unitPrice,
+        };
+      }
+
+      // 전이 돌파석 소모 개수 계산
+      const getTransitionStoneCount = (level: number, type: 'weapon' | 'armor'): number => {
+        if (type === 'weapon') {
+          if (level >= 10 && level <= 11) return 25;
+          if (level >= 12 && level <= 13) return 30;
+          if (level >= 14 && level <= 16) return 35;
+          if (level >= 17 && level <= 19) return 40;
+          if (level >= 20 && level <= 21) return 45;
+          if (level >= 22 && level <= 23) return 50;
+          if (level >= 24 && level <= 25) return 55;
+        } else {
+          if (level >= 10 && level <= 11) return 10;
+          if (level >= 12 && level <= 13) return 12;
+          if (level >= 14 && level <= 16) return 14;
+          if (level >= 17 && level <= 19) return 16;
+          if (level >= 20 && level <= 21) return 18;
+          if (level >= 22 && level <= 23) return 20;
+          if (level >= 24 && level <= 25) return 22;
+        }
+        return 0;
+      };
+
+      // 모든 무기와 방어구 스테이지에서 전이 돌파석 가치 계산
+      const allBreakthroughValues: number[] = [];
+      
+      [...weaponStagesSerka, ...armorStagesSerka].forEach(stage => {
+        // calculateOptimalStrategy를 사용하여 최적 전략 계산
+        const { optimalStrategy } = calculateOptimalStrategy(stage, adjustedMarketInfo);
+        
+        // 경험치 재료 비용 계산
+        const expInfo = stage.expMaterial ? (adjustedMarketInfo[stage.expMaterial.name] || { unitPrice: 0 }) : null;
+        const expMaterialCost = stage.expMaterial && expInfo
+          ? expInfo.unitPrice * stage.expMaterial.quantity
+          : 0;
+        
+        // 재련 비용 = 전체 기대 비용 - 경험치 재료 비용
+        const refiningCost = optimalStrategy.expectedCost - expMaterialCost;
+        const baseSuccessRate = stage.baseSuccessRate / 100; // 퍼센트를 소수로 변환
+        
+        // 무기/방어구 구분
+        const type = stage.baseMaterials.some(m => m.name === '운명의 파괴석 결정') ? 'weapon' : 'armor';
+        const stoneCount = getTransitionStoneCount(stage.level, type);
+        
+        // 전이 돌파석 1개당 가치 = (재련 비용 * 기본 성공률) / 전이 돌파석 개수
+        if (stoneCount > 0) {
+          const value = (refiningCost * baseSuccessRate) / stoneCount;
+          if (value > 0) {
+            allBreakthroughValues.push(value);
+          }
+        }
+      });
+
+      // 상위 5개의 평균 계산 (재련 효율 탭과 동일한 방식)
+      if (allBreakthroughValues.length > 0) {
+        const sorted = allBreakthroughValues.sort((a, b) => b - a);
+        const top5 = sorted.slice(0, 5);
+        return top5.reduce((sum, val) => sum + val, 0) / top5.length;
+      }
+    }
+    
+    // weaponStagesSerka, armorStagesSerka, marketInfo가 없으면 가치계산DB에서 가져온 값에 가격 조정만 적용
+    const entry = valueDbEntries.find(e => e.itemName === '전이 돌파석');
+    if (entry && entry.unitType === '골드' && entry.unitValue != null) {
+      // 가격 조정 적용 (돌파석 미반영, 파편 미반영 등)
+      return adjustPrice('전이 돌파석', entry.unitValue);
+    }
+    return null;
+  }, [valueDbEntries, adjustPrice, weaponStagesSerka, armorStagesSerka, marketInfo]);
   
   // 가치계산DB에서 아이템 가격 가져오기
   const getValueDbPrice = (itemName: string): number | null => {
     // 순환 돌파석은 클라이언트에서 재계산된 값 사용
     if (itemName === '순환 돌파석') {
       return circularBreakthroughValue;
+    }
+    // 전이 돌파석은 클라이언트에서 재계산된 값 사용
+    if (itemName === '전이 돌파석') {
+      return transitionBreakthroughValue;
     }
     
     const entry = valueDbEntryMap.get(itemName);

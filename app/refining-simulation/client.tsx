@@ -500,7 +500,7 @@ function CharacterSimulation({ weaponStages, armorStages, weaponStagesSerka, arm
       const breathItemName = stage.breathMaterial?.name || null;
       const breathMarketPrice = breathItemName ? (adjustedMarketInfo[breathItemName]?.unitPrice ?? null) : null;
       
-      // 순환 돌파석 가치 계산 (가격 조정이 적용된 marketInfo 사용)
+      // 돌파석 가치 계산 (가격 조정이 적용된 marketInfo 사용)
       const { optimalStrategy } = calculateOptimalStrategy(stage, adjustedMarketInfo);
       const expInfo = stage.expMaterial ? (adjustedMarketInfo[stage.expMaterial.name] || { unitPrice: 0 }) : null;
       const expMaterialCost = stage.expMaterial && expInfo
@@ -510,7 +510,7 @@ function CharacterSimulation({ weaponStages, armorStages, weaponStagesSerka, arm
       const refiningCost = optimalStrategy.expectedCost - expMaterialCost;
       const baseSuccessRate = stage.baseSuccessRate / 100;
       
-      // 순환 돌파석 소모 개수
+      // 돌파석 소모 개수 계산 (세르카 장비는 전이 돌파석, 카제로스 장비는 순환 돌파석)
       const getBreakthroughStoneCount = (level: number, type: 'weapon' | 'armor'): number => {
         if (type === 'weapon') {
           if (level >= 10 && level <= 12) return 30;
@@ -524,7 +524,30 @@ function CharacterSimulation({ weaponStages, armorStages, weaponStagesSerka, arm
         return 0;
       };
       
-      const stoneCount = getBreakthroughStoneCount(targetLevel, isWeapon ? 'weapon' : 'armor');
+      const getTransitionStoneCount = (level: number, type: 'weapon' | 'armor'): number => {
+        if (type === 'weapon') {
+          if (level >= 10 && level <= 11) return 25;
+          if (level >= 12 && level <= 13) return 30;
+          if (level >= 14 && level <= 16) return 35;
+          if (level >= 17 && level <= 19) return 40;
+          if (level >= 20 && level <= 21) return 45;
+          if (level >= 22 && level <= 23) return 50;
+          if (level >= 24 && level <= 25) return 55;
+        } else {
+          if (level >= 10 && level <= 11) return 10;
+          if (level >= 12 && level <= 13) return 12;
+          if (level >= 14 && level <= 16) return 14;
+          if (level >= 17 && level <= 19) return 16;
+          if (level >= 20 && level <= 21) return 18;
+          if (level >= 22 && level <= 23) return 20;
+          if (level >= 24 && level <= 25) return 22;
+        }
+        return 0;
+      };
+      
+      const stoneCount = isSerkaEquipment 
+        ? getTransitionStoneCount(targetLevel, isWeapon ? 'weapon' : 'armor')
+        : getBreakthroughStoneCount(targetLevel, isWeapon ? 'weapon' : 'armor');
       const breakthroughValue = stoneCount > 0 ? (refiningCost * baseSuccessRate) / stoneCount : null;
       
       return {

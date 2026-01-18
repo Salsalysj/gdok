@@ -6,6 +6,7 @@ import ItemIcon from '../../components/ItemIcon';
 import { formatNumberWithSignificantDigits } from '../../utils/formatNumber';
 import { usePriceAdjustment } from '../../hooks/usePriceAdjustment';
 import { usePriceOverride } from '../../contexts/PriceOverrideContext';
+import { useValueDb } from '../../contexts/ValueDbContext';
 
 type RewardItem = {
   itemName: string;
@@ -90,6 +91,7 @@ export default function BossGateClient({
 }) {
   const { adjustPrice } = usePriceAdjustment();
   const { state: priceOverrideState } = usePriceOverride();
+  const { adjustedEntries } = useValueDb();
   const searchParams = useSearchParams();
   const [refreshKey, setRefreshKey] = useState(0);
   const contentTypes: ContentType[] = ['필드보스', '카오스게이트'];
@@ -214,6 +216,12 @@ export default function BossGateClient({
                 finalPrice = silverEntry.unitValue;
               }
             }
+          } else if ((reward.itemName === '순환 돌파석' || reward.itemName === '전이 돌파석') && (finalPrice == null || finalPrice === null)) {
+            // 순환 돌파석 또는 전이 돌파석: 클라이언트에서 재계산된 값 사용
+            const entry = adjustedEntries.find(e => e.itemName === reward.itemName);
+            if (entry && entry.unitValue != null) {
+              finalPrice = entry.unitValue;
+            }
           }
           
           return {
@@ -267,7 +275,7 @@ export default function BossGateClient({
       }));
     }
     return adjusted;
-  }, [contentData, adjustPrice, valueDbEntryMap, refreshKey, priceOverrideState]);
+  }, [contentData, adjustPrice, valueDbEntryMap, adjustedEntries, refreshKey, priceOverrideState]);
   
   // 현재 표시할 데이터 결정
   const currentLevelData: Stage[] = useMemo(() => {

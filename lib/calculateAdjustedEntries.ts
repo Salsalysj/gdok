@@ -24,6 +24,8 @@ type CalculateAdjustedEntriesParams = {
   etcListData: Record<string, { crystal: number | null; gold: number | null; cash: number | null }>;
   weaponStages?: RefiningStage[];
   armorStages?: RefiningStage[];
+  weaponStagesSerka?: RefiningStage[];
+  armorStagesSerka?: RefiningStage[];
   marketInfo?: Record<string, MarketItemInfo>;
   hellStages?: Stage[]; // 지옥3 stages (기존 호환성 유지)
   hell1Stages?: Stage[];
@@ -46,6 +48,28 @@ function getBreakthroughStoneCount(level: number, type: 'weapon' | 'armor'): num
     if (level >= 10 && level <= 12) return 12;
     if (level >= 13 && level <= 16) return 16;
     if (level >= 17 && level <= 25) return 20;
+  }
+  return 0;
+}
+
+// 전이 돌파석 소모 개수 계산
+function getTransitionStoneCount(level: number, type: 'weapon' | 'armor'): number {
+  if (type === 'weapon') {
+    if (level >= 10 && level <= 11) return 25;
+    if (level >= 12 && level <= 13) return 30;
+    if (level >= 14 && level <= 16) return 35;
+    if (level >= 17 && level <= 19) return 40;
+    if (level >= 20 && level <= 21) return 45;
+    if (level >= 22 && level <= 23) return 50;
+    if (level >= 24 && level <= 25) return 55;
+  } else {
+    if (level >= 10 && level <= 11) return 10;
+    if (level >= 12 && level <= 13) return 12;
+    if (level >= 14 && level <= 16) return 14;
+    if (level >= 17 && level <= 19) return 16;
+    if (level >= 20 && level <= 21) return 18;
+    if (level >= 22 && level <= 23) return 20;
+    if (level >= 24 && level <= 25) return 22;
   }
   return 0;
 }
@@ -376,6 +400,32 @@ function calculateBreakthroughValue(
   return stoneCount > 0 ? (refiningCost * baseSuccessRate) / stoneCount : null;
 }
 
+// 전이 돌파석 가치 계산 (세르카 장비용)
+function calculateTransitionBreakthroughValue(
+  stage: RefiningStage,
+  adjustedMarketInfo: Record<string, MarketItemInfo>
+): number | null {
+  // calculateOptimalStrategy를 사용하여 최적 전략 계산 (특수 재련 효율과 동일)
+  const { optimalStrategy } = calculateOptimalStrategy(stage, adjustedMarketInfo);
+  
+  // 경험치 재료 비용 계산
+  const expInfo = stage.expMaterial ? (adjustedMarketInfo[stage.expMaterial.name] || { unitPrice: 0 }) : null;
+  const expMaterialCost = stage.expMaterial && expInfo
+    ? expInfo.unitPrice * stage.expMaterial.quantity
+    : 0;
+  
+  // 재련 비용 = 전체 기대 비용 - 경험치 재료 비용
+  const refiningCost = optimalStrategy.expectedCost - expMaterialCost;
+  const baseSuccessRate = stage.baseSuccessRate / 100; // 퍼센트를 소수로 변환
+  
+  // 무기/방어구 구분 (세르카 장비는 '운명의 파괴석 결정' 또는 '운명의 수호석 결정' 사용)
+  const type = stage.baseMaterials.some(m => m.name === '운명의 파괴석 결정') ? 'weapon' : 'armor';
+  const stoneCount = getTransitionStoneCount(stage.level, type);
+  
+  // 전이 돌파석 1개당 가치 = (재련 비용 * 기본 성공률) / 전이 돌파석 개수
+  return stoneCount > 0 ? (refiningCost * baseSuccessRate) / stoneCount : null;
+}
+
 export function calculateAdjustedEntries(params: CalculateAdjustedEntriesParams): ValueDbEntry[] {
   const {
     entries,
@@ -385,6 +435,8 @@ export function calculateAdjustedEntries(params: CalculateAdjustedEntriesParams)
     etcListData,
     weaponStages,
     armorStages,
+    weaponStagesSerka,
+    armorStagesSerka,
     marketInfo,
     hellStages,
     hell1Stages,
@@ -521,6 +573,39 @@ export function calculateAdjustedEntries(params: CalculateAdjustedEntriesParams)
       const sorted = allBreakthroughValues.sort((a, b) => b - a);
       const top5 = sorted.slice(0, 5);
       circularBreakthroughValue = top5.reduce((sum, val) => sum + val, 0) / top5.length;
+    }
+  }
+
+  // 전이 돌파석 가치 재계산 (특수 재련 효율과 동일한 방식)
+  let transitionBreakthroughValue: number | null = null;
+  if (weaponStagesSerka && armorStagesSerka && marketInfo && weaponStagesSerka.length > 0 && armorStagesSerka.length > 0) {
+      // 가격 조정이 적용된 marketInfo 생성
+      const adjustedMarketInfo: Record<string, MarketItemInfo> = {};
+      for (const [name, info] of Object.entries(marketInfo)) {
+        adjustedMarketInfo[name] = {
+          ...info,
+          unitPrice: adjustPrice(name, info.unitPrice ?? null) ?? info.unitPrice ?? 0,
+        };
+      }
+
+    // 모든 무기와 방어구 스테이지에서 전이 돌파석 가치 계산
+    const allTransitionBreakthroughValues: number[] = [];
+    
+    [...weaponStagesSerka, ...armorStagesSerka].forEach(stage => {
+      const value = calculateTransitionBreakthroughValue(stage, adjustedMarketInfo);
+      if (value != null && value > 0 && isFinite(value)) {
+        allTransitionBreakthroughValues.push(value);
+      }
+    });
+
+    // 상위 5개의 평균 계산 (재련 효율 탭과 동일한 방식)
+    if (allTransitionBreakthroughValues.length > 0) {
+      const sorted = allTransitionBreakthroughValues.sort((a, b) => b - a);
+      const top5 = sorted.slice(0, 5);
+      const average = top5.reduce((sum, val) => sum + val, 0) / top5.length;
+      if (isFinite(average) && average > 0) {
+        transitionBreakthroughValue = average;
+      }
     }
   }
 
@@ -896,6 +981,12 @@ export function calculateAdjustedEntries(params: CalculateAdjustedEntriesParams)
     else if (entry.itemName === '순환 돌파석') {
       if (circularBreakthroughValue != null && circularBreakthroughValue > 0) {
         adjustedValue = circularBreakthroughValue;
+      }
+    }
+    // 전이 돌파석: 재계산된 값 사용 (특수 재련 효율과 동일한 방식)
+    else if (entry.itemName === '전이 돌파석') {
+      if (transitionBreakthroughValue != null && transitionBreakthroughValue > 0) {
+        adjustedValue = transitionBreakthroughValue;
       }
     }
     // 에브니 큐브 입장권: 재계산된 값 사용

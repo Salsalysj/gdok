@@ -39,6 +39,8 @@ type ValueDbProviderProps = {
   etcListData: Record<string, { crystal: number | null; gold: number | null; cash: number | null }>;
   weaponStages?: RefiningStage[];
   armorStages?: RefiningStage[];
+  weaponStagesSerka?: RefiningStage[];
+  armorStagesSerka?: RefiningStage[];
   marketInfo?: Record<string, MarketItemInfo>;
   hellStages?: Stage[]; // 지옥3 stages (기존 호환성 유지)
   hell1Stages?: Stage[];
@@ -60,6 +62,8 @@ export function ValueDbProvider({
   etcListData,
   weaponStages,
   armorStages,
+  weaponStagesSerka,
+  armorStagesSerka,
   marketInfo,
   hellStages,
   hell1Stages,
@@ -82,6 +86,8 @@ export function ValueDbProvider({
       etcListData,
       weaponStages,
       armorStages,
+      weaponStagesSerka,
+      armorStagesSerka,
       marketInfo,
       hellStages,
       hell1Stages,
@@ -101,6 +107,8 @@ export function ValueDbProvider({
     etcListData,
     weaponStages,
     armorStages,
+    weaponStagesSerka,
+    armorStagesSerka,
     marketInfo,
     hellStages,
     hell1Stages,

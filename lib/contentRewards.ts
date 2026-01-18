@@ -3,7 +3,6 @@
 import { readFile } from 'fs/promises';
 import path from 'path';
 import { getMarketCache } from './marketCache';
-import { getCircularBreakthroughValue } from './circularBreakthrough';
 
 const REWARDS_FILE = path.join(process.cwd(), 'data', 'content-rewards.json');
 const CSV_REWARDS_FILE = path.join(process.cwd(), 'data', 'csv-rewards.json');
@@ -235,13 +234,13 @@ async function getMarketData(): Promise<any> {
   return cached?.data ?? null;
 }
 
-// 순환 돌파석 가치 계산: 재련 효율에서 단계 상관 없이 가장 높은 기대 가치 5개의 평균
+// 순환 돌파석 가치 계산: market_cache에서 가져오기
 async function calculateCircularBreakthroughStoneValue(marketData: any): Promise<number | null> {
   try {
-    const average = await getCircularBreakthroughValue();
-    // 단계 상관 없이 무기와 방어구 모든 값 중 상위 5개의 평균 반환
-    if (average > 0) {
-      return average;
+    const marketCache = await getMarketCache();
+    const circularBreakthroughValue = marketCache?.data?.circularBreakthroughValue || null;
+    if (circularBreakthroughValue != null && circularBreakthroughValue > 0) {
+      return circularBreakthroughValue;
     }
     return null;
   } catch (error) {
@@ -839,13 +838,21 @@ export async function getContentRewardsData(
             category: reward.category 
           };
         }
-        // 순환 돌파석: Supabase에서 상위 5개 평균값 조회
+        // 순환 돌파석: 클라이언트에서 재계산하므로 null로 설정
         if (reward.itemName === '순환 돌파석') {
-          const price = await calculateCircularBreakthroughStoneValue(marketData);
           return { 
             itemName: reward.itemName, 
             quantity: reward.quantity, 
-            price,
+            price: null, // 클라이언트에서 재계산됨
+            category: reward.category 
+          };
+        }
+        // 전이 돌파석: 클라이언트에서 재계산하므로 null로 설정
+        if (reward.itemName === '전이 돌파석') {
+          return { 
+            itemName: reward.itemName, 
+            quantity: reward.quantity, 
+            price: null, // 클라이언트에서 재계산됨
             category: reward.category 
           };
         }

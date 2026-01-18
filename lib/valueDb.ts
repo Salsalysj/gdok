@@ -486,6 +486,17 @@ async function buildManualOverrides(
     };
   }
 
+  // 전이 돌파석 (market_cache에서 가져오기)
+  const transitionBreakthroughPrice = marketCache?.data?.transitionBreakthroughValue || null;
+  if (transitionBreakthroughPrice != null && transitionBreakthroughPrice > 0) {
+    base['전이 돌파석'] = {
+      itemName: '전이 돌파석',
+      unitType: '골드',
+      unitValue: transitionBreakthroughPrice,
+      note: '재련 효율 상위 5개 평균',
+    };
+  }
+
   // 고대 팔찌 (지옥)
   base['고대 팔찌 (지옥)'] = {
     itemName: '고대 팔찌 (지옥)',
@@ -594,6 +605,21 @@ function resolveEntry(
     // manualOverrides에 없으면 기본값 반환 (unitType은 '골드'로 설정)
     return {
       itemName: '순환 돌파석',
+      unitType: '골드',
+      unitValue: null,
+      note: '재련 효율 상위 5개 평균',
+    };
+  }
+
+  // 전이 돌파석 명시적 처리 (unitType이 항상 '골드'로 설정되도록)
+  if (itemName === '전이 돌파석') {
+    // manualOverrides에 있으면 그것을 사용 (이미 unitType: '골드'로 설정됨)
+    if (manualOverrides[itemName]) {
+      return manualOverrides[itemName];
+    }
+    // manualOverrides에 없으면 기본값 반환 (unitType은 '골드'로 설정)
+    return {
+      itemName: '전이 돌파석',
       unitType: '골드',
       unitValue: null,
       note: '재련 효율 상위 5개 평균',
@@ -953,6 +979,7 @@ export async function getValueDbData(): Promise<ValueDbData> {
   const additionalItems = [
     '어빌리티 스톤 키트 (지옥)',
     '순환 돌파석',
+    '전이 돌파석',
     '고대 팔찌 (지옥)',
     '유물 각인서 선택',
     '유물 각인서 랜덤',
