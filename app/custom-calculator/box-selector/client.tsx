@@ -103,6 +103,7 @@ export default function BoxSelectorClient({
   const [manualPriceInputs, setManualPriceInputs] = useState<Record<string, string>>({});
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
   const [expandedNestedItems, setExpandedNestedItems] = useState<Record<string, boolean>>({});
+  const [expandedSummaryItems, setExpandedSummaryItems] = useState<Record<number, boolean>>({});
   
   const [boxData, setBoxData] = useState<BoxSelectorData>({
     itemName: '',
@@ -775,6 +776,257 @@ export default function BoxSelectorClient({
     return sorted[0];
   }, [itemValues]);
 
+  // 각 구성요소의 가치를 계산하는 함수
+  const calculateComponentValue = useCallback((component: ComponentItem, item: BundleItem): number => {
+    if (component.itemName === '__nested__' && component.nestedItem) {
+      const nestedItem = component.nestedItem;
+      let nestedValue = 0;
+      
+      nestedItem.components.forEach((nestedComp) => {
+        const isManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
+        const resolved = !isManual && nestedComp.itemName ? resolveUnitPrice(nestedComp.itemName) : null;
+        const finalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined && nestedComp.manualPrice > 0)
+          ? { unitType: (nestedComp.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: nestedComp.manualPrice }
+          : resolved;
+        
+        if (!finalUnitPrice) return;
+
+        let nestedCompValue = 0;
+        if (finalUnitPrice.unitType === '골드') {
+          nestedCompValue = finalUnitPrice.unitPrice * (nestedComp.quantity || 0);
+        } else if (finalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
+          nestedCompValue = ((finalUnitPrice.unitPrice * crystalGoldRate) / 100) * (nestedComp.quantity || 0);
+        } else if (finalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
+          nestedCompValue = (finalUnitPrice.unitPrice / goldToCashPerGold) * (nestedComp.quantity || 0);
+        }
+        
+        if (nestedItem.itemType === '확률') {
+          const probability = nestedComp.probability || 0;
+          nestedValue += nestedCompValue * probability;
+        } else if (nestedItem.itemType === '선택') {
+          if (nestedComp.selected) {
+            nestedValue += nestedCompValue;
+          }
+        } else {
+          nestedValue += nestedCompValue;
+        }
+      });
+      
+      const nestedItemQuantity = nestedItem.quantity || 1;
+      const nestedTotalValue = nestedValue * nestedItemQuantity;
+      const componentQuantity = component.quantity || 1;
+      const itemQuantity = item.quantity || 1;
+      
+      if (item.itemType === '확정') {
+        return nestedTotalValue * componentQuantity * itemQuantity;
+      } else if (item.itemType === '확률') {
+        const probability = component.probability || 0;
+        return nestedTotalValue * componentQuantity * probability * itemQuantity;
+      } else if (item.itemType === '선택') {
+        if (component.selected) {
+          return nestedTotalValue * componentQuantity * itemQuantity;
+        }
+        return 0;
+      }
+      return 0;
+    }
+    
+    const isManual = component.itemName === '__manual__' || component.itemName === '';
+    const resolved = !isManual && component.itemName ? resolveUnitPrice(component.itemName) : null;
+    const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined && component.manualPrice > 0)
+      ? { unitType: (component.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: component.manualPrice }
+      : resolved;
+    
+    if (!finalUnitPrice) return 0;
+
+    let componentValue = 0;
+    if (finalUnitPrice.unitType === '골드') {
+      componentValue = finalUnitPrice.unitPrice * (component.quantity || 0);
+    } else if (finalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
+      componentValue = ((finalUnitPrice.unitPrice * crystalGoldRate) / 100) * (component.quantity || 0);
+    } else if (finalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
+      componentValue = (finalUnitPrice.unitPrice / goldToCashPerGold) * (component.quantity || 0);
+    }
+
+    const itemQuantity = item.quantity || 1;
+    
+    if (item.itemType === '확정') {
+      return componentValue * itemQuantity;
+    } else if (item.itemType === '확률') {
+      const probability = component.probability || 0;
+      return componentValue * probability * itemQuantity;
+    } else if (item.itemType === '선택') {
+      if (component.selected) {
+        return componentValue * itemQuantity;
+      }
+      return 0;
+    }
+    return 0;
+  }, [resolveUnitPrice, crystalGoldRate, goldToCashPerGold]);
+
+  // '선택' 타입인 경우 가장 가치가 높은 항목을 자동으로 선택
+  useEffect(() => {
+    let hasChanges = false;
+    const updatedItems = boxData.items.map((item, itemIndex) => {
+      if (item.itemType === '선택' && item.components.length > 0) {
+        // 선택된 항목이 있는지 확인
+        const hasSelected = item.components.some(comp => {
+          if (comp.itemName === '__nested__' && comp.nestedItem && comp.nestedItem.itemType === '선택') {
+            return comp.nestedItem.components.some(nestedComp => nestedComp.selected);
+          }
+          return comp.selected;
+        });
+        
+        // 선택된 항목이 없는 경우에만 자동 선택
+        if (!hasSelected) {
+          // 각 구성요소의 가치 계산 (선택 상태를 고려하지 않고 최대 가치 계산)
+          const componentValues = item.components.map((comp, compIndex) => {
+            let maxValue = 0;
+            
+            if (comp.itemName === '__nested__' && comp.nestedItem) {
+              const nestedItem = comp.nestedItem;
+              if (nestedItem.itemType === '선택') {
+                // 하위 구성요소 중 가장 가치가 높은 것 찾기
+                nestedItem.components.forEach((nestedComp) => {
+                  const isManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
+                  const resolved = !isManual && nestedComp.itemName ? resolveUnitPrice(nestedComp.itemName) : null;
+                  const finalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined && nestedComp.manualPrice > 0)
+                    ? { unitType: (nestedComp.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: nestedComp.manualPrice }
+                    : resolved;
+                  
+                  if (!finalUnitPrice) return;
+
+                  let nestedCompValue = 0;
+                  if (finalUnitPrice.unitType === '골드') {
+                    nestedCompValue = finalUnitPrice.unitPrice * (nestedComp.quantity || 0);
+                  } else if (finalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
+                    nestedCompValue = ((finalUnitPrice.unitPrice * crystalGoldRate) / 100) * (nestedComp.quantity || 0);
+                  } else if (finalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
+                    nestedCompValue = (finalUnitPrice.unitPrice / goldToCashPerGold) * (nestedComp.quantity || 0);
+                  }
+                  
+                  const nestedItemQuantity = nestedItem.quantity || 1;
+                  const componentQuantity = comp.quantity || 1;
+                  const itemQuantity = item.quantity || 1;
+                  const totalValue = nestedCompValue * nestedItemQuantity * componentQuantity * itemQuantity;
+                  
+                  if (totalValue > maxValue) {
+                    maxValue = totalValue;
+                  }
+                });
+              } else {
+                // 하위 묶음이 선택 타입이 아닌 경우 일반 계산
+                maxValue = calculateComponentValue(comp, item);
+              }
+            } else {
+              // 일반 구성요소인 경우
+              const isManual = comp.itemName === '__manual__' || comp.itemName === '';
+              const resolved = !isManual && comp.itemName ? resolveUnitPrice(comp.itemName) : null;
+              const finalUnitPrice = (comp.manualPrice !== null && comp.manualPrice !== undefined && comp.manualPrice > 0)
+                ? { unitType: (comp.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: comp.manualPrice }
+                : resolved;
+              
+              if (finalUnitPrice) {
+                let componentValue = 0;
+                if (finalUnitPrice.unitType === '골드') {
+                  componentValue = finalUnitPrice.unitPrice * (comp.quantity || 0);
+                } else if (finalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
+                  componentValue = ((finalUnitPrice.unitPrice * crystalGoldRate) / 100) * (comp.quantity || 0);
+                } else if (finalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
+                  componentValue = (finalUnitPrice.unitPrice / goldToCashPerGold) * (comp.quantity || 0);
+                }
+                maxValue = componentValue * (item.quantity || 1);
+              }
+            }
+            
+            return { compIndex, value: maxValue, comp };
+          }).filter(cv => cv.value > 0);
+          
+          if (componentValues.length > 0) {
+            // 가장 가치가 높은 항목 찾기
+            const bestComponent = componentValues.reduce((best, current) => 
+              current.value > best.value ? current : best
+            );
+            
+            // 가장 가치가 높은 항목 선택
+            const newComponents = item.components.map((comp, compIdx) => {
+              if (compIdx === bestComponent.compIndex) {
+                if (comp.itemName === '__nested__' && comp.nestedItem && comp.nestedItem.itemType === '선택') {
+                  // 하위 구성요소 중 가장 가치가 높은 것 선택
+                  const nestedItem = comp.nestedItem;
+                  const nestedValues = nestedItem.components.map((nestedComp) => {
+                    const isManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
+                    const resolved = !isManual && nestedComp.itemName ? resolveUnitPrice(nestedComp.itemName) : null;
+                    const finalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined && nestedComp.manualPrice > 0)
+                      ? { unitType: (nestedComp.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: nestedComp.manualPrice }
+                      : resolved;
+                    
+                    if (!finalUnitPrice) return { nestedComp, value: 0 };
+
+                    let nestedCompValue = 0;
+                    if (finalUnitPrice.unitType === '골드') {
+                      nestedCompValue = finalUnitPrice.unitPrice * (nestedComp.quantity || 0);
+                    } else if (finalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
+                      nestedCompValue = ((finalUnitPrice.unitPrice * crystalGoldRate) / 100) * (nestedComp.quantity || 0);
+                    } else if (finalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
+                      nestedCompValue = (finalUnitPrice.unitPrice / goldToCashPerGold) * (nestedComp.quantity || 0);
+                    }
+                    
+                    const nestedItemQuantity = nestedItem.quantity || 1;
+                    const componentQuantity = comp.quantity || 1;
+                    const itemQuantity = item.quantity || 1;
+                    return { nestedComp, value: nestedCompValue * nestedItemQuantity * componentQuantity * itemQuantity };
+                  });
+                  
+                  const bestNested = nestedValues.reduce((best, current) => 
+                    current.value > best.value ? current : best
+                  );
+                  
+                  return {
+                    ...comp,
+                    nestedItem: {
+                      ...nestedItem,
+                      components: nestedItem.components.map(nestedComp => ({
+                        ...nestedComp,
+                        selected: nestedComp === bestNested.nestedComp && bestNested.value > 0
+                      }))
+                    }
+                  };
+                } else {
+                  return { ...comp, selected: true };
+                }
+              } else {
+                // 다른 구성요소는 선택 해제
+                if (comp.itemName === '__nested__' && comp.nestedItem && comp.nestedItem.itemType === '선택') {
+                  return {
+                    ...comp,
+                    nestedItem: {
+                      ...comp.nestedItem,
+                      components: comp.nestedItem.components.map(nestedComp => ({
+                        ...nestedComp,
+                        selected: false
+                      }))
+                    }
+                  };
+                }
+                return { ...comp, selected: false };
+              }
+            });
+            
+            hasChanges = true;
+            return { ...item, components: newComponents };
+          }
+        }
+      }
+      return item;
+    });
+    
+    if (hasChanges) {
+      setBoxData(prev => ({ ...prev, items: updatedItems }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boxData.items, resolveUnitPrice, crystalGoldRate, goldToCashPerGold]);
+
   const getLevelColors = (level: number) => {
     const colorPalette = [
       { bg: 'bg-blue-900/30', border: 'border-blue-500/30', text: 'text-blue-300', accent: 'blue' },
@@ -1278,22 +1530,191 @@ export default function BoxSelectorClient({
             <div className="mb-6">
               <h3 className="text-lg font-semibold mb-3 text-purple-300">구성품 정보</h3>
               <div className="space-y-2">
-                {itemValues.map((itemValue, idx) => (
-                  <div key={idx} className="bg-gray-900/50 rounded-lg p-3 border border-gray-700">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-white font-medium">{itemValue.item.itemName || `항목 ${idx + 1}`}</span>
-                        <span className="text-xs text-gray-400">({itemValue.item.itemType})</span>
-                        {itemValue.item.quantity > 1 && (
-                          <span className="text-xs text-blue-400">× {itemValue.item.quantity}</span>
-                        )}
+                {itemValues.map((itemValue, idx) => {
+                  const isExpanded = expandedSummaryItems[idx] || false;
+                  return (
+                    <div key={idx} className="bg-gray-900/50 rounded-lg border border-gray-700">
+                      <div className="flex items-center justify-between p-3">
+                        <div className="flex items-center gap-2 flex-1">
+                          <button
+                            onClick={() => setExpandedSummaryItems(prev => ({ ...prev, [idx]: !prev[idx] }))}
+                            className="text-gray-400 hover:text-white transition-colors mr-2"
+                          >
+                            {isExpanded ? '▼' : '▶'}
+                          </button>
+                          <span className="text-white font-medium">{itemValue.item.itemName || `항목 ${idx + 1}`}</span>
+                          <span className="text-xs text-gray-400">({itemValue.item.itemType})</span>
+                          {itemValue.item.quantity > 1 && (
+                            <span className="text-xs text-blue-400">× {itemValue.item.quantity}</span>
+                          )}
+                        </div>
+                        <div className="text-lg font-semibold text-green-400">
+                          {formatNumberWithSignificantDigits(itemValue.value)} 골드
+                        </div>
                       </div>
-                      <div className="text-lg font-semibold text-green-400">
-                        {formatNumberWithSignificantDigits(itemValue.value)} 골드
-                      </div>
+                      {isExpanded && (
+                        <div className="px-3 pb-3 pt-2 border-t border-gray-700/50">
+                          <div className="space-y-2 mt-2">
+                            {itemValue.item.components.map((component, compIdx) => {
+                              const compValue = calculateComponentValue(component, itemValue.item);
+                              // 선택되지 않은 항목의 가치도 계산
+                              let unselectedValue = 0;
+                              if (itemValue.item.itemType === '선택' && !component.selected) {
+                                const isNested = component.itemName === '__nested__' && component.nestedItem;
+                                if (isNested && component.nestedItem) {
+                                  const nestedItem = component.nestedItem;
+                                  if (nestedItem.itemType === '선택') {
+                                    // 하위 구성요소 중 가장 가치가 높은 것 찾기
+                                    nestedItem.components.forEach((nestedComp) => {
+                                      const isManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
+                                      const resolved = !isManual && nestedComp.itemName ? resolveUnitPrice(nestedComp.itemName) : null;
+                                      const finalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined && nestedComp.manualPrice > 0)
+                                        ? { unitType: (nestedComp.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: nestedComp.manualPrice }
+                                        : resolved;
+                                      
+                                      if (!finalUnitPrice) return;
+
+                                      let nestedCompValue = 0;
+                                      if (finalUnitPrice.unitType === '골드') {
+                                        nestedCompValue = finalUnitPrice.unitPrice * (nestedComp.quantity || 0);
+                                      } else if (finalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
+                                        nestedCompValue = ((finalUnitPrice.unitPrice * crystalGoldRate) / 100) * (nestedComp.quantity || 0);
+                                      } else if (finalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
+                                        nestedCompValue = (finalUnitPrice.unitPrice / goldToCashPerGold) * (nestedComp.quantity || 0);
+                                      }
+                                      
+                                      const nestedItemQuantity = nestedItem.quantity || 1;
+                                      const componentQuantity = component.quantity || 1;
+                                      const itemQuantity = itemValue.item.quantity || 1;
+                                      const totalValue = nestedCompValue * nestedItemQuantity * componentQuantity * itemQuantity;
+                                      
+                                      if (totalValue > unselectedValue) {
+                                        unselectedValue = totalValue;
+                                      }
+                                    });
+                                  } else {
+                                    // 하위 묶음이 선택 타입이 아닌 경우 일반 계산
+                                    unselectedValue = calculateComponentValue(component, itemValue.item);
+                                  }
+                                } else {
+                                  // 일반 구성요소인 경우
+                                  const isManual = component.itemName === '__manual__' || component.itemName === '';
+                                  const resolved = !isManual && component.itemName ? resolveUnitPrice(component.itemName) : null;
+                                  const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined && component.manualPrice > 0)
+                                    ? { unitType: (component.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: component.manualPrice }
+                                    : resolved;
+                                  
+                                  if (finalUnitPrice) {
+                                    let componentValue = 0;
+                                    if (finalUnitPrice.unitType === '골드') {
+                                      componentValue = finalUnitPrice.unitPrice * (component.quantity || 0);
+                                    } else if (finalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
+                                      componentValue = ((finalUnitPrice.unitPrice * crystalGoldRate) / 100) * (component.quantity || 0);
+                                    } else if (finalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
+                                      componentValue = (finalUnitPrice.unitPrice / goldToCashPerGold) * (component.quantity || 0);
+                                    }
+                                    unselectedValue = componentValue * (itemValue.item.quantity || 1);
+                                  }
+                                }
+                              }
+                              const isNested = component.itemName === '__nested__' && component.nestedItem;
+                              return (
+                                <div key={compIdx} className="bg-gray-800/50 rounded p-2 border border-gray-700/50">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      {isNested ? (
+                                        <span className="text-sm text-blue-300">📦 {component.nestedItem?.itemName || '하위 묶음 항목'}</span>
+                                      ) : (
+                                        <span className="text-sm text-white">
+                                          {component.itemName === '__manual__' || component.itemName === '' 
+                                            ? '(직접 입력)' 
+                                            : component.itemName}
+                                        </span>
+                                      )}
+                                      <span className="text-xs text-gray-400">
+                                        수량: {component.quantity || 0}
+                                      </span>
+                                      {itemValue.item.itemType === '확률' && component.probability !== undefined && (
+                                        <span className="text-xs text-yellow-400">
+                                          확률: {component.probability}%
+                                        </span>
+                                      )}
+                                      {itemValue.item.itemType === '선택' && (
+                                        <span className={`text-xs ${component.selected ? 'text-green-400' : 'text-gray-500'}`}>
+                                          {component.selected ? '✓ 선택됨' : '(미선택)'}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className={`text-sm font-medium ${component.selected || itemValue.item.itemType !== '선택' ? 'text-green-400' : 'text-gray-500'}`}>
+                                      {formatNumberWithSignificantDigits(component.selected || itemValue.item.itemType !== '선택' ? compValue : unselectedValue)} 골드
+                                    </div>
+                                  </div>
+                                  {isNested && component.nestedItem && (
+                                    <div className="mt-2 ml-4 space-y-1">
+                                      {component.nestedItem.components.map((nestedComp, nestedIdx) => {
+                                        const isManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
+                                        const resolved = !isManual && nestedComp.itemName ? resolveUnitPrice(nestedComp.itemName) : null;
+                                        const finalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined && nestedComp.manualPrice > 0)
+                                          ? { unitType: (nestedComp.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: nestedComp.manualPrice }
+                                          : resolved;
+                                        
+                                        if (!finalUnitPrice) return null;
+
+                                        let nestedCompValue = 0;
+                                        if (finalUnitPrice.unitType === '골드') {
+                                          nestedCompValue = finalUnitPrice.unitPrice * (nestedComp.quantity || 0);
+                                        } else if (finalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
+                                          nestedCompValue = ((finalUnitPrice.unitPrice * crystalGoldRate) / 100) * (nestedComp.quantity || 0);
+                                        } else if (finalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
+                                          nestedCompValue = (finalUnitPrice.unitPrice / goldToCashPerGold) * (nestedComp.quantity || 0);
+                                        }
+
+                                        const nestedItemQuantity = component.nestedItem?.quantity || 1;
+                                        const componentQuantity = component.quantity || 1;
+                                        const itemQuantity = itemValue.item.quantity || 1;
+                                        let totalNestedValue = nestedCompValue * nestedItemQuantity * componentQuantity * itemQuantity;
+
+                                        if (component.nestedItem?.itemType === '확률') {
+                                          const probability = nestedComp.probability || 0;
+                                          totalNestedValue *= probability / 100;
+                                        }
+                                        // 선택 타입인 경우 선택되지 않아도 가치 표시
+
+                                        return (
+                                          <div key={nestedIdx} className="flex items-center justify-between text-xs">
+                                            <div className="flex items-center gap-2">
+                                              <span className="text-gray-300">
+                                                {nestedComp.itemName === '__manual__' || nestedComp.itemName === '' 
+                                                  ? '(직접 입력)' 
+                                                  : nestedComp.itemName}
+                                              </span>
+                                              <span className="text-gray-500">수량: {nestedComp.quantity || 0}</span>
+                                              {component.nestedItem?.itemType === '확률' && nestedComp.probability !== undefined && (
+                                                <span className="text-yellow-400">확률: {nestedComp.probability}%</span>
+                                              )}
+                                              {component.nestedItem?.itemType === '선택' && (
+                                                <span className={nestedComp.selected ? 'text-green-400' : 'text-gray-500'}>
+                                                  {nestedComp.selected ? '✓' : '○'}
+                                                </span>
+                                              )}
+                                            </div>
+                                            <span className={nestedComp.selected || component.nestedItem?.itemType !== '선택' ? 'text-green-400' : 'text-gray-500'}>
+                                              {formatNumberWithSignificantDigits(totalNestedValue)} 골드
+                                            </span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -1644,21 +2065,28 @@ export default function BoxSelectorClient({
 
                                 // 구성요소 가치 계산 (1개 기준)
                                 let itemValue = 0;
+                                let unselectedItemValue = 0; // 선택되지 않은 항목의 가치
                                 if (finalUnitPrice) {
                                   if (finalUnitPrice.unitType === '골드') {
                                     itemValue = finalUnitPrice.unitPrice * (component.quantity || 0);
+                                    unselectedItemValue = itemValue;
                                   } else if (finalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
                                     itemValue = ((finalUnitPrice.unitPrice * crystalGoldRate) / 100) * (component.quantity || 0);
+                                    unselectedItemValue = itemValue;
                                   } else if (finalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
                                     itemValue = (finalUnitPrice.unitPrice / goldToCashPerGold) * (component.quantity || 0);
+                                    unselectedItemValue = itemValue;
                                   }
                                   
                                   // 타입별 가치 계산
                                   if (item.itemType === '확률') {
                                     const probability = component.probability || 0;
                                     itemValue = itemValue * probability; // 기대값
+                                    unselectedItemValue = itemValue;
                                   } else if (item.itemType === '선택' && !component.selected) {
-                                    itemValue = 0; // 선택되지 않은 항목은 0
+                                    // 선택되지 않은 항목도 가치 표시 (실제 가치 유지)
+                                    unselectedItemValue = itemValue;
+                                    itemValue = 0; // 총 가치 계산에는 포함하지 않음
                                   }
                                   // 묶음 항목 수량은 곱하지 않음 (1개 기준으로 표시)
                                 }
@@ -1666,6 +2094,7 @@ export default function BoxSelectorClient({
                                 // 전체 가치 계산 (묶음 항목 수량 곱한 값)
                                 const itemQuantity = item.quantity || 1;
                                 const totalItemValue = itemValue * itemQuantity;
+                                const totalUnselectedItemValue = unselectedItemValue * itemQuantity;
                                 
                                 const isIncluded = item.itemType === '확정' || 
                                                  (item.itemType === '확률') ||
@@ -1684,7 +2113,7 @@ export default function BoxSelectorClient({
                                       <br />
                                       {/* 수량 및 가치 */}
                                       {finalUnitPrice && unitPriceInPackageType > 0 ? (
-                                        <div className={`${isIncluded ? 'text-gray-300' : 'text-gray-600'}`}>
+                                        <div className={`${isIncluded ? 'text-gray-300' : 'text-gray-500'}`}>
                                           단가 <span className="font-semibold">{formatNumberWithSignificantDigits(unitPriceInPackageType)}</span> {unitPriceUnit}
                                           {item.itemType === '확률' && component.probability !== undefined && (
                                             <span className="text-purple-400 ml-1">× {component.probability}</span>
@@ -1692,19 +2121,19 @@ export default function BoxSelectorClient({
                                           <span className="text-gray-500 mx-1">×</span>
                                           수량 <span className="font-semibold">{formatNumberWithSignificantDigits(component.quantity || 0)}</span>
                                           <span className="text-gray-500 mx-1">=</span>
-                                          가치 <span className={`font-semibold ${isIncluded ? 'text-green-400' : 'text-gray-600'}`}>
-                                            {isIncluded ? formatNumberWithSignificantDigits(itemValue) : '0'} {unitPriceUnit}
+                                          가치 <span className={`font-semibold ${isIncluded ? 'text-green-400' : 'text-gray-500'}`}>
+                                            {formatNumberWithSignificantDigits(isIncluded ? itemValue : unselectedItemValue)} {unitPriceUnit}
                                           </span>
                                           {item.itemType === '확률' && isIncluded && <span className="text-gray-500 ml-1">(기대값)</span>}
-                                          {item.quantity && item.quantity > 1 && isIncluded && (
+                                          {item.quantity && item.quantity > 1 && (
                                             <span className="text-gray-500 ml-1">(1개 기준)</span>
                                           )}
-                                          {item.quantity && item.quantity > 1 && isIncluded && (
+                                          {item.quantity && item.quantity > 1 && (
                                             <>
                                               <br />
-                                              <span className="text-gray-400">
-                                                × 묶음 수량 {item.quantity} = 총 가치 <span className="font-semibold text-green-400">
-                                                  {formatNumberWithSignificantDigits(totalItemValue)} {unitPriceUnit}
+                                              <span className={isIncluded ? 'text-gray-400' : 'text-gray-500'}>
+                                                × 묶음 수량 {item.quantity} = 총 가치 <span className={`font-semibold ${isIncluded ? 'text-green-400' : 'text-gray-500'}`}>
+                                                  {formatNumberWithSignificantDigits(isIncluded ? totalItemValue : totalUnselectedItemValue)} {unitPriceUnit}
                                                 </span>
                                               </span>
                                             </>
@@ -1712,14 +2141,14 @@ export default function BoxSelectorClient({
                                         </div>
                                       ) : (
                                         <div className="flex items-center gap-3">
-                                          <span className={`${isIncluded ? 'text-gray-400' : 'text-gray-600'}`}>
+                                          <span className={`${isIncluded ? 'text-gray-400' : 'text-gray-500'}`}>
                                             수량: <span className="font-semibold">{formatNumberWithSignificantDigits(component.quantity || 0)}</span>
                                           </span>
                                           {finalUnitPrice && (
-                                            <span className={`${isIncluded ? 'text-blue-400' : 'text-gray-600'}`}>
-                                              가치: <span className="font-semibold">{isIncluded ? formatNumberWithSignificantDigits(itemValue) : '0'}</span> {unitPriceUnit}
+                                            <span className={isIncluded ? 'text-blue-400' : 'text-gray-500'}>
+                                              가치: <span className="font-semibold">{formatNumberWithSignificantDigits(isIncluded ? itemValue : unselectedItemValue)}</span> {unitPriceUnit}
                                               {item.itemType === '확률' && isIncluded && <span className="text-gray-500 ml-1">(기대값)</span>}
-                                              {item.quantity && item.quantity > 1 && isIncluded && (
+                                              {item.quantity && item.quantity > 1 && (
                                                 <span className="text-gray-500 ml-1">(1개 기준)</span>
                                               )}
                                             </span>
@@ -1737,6 +2166,7 @@ export default function BoxSelectorClient({
                                 
                                 // 하위 묶음 항목의 전체 가치 계산
                                 let totalNestedValue = 0;
+                                let totalUnselectedNestedValue = 0; // 선택되지 않은 항목의 가치
                                 if (component.nestedItem) {
                                   const nestedItem = component.nestedItem;
                                   nestedItem.components.forEach((nestedComp) => {
@@ -1759,36 +2189,49 @@ export default function BoxSelectorClient({
                                       if (nestedItem.itemType === '확률') {
                                         const nestedProbability = nestedComp.probability || 0;
                                         nestedCompValue = nestedCompValue * nestedProbability;
-                                      } else if (nestedItem.itemType === '선택' && !nestedComp.selected) {
-                                        nestedCompValue = 0;
+                                        totalNestedValue += nestedCompValue;
+                                        totalUnselectedNestedValue += nestedCompValue;
+                                      } else if (nestedItem.itemType === '선택') {
+                                        if (nestedComp.selected) {
+                                          totalNestedValue += nestedCompValue;
+                                        }
+                                        // 선택되지 않은 항목도 가치 계산 (표시용)
+                                        totalUnselectedNestedValue += nestedCompValue;
+                                      } else {
+                                        totalNestedValue += nestedCompValue;
+                                        totalUnselectedNestedValue += nestedCompValue;
                                       }
-                                      
-                                      totalNestedValue += nestedCompValue;
                                     }
                                   });
                                 }
                                 
                                 // 하위묶음 1개당 단가 = 하위구성요소 가치 총합
                                 const nestedItemUnitPrice = totalNestedValue;
+                                const nestedItemUnselectedUnitPrice = totalUnselectedNestedValue;
                                 const nestedItemQuantity = component.nestedItem?.quantity || 1;
                                 const componentQuantity = component.quantity || 1;
                                 
                                 // 상위 묶음 항목의 확률/선택 타입에 따라 가치 계산
                                 let nestedItemTotalValue = nestedItemUnitPrice * nestedItemQuantity * componentQuantity;
+                                let nestedItemUnselectedTotalValue = nestedItemUnselectedUnitPrice * nestedItemQuantity * componentQuantity;
                                 if (item.itemType === '확률') {
                                   const probability = component.probability ?? 0;
                                   nestedItemTotalValue = nestedItemUnitPrice * nestedItemQuantity * componentQuantity * probability;
+                                  nestedItemUnselectedTotalValue = nestedItemUnselectedUnitPrice * nestedItemQuantity * componentQuantity * probability;
                                 } else if (item.itemType === '선택' && !component.selected) {
-                                  nestedItemTotalValue = 0;
+                                  nestedItemTotalValue = 0; // 총 가치 계산에는 포함하지 않음
+                                  // 선택되지 않은 항목의 가치는 유지
                                 }
                                 
                                 // 묶음 수량 적용
                                 const itemQuantity = item.quantity || 1;
                                 nestedItemTotalValue = nestedItemTotalValue * itemQuantity;
+                                nestedItemUnselectedTotalValue = nestedItemUnselectedTotalValue * itemQuantity;
                                 
                                 const nestedIsIncluded = component.nestedItem?.itemType === '확정' || 
                                                          (component.nestedItem?.itemType === '확률') ||
                                                          (component.nestedItem?.itemType === '선택' && component.nestedItem.components.some(c => c.selected));
+                                const nestedIsSelected = item.itemType === '선택' ? component.selected : true;
                                 
                                 return (
                                   <div className={`mt-3 pl-4 border-l-2 border-blue-500/50 ${level1Colors.bg} rounded-lg p-3`}>
@@ -1810,9 +2253,9 @@ export default function BoxSelectorClient({
                                           ({component.nestedItem.itemType})
                                         </span>
                                       </div>
-                                      {nestedItemTotalValue > 0 && nestedIsIncluded && (
-                                        <div className="mt-1 text-xs text-gray-300">
-                                          단가 <span className="font-semibold">{formatNumberWithSignificantDigits(nestedItemUnitPrice)}</span> 골드
+                                      {(nestedItemTotalValue > 0 || (nestedItemUnselectedTotalValue > 0 && !nestedIsSelected)) && (
+                                        <div className={`mt-1 text-xs ${nestedIsIncluded && nestedIsSelected ? 'text-gray-300' : 'text-gray-500'}`}>
+                                          단가 <span className="font-semibold">{formatNumberWithSignificantDigits(nestedIsIncluded && nestedIsSelected ? nestedItemUnitPrice : nestedItemUnselectedUnitPrice)}</span> 골드
                                           {item.itemType === '확률' && component.probability !== undefined && (
                                             <span className="text-purple-400 ml-1">× {component.probability}</span>
                                           )}
@@ -1825,8 +2268,8 @@ export default function BoxSelectorClient({
                                             <span className="text-blue-400 ml-1">× 묶음 수량 {item.quantity}</span>
                                           )}
                                           <span className="text-gray-500 mx-1">=</span>
-                                          가치 <span className="font-semibold text-green-400">
-                                            {formatNumberWithSignificantDigits(nestedItemTotalValue)} 골드
+                                          가치 <span className={`font-semibold ${nestedIsIncluded && nestedIsSelected ? 'text-green-400' : 'text-gray-500'}`}>
+                                            {formatNumberWithSignificantDigits(nestedIsIncluded && nestedIsSelected ? nestedItemTotalValue : nestedItemUnselectedTotalValue)} 골드
                                           </span>
                                         </div>
                                       )}
@@ -2075,9 +2518,8 @@ export default function BoxSelectorClient({
                                                     if (component.nestedItem?.itemType === '확률') {
                                                       const nestedProbability = nestedComp.probability || 0;
                                                       nestedCompValue = nestedCompValue * nestedProbability;
-                                                    } else if (component.nestedItem?.itemType === '선택' && !nestedComp.selected) {
-                                                      nestedCompValue = 0;
                                                     }
+                                                    // 선택 타입인 경우 선택되지 않아도 가치 표시
                                                   }
                                                   
                                                   const nestedIsIncluded = component.nestedItem?.itemType === '확정' || 
@@ -2095,8 +2537,8 @@ export default function BoxSelectorClient({
                                                           <span className="text-gray-600 mx-0.5">×</span>
                                                           수량 <span className="font-semibold">{formatNumberWithSignificantDigits(nestedComp.quantity || 0)}</span>
                                                           <span className="text-gray-600 mx-0.5">=</span>
-                                                          가치 <span className={`${nestedIsIncluded ? 'text-green-400' : 'text-gray-600'}`}>
-                                                            {nestedIsIncluded ? formatNumberWithSignificantDigits(nestedCompValue) : '0'} 골드
+                                                          가치 <span className={`${nestedIsIncluded ? 'text-green-400' : 'text-gray-500'}`}>
+                                                            {formatNumberWithSignificantDigits(nestedCompValue)} 골드
                                                           </span>
                                                         </>
                                                       ) : (

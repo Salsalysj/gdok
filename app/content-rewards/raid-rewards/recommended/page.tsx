@@ -2,11 +2,11 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: '레이드 (더보기 효율) - 껨산기',
-  description: '에픽 레이드, 카제로스 레이드, 그림자 레이드 보상 가치 계산',
+  title: '더보기 추천 - 껨산기',
+  description: '더보기를 통한 이득률이 20% 이상인 관문들만 자동으로 추천합니다.',
 };
 
-import RaidRewardsClient from './client';
+import RecommendedClient from './client';
 import { getValueDbData } from '@/lib/valueDb';
 import fs from 'fs';
 import path from 'path';
@@ -58,7 +58,7 @@ async function getRates() {
   return { exchange, discord };
 }
 
-export default async function RaidRewardsPage() {
+export default async function RecommendedPage() {
   // 가치계산DB 데이터 가져오기
   const valueDbData = await getValueDbData();
   const valueDbEntryMap = valueDbData.entryMap;
@@ -67,23 +67,12 @@ export default async function RaidRewardsPage() {
   const raidRewardsPath = path.join(process.cwd(), 'data', 'raid-rewards.json');
   const raidRewardsData = JSON.parse(fs.readFileSync(raidRewardsPath, 'utf-8'));
   
-  // raid-rewards-1730.json 읽기
-  const raidRewards1730Path = path.join(process.cwd(), 'data', 'raid-rewards-1730.json');
-  let raidRewards1730Data;
-  try {
-    raidRewards1730Data = JSON.parse(fs.readFileSync(raidRewards1730Path, 'utf-8'));
-  } catch (error) {
-    console.error('raid-rewards-1730.json 로드 실패:', error);
-    raidRewards1730Data = raidRewardsData; // 실패 시 기본 데이터 사용
-  }
-  
   // 환율 데이터 가져오기
   const rates = await getRates();
   
   return (
-    <RaidRewardsClient 
+    <RecommendedClient 
       data={raidRewardsData} 
-      data1730={raidRewards1730Data}
       valueDbEntryMap={valueDbEntryMap} 
       rates={rates} 
     />

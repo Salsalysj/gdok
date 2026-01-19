@@ -1,117 +1,86 @@
-'use client';
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-import Link from 'next/link';
+import HomeClient from './home-client';
 
-export default function Home() {
+// YouTube Data API를 사용하여 재생목록의 최신 동영상 가져오기
+async function getLatestYouTubeVideo() {
+  const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
+  const PLAYLIST_ID = 'PLQszPuhfGc7AXaDd-1h6X5M8j0KceTEP_';
+  
+  if (!YOUTUBE_API_KEY) {
+    console.error('YouTube API 키가 설정되지 않았습니다.');
+    return null;
+  }
+  
+  try {
+    const response = await fetch(
+      `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${PLAYLIST_ID}&maxResults=1&order=date&key=${YOUTUBE_API_KEY}`,
+      { next: { revalidate: 3600 } } // 1시간마다 갱신
+    );
+    
+    if (!response.ok) {
+      console.error('YouTube API 호출 실패:', response.status);
+      return null;
+    }
+    
+    const data = await response.json();
+    
+    if (data.items && data.items.length > 0) {
+      const video = data.items[0].snippet;
+      return {
+        videoId: video.resourceId.videoId,
+        title: video.title,
+        description: video.description,
+        thumbnail: video.thumbnails.high?.url || video.thumbnails.medium?.url,
+        publishedAt: video.publishedAt,
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('YouTube 동영상 가져오기 실패:', error);
+    return null;
+  }
+}
+
+// 로스트아크 공지사항 가져오기
+async function getLostArkNotices() {
+  try {
+    const response = await fetch(
+      'https://developer-lostark.game.onstove.com/news/notices',
+      {
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `bearer ${process.env.LOSTARK_API_KEY || ''}`,
+        },
+        next: { revalidate: 1800 } // 30분마다 갱신
+      }
+    );
+    
+    if (!response.ok) {
+      console.error('로스트아크 API 호출 실패:', response.status);
+      return [];
+    }
+    
+    const data = await response.json();
+    return data.slice(0, 5); // 최신 5개만 가져오기
+  } catch (error) {
+    console.error('로스트아크 공지사항 가져오기 실패:', error);
+    return [];
+  }
+}
+
+export default async function HomePage() {
+  const [youtubeVideo, lostarkNotices] = await Promise.all([
+    getLatestYouTubeVideo(),
+    getLostArkNotices(),
+  ]);
+  
   return (
-    <div className="min-h-screen bg-gray-950">
-      <div className="py-12 md:py-16">
-        <div className="text-center mb-12 md:mb-14 space-y-4">
-          <div>
-            <span className="inline-block px-3 py-1 border border-gray-700 rounded text-sm text-gray-300">
-              Open Beta
-            </span>
-          </div>
-          <h1 className="text-3xl font-semibold tracking-tight text-white">
-            껨산기
-          </h1>
-          <p className="text-base text-gray-400 max-w-2xl mx-auto">
-            로스트아크 게임 내 아이템 가치를 계산하고 효율을 분석하는 도구입니다.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-12 md:mb-14">
-          <Link href="/content-rewards">
-            <div className="bg-gray-900 border border-gray-800 rounded-lg p-5 md:p-6 hover:border-gray-700 transition-colors">
-              <h3 className="text-lg font-semibold text-white mb-2">컨텐츠 보상</h3>
-              <p className="text-sm text-gray-400 leading-relaxed">
-                각종 컨텐츠 보상의 가치를 계산하고 비교합니다.
-              </p>
-            </div>
-          </Link>
-
-          <Link href="/hell">
-            <div className="bg-gray-900 border border-gray-800 rounded-lg p-5 md:p-6 hover:border-gray-700 transition-colors">
-              <h3 className="text-lg font-semibold text-white mb-2">지옥 보상 계산기</h3>
-              <p className="text-sm text-gray-400 leading-relaxed">
-                지옥과 나락 보상의 기대값을 계산하여 최적의 선택을 돕습니다.
-              </p>
-            </div>
-          </Link>
-
-          <Link href="/package-efficiency">
-            <div className="bg-gray-900 border border-gray-800 rounded-lg p-5 md:p-6 hover:border-gray-700 transition-colors">
-              <h3 className="text-lg font-semibold text-white mb-2">과금 효율</h3>
-              <p className="text-sm text-gray-400 leading-relaxed">
-                상점 패키지의 가성비를 분석하여 구매 효율을 판단합니다.
-              </p>
-            </div>
-          </Link>
-
-          <Link href="/refining-simulation">
-            <div className="bg-gray-900 border border-gray-800 rounded-lg p-5 md:p-6 hover:border-gray-700 transition-colors">
-              <h3 className="text-lg font-semibold text-white mb-2">재련 효율</h3>
-              <p className="text-sm text-gray-400 leading-relaxed">
-                장비 재련의 효율을 시뮬레이션하고 최적의 전략을 제시합니다.
-              </p>
-            </div>
-          </Link>
-
-          <Link href="/event-efficiency">
-            <div className="bg-gray-900 border border-gray-800 rounded-lg p-5 md:p-6 hover:border-gray-700 transition-colors">
-              <h3 className="text-lg font-semibold text-white mb-2">이벤트 효율</h3>
-              <p className="text-sm text-gray-400 leading-relaxed">
-                이벤트 보상의 가치를 계산하여 참여 여부를 결정합니다.
-              </p>
-            </div>
-          </Link>
-
-          <Link href="/crystal-gold">
-            <div className="bg-gray-900 border border-gray-800 rounded-lg p-5 md:p-6 hover:border-gray-700 transition-colors">
-              <h3 className="text-lg font-semibold text-white mb-2">골드 환율</h3>
-              <p className="text-sm text-gray-400 leading-relaxed">
-                크리스탈과 골드의 환율을 확인하고 현금 가치를 계산합니다.
-              </p>
-            </div>
-          </Link>
-        </div>
-
-        <div className="bg-gray-900 border border-gray-800 rounded-lg p-7 md:p-9">
-          <h2 className="text-lg font-semibold text-white mb-3 text-center">
-            사이트 소개
-          </h2>
-          <p className="text-base text-gray-300 text-center leading-relaxed mb-6">
-            껨산기는 로스트아크 플레이어를 위한 가치 계산 및 효율 분석 도구입니다.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <h4 className="font-semibold text-white">실시간 시세 반영</h4>
-              <p className="text-sm text-gray-400 leading-relaxed">
-                거래소 시세를 반영하여 정확한 가치 계산을 제공합니다.
-              </p>
-            </div>
-            <div className="space-y-1.5">
-              <h4 className="font-semibold text-white">효율 분석</h4>
-              <p className="text-sm text-gray-400 leading-relaxed">
-                다양한 컨텐츠와 패키지의 효율을 비교 분석합니다.
-              </p>
-            </div>
-            <div className="space-y-1.5">
-              <h4 className="font-semibold text-white">빠른 계산</h4>
-              <p className="text-sm text-gray-400 leading-relaxed">
-                복잡한 계산을 자동화하여 즉시 결과를 확인할 수 있습니다.
-              </p>
-            </div>
-            <div className="space-y-1.5">
-              <h4 className="font-semibold text-white">맞춤 설정</h4>
-              <p className="text-sm text-gray-400 leading-relaxed">
-                개인 상황에 맞는 가격 조정 옵션을 제공합니다.
-              </p>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </div>
+    <HomeClient 
+      youtubeVideo={youtubeVideo}
+      lostarkNotices={lostarkNotices}
+    />
   );
 }

@@ -14,7 +14,8 @@ export async function GET() {
     const { data, error } = await supabase
       .from('saved_box_selectors')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(0, 99999); // 모든 데이터를 가져오기 위해 큰 범위 설정
 
     if (error) {
       console.error('Supabase 에러:', error);

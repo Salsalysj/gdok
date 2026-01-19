@@ -26,7 +26,8 @@ async function getSavedBoxSelectors() {
     const { data, error } = await supabase
       .from('saved_box_selectors')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(0, 99999); // 모든 데이터를 가져오기 위해 큰 범위 설정
 
     if (error) {
       console.error('저장된 상자 선택 도우미 조회 실패:', error);
