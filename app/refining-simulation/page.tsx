@@ -8,7 +8,6 @@ export const metadata = {
 
 import { promises as fs } from 'fs';
 import path from 'path';
-import { createClient } from '@supabase/supabase-js';
 import RefiningSimulationClient from './client';
 import { getMarketCache } from '@/lib/marketCache';
 
@@ -50,24 +49,6 @@ const BASE_MATERIALS_ARMOR = [
   '운명의 수호석',
   '운명의 돌파석',
   '아비도스 융화 재료',
-  '운명의 파편',
-  '실링',
-];
-
-// 세르카 장비용 (무기)
-const BASE_MATERIALS_WEAPON_SERKA = [
-  '운명의 파괴석 결정',
-  '위대한 운명의 돌파석',
-  '상급 아비도스 융화 재료',
-  '운명의 파편',
-  '실링',
-];
-
-// 세르카 장비용 (방어구)
-const BASE_MATERIALS_ARMOR_SERKA = [
-  '운명의 수호석 결정',
-  '위대한 운명의 돌파석',
-  '상급 아비도스 융화 재료',
   '운명의 파편',
   '실링',
 ];
@@ -141,49 +122,28 @@ async function getSilverCashValue(): Promise<number | null> {
 }
 
 async function getLatestRates(): Promise<{ exchange: number | null; discord: number | null }> {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-  const supabase = supabaseUrl && supabaseServiceKey
-    ? createClient(supabaseUrl, supabaseServiceKey)
-    : null;
-
-  // exchange는 Supabase의 crystal_exchange_rates에서 가져오기
-  let exchange: number | null = null;
-  if (supabase) {
-    try {
-      const { data } = await supabase
-        .from('crystal_exchange_rates')
-        .select('exchange')
-        .order('timestamp', { ascending: false })
-        .limit(1)
-        .single();
-      if (data?.exchange) {
-        exchange = Number(data.exchange);
-      }
-    } catch (err) {
-      // 데이터가 없거나 오류 발생 시 무시
-    }
+  try {
+    const RATES_FILE = path.join(process.cwd(), 'data', 'crystal-gold-rates.json');
+    const content = await fs.readFile(RATES_FILE, 'utf-8');
+    const data = JSON.parse(content);
+    const list = data?.exchangeRates || [];
+    if (list.length === 0) return { exchange: null, discord: null };
+    
+    // 날짜순 정렬
+    const sorted = [...list].sort((a: any, b: any) => b.date.localeCompare(a.date));
+    
+    // exchange가 0이 아닌 최신 데이터 찾기
+    const latestWithExchange = sorted.find((item: any) => item.exchange && item.exchange > 0);
+    const latestWithDiscord = sorted.find((item: any) => item.discord && item.discord > 0);
+    
+    return { 
+      exchange: latestWithExchange?.exchange ?? null, 
+      discord: latestWithDiscord?.discord ?? null 
+    };
+  } catch (error) {
+    console.error('[서버] 환율 데이터 읽기 실패:', error);
+    return { exchange: null, discord: null };
   }
-
-  // discord는 Supabase의 discord_exchange_rates에서 가져오기
-  let discord: number | null = null;
-  if (supabase) {
-    try {
-      const { data } = await supabase
-        .from('discord_exchange_rates')
-        .select('discord')
-        .order('timestamp', { ascending: false })
-        .limit(1)
-        .single();
-      if (data?.discord) {
-        discord = Number(data.discord);
-      }
-    } catch (err) {
-      // 데이터가 없거나 오류 발생 시 무시
-    }
-  }
-
-  return { exchange, discord };
 }
 
 async function getLatestCrystalGoldRate(): Promise<number | null> {
@@ -316,6 +276,7 @@ async function getMarketInfoMap(): Promise<{ infoMap: Record<string, MarketItemI
 
 export type RefiningStage = {
   level: number;
+  itemLevel: number | null; // 재련 단계에 따른 아이템 레벨
   expMaterial: { name: string; quantity: number } | null;
   baseMaterials: { name: string; quantity: number }[];
   breathMaterial: { name: string; quantity: number } | null;
@@ -354,9 +315,11 @@ function createStages(
     const goldCost = rowMap[GOLD_ITEM]?.[idx] ?? 0;
     const silverCost = rowMap[SILVER_ITEM]?.[idx] ?? 0;
     const baseSuccessRate = rowMap[BASE_SUCCESS_RATE]?.[idx] ?? 0;
+    const itemLevel = rowMap['아이템 레벨']?.[idx] ?? null;
 
     return {
       level,
+      itemLevel: itemLevel != null ? itemLevel : null,
       expMaterial: expQty > 0 ? { name: EXP_MATERIAL, quantity: expQty } : null,
       baseMaterials: baseMaterialsList,
       breathMaterial,
@@ -408,7 +371,7 @@ export default async function RefiningSimulationPage() {
   const weaponStagesSerka = createStages(
     weaponDataSerka.levels,
     weaponDataSerka.rowMap,
-    BASE_MATERIALS_WEAPON_SERKA,
+    BASE_MATERIALS_WEAPON,
     BREATH_ITEM_WEAPON,
     OPTIONAL_METALLURGY_ITEMS_WEAPON
   );
@@ -416,7 +379,7 @@ export default async function RefiningSimulationPage() {
   const armorStagesSerka = createStages(
     armorDataSerka.levels,
     armorDataSerka.rowMap,
-    BASE_MATERIALS_ARMOR_SERKA,
+    BASE_MATERIALS_ARMOR,
     BREATH_ITEM_ARMOR,
     OPTIONAL_METALLURGY_ITEMS_ARMOR
   );

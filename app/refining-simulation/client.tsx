@@ -1602,10 +1602,23 @@ type StageCardProps = {
   marketInfo: Record<string, MarketItemInfo>;
   sillingUnitPrice: number;
   selectedTier: 'basic' | 'upper';
+  allStages?: RefiningStage[]; // 이전 단계 아이템 레벨 계산을 위한 전체 stages 배열
 };
 
-function StageCard({ stage, marketInfo, sillingUnitPrice, selectedTier }: StageCardProps) {
+function StageCard({ stage, marketInfo, sillingUnitPrice, selectedTier, allStages }: StageCardProps) {
   const { adjustPrice } = usePriceAdjustment();
+  
+  // 이전 단계의 아이템 레벨 계산
+  const prevItemLevel = useMemo(() => {
+    if (allStages) {
+      const prevStage = allStages.find(s => s.level === stage.level - 1);
+      if (prevStage?.itemLevel != null) {
+        return prevStage.itemLevel;
+      }
+    }
+    // 이전 단계가 없으면 현재 단계에서 5를 빼서 추정 (일반적으로 5씩 증가)
+    return stage.itemLevel != null ? stage.itemLevel - 5 : null;
+  }, [stage, allStages]);
   
   // 가격 조정이 적용된 marketInfo 생성
   const adjustedMarketInfo = useMemo(() => {
@@ -1662,13 +1675,42 @@ function StageCard({ stage, marketInfo, sillingUnitPrice, selectedTier }: StageC
   }
   essentialRight.push(goldLine);
 
+  // 무기/방어구 구분 및 최적 전략 요약
+  const isWeapon = stage.breathMaterial?.name === '용암의 숨결' || stage.metallurgyMaterial?.name?.includes('야금술') || false;
+  const breathName = isWeapon ? '용암의 숨결' : '빙하의 숨결';
+  const craftName = isWeapon ? '야금술' : '재봉술';
+  const breathStatus = optimalStrategy.breathAttempts > 0 ? '투입' : '투입 안함';
+  const craftCount = optimalStrategy.metallurgyAttempts;
+
   return (
     <div className="bg-gray-900/70 rounded-lg border border-gray-700 overflow-hidden">
       <div className="px-5 py-3 bg-gray-800/50 border-b border-gray-700">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-          <div>
-            <h3 className="text-xl font-semibold text-white">{stage.level - 1} → {stage.level} 재련</h3>
-            <p className="text-xs text-gray-300">기본 성공률: {formatRate(stage.baseSuccessRate)}</p>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div className="flex-1">
+            <h3 className="text-xl font-semibold text-white">
+              {stage.level - 1} → {stage.level} 재련
+              {prevItemLevel != null && stage.itemLevel != null && (
+                <span className="text-sm font-normal text-gray-400 ml-2">
+                  ({prevItemLevel} → {stage.itemLevel})
+                </span>
+              )}
+            </h3>
+            <p className="text-xs text-gray-300 mt-1">기본 성공률: {formatRate(stage.baseSuccessRate)}</p>
+          </div>
+          {/* 최적 재련 전략 요약 */}
+          <div className="flex flex-col items-end gap-2 md:min-w-[280px]">
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-900/60 border ${optimalStrategy.breathAttempts > 0 ? 'border-blue-500/50' : 'border-gray-700/50'}`}>
+              <span className="text-xs text-gray-400">{breathName}</span>
+              <span className={`text-sm font-semibold ${optimalStrategy.breathAttempts > 0 ? 'text-blue-400' : 'text-gray-500'}`}>
+                {breathStatus}
+              </span>
+            </div>
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-900/60 border ${craftCount > 0 ? 'border-purple-500/50' : 'border-gray-700/50'}`}>
+              <span className="text-xs text-gray-400">{craftName}</span>
+              <span className={`text-sm font-semibold ${craftCount > 0 ? 'text-purple-400' : 'text-gray-500'}`}>
+                {craftCount > 0 ? `${craftCount}회 투입` : '투입 안함'}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -2174,6 +2216,7 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
   const [activeSimulationTab, setActiveSimulationTab] = useState<'weapon' | 'armor' | 'summary'>('weapon');
   const [selectedTier, setSelectedTier] = useState<'basic' | 'upper'>('basic');
   const [activeSpecialTab, setActiveSpecialTab] = useState<'circular' | 'transition'>('circular');
+  const [summaryEquipmentType, setSummaryEquipmentType] = useState<'kazeros' | 'serka'>('kazeros');
   
   // selectedTier에 따라 적절한 stages 선택
   const currentStages = useMemo(() => {
@@ -2205,8 +2248,8 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
     setActiveSimulationTab(tab);
   };
 
-  // 요약표 데이터 계산
-  const summaryData = useMemo(() => {
+  // 요약표 데이터 계산 (카제로스 장비)
+  const summaryDataKazeros = useMemo(() => {
     const allLevels = Array.from(new Set([...weaponStages.map(s => s.level), ...armorStages.map(s => s.level)])).sort((a, b) => a - b);
     
     return allLevels.map(level => {
@@ -2217,6 +2260,22 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
       let weaponStrategy: string = '-';
       let armorCost: number | null = null;
       let armorStrategy: string = '-';
+      
+      // 아이템 레벨 정보 (무기와 방어구 중 하나라도 있으면 사용)
+      const weaponItemLevel = weaponStage?.itemLevel ?? null;
+      const armorItemLevel = armorStage?.itemLevel ?? null;
+      const itemLevel = weaponItemLevel ?? armorItemLevel;
+      
+      // 이전 단계의 아이템 레벨 계산
+      const prevLevel = level - 1;
+      const prevWeaponStage = weaponStages.find(s => s.level === prevLevel);
+      const prevArmorStage = armorStages.find(s => s.level === prevLevel);
+      const prevWeaponItemLevel = prevWeaponStage?.itemLevel ?? null;
+      const prevArmorItemLevel = prevArmorStage?.itemLevel ?? null;
+      const prevItemLevel = prevWeaponItemLevel ?? prevArmorItemLevel;
+      
+      // 이전 단계가 없으면 현재 단계에서 5를 빼서 추정 (일반적으로 5씩 증가)
+      const estimatedPrevItemLevel = prevItemLevel ?? (itemLevel != null ? itemLevel - 5 : null);
       
       if (weaponStage) {
         const { optimalStrategy } = calculateOptimalStrategy(weaponStage, adjustedMarketInfo);
@@ -2236,6 +2295,8 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
       
       return {
         level,
+        itemLevel,
+        prevItemLevel: estimatedPrevItemLevel,
         weaponCost,
         weaponStrategy,
         armorCost,
@@ -2244,6 +2305,69 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
       };
     });
   }, [weaponStages, armorStages, adjustedMarketInfo]);
+
+  // 요약표 데이터 계산 (세르카 장비)
+  const summaryDataSerka = useMemo(() => {
+    const allLevels = Array.from(new Set([...weaponStagesSerka.map(s => s.level), ...armorStagesSerka.map(s => s.level)])).sort((a, b) => a - b);
+    
+    return allLevels.map(level => {
+      const weaponStage = weaponStagesSerka.find(s => s.level === level);
+      const armorStage = armorStagesSerka.find(s => s.level === level);
+      
+      let weaponCost: number | null = null;
+      let weaponStrategy: string = '-';
+      let armorCost: number | null = null;
+      let armorStrategy: string = '-';
+      
+      // 아이템 레벨 정보 (무기와 방어구 중 하나라도 있으면 사용)
+      const weaponItemLevel = weaponStage?.itemLevel ?? null;
+      const armorItemLevel = armorStage?.itemLevel ?? null;
+      const itemLevel = weaponItemLevel ?? armorItemLevel;
+      
+      // 이전 단계의 아이템 레벨 계산
+      const prevLevel = level - 1;
+      const prevWeaponStage = weaponStagesSerka.find(s => s.level === prevLevel);
+      const prevArmorStage = armorStagesSerka.find(s => s.level === prevLevel);
+      const prevWeaponItemLevel = prevWeaponStage?.itemLevel ?? null;
+      const prevArmorItemLevel = prevArmorStage?.itemLevel ?? null;
+      const prevItemLevel = prevWeaponItemLevel ?? prevArmorItemLevel;
+      
+      // 이전 단계가 없으면 현재 단계에서 5를 빼서 추정 (일반적으로 5씩 증가)
+      const estimatedPrevItemLevel = prevItemLevel ?? (itemLevel != null ? itemLevel - 5 : null);
+      
+      if (weaponStage) {
+        const { optimalStrategy } = calculateOptimalStrategy(weaponStage, adjustedMarketInfo);
+        weaponCost = optimalStrategy.expectedCost;
+        weaponStrategy = getDetailedStrategyLabel(optimalStrategy, weaponStage, 'weapon');
+      }
+      
+      if (armorStage) {
+        const { optimalStrategy } = calculateOptimalStrategy(armorStage, adjustedMarketInfo);
+        armorCost = optimalStrategy.expectedCost;
+        armorStrategy = getDetailedStrategyLabel(optimalStrategy, armorStage, 'armor');
+      }
+      
+      const totalCost = weaponCost != null && armorCost != null 
+        ? weaponCost + (armorCost * 5)
+        : null;
+      
+      return {
+        level,
+        itemLevel,
+        prevItemLevel: estimatedPrevItemLevel,
+        weaponCost,
+        weaponStrategy,
+        armorCost,
+        armorStrategy,
+        totalCost,
+      };
+    });
+  }, [weaponStagesSerka, armorStagesSerka, adjustedMarketInfo]);
+
+  // 선택된 장비 타입에 따른 요약표 데이터
+  const summaryData = useMemo(() => {
+    return summaryEquipmentType === 'kazeros' ? summaryDataKazeros : summaryDataSerka;
+  }, [summaryEquipmentType, summaryDataKazeros, summaryDataSerka]);
 
   // 특수재련효율 데이터 계산 (순환 돌파석)
   const specialRefiningData = useMemo(() => {
@@ -2609,7 +2733,7 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
 
                 <div className="grid grid-cols-1 gap-5">
                   {filteredStages.map(stage => (
-                    <StageCard key={stage.level} stage={stage} marketInfo={marketInfo} sillingUnitPrice={sillingUnitPrice} selectedTier={selectedTier} />
+                    <StageCard key={stage.level} stage={stage} marketInfo={marketInfo} sillingUnitPrice={sillingUnitPrice} selectedTier={selectedTier} allStages={currentStages} />
                   ))}
                 </div>
               </div>
@@ -2659,7 +2783,7 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
 
                 <div className="grid grid-cols-1 gap-5">
                   {filteredStages.map(stage => (
-                    <StageCard key={stage.level} stage={stage} marketInfo={marketInfo} sillingUnitPrice={sillingUnitPrice} selectedTier={selectedTier} />
+                    <StageCard key={stage.level} stage={stage} marketInfo={marketInfo} sillingUnitPrice={sillingUnitPrice} selectedTier={selectedTier} allStages={currentStages} />
                   ))}
                 </div>
               </div>
@@ -2672,6 +2796,30 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
                   <p className="text-gray-300 text-sm">
                     무기와 방어구의 재련 비용을 한눈에 비교할 수 있는 요약표입니다. 6부위 합계는 [무기 재련 비용 + 방어구 재련 비용 × 5]로 계산됩니다.
                   </p>
+                </div>
+
+                {/* 장비 타입 선택 */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setSummaryEquipmentType('kazeros')}
+                    className={`px-6 py-2 rounded-lg font-semibold border transition-colors ${
+                      summaryEquipmentType === 'kazeros'
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-gray-800 text-gray-400 border-gray-600 hover:text-white hover:bg-gray-700 hover:border-gray-500'
+                    }`}
+                  >
+                    카제로스 장비
+                  </button>
+                  <button
+                    onClick={() => setSummaryEquipmentType('serka')}
+                    className={`px-6 py-2 rounded-lg font-semibold border transition-colors ${
+                      summaryEquipmentType === 'serka'
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-gray-800 text-gray-400 border-gray-600 hover:text-white hover:bg-gray-700 hover:border-gray-500'
+                    }`}
+                  >
+                    세르카 장비
+                  </button>
                 </div>
 
                 {/* 요약표 */}
@@ -2690,7 +2838,12 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
                         {summaryData.map((row, idx) => (
                           <tr key={row.level} className={idx % 2 === 0 ? 'bg-gray-900/50' : 'bg-gray-800/50'}>
                             <td className="px-4 py-3 text-white font-medium border-b border-gray-800">
-                              {row.level - 1} → {row.level}강
+                              <div>{row.level - 1} → {row.level}강</div>
+                              {row.prevItemLevel != null && row.itemLevel != null && (
+                                <div className="text-xs text-gray-400 mt-1">
+                                  ({row.prevItemLevel} → {row.itemLevel})
+                                </div>
+                              )}
                             </td>
                             <td className="px-4 py-3 text-gray-300 border-b border-gray-800">
                               {row.weaponCost != null ? (

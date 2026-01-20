@@ -22,8 +22,6 @@ export default function Footer() {
             <Link href="/terms" className="hover:text-gray-300">
               이용약관
             </Link>
-            <span>·</span>
-            <span>v0.3.4</span>
           </div>
         </div>
       </div>

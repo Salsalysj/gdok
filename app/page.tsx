@@ -3,43 +3,49 @@ export const dynamic = 'force-dynamic';
 
 import HomeClient from './home-client';
 
-// YouTube Data API를 사용하여 재생목록의 최신 동영상 가져오기
+// YouTube RSS 피드를 사용하여 채널의 최신 동영상 가져오기
 async function getLatestYouTubeVideo() {
-  const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
-  const PLAYLIST_ID = 'PLQszPuhfGc7AXaDd-1h6X5M8j0KceTEP_';
-  
-  if (!YOUTUBE_API_KEY) {
-    console.error('YouTube API 키가 설정되지 않았습니다.');
-    return null;
-  }
+  const CHANNEL_ID = 'UCjTgPJoznJgeUta2qTI60SQ'; // 채널 ID
+  const RSS_URL = `https://www.youtube.com/feeds/videos.xml?channel_id=${CHANNEL_ID}`;
   
   try {
-    const response = await fetch(
-      `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${PLAYLIST_ID}&maxResults=1&order=date&key=${YOUTUBE_API_KEY}`,
-      { next: { revalidate: 3600 } } // 1시간마다 갱신
-    );
+    const response = await fetch(RSS_URL, {
+      next: { revalidate: 3600 } // 1시간마다 갱신
+    });
     
     if (!response.ok) {
-      console.error('YouTube API 호출 실패:', response.status);
+      console.error('YouTube RSS 피드 호출 실패:', response.status);
       return null;
     }
     
-    const data = await response.json();
+    const xmlText = await response.text();
     
-    if (data.items && data.items.length > 0) {
-      const video = data.items[0].snippet;
+    // XML 파싱
+    const videoIdMatch = xmlText.match(/<yt:videoId>(.*?)<\/yt:videoId>/);
+    const titleMatch = xmlText.match(/<title>(.*?)<\/title>/);
+    const descriptionMatch = xmlText.match(/<media:description>(.*?)<\/media:description>/);
+    const publishedMatch = xmlText.match(/<published>(.*?)<\/published>/);
+    const thumbnailMatch = xmlText.match(/<media:thumbnail url="(.*?)"/);
+    
+    if (videoIdMatch && titleMatch) {
+      // 첫 번째 <title>은 채널 제목이므로 두 번째를 사용
+      const titles = xmlText.match(/<title>(.*?)<\/title>/g);
+      const videoTitle = titles && titles.length > 1 
+        ? titles[1].replace(/<title>|<\/title>/g, '') 
+        : titleMatch[1];
+      
       return {
-        videoId: video.resourceId.videoId,
-        title: video.title,
-        description: video.description,
-        thumbnail: video.thumbnails.high?.url || video.thumbnails.medium?.url,
-        publishedAt: video.publishedAt,
+        videoId: videoIdMatch[1],
+        title: videoTitle,
+        description: descriptionMatch ? descriptionMatch[1] : '',
+        thumbnail: thumbnailMatch ? thumbnailMatch[1] : `https://img.youtube.com/vi/${videoIdMatch[1]}/maxresdefault.jpg`,
+        publishedAt: publishedMatch ? publishedMatch[1] : new Date().toISOString(),
       };
     }
     
     return null;
   } catch (error) {
-    console.error('YouTube 동영상 가져오기 실패:', error);
+    console.error('YouTube RSS 피드 가져오기 실패:', error);
     return null;
   }
 }

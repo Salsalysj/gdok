@@ -15,6 +15,21 @@ export default function UpdatesPage() {
         </div>
 
         <div className="space-y-8">
+          {/* v0.3.5 */}
+          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <h2 className="text-2xl font-bold text-white mb-4">v0.3.5 (2026. 01. 20)</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold text-blue-400 mb-2">개선 사항</h3>
+                <ul className="list-disc list-inside space-y-1 text-gray-300 ml-4">
+                  <li>홈화면 UI 개선</li>
+                  <li>일반 재련 효율 요약표에 세르카 장비 추가</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
           {/* v0.3.4 */}
           <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
             <h2 className="text-2xl font-bold text-white mb-4">v0.3.4 (2026. 01. 18)</h2>
