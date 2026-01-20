@@ -153,6 +153,7 @@ export async function getMarketInfoMap(): Promise<Record<string, MarketItemInfo>
 
 export type RefiningStage = {
   level: number;
+  itemLevel: number | null; // 재련 단계에 따른 아이템 레벨
   expMaterial: { name: string; quantity: number } | null;
   baseMaterials: { name: string; quantity: number }[];
   breathMaterial: { name: string; quantity: number } | null;
@@ -191,9 +192,11 @@ export function createStages(
     const goldCost = rowMap[GOLD_ITEM]?.[idx] ?? 0;
     const silverCost = rowMap[SILVER_ITEM]?.[idx] ?? 0;
     const baseSuccessRate = rowMap[BASE_SUCCESS_RATE]?.[idx] ?? 0;
+    const itemLevel = rowMap['아이템 레벨']?.[idx] ?? null;
 
     return {
       level,
+      itemLevel: itemLevel != null ? itemLevel : null,
       expMaterial: expQty > 0 ? { name: EXP_MATERIAL, quantity: expQty } : null,
       baseMaterials: baseMaterialsList,
       breathMaterial,

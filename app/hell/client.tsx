@@ -5,7 +5,8 @@ import ItemIcon from '../components/ItemIcon';
 import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
 import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
 import type { ValueDbEntry } from '@/lib/valueDb';
-import type { RefiningStage, MarketItemInfo } from '../refining-simulation/page';
+import type { RefiningStage } from '../value-db/page';
+import type { MarketItemInfo } from '../refining-simulation/page';
 import { calculateOptimalStrategy } from '../refining-simulation/client';
 
 type RewardItem = {
