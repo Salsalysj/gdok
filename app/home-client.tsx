@@ -123,11 +123,10 @@ export default function HomeClient({
                       {youtubeVideo.description}
                     </p>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">
-                        {new Date(youtubeVideo.publishedAt).toLocaleDateString('ko-KR')}
-                      </span>
+
                       <a 
-                        href={`https://www.youtube.com/watch?v=${youtubeVideo.videoId}`}
+                        //href={`https://www.youtube.com/watch?v=${youtubeVideo.videoId}`}
+                        href={`https://www.youtube.com/watch?v=$JwboSwMugQY`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-xs text-red-500 hover:text-red-400"
