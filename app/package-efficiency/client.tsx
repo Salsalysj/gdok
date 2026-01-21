@@ -2384,6 +2384,469 @@ export default function PackageEfficiencyClient({
             </div>
           </div>
 
+          {/* 합산 효율 카드 */}
+          {packageData.packageType === '보너스룸' ? (
+            <div className="relative bg-gray-800/90 rounded-lg border border-gray-700 p-8">
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-6">
+                  <div className="p-2 bg-orange-500/10 rounded-lg">
+                    <svg className="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-white">보너스룸 효율</h3>
+                </div>
+              <div className="space-y-6">
+                {bonusRoomEfficiencies?.map((room, roomIndex) => (
+                  <div key={roomIndex} className="bg-gray-900/70 rounded-lg border border-orange-500/20 p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <svg className="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                      </svg>
+                      <h4 className="text-lg font-bold text-white">{room.roomName}</h4>
+                    </div>
+                    
+                    {/* 보너스룸별 효율 */}
+                    <div className="mb-4 p-3 bg-gray-800/50 rounded border border-gray-600">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <div className="text-xs text-gray-400 mb-1">보너스룸 가격 합계</div>
+                          <div className="text-lg font-bold text-white">
+                            {formatNumberWithSignificantDigits(room.totalPrice)} 골드
+                          </div>
+                          {goldToCashPerGold && goldToCashPerGold > 0 && (
+                            <>
+                              <div className="text-sm text-gray-300 mt-1">
+                                = {formatNumberWithSignificantDigits(room.totalPrice * goldToCashPerGold)} 현금
+                              </div>
+                              <div className="text-xs text-gray-500 mt-1">
+                                {formatNumberWithSignificantDigits(room.totalPrice)} 골드 × {formatNumberWithSignificantDigits(goldToCashPerGold)} = {formatNumberWithSignificantDigits(room.totalPrice * goldToCashPerGold)} 현금
+                              </div>
+                            </>
+                          )}
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-400 mb-1">보너스룸 가치 합계</div>
+                          <div className="text-lg font-bold text-white">
+                            {formatNumberWithSignificantDigits(room.totalValue)} 골드
+                          </div>
+                        </div>
+                        <div className={`${room.efficiency !== null && room.efficiency >= 1 ? 'border-green-500/50' : room.efficiency !== null ? 'border-red-500/50' : 'border-gray-600'} border rounded p-2`}>
+                          <div className="text-xs text-gray-400 mb-1">보너스룸 효율</div>
+                          {room.efficiency !== null ? (
+                            <>
+                              <div className={`text-xl font-bold ${room.efficiency >= 1 ? 'text-green-400' : 'text-red-400'}`}>
+                                {formatNumberWithSignificantDigits(room.efficiency)}배
+                              </div>
+                              <div className={`text-xs font-medium ${room.efficiency >= 1 ? 'text-green-400' : 'text-red-400'}`}>
+                                {room.efficiency >= 1 ? '✓ 이득' : '✗ 손해'}
+                              </div>
+                            </>
+                          ) : (
+                            <div className="text-sm text-gray-500">계산 불가</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* 묶음 항목별 효율 */}
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                        <div className="text-sm font-semibold text-gray-300">묶음 항목별 효율</div>
+                      </div>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                      {room.items.map((item, itemIndex) => (
+                        <div key={itemIndex} className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+                          {/* 항목 헤더 */}
+                          <div className="flex items-start justify-between mb-3 pb-2 border-b border-gray-700/50">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                </svg>
+                                <div className="text-sm text-white font-semibold">
+                                  {item.itemName || `항목 ${itemIndex + 1}`}
+                                </div>
+                              </div>
+                              <span className="text-xs font-medium text-gray-500 bg-gray-700/50 px-2 py-0.5 rounded">
+                                {item.itemType}
+                              </span>
+                            </div>
+                            {item.efficiency !== null ? (
+                              <div className={`text-right ml-2 px-3 py-1 rounded-lg ${item.efficiency >= 1 ? 'bg-green-500/10 border border-green-500/30' : 'bg-red-500/10 border border-red-500/30'}`}>
+                                <div className={`text-lg font-bold ${item.efficiency >= 1 ? 'text-green-400' : 'text-red-400'}`}>
+                                  {formatNumberWithSignificantDigits(item.efficiency)}배
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="text-xs text-gray-500 ml-2">계산 불가</div>
+                            )}
+                          </div>
+                          
+                          {/* 가격/가치 정보 */}
+                          <div className="grid grid-cols-2 gap-3 mb-3">
+                            <div className="bg-gray-900/50 rounded-lg p-2">
+                              <div className="text-xs text-gray-500 mb-1">가격</div>
+                              <div className="text-sm font-semibold text-white">
+                                {item.priceType === '보너스' ? (
+                                  <span className="text-green-400">보너스(무료)</span>
+                                ) : (
+                                  <>
+                                    {formatNumberWithSignificantDigits(item.originalPrice)} {item.priceType}
+                                    {item.priceType !== '골드' && item.price > 0 && (
+                                      <div className="text-xs text-gray-400 mt-0.5">
+                                        = {formatNumberWithSignificantDigits(item.price)} 골드
+                                      </div>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                            <div className="bg-gray-900/50 rounded-lg p-2">
+                              <div className="text-xs text-gray-500 mb-1">가치</div>
+                              <div className="text-sm font-semibold text-blue-400">
+                                {formatNumberWithSignificantDigits(item.value)} 골드
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* 가치 계산 내역 */}
+                          {item.components && item.components.length > 0 && (
+                            <div className="mt-3 pt-3 border-t border-gray-700/50">
+                              <div className="flex items-center gap-2 mb-2">
+                                <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                </svg>
+                                <div className="text-xs font-medium text-gray-400">가치 계산 내역</div>
+                              </div>
+                              <div className="space-y-1.5">
+                                {item.itemType === '선택' ? (
+                                  // 선택 타입: 라디오 버튼으로 선택 변경 가능
+                                  <div className="space-y-1">
+                                    {item.components.map((comp, compIndex) => (
+                                      <label key={compIndex} className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer ${comp.selected ? 'bg-yellow-500/10 border border-yellow-500/30' : 'bg-gray-900/30 border border-gray-700/50'}`}>
+                                        <input
+                                          type="radio"
+                                          name={`bonus-room-${roomIndex}-item-${itemIndex}-selection`}
+                                          checked={comp.selected || false}
+                                          onChange={() => {
+                                            // 선택 변경
+                                            setPackageData((prev) => {
+                                              const newBonusRooms = [...(prev.bonusRooms || [])];
+                                              const targetItem = newBonusRooms[roomIndex].items[itemIndex];
+                                              const newComponents = targetItem.components.map((c, idx) => ({
+                                                ...c,
+                                                selected: idx === compIndex,
+                                              }));
+                                              newBonusRooms[roomIndex].items[itemIndex] = {
+                                                ...targetItem,
+                                                components: newComponents,
+                                              };
+                                              return { ...prev, bonusRooms: newBonusRooms };
+                                            });
+                                          }}
+                                          className="w-4 h-4 text-yellow-500 bg-gray-700 border-gray-600 focus:ring-yellow-500"
+                                        />
+                                        <div className="flex-1">
+                                          <div className={`text-xs font-medium mb-1 ${comp.selected ? 'text-yellow-300' : 'text-gray-300'}`}>
+                                            {comp.selected && <span className="text-yellow-400 mr-1">✓</span>}
+                                            {comp.itemName}
+                                          </div>
+                                          <div className="text-xs text-gray-500 space-x-2">
+                                            <span>수량: {formatNumberWithSignificantDigits(comp.quantity)}</span>
+                                            {comp.unitPrice > 0 && (
+                                              <span>• 단가: {formatNumberWithSignificantDigits(comp.unitPrice)} {comp.unitType}</span>
+                                            )}
+                                          </div>
+                                          {comp.valueInGold > 0 && (
+                                            <div className="text-xs text-blue-400 mt-1">
+                                              = {formatNumberWithSignificantDigits(comp.valueInGold)} 골드
+                                              {item.quantity > 1 && comp.selected && (
+                                                <span className="text-gray-500"> × {item.quantity} = {formatNumberWithSignificantDigits(comp.valueInGold * item.quantity)} 골드</span>
+                                              )}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </label>
+                                    ))}
+                                  </div>
+                                ) : item.itemType === '확률' ? (
+                                  // 확률 타입: 확률과 기대값 표시
+                                  item.components.map((comp, compIndex) => (
+                                    <div key={compIndex} className="bg-gray-900/30 border border-gray-700/50 rounded-lg p-2">
+                                      <div className="flex items-center justify-between mb-1">
+                                        <div className="text-xs font-medium text-gray-300">{comp.itemName}</div>
+                                        {comp.probability !== undefined && (
+                                          <span className="text-xs font-semibold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded">
+                                            {(comp.probability * 100).toFixed(1)}%
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="text-xs text-gray-500 space-x-2">
+                                        <span>수량: {formatNumberWithSignificantDigits(comp.quantity)}</span>
+                                        {comp.unitPrice > 0 && (
+                                          <span>• 단가: {formatNumberWithSignificantDigits(comp.unitPrice)} {comp.unitType}</span>
+                                        )}
+                                      </div>
+                                      {comp.valueInGold > 0 && comp.probability !== undefined && (
+                                        <div className="text-xs text-blue-400 mt-1">
+                                          기대값: {formatNumberWithSignificantDigits(comp.valueInGold * (comp.probability || 0))} 골드
+                                          {item.quantity > 1 && (
+                                            <span className="text-gray-500"> × {item.quantity} = {formatNumberWithSignificantDigits(comp.valueInGold * (comp.probability || 0) * item.quantity)} 골드</span>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))
+                                ) : (
+                                  // 확정 타입: 모든 구성요소 표시
+                                  item.components.map((comp, compIndex) => (
+                                    <div key={compIndex} className="bg-gray-900/30 border border-gray-700/50 rounded-lg p-2">
+                                      <div className="text-xs font-medium text-gray-300 mb-1">{comp.itemName}</div>
+                                      <div className="text-xs text-gray-500 space-x-2">
+                                        <span>수량: {formatNumberWithSignificantDigits(comp.quantity)}</span>
+                                        {comp.unitPrice > 0 && (
+                                          <span>• 단가: {formatNumberWithSignificantDigits(comp.unitPrice)} {comp.unitType}</span>
+                                        )}
+                                      </div>
+                                      {comp.valueInGold > 0 && (
+                                        <div className="text-xs text-blue-400 mt-1">
+                                          = {formatNumberWithSignificantDigits(comp.valueInGold)} 골드
+                                          {item.quantity > 1 && (
+                                            <span className="text-gray-500"> × {item.quantity} = {formatNumberWithSignificantDigits(comp.valueInGold * item.quantity)} 골드</span>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              </div>
+              
+              {/* 저장 버튼 */}
+              {allowPackageSave && (
+                <div className="flex justify-center gap-3 mt-6">
+                  <button
+                    onClick={() => {
+                      setSavePackageName(packageData.packageName);
+                      setShowSaveModal(true);
+                    }}
+                    className="px-8 py-3 bg-purple-600 text-white text-lg font-semibold rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                    disabled={isLoading || !packageData.packageName.trim()}
+                  >
+                    {selectedPackageId ? '📝 패키지 업데이트' : '💾 패키지 저장'}
+                  </button>
+                  {selectedPackageId && (
+                    <button
+                      onClick={() => handleDeletePackage(selectedPackageId)}
+                      className="px-8 py-3 bg-red-600 text-white text-lg font-semibold rounded-lg hover:bg-red-700 disabled:opacity-50"
+                      disabled={isLoading}
+                    >
+                      🗑️ 패키지 삭제
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="relative bg-gray-800/90 rounded-lg border border-gray-700 p-8">
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-6">
+                  <div className="p-2 bg-green-500/10 rounded-lg">
+                    <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-white">합산 효율</h3>
+                </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-gray-900/50 rounded-lg p-6 border border-gray-700/50">
+                  <div className="flex items-center gap-2 mb-3">
+                    <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div className="text-xs font-medium text-blue-400/80 uppercase tracking-wider">패키지 가격</div>
+                  </div>
+                  {(() => {
+                    let effectivePrice = packageData.price;
+                    if (packageData.packageType === '3+1' && packageData.is3Plus1) {
+                      effectivePrice = (packageData.price * 3) / 4;
+                    } else if (packageData.packageType === '3+보너스' && packageData.is3PlusBonus) {
+                      effectivePrice = packageData.price * 3;
+                    }
+                    
+                    let priceInGold = 0;
+                    let priceInCash = 0;
+                    let conversionFormula = '';
+                    
+                    if (packageData.priceType === '현금') {
+                      priceInCash = effectivePrice;
+                      if (goldToCashPerGold && goldToCashPerGold > 0) {
+                        priceInGold = effectivePrice / goldToCashPerGold;
+                        conversionFormula = `${formatNumberWithSignificantDigits(effectivePrice)} 현금 ÷ ${formatNumberWithSignificantDigits(goldToCashPerGold)} = ${formatNumberWithSignificantDigits(priceInGold)} 골드`;
+                      }
+                    } else if (packageData.priceType === '골드') {
+                      priceInGold = effectivePrice;
+                      if (goldToCashPerGold && goldToCashPerGold > 0) {
+                        priceInCash = effectivePrice * goldToCashPerGold;
+                        conversionFormula = `${formatNumberWithSignificantDigits(effectivePrice)} 골드 × ${formatNumberWithSignificantDigits(goldToCashPerGold)} = ${formatNumberWithSignificantDigits(priceInCash)} 현금`;
+                      }
+                    } else if (packageData.priceType === '크리스탈') {
+                      if (crystalGoldRate && crystalGoldRate > 0) {
+                        priceInGold = (effectivePrice * crystalGoldRate) / 100;
+                        conversionFormula = `${formatNumberWithSignificantDigits(effectivePrice)} 크리스탈 × ${formatNumberWithSignificantDigits(crystalGoldRate)} ÷ 100 = ${formatNumberWithSignificantDigits(priceInGold)} 골드`;
+                        if (goldToCashPerGold && goldToCashPerGold > 0) {
+                          priceInCash = priceInGold * goldToCashPerGold;
+                          conversionFormula += `\n${formatNumberWithSignificantDigits(priceInGold)} 골드 × ${formatNumberWithSignificantDigits(goldToCashPerGold)} = ${formatNumberWithSignificantDigits(priceInCash)} 현금`;
+                        }
+                      }
+                    }
+                    
+                    return (
+                      <>
+                        <div className="text-2xl font-bold text-white mb-2">
+                          {formatNumberWithSignificantDigits(effectivePrice)} {packageData.priceType}
+                        </div>
+                        {priceInGold > 0 && (
+                          <div className="text-sm text-gray-300 mb-1">
+                            = {formatNumberWithSignificantDigits(priceInGold)} 골드
+                          </div>
+                        )}
+                        {priceInCash > 0 && (
+                          <div className="text-sm text-gray-300 mb-2">
+                            = {formatNumberWithSignificantDigits(priceInCash)} 현금
+                          </div>
+                        )}
+                        {conversionFormula && (
+                          <div className="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-700 whitespace-pre-line">
+                            {conversionFormula}
+                          </div>
+                        )}
+                        {packageData.packageType === '3+1' && (
+                          <label className="flex items-center gap-2 mt-3 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={packageData.is3Plus1}
+                              onChange={(e) => setPackageData((prev) => ({ ...prev, is3Plus1: e.target.checked }))}
+                              className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
+                            />
+                            <span className="text-sm text-gray-300">3+1 적용</span>
+                          </label>
+                        )}
+                        {packageData.packageType === '3+보너스' && (
+                          <label className="flex items-center gap-2 mt-3 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={packageData.is3PlusBonus}
+                              onChange={(e) => setPackageData((prev) => ({ ...prev, is3PlusBonus: e.target.checked }))}
+                              className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
+                            />
+                            <span className="text-sm text-gray-300">3+보너스 적용</span>
+                          </label>
+                        )}
+                        {packageData.packageType !== '3+1' && packageData.packageType !== '3+보너스' && (
+                          <div className="text-xs text-gray-500 mt-3">
+                            유형: {packageData.packageType}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+                <div className="bg-gray-900/50 rounded-lg p-6 border border-gray-700/50">
+                  <div className="flex items-center gap-2 mb-3">
+                    <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                    <div className="text-xs font-medium text-purple-400/80 uppercase tracking-wider">구성품 합계</div>
+                  </div>
+                  <div className="text-2xl font-bold text-white">
+                    {formatNumberWithSignificantDigits(totalValue)} {packageData.priceType}
+                  </div>
+                </div>
+                <div className={`bg-gray-900/50 rounded-lg p-6 border ${efficiency !== null && efficiency >= 1 ? 'border-green-500/50' : efficiency !== null ? 'border-red-500/50' : 'border-gray-700/50'}`}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <svg className={`w-4 h-4 ${efficiency !== null && efficiency >= 1 ? 'text-green-400' : 'text-red-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                    <div className={`text-xs font-medium uppercase tracking-wider ${efficiency !== null && efficiency >= 1 ? 'text-green-400/80' : 'text-red-400/80'}`}>효율 (배수)</div>
+                  </div>
+                  {efficiency !== null ? (
+                    <>
+                      <div className={`text-3xl font-bold ${efficiency >= 1 ? 'text-green-400' : 'text-red-400'}`}>
+                        {formatNumberWithSignificantDigits(efficiency)}배
+                      </div>
+                      <div className={`text-sm font-medium mt-1 ${efficiency >= 1 ? 'text-green-400' : 'text-red-400'}`}>
+                        {efficiency >= 1 ? '✓ 이득' : '✗ 손해'}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-lg text-gray-500">계산 불가</div>
+                  )}
+                </div>
+              </div>
+              
+              {/* 저장 버튼 */}
+              {allowPackageSave && (
+                <div className="flex justify-center gap-3 mt-8">
+                  <button
+                    onClick={() => {
+                      setSavePackageName(packageData.packageName);
+                      setShowSaveModal(true);
+                    }}
+                    className="group relative px-10 py-4 bg-purple-600 text-white text-lg font-bold rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                    disabled={isLoading || !packageData.packageName.trim()}
+                  >
+                    <span className="flex items-center gap-2">
+                      {selectedPackageId ? (
+                        <>
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                          패키지 업데이트
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                          </svg>
+                          패키지 저장
+                        </>
+                      )}
+                    </span>
+                  </button>
+                  {selectedPackageId && (
+                    <button
+                      onClick={() => handleDeletePackage(selectedPackageId)}
+                      className="group relative px-10 py-4 bg-red-600 text-white text-lg font-bold rounded-lg hover:bg-red-700 disabled:opacity-50"
+                      disabled={isLoading}
+                    >
+                      <span className="flex items-center gap-2">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        패키지 삭제
+                      </span>
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+            </div>
+          )}
+
           {/* 구성품 내용 카드 */}
           {packageData.packageType !== '보너스룸' && (packageData.items.length > 0 || (packageData.packageType === '3+보너스' && packageData.bonus3Items.length > 0)) && (
             <div className="relative bg-gray-800/90 rounded-lg border border-gray-700 p-8">
@@ -3436,469 +3899,6 @@ export default function PackageEfficiencyClient({
                   );
                 })}
               </div>
-            </div>
-            </div>
-          )}
-
-          {/* 합산 효율 카드 */}
-          {packageData.packageType === '보너스룸' ? (
-            <div className="relative bg-gray-800/90 rounded-lg border border-gray-700 p-8">
-              <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-6">
-                  <div className="p-2 bg-orange-500/10 rounded-lg">
-                    <svg className="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-white">보너스룸 효율</h3>
-                </div>
-              <div className="space-y-6">
-                {bonusRoomEfficiencies?.map((room, roomIndex) => (
-                  <div key={roomIndex} className="bg-gray-900/70 rounded-lg border border-orange-500/20 p-6">
-                    <div className="flex items-center gap-2 mb-4">
-                      <svg className="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                      </svg>
-                      <h4 className="text-lg font-bold text-white">{room.roomName}</h4>
-                    </div>
-                    
-                    {/* 보너스룸별 효율 */}
-                    <div className="mb-4 p-3 bg-gray-800/50 rounded border border-gray-600">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                          <div className="text-xs text-gray-400 mb-1">보너스룸 가격 합계</div>
-                          <div className="text-lg font-bold text-white">
-                            {formatNumberWithSignificantDigits(room.totalPrice)} 골드
-                          </div>
-                          {goldToCashPerGold && goldToCashPerGold > 0 && (
-                            <>
-                              <div className="text-sm text-gray-300 mt-1">
-                                = {formatNumberWithSignificantDigits(room.totalPrice * goldToCashPerGold)} 현금
-                              </div>
-                              <div className="text-xs text-gray-500 mt-1">
-                                {formatNumberWithSignificantDigits(room.totalPrice)} 골드 × {formatNumberWithSignificantDigits(goldToCashPerGold)} = {formatNumberWithSignificantDigits(room.totalPrice * goldToCashPerGold)} 현금
-                              </div>
-                            </>
-                          )}
-                        </div>
-                        <div>
-                          <div className="text-xs text-gray-400 mb-1">보너스룸 가치 합계</div>
-                          <div className="text-lg font-bold text-white">
-                            {formatNumberWithSignificantDigits(room.totalValue)} 골드
-                          </div>
-                        </div>
-                        <div className={`${room.efficiency !== null && room.efficiency >= 1 ? 'border-green-500/50' : room.efficiency !== null ? 'border-red-500/50' : 'border-gray-600'} border rounded p-2`}>
-                          <div className="text-xs text-gray-400 mb-1">보너스룸 효율</div>
-                          {room.efficiency !== null ? (
-                            <>
-                              <div className={`text-xl font-bold ${room.efficiency >= 1 ? 'text-green-400' : 'text-red-400'}`}>
-                                {formatNumberWithSignificantDigits(room.efficiency)}배
-                              </div>
-                              <div className={`text-xs font-medium ${room.efficiency >= 1 ? 'text-green-400' : 'text-red-400'}`}>
-                                {room.efficiency >= 1 ? '✓ 이득' : '✗ 손해'}
-                              </div>
-                            </>
-                          ) : (
-                            <div className="text-sm text-gray-500">계산 불가</div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* 묶음 항목별 효율 */}
-                    <div>
-                      <div className="flex items-center gap-2 mb-3">
-                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                        </svg>
-                        <div className="text-sm font-semibold text-gray-300">묶음 항목별 효율</div>
-                      </div>
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                      {room.items.map((item, itemIndex) => (
-                        <div key={itemIndex} className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
-                          {/* 항목 헤더 */}
-                          <div className="flex items-start justify-between mb-3 pb-2 border-b border-gray-700/50">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                                </svg>
-                                <div className="text-sm text-white font-semibold">
-                                  {item.itemName || `항목 ${itemIndex + 1}`}
-                                </div>
-                              </div>
-                              <span className="text-xs font-medium text-gray-500 bg-gray-700/50 px-2 py-0.5 rounded">
-                                {item.itemType}
-                              </span>
-                            </div>
-                            {item.efficiency !== null ? (
-                              <div className={`text-right ml-2 px-3 py-1 rounded-lg ${item.efficiency >= 1 ? 'bg-green-500/10 border border-green-500/30' : 'bg-red-500/10 border border-red-500/30'}`}>
-                                <div className={`text-lg font-bold ${item.efficiency >= 1 ? 'text-green-400' : 'text-red-400'}`}>
-                                  {formatNumberWithSignificantDigits(item.efficiency)}배
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="text-xs text-gray-500 ml-2">계산 불가</div>
-                            )}
-                          </div>
-                          
-                          {/* 가격/가치 정보 */}
-                          <div className="grid grid-cols-2 gap-3 mb-3">
-                            <div className="bg-gray-900/50 rounded-lg p-2">
-                              <div className="text-xs text-gray-500 mb-1">가격</div>
-                              <div className="text-sm font-semibold text-white">
-                                {item.priceType === '보너스' ? (
-                                  <span className="text-green-400">보너스(무료)</span>
-                                ) : (
-                                  <>
-                                    {formatNumberWithSignificantDigits(item.originalPrice)} {item.priceType}
-                                    {item.priceType !== '골드' && item.price > 0 && (
-                                      <div className="text-xs text-gray-400 mt-0.5">
-                                        = {formatNumberWithSignificantDigits(item.price)} 골드
-                                      </div>
-                                    )}
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                            <div className="bg-gray-900/50 rounded-lg p-2">
-                              <div className="text-xs text-gray-500 mb-1">가치</div>
-                              <div className="text-sm font-semibold text-blue-400">
-                                {formatNumberWithSignificantDigits(item.value)} 골드
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* 가치 계산 내역 */}
-                          {item.components && item.components.length > 0 && (
-                            <div className="mt-3 pt-3 border-t border-gray-700/50">
-                              <div className="flex items-center gap-2 mb-2">
-                                <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                                </svg>
-                                <div className="text-xs font-medium text-gray-400">가치 계산 내역</div>
-                              </div>
-                              <div className="space-y-1.5">
-                                {item.itemType === '선택' ? (
-                                  // 선택 타입: 라디오 버튼으로 선택 변경 가능
-                                  <div className="space-y-1">
-                                    {item.components.map((comp, compIndex) => (
-                                      <label key={compIndex} className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer ${comp.selected ? 'bg-yellow-500/10 border border-yellow-500/30' : 'bg-gray-900/30 border border-gray-700/50'}`}>
-                                        <input
-                                          type="radio"
-                                          name={`bonus-room-${roomIndex}-item-${itemIndex}-selection`}
-                                          checked={comp.selected || false}
-                                          onChange={() => {
-                                            // 선택 변경
-                                            setPackageData((prev) => {
-                                              const newBonusRooms = [...(prev.bonusRooms || [])];
-                                              const targetItem = newBonusRooms[roomIndex].items[itemIndex];
-                                              const newComponents = targetItem.components.map((c, idx) => ({
-                                                ...c,
-                                                selected: idx === compIndex,
-                                              }));
-                                              newBonusRooms[roomIndex].items[itemIndex] = {
-                                                ...targetItem,
-                                                components: newComponents,
-                                              };
-                                              return { ...prev, bonusRooms: newBonusRooms };
-                                            });
-                                          }}
-                                          className="w-4 h-4 text-yellow-500 bg-gray-700 border-gray-600 focus:ring-yellow-500"
-                                        />
-                                        <div className="flex-1">
-                                          <div className={`text-xs font-medium mb-1 ${comp.selected ? 'text-yellow-300' : 'text-gray-300'}`}>
-                                            {comp.selected && <span className="text-yellow-400 mr-1">✓</span>}
-                                            {comp.itemName}
-                                          </div>
-                                          <div className="text-xs text-gray-500 space-x-2">
-                                            <span>수량: {formatNumberWithSignificantDigits(comp.quantity)}</span>
-                                            {comp.unitPrice > 0 && (
-                                              <span>• 단가: {formatNumberWithSignificantDigits(comp.unitPrice)} {comp.unitType}</span>
-                                            )}
-                                          </div>
-                                          {comp.valueInGold > 0 && (
-                                            <div className="text-xs text-blue-400 mt-1">
-                                              = {formatNumberWithSignificantDigits(comp.valueInGold)} 골드
-                                              {item.quantity > 1 && comp.selected && (
-                                                <span className="text-gray-500"> × {item.quantity} = {formatNumberWithSignificantDigits(comp.valueInGold * item.quantity)} 골드</span>
-                                              )}
-                                            </div>
-                                          )}
-                                        </div>
-                                      </label>
-                                    ))}
-                                  </div>
-                                ) : item.itemType === '확률' ? (
-                                  // 확률 타입: 확률과 기대값 표시
-                                  item.components.map((comp, compIndex) => (
-                                    <div key={compIndex} className="bg-gray-900/30 border border-gray-700/50 rounded-lg p-2">
-                                      <div className="flex items-center justify-between mb-1">
-                                        <div className="text-xs font-medium text-gray-300">{comp.itemName}</div>
-                                        {comp.probability !== undefined && (
-                                          <span className="text-xs font-semibold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded">
-                                            {(comp.probability * 100).toFixed(1)}%
-                                          </span>
-                                        )}
-                                      </div>
-                                      <div className="text-xs text-gray-500 space-x-2">
-                                        <span>수량: {formatNumberWithSignificantDigits(comp.quantity)}</span>
-                                        {comp.unitPrice > 0 && (
-                                          <span>• 단가: {formatNumberWithSignificantDigits(comp.unitPrice)} {comp.unitType}</span>
-                                        )}
-                                      </div>
-                                      {comp.valueInGold > 0 && comp.probability !== undefined && (
-                                        <div className="text-xs text-blue-400 mt-1">
-                                          기대값: {formatNumberWithSignificantDigits(comp.valueInGold * (comp.probability || 0))} 골드
-                                          {item.quantity > 1 && (
-                                            <span className="text-gray-500"> × {item.quantity} = {formatNumberWithSignificantDigits(comp.valueInGold * (comp.probability || 0) * item.quantity)} 골드</span>
-                                          )}
-                                        </div>
-                                      )}
-                                    </div>
-                                  ))
-                                ) : (
-                                  // 확정 타입: 모든 구성요소 표시
-                                  item.components.map((comp, compIndex) => (
-                                    <div key={compIndex} className="bg-gray-900/30 border border-gray-700/50 rounded-lg p-2">
-                                      <div className="text-xs font-medium text-gray-300 mb-1">{comp.itemName}</div>
-                                      <div className="text-xs text-gray-500 space-x-2">
-                                        <span>수량: {formatNumberWithSignificantDigits(comp.quantity)}</span>
-                                        {comp.unitPrice > 0 && (
-                                          <span>• 단가: {formatNumberWithSignificantDigits(comp.unitPrice)} {comp.unitType}</span>
-                                        )}
-                                      </div>
-                                      {comp.valueInGold > 0 && (
-                                        <div className="text-xs text-blue-400 mt-1">
-                                          = {formatNumberWithSignificantDigits(comp.valueInGold)} 골드
-                                          {item.quantity > 1 && (
-                                            <span className="text-gray-500"> × {item.quantity} = {formatNumberWithSignificantDigits(comp.valueInGold * item.quantity)} 골드</span>
-                                          )}
-                                        </div>
-                                      )}
-                                    </div>
-                                  ))
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              </div>
-              
-              {/* 저장 버튼 */}
-              {allowPackageSave && (
-                <div className="flex justify-center gap-3 mt-6">
-                  <button
-                    onClick={() => {
-                      setSavePackageName(packageData.packageName);
-                      setShowSaveModal(true);
-                    }}
-                    className="px-8 py-3 bg-purple-600 text-white text-lg font-semibold rounded-lg hover:bg-purple-700 disabled:opacity-50"
-                    disabled={isLoading || !packageData.packageName.trim()}
-                  >
-                    {selectedPackageId ? '📝 패키지 업데이트' : '💾 패키지 저장'}
-                  </button>
-                  {selectedPackageId && (
-                    <button
-                      onClick={() => handleDeletePackage(selectedPackageId)}
-                      className="px-8 py-3 bg-red-600 text-white text-lg font-semibold rounded-lg hover:bg-red-700 disabled:opacity-50"
-                      disabled={isLoading}
-                    >
-                      🗑️ 패키지 삭제
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="relative bg-gray-800/90 rounded-lg border border-gray-700 p-8">
-              <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-6">
-                  <div className="p-2 bg-green-500/10 rounded-lg">
-                    <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-white">합산 효율</h3>
-                </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-gray-900/50 rounded-lg p-6 border border-gray-700/50">
-                  <div className="flex items-center gap-2 mb-3">
-                    <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <div className="text-xs font-medium text-blue-400/80 uppercase tracking-wider">패키지 가격</div>
-                  </div>
-                  {(() => {
-                    let effectivePrice = packageData.price;
-                    if (packageData.packageType === '3+1' && packageData.is3Plus1) {
-                      effectivePrice = (packageData.price * 3) / 4;
-                    } else if (packageData.packageType === '3+보너스' && packageData.is3PlusBonus) {
-                      effectivePrice = packageData.price * 3;
-                    }
-                    
-                    let priceInGold = 0;
-                    let priceInCash = 0;
-                    let conversionFormula = '';
-                    
-                    if (packageData.priceType === '현금') {
-                      priceInCash = effectivePrice;
-                      if (goldToCashPerGold && goldToCashPerGold > 0) {
-                        priceInGold = effectivePrice / goldToCashPerGold;
-                        conversionFormula = `${formatNumberWithSignificantDigits(effectivePrice)} 현금 ÷ ${formatNumberWithSignificantDigits(goldToCashPerGold)} = ${formatNumberWithSignificantDigits(priceInGold)} 골드`;
-                      }
-                    } else if (packageData.priceType === '골드') {
-                      priceInGold = effectivePrice;
-                      if (goldToCashPerGold && goldToCashPerGold > 0) {
-                        priceInCash = effectivePrice * goldToCashPerGold;
-                        conversionFormula = `${formatNumberWithSignificantDigits(effectivePrice)} 골드 × ${formatNumberWithSignificantDigits(goldToCashPerGold)} = ${formatNumberWithSignificantDigits(priceInCash)} 현금`;
-                      }
-                    } else if (packageData.priceType === '크리스탈') {
-                      if (crystalGoldRate && crystalGoldRate > 0) {
-                        priceInGold = (effectivePrice * crystalGoldRate) / 100;
-                        conversionFormula = `${formatNumberWithSignificantDigits(effectivePrice)} 크리스탈 × ${formatNumberWithSignificantDigits(crystalGoldRate)} ÷ 100 = ${formatNumberWithSignificantDigits(priceInGold)} 골드`;
-                        if (goldToCashPerGold && goldToCashPerGold > 0) {
-                          priceInCash = priceInGold * goldToCashPerGold;
-                          conversionFormula += `\n${formatNumberWithSignificantDigits(priceInGold)} 골드 × ${formatNumberWithSignificantDigits(goldToCashPerGold)} = ${formatNumberWithSignificantDigits(priceInCash)} 현금`;
-                        }
-                      }
-                    }
-                    
-                    return (
-                      <>
-                        <div className="text-2xl font-bold text-white mb-2">
-                          {formatNumberWithSignificantDigits(effectivePrice)} {packageData.priceType}
-                        </div>
-                        {priceInGold > 0 && (
-                          <div className="text-sm text-gray-300 mb-1">
-                            = {formatNumberWithSignificantDigits(priceInGold)} 골드
-                          </div>
-                        )}
-                        {priceInCash > 0 && (
-                          <div className="text-sm text-gray-300 mb-2">
-                            = {formatNumberWithSignificantDigits(priceInCash)} 현금
-                          </div>
-                        )}
-                        {conversionFormula && (
-                          <div className="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-700 whitespace-pre-line">
-                            {conversionFormula}
-                          </div>
-                        )}
-                        {packageData.packageType === '3+1' && (
-                          <label className="flex items-center gap-2 mt-3 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={packageData.is3Plus1}
-                              onChange={(e) => setPackageData((prev) => ({ ...prev, is3Plus1: e.target.checked }))}
-                              className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
-                            />
-                            <span className="text-sm text-gray-300">3+1 적용</span>
-                          </label>
-                        )}
-                        {packageData.packageType === '3+보너스' && (
-                          <label className="flex items-center gap-2 mt-3 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={packageData.is3PlusBonus}
-                              onChange={(e) => setPackageData((prev) => ({ ...prev, is3PlusBonus: e.target.checked }))}
-                              className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
-                            />
-                            <span className="text-sm text-gray-300">3+보너스 적용</span>
-                          </label>
-                        )}
-                        {packageData.packageType !== '3+1' && packageData.packageType !== '3+보너스' && (
-                          <div className="text-xs text-gray-500 mt-3">
-                            유형: {packageData.packageType}
-                          </div>
-                        )}
-                      </>
-                    );
-                  })()}
-                </div>
-                <div className="bg-gray-900/50 rounded-lg p-6 border border-gray-700/50">
-                  <div className="flex items-center gap-2 mb-3">
-                    <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                    </svg>
-                    <div className="text-xs font-medium text-purple-400/80 uppercase tracking-wider">구성품 합계</div>
-                  </div>
-                  <div className="text-2xl font-bold text-white">
-                    {formatNumberWithSignificantDigits(totalValue)} {packageData.priceType}
-                  </div>
-                </div>
-                <div className={`bg-gray-900/50 rounded-lg p-6 border ${efficiency !== null && efficiency >= 1 ? 'border-green-500/50' : efficiency !== null ? 'border-red-500/50' : 'border-gray-700/50'}`}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <svg className={`w-4 h-4 ${efficiency !== null && efficiency >= 1 ? 'text-green-400' : 'text-red-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                    </svg>
-                    <div className={`text-xs font-medium uppercase tracking-wider ${efficiency !== null && efficiency >= 1 ? 'text-green-400/80' : 'text-red-400/80'}`}>효율 (배수)</div>
-                  </div>
-                  {efficiency !== null ? (
-                    <>
-                      <div className={`text-3xl font-bold ${efficiency >= 1 ? 'text-green-400' : 'text-red-400'}`}>
-                        {formatNumberWithSignificantDigits(efficiency)}배
-                      </div>
-                      <div className={`text-sm font-medium mt-1 ${efficiency >= 1 ? 'text-green-400' : 'text-red-400'}`}>
-                        {efficiency >= 1 ? '✓ 이득' : '✗ 손해'}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-lg text-gray-500">계산 불가</div>
-                  )}
-                </div>
-              </div>
-              
-              {/* 저장 버튼 */}
-              {allowPackageSave && (
-                <div className="flex justify-center gap-3 mt-8">
-                  <button
-                    onClick={() => {
-                      setSavePackageName(packageData.packageName);
-                      setShowSaveModal(true);
-                    }}
-                    className="group relative px-10 py-4 bg-purple-600 text-white text-lg font-bold rounded-lg hover:bg-purple-700 disabled:opacity-50"
-                    disabled={isLoading || !packageData.packageName.trim()}
-                  >
-                    <span className="flex items-center gap-2">
-                      {selectedPackageId ? (
-                        <>
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                          패키지 업데이트
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                          </svg>
-                          패키지 저장
-                        </>
-                      )}
-                    </span>
-                  </button>
-                  {selectedPackageId && (
-                    <button
-                      onClick={() => handleDeletePackage(selectedPackageId)}
-                      className="group relative px-10 py-4 bg-red-600 text-white text-lg font-bold rounded-lg hover:bg-red-700 disabled:opacity-50"
-                      disabled={isLoading}
-                    >
-                      <span className="flex items-center gap-2">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                        패키지 삭제
-                      </span>
-                    </button>
-                  )}
-                </div>
-              )}
             </div>
             </div>
           )}
