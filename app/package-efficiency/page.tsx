@@ -1,5 +1,6 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const revalidate = 0; // 항상 최신 데이터 가져오기
 
 import PackageEfficiencyClient from './client';
 import { getValueDbData } from '@/lib/valueDb';

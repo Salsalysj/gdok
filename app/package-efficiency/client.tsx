@@ -1789,10 +1789,24 @@ export default function PackageEfficiencyClient({
     }, 100);
   };
 
-  // 저장된 패키지 목록 업데이트 (서버에서 이미 가져왔지만, 저장/수정/삭제 후 최신화를 위해)
+  // 저장된 패키지 목록 업데이트 (페이지 로드 시 최신 데이터 가져오기)
   useEffect(() => {
-    // 서버에서 이미 초기값을 전달받았으므로, 클라이언트에서 다시 불러올 필요는 없음
-    // 단, 저장/수정/삭제 후에는 자동으로 업데이트됨
+    // 페이지 로드 시 항상 최신 데이터 가져오기 (배포 환경 캐싱 문제 해결)
+    const fetchLatestPackages = async () => {
+      try {
+        const res = await fetch('/api/packages', {
+          cache: 'no-store', // 캐시 사용 안 함
+        });
+        const data = await res.json();
+        if (data.packages) {
+          setSavedPackages(data.packages);
+        }
+      } catch (error) {
+        console.error('패키지 목록 갱신 실패:', error);
+      }
+    };
+
+    fetchLatestPackages();
   }, []);
 
   // 패키지 저장

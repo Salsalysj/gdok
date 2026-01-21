@@ -31,7 +31,16 @@ export async function GET() {
     }
 
     console.log(`✅ 패키지 조회 성공: ${data?.length || 0}개 (전체: ${count || 'N/A'}개)`);
-    return NextResponse.json({ packages: data || [] });
+    return NextResponse.json(
+      { packages: data || [] },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      }
+    );
   } catch (error: any) {
     console.error('패키지 조회 실패:', error);
     console.error('에러 상세:', error.message, error.stack);
