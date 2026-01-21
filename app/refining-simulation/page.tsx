@@ -53,6 +53,23 @@ const BASE_MATERIALS_ARMOR = [
   '실링',
 ];
 
+// 세르카 장비용 상수
+const BASE_MATERIALS_WEAPON_SERKA = [
+  '운명의 파괴석 결정',
+  '위대한 운명의 돌파석',
+  '상급 아비도스 융화 재료',
+  '운명의 파편',
+  '실링',
+];
+
+const BASE_MATERIALS_ARMOR_SERKA = [
+  '운명의 수호석 결정',
+  '위대한 운명의 돌파석',
+  '상급 아비도스 융화 재료',
+  '운명의 파편',
+  '실링',
+];
+
 export type MarketItemInfo = {
   unitPrice: number;
   icon?: string | null;
@@ -371,7 +388,7 @@ export default async function RefiningSimulationPage() {
   const weaponStagesSerka = createStages(
     weaponDataSerka.levels,
     weaponDataSerka.rowMap,
-    BASE_MATERIALS_WEAPON,
+    BASE_MATERIALS_WEAPON_SERKA,
     BREATH_ITEM_WEAPON,
     OPTIONAL_METALLURGY_ITEMS_WEAPON
   );
@@ -379,7 +396,7 @@ export default async function RefiningSimulationPage() {
   const armorStagesSerka = createStages(
     armorDataSerka.levels,
     armorDataSerka.rowMap,
-    BASE_MATERIALS_ARMOR,
+    BASE_MATERIALS_ARMOR_SERKA,
     BREATH_ITEM_ARMOR,
     OPTIONAL_METALLURGY_ITEMS_ARMOR
   );
