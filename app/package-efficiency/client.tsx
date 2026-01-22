@@ -4189,6 +4189,18 @@ export default function PackageEfficiencyClient({
                                         className="flex-1 px-2 py-1 bg-gray-600 text-white rounded border border-gray-500 text-xs"
                                         placeholder="묶음 항목명"
                                       />
+                                      <input
+                                        type="number"
+                                        value={component.nestedItem.quantity || ''}
+                                        onChange={(e) => {
+                                          const nestedItem = { ...component.nestedItem!, quantity: parseFloat(e.target.value) || 1 };
+                                          updateBonusRoomComponent(roomIndex, itemIndex, compIndex, 'nestedItem', nestedItem);
+                                        }}
+                                        className="w-20 px-2 py-1 bg-gray-600 text-white rounded border border-gray-500 text-xs"
+                                        placeholder="수량"
+                                        min="1"
+                                        step="1"
+                                      />
                                       <select
                                         value={component.nestedItem.itemType}
                                         onChange={(e) => {
@@ -4635,6 +4647,18 @@ export default function PackageEfficiencyClient({
                               }}
                               className="flex-1 px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
                               placeholder="묶음 항목명"
+                            />
+                            <input
+                              type="number"
+                              value={component.nestedItem.quantity || ''}
+                              onChange={(e) => {
+                                const nestedItem = { ...component.nestedItem!, quantity: parseFloat(e.target.value) || 1 };
+                                updateComponent(itemIndex, componentIndex, 'nestedItem', nestedItem);
+                              }}
+                              className="w-28 px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+                              placeholder="수량"
+                              min="1"
+                              step="1"
                             />
                             <select
                               value={component.nestedItem.itemType}
@@ -5339,6 +5363,18 @@ export default function PackageEfficiencyClient({
                                       }}
                                       className="flex-1 px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
                                       placeholder="묶음 항목명"
+                                    />
+                                    <input
+                                      type="number"
+                                      value={component.nestedItem.quantity || ''}
+                                      onChange={(e) => {
+                                        const nestedItem = { ...component.nestedItem!, quantity: parseFloat(e.target.value) || 1 };
+                                        updateBonus3Component(itemIndex, componentIndex, 'nestedItem', nestedItem);
+                                      }}
+                                      className="w-28 px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+                                      placeholder="수량"
+                                      min="1"
+                                      step="1"
                                     />
                                     <select
                                       value={component.nestedItem.itemType}
