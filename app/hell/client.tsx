@@ -381,7 +381,7 @@ export default function HellClient({
     <div className="min-h-screen bg-gray-950 p-4 md:p-6 lg:p-8">
       <div>
         <div className="mb-6 md:mb-10">
-          <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">지옥 보상 계산기</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">지옥 보상 계산기 (낙원 시즌2 반영)</h1>
           <p className="text-base text-gray-400">지옥 보상과 골드 가치를 확인하세요.</p>
         </div>
         

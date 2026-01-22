@@ -1,6 +1,9 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
+export const metadata = {
+  title: 'PC방 효율 - 껨산기',
+  description: '로스트아크 PC방 이벤트 효율과 시급을 계산합니다.',
+};
 import { promises as fs } from 'fs';
 import path from 'path';
 import EventEfficiencyClient from '../client';

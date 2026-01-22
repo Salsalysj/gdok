@@ -553,10 +553,15 @@ export default function RaidRewardsClient({
 
           return (
             <div className="mb-8 bg-gradient-to-br from-gray-800 via-gray-800 to-gray-900 rounded-xl p-6 border border-gray-700 shadow-2xl">
-              <h3 className="text-2xl font-bold text-white mb-5 flex items-center gap-2">
+              <h3 className="text-2xl font-bold text-white mb-2 flex items-center gap-2">
                 <span className="inline-block w-1 h-6 bg-blue-500 rounded"></span>
                 요약
               </h3>
+              {activeRaid && (
+                <p className="text-xs sm:text-sm text-gray-400 mb-5">
+                  {activeRaid} 클리어 보상 및 더보기 효율 정리
+                </p>
+              )}
               
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                 {/* 좌측 - 난이도별 총합 */}

@@ -1,7 +1,10 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0; // 항상 최신 데이터 가져오기
-
+export const metadata = {
+  title: '과금 효율 - 껨산기',
+  description: '로스트아크 과금 패키지 상품의 효율을 계산합니다.',
+};
 import PackageEfficiencyClient from './client';
 import { getValueDbData } from '@/lib/valueDb';
 import { getContentRewardsData } from '@/lib/contentRewards';

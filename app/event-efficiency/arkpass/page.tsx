@@ -1,6 +1,10 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+export const metadata = {
+  title: '아크 패스 선택 가이드 - 껨산기',
+  description: '아크패스 보상 선택지를 추천합니다.',
+};
 import { promises as fs } from 'fs';
 import path from 'path';
 import ArkpassGuideClient from './client';

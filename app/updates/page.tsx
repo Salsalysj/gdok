@@ -21,9 +21,17 @@ export default function UpdatesPage() {
             
             <div className="space-y-2 sm:space-y-3 md:space-y-4">
               <div>
+                <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold text-green-400 mb-1 sm:mb-2">신규 기능</h3>
+                <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-[10px] sm:text-xs md:text-sm text-gray-300 ml-3 sm:ml-4 whitespace-normal break-words">
+                  <li>낙원 시즌2 지옥 보상 업데이트</li>
+                </ul>
+              </div>
+              
+              <div>
                 <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold text-blue-400 mb-1 sm:mb-2">개선 사항</h3>
                 <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-[10px] sm:text-xs md:text-sm text-gray-300 ml-3 sm:ml-4 whitespace-normal break-words">
                   <li>과금 효율 구성요소에 하위 묶음항목 수량이 제대로 계산되지 않는 문제 수정</li>
+                  <li>모바일 UI 개선 (미반영 스위치 사용 가능)</li>
                 </ul>
               </div>
             </div>

@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 
 export const metadata = {
   title: '레이드 (더보기 효율) - 껨산기',
-  description: '에픽 레이드, 카제로스 레이드, 그림자 레이드 보상 가치 계산',
+  description: '에픽 레이드, 카제로스 레이드, 그림자 레이드 클리어 보상 및 더보기 효율 계산',
 };
 
 import RaidRewardsClient from './client';
