@@ -355,7 +355,7 @@ export default function ContentRewardsClient({
       <div className="min-h-screen bg-gray-950 p-8">
         <div>
           <div className="bg-gray-800 border border-gray-700 rounded p-6">
-            <h2 className="text-2xl font-bold text-gray-300 mb-2">데이터 없음</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-300 mb-2">데이터 없음</h2>
             <p className="text-gray-400">
               보상 데이터가 없습니다. 먼저 <code className="bg-gray-800 px-2 py-1 rounded">scripts/parse-content-rewards.js</code>를 실행하여
               Excel 파일을 JSON으로 변환하세요.
@@ -370,7 +370,7 @@ export default function ContentRewardsClient({
     <div className="min-h-screen bg-gray-950 p-4 md:p-6 lg:p-8">
       <div>
         <div className="mb-6 md:mb-10">
-          <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white mb-2">
             {activeContent ? `${activeContent === '쿠르잔 전선' ? '전선&균열' : activeContent === '에브니 큐브' ? '큐브&모래시계' : activeContent} 보상 계산기` : '컨텐츠 보상 계산기'}
           </h1>
           <p className="text-base text-gray-400">컨텐츠별 보상과 골드 가치를 확인하세요. (악세, 유각, 편린 등 일부 보상 제외)</p>

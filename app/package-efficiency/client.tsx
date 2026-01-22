@@ -1986,7 +1986,7 @@ export default function PackageEfficiencyClient({
       <div>
         <div className="mb-10">
           <div className="flex items-center justify-between mb-2">
-            <h1 className="text-3xl font-semibold tracking-tight text-white">과금 효율 계산기</h1>
+            <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white">과금 효율 계산기</h1>
           </div>
           <p className="text-base text-gray-400">과금 상품을 스스로 계산해볼 수 있습니다.</p>
         </div>
@@ -1994,8 +1994,8 @@ export default function PackageEfficiencyClient({
         {/* 저장 모달 */}
         {showSaveModal && allowPackageSave && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 max-w-md w-full mx-4">
-              <h3 className="text-xl font-semibold text-white mb-4">
+            <div className="bg-gray-800 rounded-lg border border-gray-700 p-4 sm:p-6 max-w-md w-full mx-4">
+              <h3 className="text-lg sm:text-xl font-semibold text-white mb-4">
                 {selectedPackageId ? '패키지 업데이트' : '패키지 저장'}
               </h3>
               <div className="mb-4">
@@ -2065,7 +2065,7 @@ export default function PackageEfficiencyClient({
             <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-4">
               <div className="mb-3">
                 <h3 className="text-base font-semibold text-white">현재 판매중</h3>
-                <p className="text-xs text-gray-400 mt-1">버튼 클릭 시 확인 가능</p>
+                <p className="text-xs sm:text-sm text-gray-400 mt-1">버튼 클릭 시 확인 가능</p>
               </div>
               <div className="grid grid-cols-3 gap-4">
                 {/* 기간제한 패키지 */}
@@ -2288,7 +2288,7 @@ export default function PackageEfficiencyClient({
           )}
         </div>
         {/* 계산 결과 */}
-        <div className="space-y-6">             
+        <div className="space-y-4 sm:space-y-6">             
           {/* 패키지 개요 카드 */}
           <div className="relative bg-gray-800/90 rounded-lg border border-gray-700 p-8">
             <div className="relative z-10">
@@ -2300,7 +2300,7 @@ export default function PackageEfficiencyClient({
                 </div>
                 <h3 className="text-xl font-bold text-white">상품 정보</h3>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700/50">
                   <div className="flex items-center gap-2 mb-2">
                     <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2396,9 +2396,9 @@ export default function PackageEfficiencyClient({
                   </div>
                   <h3 className="text-xl font-bold text-white">보너스룸 효율</h3>
                 </div>
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 {bonusRoomEfficiencies?.map((room, roomIndex) => (
-                  <div key={roomIndex} className="bg-gray-900/70 rounded-lg border border-orange-500/20 p-6">
+                  <div key={roomIndex} className="bg-gray-900/70 rounded-lg border border-orange-500/20 p-4 sm:p-6">
                     <div className="flex items-center gap-2 mb-4">
                       <svg className="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />

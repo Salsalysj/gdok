@@ -1936,7 +1936,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
       <div className="space-y-6">
         {/* 섹션 제목 */}
         <div className="bg-gray-800 border border-gray-700 rounded px-5 py-4 flex justify-between items-center">
-          <h3 className="text-xl font-bold text-white tracking-wide">{sectionTitle}</h3>
+          <h3 className="text-lg sm:text-xl font-bold text-white tracking-wide">{sectionTitle}</h3>
           <button
             onClick={() => handleAddRewardGroup(type)}
             className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm font-medium"

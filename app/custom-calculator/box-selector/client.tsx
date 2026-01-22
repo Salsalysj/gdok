@@ -1405,10 +1405,10 @@ export default function BoxSelectorClient({
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-6">
+    <div className="min-h-screen bg-gray-950 text-white p-4 sm:p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-semibold mb-2">상자 선택 도우미</h1>
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-semibold mb-2">상자 선택 도우미</h1>
           <p className="text-gray-400">선택 상자 속 아이템들의 가치를 계산하여 최적의 결과를 알려주는 도구입니다.</p>
         </div>
 
@@ -1470,8 +1470,8 @@ export default function BoxSelectorClient({
         {/* 저장 모달 */}
         {allowSave && showSaveModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 max-w-md w-full mx-4">
-              <h3 className="text-xl font-semibold text-white mb-4">
+            <div className="bg-gray-800 rounded-lg border border-gray-700 p-4 sm:p-6 max-w-md w-full mx-4">
+              <h3 className="text-lg sm:text-xl font-semibold text-white mb-4">
                 {selectedBoxId ? '상자 업데이트' : '상자 저장'}
               </h3>
               <div className="mb-4">

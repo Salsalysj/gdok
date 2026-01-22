@@ -736,7 +736,7 @@ function CharacterSimulation({ weaponStages, armorStages, weaponStagesSerka, arm
           {/* 3티어 장비 착용 시 메시지 */}
           {hasTier3Equipment ? (
             <div className="bg-yellow-900/30 border border-yellow-500 rounded-lg p-6 text-center">
-              <p className="text-yellow-300 text-lg font-semibold">
+              <p className="text-yellow-300 text-base sm:text-lg font-semibold">
                 내 캐릭터 시뮬레이션은 전 부위 4티어 장비를 착용 시에만 제공 가능합니다
               </p>
             </div>
@@ -745,7 +745,7 @@ function CharacterSimulation({ weaponStages, armorStages, weaponStagesSerka, arm
               {/* 요약 정보 */}
           <div className="bg-gray-900/70 rounded-lg border border-gray-700 overflow-hidden">
             <div className="px-5 py-3 bg-gray-800/50 border-b border-gray-700">
-              <h3 className="text-lg font-semibold text-white">요약 정보</h3>
+              <h3 className="text-base sm:text-lg font-semibold text-white">요약 정보</h3>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full border border-gray-800 text-sm">

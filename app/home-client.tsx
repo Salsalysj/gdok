@@ -37,37 +37,37 @@ export default function HomeClient({
               Open Beta
             </span>
           </div>
-          <h1 className="text-3xl md:text-5xl font-semibold tracking-tight text-white">
+          <h1 className="text-2xl sm:text-3xl md:text-5xl font-semibold tracking-tight text-white">
             껨산기
           </h1>
 
         </div>
 
         {/* 사이트 소개 */}
-        <div className="bg-gray-900 border border-gray-800 rounded-lg p-6 md:p-8 mb-8">
+        <div className="bg-gray-900 border border-gray-800 rounded-lg p-4 sm:p-6 md:p-8 mb-6 sm:mb-8">
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             <div className="space-y-2">
-              <h4 className="font-semibold text-white">실시간 시세 반영</h4>
-              <p className="text-sm text-gray-400 leading-relaxed">
+              <h4 className="text-base sm:text-lg font-semibold text-white">실시간 시세 반영</h4>
+              <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
                 거래소 시세를 반영하여 정확한 가치 계산을 제공합니다.
               </p>
             </div>
             <div className="space-y-2">
-              <h4 className="font-semibold text-white">효율 분석</h4>
-              <p className="text-sm text-gray-400 leading-relaxed">
+              <h4 className="text-base sm:text-lg font-semibold text-white">효율 분석</h4>
+              <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
                 다양한 컨텐츠와 패키지의 효율을 비교 분석합니다.
               </p>
             </div>
             <div className="space-y-2">
-              <h4 className="font-semibold text-white">빠른 계산</h4>
-              <p className="text-sm text-gray-400 leading-relaxed">
+              <h4 className="text-base sm:text-lg font-semibold text-white">빠른 계산</h4>
+              <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
                 복잡한 계산을 자동화하여 즉시 결과를 확인할 수 있습니다.
               </p>
             </div>
             <div className="space-y-2">
-              <h4 className="font-semibold text-white">맞춤 설정</h4>
-              <p className="text-sm text-gray-400 leading-relaxed">
+              <h4 className="text-base sm:text-lg font-semibold text-white">맞춤 설정</h4>
+              <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
                 개인 상황에 맞는 가격 조정 옵션을 제공합니다.
               </p>
             </div>
@@ -75,7 +75,7 @@ export default function HomeClient({
         </div>
 
         {/* 메인 컨텐츠 그리드 */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* 왼쪽: YouTube 동영상 */}
           <div className="lg:col-span-2">
             <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
@@ -147,7 +147,7 @@ export default function HomeClient({
           <div>
             <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
               <div className="p-4 border-b border-gray-800">
-                <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                <h2 className="text-base sm:text-lg font-semibold text-white flex items-center gap-2">
                   <span className="text-yellow-500">📢</span>
                   로스트아크 공지사항
                 </h2>
