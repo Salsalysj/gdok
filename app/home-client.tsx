@@ -29,45 +29,45 @@ export default function HomeClient({
 
   return (
     <div className="min-h-screen bg-gray-950">
-      <div className="py-8 md:py-12 px-4 max-w-7xl mx-auto">
+      <div className="py-6 sm:py-8 md:py-12 sm:px-6 max-w-7xl mx-auto">
         {/* 헤더 */}
-        <div className="text-center mb-8 md:mb-12 space-y-3">
+        <div className="text-center mb-6 sm:mb-8 md:mb-12 space-y-2 sm:space-y-3 px-4 sm:px-0">
           <div>
-            <span className="inline-block px-3 py-1 border border-gray-700 rounded text-sm text-gray-300">
+            <span className="inline-block px-2 sm:px-3 py-0.5 sm:py-1 border border-gray-700 rounded text-[10px] sm:text-xs md:text-sm text-gray-300">
               Open Beta
             </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl md:text-5xl font-semibold tracking-tight text-white">
+          <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-5xl font-semibold tracking-tight text-white">
             껨산기
           </h1>
 
         </div>
 
         {/* 사이트 소개 */}
-        <div className="bg-gray-900 border border-gray-800 rounded-lg p-4 sm:p-6 md:p-8 mb-6 sm:mb-8">
+        <div className="bg-gray-900 border-x-0 sm:border-x border-gray-800 rounded-none sm:rounded-lg p-3 sm:p-6 md:p-8 mb-6 sm:mb-8">
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-            <div className="space-y-2">
-              <h4 className="text-base sm:text-lg font-semibold text-white">실시간 시세 반영</h4>
-              <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
+            <div className="space-y-1 sm:space-y-2">
+              <h4 className="text-sm sm:text-base md:text-lg font-semibold text-white">실시간 시세 반영</h4>
+              <p className="text-[10px] sm:text-xs md:text-sm text-gray-400 leading-relaxed whitespace-normal break-words">
                 거래소 시세를 반영하여 정확한 가치 계산을 제공합니다.
               </p>
             </div>
-            <div className="space-y-2">
-              <h4 className="text-base sm:text-lg font-semibold text-white">효율 분석</h4>
-              <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
+            <div className="space-y-1 sm:space-y-2">
+              <h4 className="text-sm sm:text-base md:text-lg font-semibold text-white">효율 분석</h4>
+              <p className="text-[10px] sm:text-xs md:text-sm text-gray-400 leading-relaxed whitespace-normal break-words">
                 다양한 컨텐츠와 패키지의 효율을 비교 분석합니다.
               </p>
             </div>
-            <div className="space-y-2">
-              <h4 className="text-base sm:text-lg font-semibold text-white">빠른 계산</h4>
-              <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
+            <div className="space-y-1 sm:space-y-2">
+              <h4 className="text-sm sm:text-base md:text-lg font-semibold text-white">빠른 계산</h4>
+              <p className="text-[10px] sm:text-xs md:text-sm text-gray-400 leading-relaxed whitespace-normal break-words">
                 복잡한 계산을 자동화하여 즉시 결과를 확인할 수 있습니다.
               </p>
             </div>
-            <div className="space-y-2">
-              <h4 className="text-base sm:text-lg font-semibold text-white">맞춤 설정</h4>
-              <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
+            <div className="space-y-1 sm:space-y-2">
+              <h4 className="text-sm sm:text-base md:text-lg font-semibold text-white">맞춤 설정</h4>
+              <p className="text-[10px] sm:text-xs md:text-sm text-gray-400 leading-relaxed whitespace-normal break-words">
                 개인 상황에 맞는 가격 조정 옵션을 제공합니다.
               </p>
             </div>
@@ -75,14 +75,14 @@ export default function HomeClient({
         </div>
 
         {/* 메인 컨텐츠 그리드 */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
           {/* 왼쪽: YouTube 동영상 */}
           <div className="lg:col-span-2">
-            <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
-              <div className="p-4 border-b border-gray-800">
-                <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                  <span className="text-red-500">▶</span>
-                  스누껨독 최신 영상
+            <div className="bg-gray-900 border-x-0 sm:border-x border-gray-800 rounded-none sm:rounded-lg overflow-hidden">
+              <div className="p-2 sm:p-4 border-b border-gray-800">
+                <h2 className="text-sm sm:text-base md:text-lg font-semibold text-white flex items-center gap-1 sm:gap-2">
+                  <span className="text-red-500 text-xs sm:text-sm">▶</span>
+                  <span className="text-[11px] sm:text-sm md:text-base">스누껨독 최신 영상</span>
                 </h2>
               </div>
               {youtubeVideo ? (
@@ -115,11 +115,11 @@ export default function HomeClient({
                       />
                     </div>
                   )}
-                  <div className="p-4">
-                    <h3 className="text-white font-medium mb-2 line-clamp-2">
+                  <div className="p-2 sm:p-4">
+                    <h3 className="text-white text-[11px] sm:text-sm md:text-base font-medium mb-1 sm:mb-2 line-clamp-2 whitespace-normal break-words">
                       {youtubeVideo.title}
                     </h3>
-                    <p className="text-sm text-gray-400 line-clamp-2 mb-2">
+                    <p className="text-[10px] sm:text-xs md:text-sm text-gray-400 line-clamp-2 mb-1 sm:mb-2 whitespace-normal break-words">
                       {youtubeVideo.description}
                     </p>
                     <div className="flex items-center justify-between">
@@ -128,7 +128,7 @@ export default function HomeClient({
                         href={`https://www.youtube.com/watch?v=${youtubeVideo.videoId}`}                  
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs text-red-500 hover:text-red-400"
+                        className="text-[10px] sm:text-xs md:text-sm text-red-500 hover:text-red-400"
                       >
                         YouTube에서 보기 →
                       </a>
@@ -145,11 +145,11 @@ export default function HomeClient({
 
           {/* 오른쪽: 로스트아크 공지사항 */}
           <div>
-            <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
-              <div className="p-4 border-b border-gray-800">
-                <h2 className="text-base sm:text-lg font-semibold text-white flex items-center gap-2">
-                  <span className="text-yellow-500">📢</span>
-                  로스트아크 공지사항
+            <div className="bg-gray-900 border-x-0 sm:border-x border-gray-800 rounded-none sm:rounded-lg overflow-hidden">
+              <div className="p-2 sm:p-4 border-b border-gray-800">
+                <h2 className="text-sm sm:text-base md:text-lg font-semibold text-white flex items-center gap-1 sm:gap-2">
+                  <span className="text-yellow-500 text-xs sm:text-sm">📢</span>
+                  <span className="text-[11px] sm:text-sm md:text-base">로스트아크 공지사항</span>
                 </h2>
               </div>
               <div className="divide-y divide-gray-800">
@@ -160,10 +160,10 @@ export default function HomeClient({
                       href={notice.Link}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block p-4 hover:bg-gray-800/50 transition-colors"
+                      className="block p-2 sm:p-4 hover:bg-gray-800/50 transition-colors"
                     >
-                      <div className="flex items-start gap-2">
-                        <span className={`text-xs px-2 py-0.5 rounded flex-shrink-0 ${
+                      <div className="flex items-start gap-1.5 sm:gap-2">
+                        <span className={`text-[10px] sm:text-xs md:text-sm px-1.5 sm:px-2 py-0.5 rounded flex-shrink-0 ${
                           notice.Type === '점검' ? 'bg-red-900/30 text-red-400 border border-red-800' :
                           notice.Type === '이벤트' ? 'bg-blue-900/30 text-blue-400 border border-blue-800' :
                           'bg-gray-800 text-gray-400 border border-gray-700'
@@ -171,10 +171,10 @@ export default function HomeClient({
                           {notice.Type}
                         </span>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm text-white line-clamp-2 mb-1">
+                          <p className="text-[10px] sm:text-xs md:text-sm text-white line-clamp-2 mb-0.5 sm:mb-1 whitespace-normal break-words">
                             {notice.Title}
                           </p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-[9px] sm:text-xs md:text-sm text-gray-500">
                             {new Date(notice.Date).toLocaleDateString('ko-KR')}
                           </p>
                         </div>
@@ -188,12 +188,12 @@ export default function HomeClient({
                 )}
               </div>
               {lostarkNotices.length > 0 && (
-                <div className="p-3 border-t border-gray-800 text-center">
+                <div className="p-2 sm:p-3 border-t border-gray-800 text-center">
                   <a
                     href="https://lostark.game.onstove.com/News/Notice/List"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm text-gray-400 hover:text-white transition-colors"
+                    className="text-[10px] sm:text-xs md:text-sm text-gray-400 hover:text-white transition-colors"
                   >
                     더보기 →
                   </a>

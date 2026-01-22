@@ -1085,9 +1085,9 @@ export default function AdvancedRefiningClient({
                       const value = materialValues[mat.name];
                       return (
                         <div key={mat.name} className="bg-gray-900/50 px-3 py-2 rounded">
-                          <div className="flex justify-between items-center mb-1 gap-2">
-                            <span className="text-gray-300 text-sm min-w-0 truncate">{mat.name}</span>
-                            <span className="text-white font-medium flex-shrink-0 whitespace-nowrap">{formatNumber(mat.amount)}</span>
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-gray-300 text-sm">{mat.name}</span>
+                            <span className="text-white font-medium">{formatNumber(mat.amount)}</span>
                           </div>
                           {value?.totalValue != null && (
                             <div className="text-xs text-yellow-400 text-right">
@@ -1106,9 +1106,9 @@ export default function AdvancedRefiningClient({
                       const value = materialValues[mat.name];
                       return (
                         <div key={mat.name} className="bg-gray-900/50 px-3 py-2 rounded">
-                          <div className="flex justify-between items-center mb-1 gap-2">
-                            <span className="text-gray-300 text-sm min-w-0 truncate">{mat.name}</span>
-                            <span className="text-white font-medium flex-shrink-0 whitespace-nowrap">{formatNumber(mat.amount)}</span>
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-gray-300 text-sm">{mat.name}</span>
+                            <span className="text-white font-medium">{formatNumber(mat.amount)}</span>
                           </div>
                           {value?.totalValue != null && (
                             <div className="text-xs text-yellow-400 text-right">

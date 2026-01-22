@@ -5,24 +5,24 @@ export const metadata = {
 
 export default function UpdatesPage() {
   return (
-    <div className="min-h-screen bg-gray-950 p-4 sm:p-6 md:p-6 lg:p-8">
+    <div className="min-h-screen bg-gray-950 sm:p-6 lg:p-8">
       <div className="max-w-4xl mx-auto">
-        <div className="mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white mb-2">
+        <div className="mb-4 sm:mb-6 md:mb-8 px-4 sm:px-0">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold tracking-tight text-white mb-1 sm:mb-2">
             업데이트 내역
           </h1>
-          <p className="text-base text-gray-400">껨산기의 업데이트 내역을 확인하세요.</p>
+          <p className="text-[10px] sm:text-xs md:text-sm text-gray-400 whitespace-normal break-words">껨산기의 업데이트 내역을 확인하세요.</p>
         </div>
 
-        <div className="space-y-4 sm:space-y-6 md:space-y-8">
+        <div className="space-y-3 sm:space-y-4 md:space-y-6 lg:space-y-8">
           {/* v0.3.6 */}
-          <div className="bg-gray-800 rounded-lg p-4 sm:p-6 border border-gray-700">
-            <h2 className="text-xl sm:text-2xl font-bold text-white mb-3 sm:mb-4">v0.3.6 (2026. 01. 23)</h2>
+          <div className="bg-gray-800 rounded-none sm:rounded-lg p-3 sm:p-4 md:p-6 border-x-0 sm:border-x border-gray-700">
+            <h2 className="text-sm sm:text-base md:text-lg lg:text-2xl font-bold text-white mb-2 sm:mb-3 md:mb-4">v0.3.6 (2026. 01. 23)</h2>
             
-            <div className="space-y-3 sm:space-y-4">
+            <div className="space-y-2 sm:space-y-3 md:space-y-4">
               <div>
-                <h3 className="text-base sm:text-lg font-semibold text-blue-400 mb-2">개선 사항</h3>
-                <ul className="list-disc list-inside space-y-1 text-gray-300 ml-4">
+                <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold text-blue-400 mb-1 sm:mb-2">개선 사항</h3>
+                <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-[10px] sm:text-xs md:text-sm text-gray-300 ml-3 sm:ml-4 whitespace-normal break-words">
                   <li>과금 효율 구성요소에 하위 묶음항목 수량이 제대로 계산되지 않는 문제 수정</li>
                 </ul>
               </div>
@@ -30,13 +30,13 @@ export default function UpdatesPage() {
           </div>
 
           {/* v0.3.5 */}
-          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-            <h2 className="text-2xl font-bold text-white mb-4">v0.3.5 (2026. 01. 20)</h2>
+          <div className="bg-gray-800 rounded-none sm:rounded-lg p-3 sm:p-4 md:p-6 border-x-0 sm:border-x border-gray-700">
+            <h2 className="text-sm sm:text-base md:text-lg lg:text-2xl font-bold text-white mb-2 sm:mb-3 md:mb-4">v0.3.5 (2026. 01. 20)</h2>
             
-            <div className="space-y-4">
+            <div className="space-y-2 sm:space-y-3 md:space-y-4">
               <div>
-                <h3 className="text-lg font-semibold text-blue-400 mb-2">개선 사항</h3>
-                <ul className="list-disc list-inside space-y-1 text-gray-300 ml-4">
+                <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold text-blue-400 mb-1 sm:mb-2">개선 사항</h3>
+                <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-[10px] sm:text-xs md:text-sm text-gray-300 ml-3 sm:ml-4 whitespace-normal break-words">
                   <li>홈화면 UI 개선</li>
                   <li>일반 재련 효율 요약표에 세르카 장비 추가</li>
                 </ul>
@@ -45,13 +45,13 @@ export default function UpdatesPage() {
           </div>
 
           {/* v0.3.4 */}
-          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-            <h2 className="text-2xl font-bold text-white mb-4">v0.3.4 (2026. 01. 18)</h2>
+          <div className="bg-gray-800 rounded-none sm:rounded-lg p-3 sm:p-4 md:p-6 border-x-0 sm:border-x border-gray-700">
+            <h2 className="text-sm sm:text-base md:text-lg lg:text-2xl font-bold text-white mb-2 sm:mb-3 md:mb-4">v0.3.4 (2026. 01. 18)</h2>
             
-            <div className="space-y-4">
+            <div className="space-y-2 sm:space-y-3 md:space-y-4">
               <div>
-                <h3 className="text-lg font-semibold text-green-400 mb-2">신규 기능</h3>
-                <ul className="list-disc list-inside space-y-1 text-gray-300 ml-4">
+                <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold text-green-400 mb-1 sm:mb-2">신규 기능</h3>
+                <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-[10px] sm:text-xs md:text-sm text-gray-300 ml-3 sm:ml-4 whitespace-normal break-words">
                   <li>세르카 장비 재련 효율 및 전이 돌파석 가치 업데이트</li>
                   <li>세르카 장비 계승 완료 시 하위 레이드 귀속재료 가치 조정 (5:1 합성 기준)</li>
                   <li>내 캐릭터 시뮬레이션 기능에 세르카 장비 반영</li>
@@ -59,8 +59,8 @@ export default function UpdatesPage() {
               </div>
               
               <div>
-                <h3 className="text-lg font-semibold text-blue-400 mb-2">개선 사항</h3>
-                <ul className="list-disc list-inside space-y-1 text-gray-300 ml-4">
+                <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold text-blue-400 mb-1 sm:mb-2">개선 사항</h3>
+                <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-[10px] sm:text-xs md:text-sm text-gray-300 ml-3 sm:ml-4 whitespace-normal break-words">
                   <li>레이드 보상 계산기 UI 개선</li>
                   <li>일부 기능에서 실링의 가치가 제대로 반영되지 않던 문제 수정</li>
                   <li>디스코드 환율 계산 로직 최적화</li>
@@ -70,13 +70,13 @@ export default function UpdatesPage() {
           </div>
 
           {/* v0.3.3 */}
-          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-            <h2 className="text-2xl font-bold text-white mb-4">v0.3.3 (2026. 01. 14)</h2>
+          <div className="bg-gray-800 rounded-none sm:rounded-lg p-3 sm:p-4 md:p-6 border-x-0 sm:border-x border-gray-700">
+            <h2 className="text-sm sm:text-base md:text-lg lg:text-2xl font-bold text-white mb-2 sm:mb-3 md:mb-4">v0.3.3 (2026. 01. 14)</h2>
             
-            <div className="space-y-4">
+            <div className="space-y-2 sm:space-y-3 md:space-y-4">
               <div>
-                <h3 className="text-lg font-semibold text-blue-400 mb-2">개선 사항</h3>
-                <ul className="list-disc list-inside space-y-1 text-gray-300 ml-4">
+                <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold text-blue-400 mb-1 sm:mb-2">개선 사항</h3>
+                <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-[10px] sm:text-xs md:text-sm text-gray-300 ml-3 sm:ml-4 whitespace-normal break-words">
                   <li>재련 효율 페이지에서 실링의 가치가 제대로 반영되지 않던 문제 수정</li>
                 </ul>
               </div>
@@ -84,13 +84,13 @@ export default function UpdatesPage() {
           </div>
 
           {/* v0.3.2 */}
-          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-            <h2 className="text-2xl font-bold text-white mb-4">v0.3.2 (2026. 01. 12)</h2>
+          <div className="bg-gray-800 rounded-none sm:rounded-lg p-3 sm:p-4 md:p-6 border-x-0 sm:border-x border-gray-700">
+            <h2 className="text-sm sm:text-base md:text-lg lg:text-2xl font-bold text-white mb-2 sm:mb-3 md:mb-4">v0.3.2 (2026. 01. 12)</h2>
             
-            <div className="space-y-4">
+            <div className="space-y-2 sm:space-y-3 md:space-y-4">
               <div>
-                <h3 className="text-lg font-semibold text-green-400 mb-2">신규 기능</h3>
-                <ul className="list-disc list-inside space-y-1 text-gray-300 ml-4">
+                <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold text-green-400 mb-1 sm:mb-2">신규 기능</h3>
+                <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-[10px] sm:text-xs md:text-sm text-gray-300 ml-3 sm:ml-4 whitespace-normal break-words">
                   <li>레이드 보상 계산기 추가</li>
                   <li>에픽/카제로스/그림자 레이드 보상 조회</li>
                   <li>관문별 클리어 보상 및 더보기 효율 확인</li>
@@ -98,8 +98,8 @@ export default function UpdatesPage() {
               </div>
               
               <div>
-                <h3 className="text-lg font-semibold text-blue-400 mb-2">개선사항</h3>
-                <ul className="list-disc list-inside space-y-1 text-gray-300 ml-4">
+                <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold text-blue-400 mb-1 sm:mb-2">개선사항</h3>
+                <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-[10px] sm:text-xs md:text-sm text-gray-300 ml-3 sm:ml-4 whitespace-normal break-words">
                   <li>가격 조정 스위치 배치 최적화</li>
                   <li>상재 1, 2단계 재료 필요 수량 오류 수정</li>
                 </ul>
@@ -108,13 +108,13 @@ export default function UpdatesPage() {
           </div>
 
           {/* v0.3.1 */}
-          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-            <h2 className="text-2xl font-bold text-white mb-4">v0.3.1 (2026. 01. 11)</h2>
+          <div className="bg-gray-800 rounded-none sm:rounded-lg p-3 sm:p-4 md:p-6 border-x-0 sm:border-x border-gray-700">
+            <h2 className="text-sm sm:text-base md:text-lg lg:text-2xl font-bold text-white mb-2 sm:mb-3 md:mb-4">v0.3.1 (2026. 01. 11)</h2>
             
-            <div className="space-y-4">
+            <div className="space-y-2 sm:space-y-3 md:space-y-4">
               <div>
-                <h3 className="text-lg font-semibold text-green-400 mb-2">신규 기능</h3>
-                <ul className="list-disc list-inside space-y-1 text-gray-300 ml-4">
+                <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold text-green-400 mb-1 sm:mb-2">신규 기능</h3>
+                <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-[10px] sm:text-xs md:text-sm text-gray-300 ml-3 sm:ml-4 whitespace-normal break-words">
                   <li>커스텀 계산기 (상자 선택 도우미) 기능 추가</li>
                   <li>사이트 UI 개선 및 사이드바 구현</li>
                   <li>업데이트 노트 작성 시작</li>
@@ -122,8 +122,8 @@ export default function UpdatesPage() {
               </div>
               
               <div>
-                <h3 className="text-lg font-semibold text-blue-400 mb-2">개선사항</h3>
-                <ul className="list-disc list-inside space-y-1 text-gray-300 ml-4">
+                <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold text-blue-400 mb-1 sm:mb-2">개선사항</h3>
+                <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-[10px] sm:text-xs md:text-sm text-gray-300 ml-3 sm:ml-4 whitespace-normal break-words">
                   <li>과금 효율 상품 종료예정일 날짜 처리 오류 수정</li>
                 </ul>
               </div>
@@ -131,11 +131,11 @@ export default function UpdatesPage() {
           </div>
 
           {/* v0.3.0 */}
-          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-            <h2 className="text-2xl font-bold text-white mb-4">v0.3.0 (2026. 01. 7)</h2>
+          <div className="bg-gray-800 rounded-none sm:rounded-lg p-3 sm:p-4 md:p-6 border-x-0 sm:border-x border-gray-700">
+            <h2 className="text-sm sm:text-base md:text-lg lg:text-2xl font-bold text-white mb-2 sm:mb-3 md:mb-4">v0.3.0 (2026. 01. 7)</h2>
             
-            <div className="space-y-4">
-              <p className="text-gray-300">사이트 오픈 베타 시작 (유튜브 공개)</p>
+            <div className="space-y-2 sm:space-y-3 md:space-y-4">
+              <p className="text-[10px] sm:text-xs md:text-sm text-gray-300 whitespace-normal break-words">사이트 오픈 베타 시작 (유튜브 공개)</p>
             </div>
           </div>
         </div>

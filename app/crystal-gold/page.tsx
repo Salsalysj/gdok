@@ -218,11 +218,11 @@ export default function CrystalGoldPage() {
   const per100WonGoldDiscord = typeof displayDiscord === 'number' ? (100 * 100 / displayDiscord) : undefined;
 
   return (
-    <div className="min-h-screen bg-gray-950 p-8">
+    <div className="min-h-screen bg-gray-950 sm:p-6 lg:p-8">
       <div>
-        <div className="mb-10">
-          <h1 className={`text-3xl font-semibold tracking-tight ${titleText} mb-2`}>골드 환율</h1>
-          <p className={`text-base ${descText}`}>골드 환율 정보를 확인하세요.</p>
+        <div className="mb-4 sm:mb-6 md:mb-10 px-4 sm:px-0">
+          <h1 className={`text-xl sm:text-2xl md:text-3xl font-semibold tracking-tight ${titleText} mb-1 sm:mb-2`}>골드 환율</h1>
+          <p className={`text-[10px] sm:text-xs md:text-sm ${descText} whitespace-normal break-words`}>골드 환율 정보를 확인하세요.</p>
         </div>
 
         {error && (
@@ -232,11 +232,11 @@ export default function CrystalGoldPage() {
         )}
 
         {loading ? (
-          <div className="bg-gray-800 rounded-lg p-12 text-center border border-gray-700">
-            <div className="text-gray-400">로딩 중...</div>
+          <div className="bg-gray-800 rounded-none sm:rounded-lg p-4 sm:p-6 md:p-12 text-center border-x-0 sm:border-x border-gray-700">
+            <div className="text-[10px] sm:text-xs md:text-sm text-gray-400">로딩 중...</div>
           </div>
         ) : displayExchange ? (
-          <div className="space-y-6">
+          <div className="space-y-3 sm:space-y-4 md:space-y-6 px-4 sm:px-0">
             {/* 서브탭 선택 */}
             <div className="flex gap-2">
               <button
@@ -264,7 +264,7 @@ export default function CrystalGoldPage() {
             </div>
 
             {/* 현재 환율 표시 */}
-            <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <div className="bg-gray-800 rounded-none sm:rounded-lg p-3 sm:p-4 md:p-6 border-x-0 sm:border-x border-gray-700">
               {activeTab === 'exchange' ? (
                 <div>
                   <div className={`text-sm ${labelText} mb-2`}>화폐거래소</div>
@@ -390,8 +390,8 @@ export default function CrystalGoldPage() {
 
             {/* 차트 */}
             {chartData && (
-              <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-                <h2 className="text-xl font-semibold text-white mb-4">
+              <div className="bg-gray-800 rounded-lg p-4 sm:p-6 border border-gray-700">
+                <h2 className="text-base sm:text-lg lg:text-xl font-semibold text-white mb-4">
                   최근 30일 추이
                 </h2>
                 <div style={{ height: '300px', position: 'relative' }}>
@@ -428,9 +428,9 @@ export default function CrystalGoldPage() {
             )}
           </div>
         ) : (
-          <div className={`${cardBg} rounded-lg p-12 text-center border`}>
-            <div className={`${descText} mb-4`}>골드 환율 정보가 없습니다.</div>
-            <div className={`text-sm ${labelText}`}>
+          <div className={`${cardBg} rounded-none sm:rounded-lg p-4 sm:p-6 md:p-12 text-center border-x-0 sm:border-x px-4 sm:px-0`}>
+            <div className={`text-[10px] sm:text-xs md:text-sm ${descText} mb-3 sm:mb-4 whitespace-normal break-words`}>골드 환율 정보가 없습니다.</div>
+            <div className={`text-[10px] sm:text-xs md:text-sm ${labelText} whitespace-normal break-words`}>
               관리자 페이지에서 환율을 입력해주세요.
             </div>
           </div>
