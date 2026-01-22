@@ -131,8 +131,16 @@ export default function Navigation() {
             </span>
           </Link>
 
-          {/* 모바일: 햄버거 메뉴 */}
-          <div className="flex items-center gap-3 lg:hidden ml-auto">
+          {/* 모바일: DB/필터 버튼 + 햄버거 메뉴 */}
+          <div className="flex items-center gap-2 lg:hidden ml-auto">
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              className="text-white px-3 py-1.5 text-sm font-medium hover:bg-gray-800 rounded border border-gray-700"
+              aria-label="DB/필터"
+            >
+              DB/필터
+            </button>
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}

@@ -231,10 +231,10 @@ export default function PackageEfficiencyClient({
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className={`w-full ${sizeClasses} ${bgColor} text-white rounded-lg border focus:outline-none focus:border-purple-500 text-left flex items-center justify-between`}
+          className={`w-full ${sizeClasses} ${bgColor} text-white rounded-lg border focus:outline-none focus:border-purple-500 text-left flex items-center justify-between gap-2`}
         >
-          <span className={value ? "" : "text-gray-500"}>{selectedLabel}</span>
-          <svg className={`w-4 h-4 ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <span className={`truncate ${value ? "" : "text-gray-500"}`}>{selectedLabel}</span>
+          <svg className={`w-4 h-4 flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         </button>
