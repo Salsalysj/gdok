@@ -15,6 +15,20 @@ export default function UpdatesPage() {
         </div>
 
         <div className="space-y-8">
+          {/* v0.3.6 */}
+          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <h2 className="text-2xl font-bold text-white mb-4">v0.3.6 (2026. 01. 23)</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold text-blue-400 mb-2">개선 사항</h3>
+                <ul className="list-disc list-inside space-y-1 text-gray-300 ml-4">
+                  <li>과금 효율 구성요소에 하위 묶음항목 수량이 제대로 계산되지 않는 문제 수정</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
           {/* v0.3.5 */}
           <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
             <h2 className="text-2xl font-bold text-white mb-4">v0.3.5 (2026. 01. 20)</h2>
