@@ -1534,21 +1534,21 @@ export default function BoxSelectorClient({
                   const isExpanded = expandedSummaryItems[idx] || false;
                   return (
                     <div key={idx} className="bg-gray-900/50 rounded-lg border border-gray-700">
-                      <div className="flex items-center justify-between p-3">
-                        <div className="flex items-center gap-2 flex-1">
+                      <div className="flex items-center justify-between p-3 gap-2">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
                           <button
                             onClick={() => setExpandedSummaryItems(prev => ({ ...prev, [idx]: !prev[idx] }))}
-                            className="text-gray-400 hover:text-white transition-colors mr-2"
+                            className="text-gray-400 hover:text-white transition-colors flex-shrink-0"
                           >
                             {isExpanded ? '▼' : '▶'}
                           </button>
-                          <span className="text-white font-medium">{itemValue.item.itemName || `항목 ${idx + 1}`}</span>
-                          <span className="text-xs text-gray-400">({itemValue.item.itemType})</span>
+                          <span className="text-white font-medium truncate">{itemValue.item.itemName || `항목 ${idx + 1}`}</span>
+                          <span className="text-xs text-gray-400 flex-shrink-0">({itemValue.item.itemType})</span>
                           {itemValue.item.quantity > 1 && (
-                            <span className="text-xs text-blue-400">× {itemValue.item.quantity}</span>
+                            <span className="text-xs text-blue-400 flex-shrink-0">× {itemValue.item.quantity}</span>
                           )}
                         </div>
-                        <div className="text-lg font-semibold text-green-400">
+                        <div className="text-lg font-semibold text-green-400 flex-shrink-0 whitespace-nowrap">
                           {formatNumberWithSignificantDigits(itemValue.value)} 골드
                         </div>
                       </div>

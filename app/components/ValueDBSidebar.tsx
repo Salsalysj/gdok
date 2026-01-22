@@ -347,12 +347,12 @@ export default function ValueDBSidebar() {
                   {categorizedEntries.currency.map((entry) => (
                     <tr key={entry.itemName} className="hover:bg-gray-800/50">
                       <td className="px-2 py-1.5 text-white truncate" title={entry.itemName}>
-                        <div className="flex items-center gap-1">
-                          <span>{entry.itemName}</span>
+                        <div className="flex items-center gap-1 min-w-0">
+                          <span className="truncate min-w-0">{entry.itemName}</span>
                           {hasExplanation(entry.itemName) && (
                             <button
                               onClick={(e) => handleQuestionClick(e, entry.itemName)}
-                              className="text-gray-400 hover:text-gray-300 text-xs leading-none"
+                              className="text-gray-400 hover:text-gray-300 text-xs leading-none flex-shrink-0"
                               aria-label="계산 방법 보기"
                             >
                               ?
@@ -384,12 +384,12 @@ export default function ValueDBSidebar() {
                   {categorizedEntries.growth.map((entry) => (
                     <tr key={entry.itemName} className="hover:bg-gray-800/50">
                       <td className="px-2 py-1.5 text-white truncate" title={entry.itemName}>
-                        <div className="flex items-center gap-1">
-                          <span>{entry.itemName}</span>
+                        <div className="flex items-center gap-1 min-w-0">
+                          <span className="truncate min-w-0">{entry.itemName}</span>
                           {hasExplanation(entry.itemName) && (
                             <button
                               onClick={(e) => handleQuestionClick(e, entry.itemName)}
-                              className="text-gray-400 hover:text-gray-300 text-xs leading-none"
+                              className="text-gray-400 hover:text-gray-300 text-xs leading-none flex-shrink-0"
                               aria-label="계산 방법 보기"
                             >
                               ?
@@ -421,12 +421,12 @@ export default function ValueDBSidebar() {
                   {categorizedEntries.card.map((entry) => (
                     <tr key={entry.itemName} className="hover:bg-gray-800/50">
                       <td className="px-2 py-1.5 text-white truncate" title={entry.itemName}>
-                        <div className="flex items-center gap-1">
-                          <span>{entry.itemName}</span>
+                        <div className="flex items-center gap-1 min-w-0">
+                          <span className="truncate min-w-0">{entry.itemName}</span>
                           {hasExplanation(entry.itemName) && (
                             <button
                               onClick={(e) => handleQuestionClick(e, entry.itemName)}
-                              className="text-gray-400 hover:text-gray-300 text-xs leading-none"
+                              className="text-gray-400 hover:text-gray-300 text-xs leading-none flex-shrink-0"
                               aria-label="계산 방법 보기"
                             >
                               ?
@@ -460,12 +460,12 @@ export default function ValueDBSidebar() {
                   {categorizedEntries.others.map((entry) => (
                     <tr key={entry.itemName} className="hover:bg-gray-800/50">
                       <td className="px-2 py-1.5 text-white truncate" title={entry.itemName}>
-                        <div className="flex items-center gap-1">
-                          <span>{entry.itemName}</span>
+                        <div className="flex items-center gap-1 min-w-0">
+                          <span className="truncate min-w-0">{entry.itemName}</span>
                           {hasExplanation(entry.itemName) && (
                             <button
                               onClick={(e) => handleQuestionClick(e, entry.itemName)}
-                              className="text-gray-400 hover:text-gray-300 text-xs leading-none"
+                              className="text-gray-400 hover:text-gray-300 text-xs leading-none flex-shrink-0"
                               aria-label="계산 방법 보기"
                             >
                               ?

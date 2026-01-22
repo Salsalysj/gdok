@@ -1967,16 +1967,16 @@ function StageCard({ stage, marketInfo, sillingUnitPrice, selectedTier, allStage
                     : `${diff >= 0 ? '+' : '-'}${formatNumberWithSignificantDigits(Math.abs(diff))} 골드`;
 
                   return (
-                    <div key={insight.name} className="flex justify-between items-center py-2 border-b border-gray-700 last:border-b-0">
-                      <div>
-                        <div className="text-white font-medium">{insight.name}</div>
-                        <div className="text-gray-400 text-xs">{usageText}</div>
-                        {basisLabel && <div className="text-gray-500 text-xs">{basisLabel}</div>}
+                    <div key={insight.name} className="flex justify-between items-center py-2 border-b border-gray-700 last:border-b-0 gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="text-white font-medium truncate">{insight.name}</div>
+                        <div className="text-gray-400 text-xs break-words">{usageText}</div>
+                        {basisLabel && <div className="text-gray-500 text-xs break-words">{basisLabel}</div>}
                       </div>
-                      <div className="text-right">
-                        <div className="text-gray-300">시장 단가: {marketText}</div>
-                        <div className="text-blue-300">체감 가치: {actualText}</div>
-                        <div className={diffClass}>차이: {diffText}</div>
+                      <div className="text-right flex-shrink-0">
+                        <div className="text-gray-300 whitespace-nowrap">시장 단가: {marketText}</div>
+                        <div className="text-blue-300 whitespace-nowrap">체감 가치: {actualText}</div>
+                        <div className={`${diffClass} whitespace-nowrap`}>차이: {diffText}</div>
                       </div>
                     </div>
                   );

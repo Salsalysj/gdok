@@ -2880,14 +2880,14 @@ export default function PackageEfficiencyClient({
                     <div className="mb-3 pr-16">
                       <div className="flex items-center gap-2 mb-1">
                         {packageData.category === '패스' && (
-                          <span className="text-sm font-semibold text-purple-400 whitespace-nowrap">
+                          <span className="text-sm font-semibold text-purple-400 whitespace-nowrap flex-shrink-0">
                             패스 레벨 {itemIndex + 1}
                           </span>
                         )}
-                        <svg className={`w-4 h-4 ${colors.icon}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className={`w-4 h-4 ${colors.icon} flex-shrink-0`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                         </svg>
-                        <div className="font-bold text-white text-base">
+                        <div className="font-bold text-white text-base min-w-0 truncate">
                           {packageItem.itemName || `항목 ${itemIndex + 1}`}
                         </div>
                       </div>
@@ -3034,13 +3034,13 @@ export default function PackageEfficiencyClient({
                     {packageItem.components.length > 0 && (
                       <button
                         onClick={() => toggleItemExpanded(itemIndex)}
-                        className="w-full flex items-center justify-between px-3 py-2 bg-gray-800/50 rounded-lg border border-gray-700 hover:bg-gray-800 transition-colors mb-2"
+                        className="w-full flex items-center justify-between px-3 py-2 bg-gray-800/50 rounded-lg border border-gray-700 hover:bg-gray-800 transition-colors mb-2 gap-2"
                       >
-                        <span className="text-sm font-medium text-gray-300">
+                        <span className="text-sm font-medium text-gray-300 min-w-0 truncate">
                           구성 요소 {packageItem.components.length}개
                         </span>
                         <svg
-                          className={`w-4 h-4 text-gray-400 ${expandedItems[itemIndex] ? 'rotate-180' : ''}`}
+                          className={`w-4 h-4 text-gray-400 flex-shrink-0 ${expandedItems[itemIndex] ? 'rotate-180' : ''}`}
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -3168,7 +3168,7 @@ export default function PackageEfficiencyClient({
                                   // 하위 묶음 항목 표시
                                   <div className="space-y-2">
                                     <div className="flex items-baseline gap-2 flex-wrap">
-                                      <span className={`text-sm font-medium ${isIncluded ? 'text-white' : 'text-gray-500 line-through'}`}>
+                                      <span className={`text-sm font-medium ${isIncluded ? 'text-white' : 'text-gray-500 line-through'} truncate min-w-0`}>
                                         📦 {component.nestedItem.itemName || '하위 묶음 항목'}
                                       </span>
                                       {packageItem.itemType === '확률' && component.probability !== undefined && (
@@ -3278,9 +3278,9 @@ export default function PackageEfficiencyClient({
                                     {component.nestedItem && component.nestedItem.components.length > 0 && (
                                       <button
                                         onClick={() => toggleNestedItemExpanded(itemIndex, compIndex)}
-                                        className="w-full flex items-center justify-between px-2 py-1.5 bg-gray-800/30 rounded border border-blue-500/30 hover:bg-gray-800/50 transition-colors mt-2 text-xs"
+                                        className="w-full flex items-center justify-between px-2 py-1.5 bg-gray-800/30 rounded border border-blue-500/30 hover:bg-gray-800/50 transition-colors mt-2 text-xs gap-2"
                                       >
-                                        <span className="text-xs font-medium text-blue-300">
+                                        <span className="text-xs font-medium text-blue-300 min-w-0 truncate">
                                           하위 구성 요소 {component.nestedItem.components.length}개
                                         </span>
                                         <svg
@@ -4272,9 +4272,9 @@ export default function PackageEfficiencyClient({
                                     {component.nestedItem.components.length > 0 && (
                                       <button
                                         onClick={() => toggleNestedItemExpanded(itemIndex, compIndex)}
-                                        className="w-full flex items-center justify-between px-2 py-1 bg-gray-700/30 rounded border border-blue-500/30 hover:bg-gray-700/50 transition-colors mb-2 text-xs"
+                                        className="w-full flex items-center justify-between px-2 py-1 bg-gray-700/30 rounded border border-blue-500/30 hover:bg-gray-700/50 transition-colors mb-2 text-xs gap-2"
                                       >
-                                        <span className="text-[10px] font-medium text-blue-300">
+                                        <span className="text-[10px] font-medium text-blue-300 min-w-0 truncate">
                                           하위 구성 요소 {component.nestedItem.components.length}개
                                         </span>
                                         <svg

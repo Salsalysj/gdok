@@ -516,12 +516,13 @@ export default function ContentRewardsClient({
                         className={`bg-gray-900 rounded border border-gray-700 ${
                           isSimpleLayout ? 'p-3' : 'p-4 flex items-center gap-3'
                         }`}
+                        style={{ wordBreak: 'keep-all' }}
                       >
                         {isSimpleLayout ? (
                           <div>
                             <div className="flex items-center gap-2 mb-1">
-                              <span className={`font-medium ${tradeInfo.nameClass} ${strike}`}>{reward.itemName}</span>
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] ${tradeInfo.badgeClass}`}>{tradeInfo.badgeText}</span>
+                              <span className={`font-medium ${tradeInfo.nameClass} ${strike} truncate min-w-0 flex-1`}>{reward.itemName}</span>
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] ${tradeInfo.badgeClass} flex-shrink-0`}>{tradeInfo.badgeText}</span>
                             </div>
                             <div className="text-gray-400 text-sm mb-1">수량: {quantityStr}</div>
                             {isCubeTicket ? (
