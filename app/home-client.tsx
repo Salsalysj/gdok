@@ -125,8 +125,7 @@ export default function HomeClient({
                     <div className="flex items-center justify-between">
 
                       <a 
-                        //href={`https://www.youtube.com/watch?v=${youtubeVideo.videoId}`}
-                        href={`https://www.youtube.com/watch?v=$JwboSwMugQY`}
+                        href={`https://www.youtube.com/watch?v=${youtubeVideo.videoId}`}                  
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-xs text-red-500 hover:text-red-400"

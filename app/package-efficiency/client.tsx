@@ -4189,18 +4189,6 @@ export default function PackageEfficiencyClient({
                                         className="flex-1 px-2 py-1 bg-gray-600 text-white rounded border border-gray-500 text-xs"
                                         placeholder="묶음 항목명"
                                       />
-                                      <input
-                                        type="number"
-                                        value={component.nestedItem.quantity || ''}
-                                        onChange={(e) => {
-                                          const nestedItem = { ...component.nestedItem!, quantity: parseFloat(e.target.value) || 1 };
-                                          updateBonusRoomComponent(roomIndex, itemIndex, compIndex, 'nestedItem', nestedItem);
-                                        }}
-                                        className="w-20 px-2 py-1 bg-gray-600 text-white rounded border border-gray-500 text-xs"
-                                        placeholder="수량"
-                                        min="1"
-                                        step="1"
-                                      />
                                       <select
                                         value={component.nestedItem.itemType}
                                         onChange={(e) => {
@@ -4238,8 +4226,16 @@ export default function PackageEfficiencyClient({
                                 <div className="flex gap-2 items-center flex-wrap">
                                   <input
                                     type="number"
-                                    value={component.quantity || ''}
-                                    onChange={(e) => updateBonusRoomComponent(roomIndex, itemIndex, compIndex, 'quantity', parseFloat(e.target.value) || 0)}
+                                    value={(component.itemName === '__nested__' && component.nestedItem) ? (component.nestedItem.quantity || '') : (component.quantity || '')}
+                                    onChange={(e) => {
+                                      const newQuantity = parseFloat(e.target.value) || 0;
+                                      updateBonusRoomComponent(roomIndex, itemIndex, compIndex, 'quantity', newQuantity);
+                                      // 하위 묶음 항목인 경우 nestedItem.quantity도 함께 업데이트
+                                      if (component.itemName === '__nested__' && component.nestedItem) {
+                                        const nestedItem = { ...component.nestedItem, quantity: newQuantity };
+                                        updateBonusRoomComponent(roomIndex, itemIndex, compIndex, 'nestedItem', nestedItem);
+                                      }
+                                    }}
                                     className="w-20 px-2 py-1 bg-gray-600 text-white rounded border border-gray-500 text-xs"
                                     placeholder="수량"
                                     min="0"
@@ -4648,18 +4644,6 @@ export default function PackageEfficiencyClient({
                               className="flex-1 px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
                               placeholder="묶음 항목명"
                             />
-                            <input
-                              type="number"
-                              value={component.nestedItem.quantity || ''}
-                              onChange={(e) => {
-                                const nestedItem = { ...component.nestedItem!, quantity: parseFloat(e.target.value) || 1 };
-                                updateComponent(itemIndex, componentIndex, 'nestedItem', nestedItem);
-                              }}
-                              className="w-28 px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
-                              placeholder="수량"
-                              min="1"
-                              step="1"
-                            />
                             <select
                               value={component.nestedItem.itemType}
                               onChange={(e) => {
@@ -4697,8 +4681,16 @@ export default function PackageEfficiencyClient({
                         <div className="flex gap-2 items-center flex-wrap">
                         <input
                           type="number"
-                          value={component.quantity || ''}
-                          onChange={(e) => updateComponent(itemIndex, componentIndex, 'quantity', parseFloat(e.target.value) || 0)}
+                          value={(component.itemName === '__nested__' && component.nestedItem) ? (component.nestedItem.quantity || '') : (component.quantity || '')}
+                          onChange={(e) => {
+                            const newQuantity = parseFloat(e.target.value) || 0;
+                            updateComponent(itemIndex, componentIndex, 'quantity', newQuantity);
+                            // 하위 묶음 항목인 경우 nestedItem.quantity도 함께 업데이트
+                            if (component.itemName === '__nested__' && component.nestedItem) {
+                              const nestedItem = { ...component.nestedItem, quantity: newQuantity };
+                              updateComponent(itemIndex, componentIndex, 'nestedItem', nestedItem);
+                            }
+                          }}
                           className="w-28 px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
                           placeholder="수량"
                           min="0"
@@ -5364,18 +5356,6 @@ export default function PackageEfficiencyClient({
                                       className="flex-1 px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
                                       placeholder="묶음 항목명"
                                     />
-                                    <input
-                                      type="number"
-                                      value={component.nestedItem.quantity || ''}
-                                      onChange={(e) => {
-                                        const nestedItem = { ...component.nestedItem!, quantity: parseFloat(e.target.value) || 1 };
-                                        updateBonus3Component(itemIndex, componentIndex, 'nestedItem', nestedItem);
-                                      }}
-                                      className="w-28 px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
-                                      placeholder="수량"
-                                      min="1"
-                                      step="1"
-                                    />
                                     <select
                                       value={component.nestedItem.itemType}
                                       onChange={(e) => {
@@ -5394,8 +5374,16 @@ export default function PackageEfficiencyClient({
                                 <div className="flex gap-2">
                                   <input
                                     type="number"
-                                    value={component.quantity || ''}
-                                    onChange={(e) => updateBonus3Component(itemIndex, componentIndex, 'quantity', parseFloat(e.target.value) || 1)}
+                                    value={(component.itemName === '__nested__' && component.nestedItem) ? (component.nestedItem.quantity || '') : (component.quantity || '')}
+                                    onChange={(e) => {
+                                      const newQuantity = parseFloat(e.target.value) || 1;
+                                      updateBonus3Component(itemIndex, componentIndex, 'quantity', newQuantity);
+                                      // 하위 묶음 항목인 경우 nestedItem.quantity도 함께 업데이트
+                                      if (component.itemName === '__nested__' && component.nestedItem) {
+                                        const nestedItem = { ...component.nestedItem, quantity: newQuantity };
+                                        updateBonus3Component(itemIndex, componentIndex, 'nestedItem', nestedItem);
+                                      }
+                                    }}
                                     className="w-24 px-3 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
                                     placeholder="수량"
                                     min="0.01"
