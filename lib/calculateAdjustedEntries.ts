@@ -618,6 +618,15 @@ export function calculateAdjustedEntries(params: CalculateAdjustedEntriesParams)
   if (valueDbEntryMap && (hellStages || hell1Stages || hell2Stages || narakStages || narak1Stages || narak2Stages)) {
     // 가치계산DB에서 아이템 가격 가져오기 함수
     const getValueDbPrice = (itemName: string): number | null => {
+      // 순환 돌파석은 클라이언트에서 재계산된 값 사용
+      if (itemName === '순환 돌파석') {
+        return circularBreakthroughValue;
+      }
+      // 전이 돌파석은 클라이언트에서 재계산된 값 사용
+      if (itemName === '전이 돌파석') {
+        return transitionBreakthroughValue;
+      }
+      
       const entry = valueDbEntryMap.get(itemName);
       if (entry && entry.unitType === '골드' && entry.unitValue != null) {
         return entry.unitValue;
@@ -630,6 +639,10 @@ export function calculateAdjustedEntries(params: CalculateAdjustedEntriesParams)
       // 모든 아이템은 가치계산DB에서 가격 가져오기 (우선순위)
       const valueDbPrice = getValueDbPrice(itemName);
       if (valueDbPrice != null) {
+        // 순환 돌파석은 이미 adjustPrice가 적용된 값이므로 그대로 반환
+        if (itemName === '순환 돌파석') {
+          return valueDbPrice;
+        }
         // 가격 조정 적용
         return adjustPrice(itemName, valueDbPrice);
       }
@@ -1041,7 +1054,26 @@ export function calculateAdjustedEntries(params: CalculateAdjustedEntriesParams)
     }
     // 에브니 큐브 입장권: 재계산된 값 사용
     else if (entry.itemName.startsWith('에브니 큐브 입장권')) {
-      if (recalculatedValues[entry.itemName] != null) {
+      // 지옥교환 항목 처리: 클라이언트에서 재계산된 지옥 열쇠 값 사용
+      const hellExchangeMatch = entry.itemName.match(/에브니 큐브 입장권 \(([^)]+)\) \(지옥교환\)/);
+      if (hellExchangeMatch) {
+        const cubeStage = hellExchangeMatch[1]; // 1해금, 2해금, 3해금, 4해금
+        let hellKeyName: string | null = null;
+        
+        // 해금 단계에 따라 전설 지옥 열쇠 매핑
+        if (cubeStage === '1해금' || cubeStage === '2해금') {
+          hellKeyName = '전설 지옥 열쇠 I';
+        } else if (cubeStage === '3해금') {
+          hellKeyName = '전설 지옥 열쇠 II';
+        } else if (cubeStage === '4해금') {
+          hellKeyName = '전설 지옥 열쇠 III';
+        }
+        
+        if (hellKeyName && hellKeyValues[hellKeyName] != null && hellKeyValues[hellKeyName]! > 0) {
+          adjustedValue = hellKeyValues[hellKeyName]! / 10;
+        }
+      } else if (recalculatedValues[entry.itemName] != null) {
+        // 일반 에브니 큐브 입장권은 recalculatedValues에서 가져오기
         adjustedValue = recalculatedValues[entry.itemName];
       }
     }

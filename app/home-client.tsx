@@ -69,7 +69,7 @@ export default function HomeClient({
               <h4 className="text-sm sm:text-base md:text-lg font-semibold text-white">맞춤 설정</h4>
               <p className="text-[10px] sm:text-xs md:text-sm text-gray-400 leading-relaxed whitespace-normal break-words">
                 개인 상황에 맞는 가격 조정 옵션을 제공합니다.
-              </p>
+          </p>
             </div>
           </div>
         </div>
@@ -125,7 +125,7 @@ export default function HomeClient({
                     <div className="flex items-center justify-between">
 
                       <a 
-                        href={`https://www.youtube.com/watch?v=${youtubeVideo.videoId}`}                  
+                        href={`https://www.youtube.com/watch?v=${youtubeVideo.videoId}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-[10px] sm:text-xs md:text-sm text-red-500 hover:text-red-400"

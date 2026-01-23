@@ -6,6 +6,8 @@ import { usePriceAdjustment } from '../../hooks/usePriceAdjustment';
 import { useValueDb } from '../../contexts/ValueDbContext';
 import { usePriceOverride } from '../../contexts/PriceOverrideContext';
 import type { ValueDbEntry } from '@/lib/valueDb';
+import { calculateOptimalStrategy } from '../../refining-simulation/client';
+import type { RefiningStage, MarketItemInfo } from '../../refining-simulation/page';
 
 type ComponentItem = {
   itemName: string;
@@ -88,6 +90,11 @@ export default function BloodstoneShopClient({
   narakStages?: Stage[];
   narak1Stages?: Stage[];
   narak2Stages?: Stage[];
+  weaponStages?: RefiningStage[];
+  armorStages?: RefiningStage[];
+  weaponStagesSerka?: RefiningStage[];
+  armorStagesSerka?: RefiningStage[];
+  marketInfo?: Record<string, MarketItemInfo>;
   initialSavedShops?: Array<{ id: string; shop_name: string; created_at: string; updated_at: string; shop_data?: any }>;
 }) {
   const { adjustPrice } = usePriceAdjustment();
@@ -327,6 +334,120 @@ export default function BloodstoneShopClient({
     );
   };
 
+  // 가치계산DB에서 아이템 가격 가져오기 함수
+  const getValueDbPrice = useCallback((itemName: string): number | null => {
+    // 순환 돌파석은 클라이언트에서 재계산된 값 사용
+    if (itemName === '순환 돌파석') {
+      return circularBreakthroughValue;
+    }
+    // 전이 돌파석은 클라이언트에서 재계산된 값 사용
+    if (itemName === '전이 돌파석') {
+      return transitionBreakthroughValue;
+    }
+    
+    const entry = valueDbMap[itemName];
+    if (entry && entry.unitType === '골드' && entry.unitValue != null) {
+      return entry.unitValue;
+    }
+    return null;
+  }, [valueDbMap, circularBreakthroughValue, transitionBreakthroughValue]);
+
+  // 지옥 보상 가격 조정 함수 (모든 아이템은 가치계산DB 우선 사용)
+  const getAdjustedPrice = useCallback((itemName: string, originalPrice: number | null | undefined): number | null => {
+    // 모든 아이템은 가치계산DB에서 가격 가져오기 (우선순위)
+    const valueDbPrice = getValueDbPrice(itemName);
+    if (valueDbPrice != null) {
+      // 순환 돌파석은 이미 adjustPrice가 적용된 값이므로 그대로 반환
+      if (itemName === '순환 돌파석') {
+        return valueDbPrice;
+      }
+      // 가격 조정 적용
+      return adjustPrice(itemName, valueDbPrice);
+    }
+    
+    // 가치계산DB에 없는 경우 기존 로직 사용 후 가격 조정 적용
+    let price = originalPrice ?? null;
+    if (price != null) {
+      price = adjustPrice(itemName, price);
+    }
+    
+    return price;
+  }, [getValueDbPrice, adjustPrice]);
+
+  // 클라이언트에서 지옥 열쇠 가치 계산 (지옥 보상 페이지와 동일한 로직)
+  const computeHellKeyValue = useCallback((hellType: '지옥1' | '지옥2' | '지옥3', stageName: string): number | null => {
+    const stages = hellType === '지옥1' ? hell1Stages : hellType === '지옥2' ? hell2Stages : hellStages;
+    if (!stages || stages.length === 0) return null;
+    
+    const stage = stages.find(s => s.stage === stageName);
+    if (!stage || !stage.rewards || stage.rewards.length === 0) return null;
+    
+    // 카테고리별로 그룹화
+    const groupedByCategory: Record<string, typeof stage.rewards> = {};
+    stage.rewards.forEach((reward) => {
+      const category = reward.category || '기본';
+      if (!groupedByCategory[category]) {
+        groupedByCategory[category] = [];
+      }
+      groupedByCategory[category].push(reward);
+    });
+    
+    const categories = Object.keys(groupedByCategory);
+    if (categories.length === 0) return null;
+    
+    // 지옥: 기본 보상 + 나머지 카테고리 중 3개를 랜덤으로 선택하고 그 중 최고값을 선택
+    const baseCategory = categories.find(cat => cat.includes('기본') || cat.includes('보상 상자')) || categories[0];
+    const otherCategories = categories.filter(cat => cat !== baseCategory);
+    
+    // 기본 보상 가치 계산 (가격 조정 적용, 가치계산DB 우선 사용)
+    let baseRewardValue = 0;
+    if (baseCategory && groupedByCategory[baseCategory]) {
+      const baseValue = groupedByCategory[baseCategory].reduce((sum, r) => {
+        const adjustedPrice = getAdjustedPrice(r.itemName, r.price);
+        return sum + ((adjustedPrice || 0) * r.quantity);
+      }, 0);
+      // 기본 보상 상자는 190% 반영 (100% 기본 + 90% 풍요 기대값)
+      baseRewardValue = baseValue * 1.9;
+    }
+    
+    // 선택 보상 기대값 계산
+    if (otherCategories.length >= 3) {
+      const combinations: string[][] = [];
+      for (let i = 0; i < otherCategories.length; i++) {
+        for (let j = i + 1; j < otherCategories.length; j++) {
+          for (let k = j + 1; k < otherCategories.length; k++) {
+            combinations.push([otherCategories[i], otherCategories[j], otherCategories[k]]);
+          }
+        }
+      }
+      
+      const maxValues: number[] = [];
+      combinations.forEach(combo => {
+        const comboValues = combo.map(cat => {
+          return groupedByCategory[cat].reduce((sum, r) => {
+            const adjustedPrice = getAdjustedPrice(r.itemName, r.price);
+            return sum + ((adjustedPrice || 0) * r.quantity);
+          }, 0);
+        });
+        maxValues.push(Math.max(...comboValues));
+      });
+      
+      const expectedSelectionValue = maxValues.reduce((sum, val) => sum + val, 0) / maxValues.length;
+      return baseRewardValue + expectedSelectionValue;
+    } else if (otherCategories.length > 0) {
+      const otherValues = otherCategories.map(cat => {
+        return groupedByCategory[cat].reduce((sum, r) => {
+          const adjustedPrice = getAdjustedPrice(r.itemName, r.price);
+          return sum + ((adjustedPrice || 0) * r.quantity);
+        }, 0);
+      });
+      const maxOtherValue = Math.max(...otherValues);
+      return baseRewardValue + maxOtherValue;
+    } else {
+      return baseRewardValue;
+    }
+  }, [hell1Stages, hell2Stages, hellStages, getAdjustedPrice, refreshKey]);
+
   // resolveUnitPrice (과금 효율과 동일한 로직 사용)
   const resolveUnitPrice = useCallback((itemName: string): { unitType: '골드' | '크리스탈' | '현금'; unitPrice: number } | null => {
     if (itemName === '순환 돌파석' || itemName.includes('(실제가치)')) {
@@ -341,9 +462,23 @@ export default function BloodstoneShopClient({
     if (itemName.startsWith('에브니 큐브 입장권')) {
       const hellExchangeMatch = itemName.match(/에브니 큐브 입장권 \(([^)]+)\) \(지옥교환\)/);
       if (hellExchangeMatch) {
-        const valueDbEntry = valueDbMap[itemName];
-        if (valueDbEntry && valueDbEntry.unitType && valueDbEntry.unitValue != null) {
-          return { unitType: valueDbEntry.unitType, unitPrice: valueDbEntry.unitValue };
+        const cubeStage = hellExchangeMatch[1]; // 1해금, 2해금, 3해금, 4해금
+        let hellKeyValue: number | null = null;
+        
+        // 해금 단계에 따라 지옥 열쇠 가치 계산
+        if (cubeStage === '1해금' || cubeStage === '2해금') {
+          hellKeyValue = computeHellKeyValue('지옥1', '7단계');
+        } else if (cubeStage === '3해금') {
+          hellKeyValue = computeHellKeyValue('지옥2', '7단계');
+        } else if (cubeStage === '4해금') {
+          hellKeyValue = computeHellKeyValue('지옥3', '7단계');
+        }
+        
+        if (hellKeyValue != null && hellKeyValue > 0) {
+          return {
+            unitType: '골드',
+            unitPrice: hellKeyValue / 10,
+          };
         }
         return null;
       }

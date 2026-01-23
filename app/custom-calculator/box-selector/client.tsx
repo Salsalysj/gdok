@@ -6,6 +6,8 @@ import { usePriceAdjustment } from '../../hooks/usePriceAdjustment';
 import { useValueDb } from '../../contexts/ValueDbContext';
 import { createClient } from '@supabase/supabase-js';
 import type { ValueDbEntry } from '@/lib/valueDb';
+import { calculateOptimalStrategy } from '../../refining-simulation/client';
+import type { RefiningStage, MarketItemInfo } from '../../refining-simulation/page';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -93,6 +95,11 @@ export default function BoxSelectorClient({
   narakStages?: Stage[];
   narak1Stages?: Stage[];
   narak2Stages?: Stage[];
+  weaponStages?: RefiningStage[];
+  armorStages?: RefiningStage[];
+  weaponStagesSerka?: RefiningStage[];
+  armorStagesSerka?: RefiningStage[];
+  marketInfo?: Record<string, MarketItemInfo>;
   initialSavedBoxSelectors?: Array<{ id: string; box_name: string; item_name: string | null; acquisition_source: string | null; box_data?: any; created_at: string; updated_at: string }>;
 }) {
   const { adjustPrice, adjustRelicEngravingAverage } = usePriceAdjustment();
@@ -100,6 +107,178 @@ export default function BoxSelectorClient({
   const [lightMode, setLightMode] = useState<boolean>(false);
   
   const [refreshKey, setRefreshKey] = useState(0);
+
+  // 순환 돌파석 가치를 클라이언트에서 재계산 (지옥 보상 페이지와 동일한 방식)
+  const circularBreakthroughValue = useMemo(() => {
+    if (weaponStages && armorStages && marketInfo && weaponStages.length > 0 && armorStages.length > 0) {
+      const adjustedMarketInfo: Record<string, MarketItemInfo> = {};
+      for (const [name, info] of Object.entries(marketInfo)) {
+        adjustedMarketInfo[name] = {
+          ...info,
+          unitPrice: adjustPrice(name, info.unitPrice) ?? info.unitPrice,
+        };
+      }
+
+      const getBreakthroughStoneCount = (level: number, type: 'weapon' | 'armor'): number => {
+        if (type === 'weapon') {
+          if (level >= 10 && level <= 12) return 30;
+          if (level >= 13 && level <= 16) return 40;
+          if (level >= 17 && level <= 25) return 50;
+        } else {
+          if (level >= 10 && level <= 12) return 12;
+          if (level >= 13 && level <= 16) return 16;
+          if (level >= 17 && level <= 25) return 20;
+        }
+        return 0;
+      };
+
+      const allBreakthroughValues: number[] = [];
+      
+      [...weaponStages, ...armorStages].forEach(stage => {
+        const { optimalStrategy } = calculateOptimalStrategy(stage, adjustedMarketInfo);
+        
+        const expInfo = stage.expMaterial ? (adjustedMarketInfo[stage.expMaterial.name] || { unitPrice: 0 }) : null;
+        const expMaterialCost = stage.expMaterial && expInfo
+          ? expInfo.unitPrice * stage.expMaterial.quantity
+          : 0;
+        
+        const refiningCost = optimalStrategy.expectedCost - expMaterialCost;
+        const baseSuccessRate = stage.baseSuccessRate / 100;
+        
+        const type = stage.baseMaterials.some(m => m.name === '운명의 파괴석') ? 'weapon' : 'armor';
+        const stoneCount = getBreakthroughStoneCount(stage.level, type);
+        
+        if (stoneCount > 0) {
+          const value = (refiningCost * baseSuccessRate) / stoneCount;
+          if (value > 0) {
+            allBreakthroughValues.push(value);
+          }
+        }
+      });
+
+      if (allBreakthroughValues.length > 0) {
+        const sorted = allBreakthroughValues.sort((a, b) => b - a);
+        const top5 = sorted.slice(0, 5);
+        return top5.reduce((sum, val) => sum + val, 0) / top5.length;
+      }
+    }
+    
+    const entry = Object.values(valueDbMap).find(e => e.itemName === '순환 돌파석');
+    if (entry && entry.unitType === '골드' && entry.unitValue != null) {
+      return adjustPrice('순환 돌파석', entry.unitValue);
+    }
+    return null;
+  }, [valueDbMap, adjustPrice, weaponStages, armorStages, marketInfo]);
+
+  // 전이 돌파석 가치를 클라이언트에서 재계산 (지옥 보상 페이지와 동일한 방식)
+  const transitionBreakthroughValue = useMemo(() => {
+    if (weaponStagesSerka && armorStagesSerka && marketInfo && weaponStagesSerka.length > 0 && armorStagesSerka.length > 0) {
+      const adjustedMarketInfo: Record<string, MarketItemInfo> = {};
+      for (const [name, info] of Object.entries(marketInfo)) {
+        adjustedMarketInfo[name] = {
+          ...info,
+          unitPrice: adjustPrice(name, info.unitPrice) ?? info.unitPrice,
+        };
+      }
+
+      const getTransitionStoneCount = (level: number, type: 'weapon' | 'armor'): number => {
+        if (type === 'weapon') {
+          if (level >= 10 && level <= 11) return 25;
+          if (level >= 12 && level <= 13) return 30;
+          if (level >= 14 && level <= 16) return 35;
+          if (level >= 17 && level <= 19) return 40;
+          if (level >= 20 && level <= 21) return 45;
+          if (level >= 22 && level <= 23) return 50;
+          if (level >= 24 && level <= 25) return 55;
+        } else {
+          if (level >= 10 && level <= 11) return 10;
+          if (level >= 12 && level <= 13) return 12;
+          if (level >= 14 && level <= 16) return 14;
+          if (level >= 17 && level <= 19) return 16;
+          if (level >= 20 && level <= 21) return 18;
+          if (level >= 22 && level <= 23) return 20;
+          if (level >= 24 && level <= 25) return 22;
+        }
+        return 0;
+      };
+
+      const allBreakthroughValues: number[] = [];
+      
+      [...weaponStagesSerka, ...armorStagesSerka].forEach(stage => {
+        const { optimalStrategy } = calculateOptimalStrategy(stage, adjustedMarketInfo);
+        
+        const expInfo = stage.expMaterial ? (adjustedMarketInfo[stage.expMaterial.name] || { unitPrice: 0 }) : null;
+        const expMaterialCost = stage.expMaterial && expInfo
+          ? expInfo.unitPrice * stage.expMaterial.quantity
+          : 0;
+        
+        const refiningCost = optimalStrategy.expectedCost - expMaterialCost;
+        const baseSuccessRate = stage.baseSuccessRate / 100;
+        
+        const type = stage.baseMaterials.some(m => m.name === '운명의 파괴석 결정') ? 'weapon' : 'armor';
+        const stoneCount = getTransitionStoneCount(stage.level, type);
+        
+        if (stoneCount > 0) {
+          const value = (refiningCost * baseSuccessRate) / stoneCount;
+          if (value > 0) {
+            allBreakthroughValues.push(value);
+          }
+        }
+      });
+
+      if (allBreakthroughValues.length > 0) {
+        const sorted = allBreakthroughValues.sort((a, b) => b - a);
+        const top5 = sorted.slice(0, 5);
+        return top5.reduce((sum, val) => sum + val, 0) / top5.length;
+      }
+    }
+    
+    const entry = Object.values(valueDbMap).find(e => e.itemName === '전이 돌파석');
+    if (entry && entry.unitType === '골드' && entry.unitValue != null) {
+      return adjustPrice('전이 돌파석', entry.unitValue);
+    }
+    return null;
+  }, [valueDbMap, adjustPrice, weaponStagesSerka, armorStagesSerka, marketInfo]);
+
+  // 가치계산DB에서 아이템 가격 가져오기 함수
+  const getValueDbPrice = useCallback((itemName: string): number | null => {
+    // 순환 돌파석은 클라이언트에서 재계산된 값 사용
+    if (itemName === '순환 돌파석') {
+      return circularBreakthroughValue;
+    }
+    // 전이 돌파석은 클라이언트에서 재계산된 값 사용
+    if (itemName === '전이 돌파석') {
+      return transitionBreakthroughValue;
+    }
+    
+    const entry = valueDbMap[itemName];
+    if (entry && entry.unitType === '골드' && entry.unitValue != null) {
+      return entry.unitValue;
+    }
+    return null;
+  }, [valueDbMap, circularBreakthroughValue, transitionBreakthroughValue]);
+
+  // 지옥 보상 가격 조정 함수 (모든 아이템은 가치계산DB 우선 사용)
+  const getAdjustedPrice = useCallback((itemName: string, originalPrice: number | null | undefined): number | null => {
+    // 모든 아이템은 가치계산DB에서 가격 가져오기 (우선순위)
+    const valueDbPrice = getValueDbPrice(itemName);
+    if (valueDbPrice != null) {
+      // 순환 돌파석은 이미 adjustPrice가 적용된 값이므로 그대로 반환
+      if (itemName === '순환 돌파석') {
+        return valueDbPrice;
+      }
+      // 가격 조정 적용
+      return adjustPrice(itemName, valueDbPrice);
+    }
+    
+    // 가치계산DB에 없는 경우 기존 로직 사용 후 가격 조정 적용
+    let price = originalPrice ?? null;
+    if (price != null) {
+      price = adjustPrice(itemName, price);
+    }
+    
+    return price;
+  }, [getValueDbPrice, adjustPrice]);
   const [manualPriceInputs, setManualPriceInputs] = useState<Record<string, string>>({});
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
   const [expandedNestedItems, setExpandedNestedItems] = useState<Record<string, boolean>>({});
@@ -196,27 +375,6 @@ export default function BoxSelectorClient({
     const isNarakKey = itemName.includes('나락의') && itemName.includes('열쇠');
     
     if ((isHellKey || isNarakKey) && (hellStages || hell1Stages || hell2Stages) && (narakStages || narak1Stages || narak2Stages)) {
-      const getValueDbPrice = (itemName: string): number | null => {
-        const entry = valueDbMap[itemName];
-        if (entry && entry.unitType === '골드' && entry.unitValue != null) {
-          return entry.unitValue;
-        }
-        return null;
-      };
-
-      const getAdjustedPrice = (itemName: string, originalPrice: number | null | undefined): number | null => {
-        const valueDbPrice = getValueDbPrice(itemName);
-        if (valueDbPrice != null) {
-          return adjustPrice(itemName, valueDbPrice);
-        }
-        
-        let price = originalPrice ?? null;
-        if (price != null) {
-          price = adjustPrice(itemName, price);
-        }
-        
-        return price;
-      };
 
       const calculateHellStageExpectedValue = (stage: Stage, isNarak: boolean = false): number | null => {
         if (!stage || !stage.rewards || stage.rewards.length === 0) return null;
@@ -424,7 +582,147 @@ export default function BoxSelectorClient({
       }
     }
 
+    // 에브니 큐브 입장권 처리
     if (itemName.startsWith('에브니 큐브 입장권')) {
+      // 지옥교환 항목 처리: 클라이언트에서 지옥 열쇠 가치 계산
+      const hellExchangeMatch = itemName.match(/에브니 큐브 입장권 \(([^)]+)\) \(지옥교환\)/);
+      if (hellExchangeMatch) {
+        const cubeStage = hellExchangeMatch[1]; // 1해금, 2해금, 3해금, 4해금
+        
+        // 지옥 열쇠 계산 로직이 있는 경우에만 처리
+        if ((hellStages || hell1Stages || hell2Stages) && (narakStages || narak1Stages || narak2Stages)) {
+          const getAdjustedPrice = (itemName: string, originalPrice: number | null | undefined): number | null => {
+            const valueDbPrice = getValueDbPrice(itemName);
+            if (valueDbPrice != null) {
+              return adjustPrice(itemName, valueDbPrice);
+            }
+            let price = originalPrice ?? null;
+            if (price != null) {
+              price = adjustPrice(itemName, price);
+            }
+            return price;
+          };
+          const calculateHellStageExpectedValue = (stage: Stage, isNarak: boolean = false): number | null => {
+            if (!stage || !stage.rewards || stage.rewards.length === 0) return null;
+            const groupedByCategory: Record<string, RewardItem[]> = {};
+            stage.rewards.forEach((reward) => {
+              const category = reward.category || '기본';
+              if (!groupedByCategory[category]) {
+                groupedByCategory[category] = [];
+              }
+              groupedByCategory[category].push(reward);
+            });
+            const categories = Object.keys(groupedByCategory);
+            if (categories.length === 0) return null;
+            if (isNarak) {
+              if (categories.length >= 3) {
+                const combinations: string[][] = [];
+                for (let i = 0; i < categories.length; i++) {
+                  for (let j = i + 1; j < categories.length; j++) {
+                    for (let k = j + 1; k < categories.length; k++) {
+                      combinations.push([categories[i], categories[j], categories[k]]);
+                    }
+                  }
+                }
+                const maxValues: number[] = [];
+                combinations.forEach(combo => {
+                  const comboValues = combo.map(cat => {
+                    return groupedByCategory[cat].reduce((sum, r) => {
+                      const adjustedPrice = getAdjustedPrice(r.itemName, r.price);
+                      return sum + ((adjustedPrice || 0) * r.quantity);
+                    }, 0);
+                  });
+                  maxValues.push(Math.max(...comboValues));
+                });
+                return maxValues.reduce((sum, val) => sum + val, 0) / maxValues.length;
+              } else if (categories.length > 0) {
+                const categoryValues = categories.map(cat => {
+                  return groupedByCategory[cat].reduce((sum, r) => {
+                    const adjustedPrice = getAdjustedPrice(r.itemName, r.price);
+                    return sum + ((adjustedPrice || 0) * r.quantity);
+                  }, 0);
+                });
+                return Math.max(...categoryValues);
+              }
+              return null;
+            } else {
+              const baseCategory = categories.find(cat => cat.includes('기본') || cat.includes('보상 상자')) || categories[0];
+              const otherCategories = categories.filter(cat => cat !== baseCategory);
+              let baseRewardValue = 0;
+              if (baseCategory && groupedByCategory[baseCategory]) {
+                const baseValue = groupedByCategory[baseCategory].reduce((sum, r) => {
+                  const adjustedPrice = getAdjustedPrice(r.itemName, r.price);
+                  return sum + ((adjustedPrice || 0) * r.quantity);
+                }, 0);
+                baseRewardValue = baseValue * 1.9;
+              }
+              if (otherCategories.length === 0) return baseRewardValue;
+              if (otherCategories.length >= 3) {
+                const combinations: string[][] = [];
+                for (let i = 0; i < otherCategories.length; i++) {
+                  for (let j = i + 1; j < otherCategories.length; j++) {
+                    for (let k = j + 1; k < otherCategories.length; k++) {
+                      combinations.push([otherCategories[i], otherCategories[j], otherCategories[k]]);
+                    }
+                  }
+                }
+                const maxValues: number[] = [];
+                combinations.forEach(combo => {
+                  const comboValues = combo.map(cat => {
+                    return groupedByCategory[cat].reduce((sum, r) => {
+                      const adjustedPrice = getAdjustedPrice(r.itemName, r.price);
+                      return sum + ((adjustedPrice || 0) * r.quantity);
+                    }, 0);
+                  });
+                  maxValues.push(Math.max(...comboValues));
+                });
+                const expectedSelectionValue = maxValues.reduce((sum, val) => sum + val, 0) / maxValues.length;
+                return baseRewardValue + expectedSelectionValue;
+              } else if (otherCategories.length > 0) {
+                const otherValues = otherCategories.map(cat => {
+                  return groupedByCategory[cat].reduce((sum, r) => {
+                    const adjustedPrice = getAdjustedPrice(r.itemName, r.price);
+                    return sum + ((adjustedPrice || 0) * r.quantity);
+                  }, 0);
+                });
+                const maxOtherValue = Math.max(...otherValues);
+                return baseRewardValue + maxOtherValue;
+              } else {
+                return baseRewardValue;
+              }
+            }
+          };
+          
+          let hellKeyValue: number | null = null;
+          
+          // 해금 단계에 따라 지옥 열쇠 가치 계산
+          if ((cubeStage === '1해금' || cubeStage === '2해금') && hell1Stages) {
+            const hell1_7Stage = hell1Stages.find(s => s.stage === '7단계');
+            if (hell1_7Stage) {
+              hellKeyValue = calculateHellStageExpectedValue(hell1_7Stage, false);
+            }
+          } else if (cubeStage === '3해금' && hell2Stages) {
+            const hell2_7Stage = hell2Stages.find(s => s.stage === '7단계');
+            if (hell2_7Stage) {
+              hellKeyValue = calculateHellStageExpectedValue(hell2_7Stage, false);
+            }
+          } else if (cubeStage === '4해금' && hellStages) {
+            const hell7Stage = hellStages.find(s => s.stage === '7단계');
+            if (hell7Stage) {
+              hellKeyValue = calculateHellStageExpectedValue(hell7Stage, false);
+            }
+          }
+          
+          if (hellKeyValue != null && hellKeyValue > 0) {
+            return {
+              unitType: '골드',
+              unitPrice: hellKeyValue / 10,
+            };
+          }
+        }
+        return null;
+      }
+      
       const m = itemName.match(/\(([^)]+)\)/);
       const key = m ? m[1] : '';
       if (key && cubeStageRewards[key]) {

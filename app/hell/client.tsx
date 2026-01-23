@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import ItemIcon from '../components/ItemIcon';
 import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
 import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
+import { useValueDb } from '../contexts/ValueDbContext';
 import type { ValueDbEntry } from '@/lib/valueDb';
 import type { RefiningStage } from '../value-db/page';
 import type { MarketItemInfo } from '../refining-simulation/page';
@@ -51,6 +52,7 @@ export default function HellClient({
   const hellTypes = ['지옥1', '지옥2', '지옥3', '나락1', '나락2', '나락3'];
   const [activeHellType, setActiveHellType] = useState<string>('지옥1');
   const [activeHellStage, setActiveHellStage] = useState<string>('0단계');
+  const [activeTab, setActiveTab] = useState<'보상' | '교환효율'>('보상');
   
   // 지옥3 카테고리 펼치기 상태
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
@@ -137,6 +139,9 @@ export default function HellClient({
     });
     return map;
   }, [valueDbEntries]);
+  
+  // valueDB 클라이언트 컴포넌트의 adjustedEntries 사용
+  const { adjustedEntries } = useValueDb();
   
   // 순환 돌파석 가치를 클라이언트에서 재계산 (가치계산DB 사이드바와 동일한 방식)
   const circularBreakthroughValue = useMemo(() => {
@@ -305,6 +310,13 @@ export default function HellClient({
       return transitionBreakthroughValue;
     }
     
+    // valueDB 클라이언트 컴포넌트의 adjustedEntries 우선 사용
+    const adjustedEntry = adjustedEntries.find(e => e.itemName === itemName);
+    if (adjustedEntry && adjustedEntry.unitType === '골드' && adjustedEntry.unitValue != null) {
+      return adjustedEntry.unitValue;
+    }
+    
+    // fallback: valueDbEntryMap 사용
     const entry = valueDbEntryMap.get(itemName);
     if (entry && entry.unitType === '골드' && entry.unitValue != null) {
       return entry.unitValue;
@@ -385,6 +397,231 @@ export default function HellClient({
           <p className="text-base text-gray-400">지옥 보상과 골드 가치를 확인하세요.</p>
         </div>
         
+        {/* 탭 선택 UI */}
+        <div className="mb-6">
+          <div className="flex gap-2 border-b border-gray-700">
+            <button
+              onClick={() => setActiveTab('보상')}
+              className={`px-4 py-2 font-semibold transition-all border-b-2 ${
+                activeTab === '보상'
+                  ? 'text-white border-red-500'
+                  : 'text-gray-400 border-transparent hover:text-white'
+              }`}
+            >
+              보상
+            </button>
+            <button
+              onClick={() => setActiveTab('교환효율')}
+              className={`px-4 py-2 font-semibold transition-all border-b-2 ${
+                activeTab === '교환효율'
+                  ? 'text-white border-red-500'
+                  : 'text-gray-400 border-transparent hover:text-white'
+              }`}
+            >
+              열쇠 교환 효율
+            </button>
+          </div>
+        </div>
+        
+        {/* 열쇠 교환 효율 탭 */}
+        {activeTab === '교환효율' && (() => {
+          // 지옥 열쇠 가치 계산
+          const calculateHellKeyValue = (hellType: '지옥1' | '지옥2' | '지옥3', stageName: string): number | null => {
+            const stages = hellType === '지옥1' ? data?.['지옥1'] : hellType === '지옥2' ? data?.['지옥2'] : data?.['지옥3'];
+            if (!stages || stages.length === 0) return null;
+            
+            const stage = stages.find(s => s.stage === stageName);
+            if (!stage || !stage.rewards || stage.rewards.length === 0) return null;
+            
+            // 카테고리별로 그룹화
+            const groupedByCategory: Record<string, RewardItem[]> = {};
+            stage.rewards.forEach((reward) => {
+              const category = reward.category || '기본';
+              if (!groupedByCategory[category]) {
+                groupedByCategory[category] = [];
+              }
+              groupedByCategory[category].push(reward);
+            });
+            
+            const categories = Object.keys(groupedByCategory);
+            if (categories.length === 0) return null;
+            
+            // 지옥: 기본 보상 + 나머지 카테고리 중 3개를 랜덤으로 선택하고 그 중 최고값을 선택
+            const baseCategory = categories.find(cat => cat.includes('기본') || cat.includes('보상 상자')) || categories[0];
+            const otherCategories = categories.filter(cat => cat !== baseCategory);
+            
+            // 기본 보상 가치 계산
+            let baseRewardValue = 0;
+            if (baseCategory && groupedByCategory[baseCategory]) {
+              const baseValue = groupedByCategory[baseCategory].reduce((sum, r) => {
+                const adjustedPrice = getAdjustedPrice(r.itemName, r.price);
+                return sum + ((adjustedPrice || 0) * r.quantity);
+              }, 0);
+              // 기본 보상 상자는 190% 반영 (100% 기본 + 90% 풍요 기대값)
+              baseRewardValue = baseValue * 1.9;
+            }
+            
+            // 선택 보상 기대값 계산
+            if (otherCategories.length >= 3) {
+              const combinations: string[][] = [];
+              for (let i = 0; i < otherCategories.length; i++) {
+                for (let j = i + 1; j < otherCategories.length; j++) {
+                  for (let k = j + 1; k < otherCategories.length; k++) {
+                    combinations.push([otherCategories[i], otherCategories[j], otherCategories[k]]);
+                  }
+                }
+              }
+              
+              const maxValues: number[] = [];
+              combinations.forEach(combo => {
+                const comboValues = combo.map(cat => {
+                  return groupedByCategory[cat].reduce((sum, r) => {
+                    const adjustedPrice = getAdjustedPrice(r.itemName, r.price);
+                    return sum + ((adjustedPrice || 0) * r.quantity);
+                  }, 0);
+                });
+                maxValues.push(Math.max(...comboValues));
+              });
+              
+              const expectedSelectionValue = maxValues.reduce((sum, val) => sum + val, 0) / maxValues.length;
+              return baseRewardValue + expectedSelectionValue;
+            } else if (otherCategories.length > 0) {
+              const otherValues = otherCategories.map(cat => {
+                return groupedByCategory[cat].reduce((sum, r) => {
+                  const adjustedPrice = getAdjustedPrice(r.itemName, r.price);
+                  return sum + ((adjustedPrice || 0) * r.quantity);
+                }, 0);
+              });
+              const maxOtherValue = Math.max(...otherValues);
+              return baseRewardValue + maxOtherValue;
+            } else {
+              return baseRewardValue;
+            }
+          };
+          
+          // 지옥 열쇠 가치 맵 생성
+          const hellKeyValues: Record<string, number | null> = {};
+          if (data) {
+            // 전설 지옥 열쇠 III: 지옥3 7단계
+            hellKeyValues['전설 지옥 열쇠 III'] = calculateHellKeyValue('지옥3', '7단계');
+            // 영웅 지옥 열쇠 III: 지옥3 6단계
+            hellKeyValues['영웅 지옥 열쇠 III'] = calculateHellKeyValue('지옥3', '6단계');
+            // 희귀 지옥 열쇠 III: 지옥3 5단계
+            hellKeyValues['희귀 지옥 열쇠 III'] = calculateHellKeyValue('지옥3', '5단계');
+            // 전설 지옥 열쇠 II: 지옥2 7단계
+            hellKeyValues['전설 지옥 열쇠 II'] = calculateHellKeyValue('지옥2', '7단계');
+            // 영웅 지옥 열쇠 II: 지옥2 6단계
+            hellKeyValues['영웅 지옥 열쇠 II'] = calculateHellKeyValue('지옥2', '6단계');
+            // 희귀 지옥 열쇠 II: 지옥2 5단계
+            hellKeyValues['희귀 지옥 열쇠 II'] = calculateHellKeyValue('지옥2', '5단계');
+            // 전설 지옥 열쇠 I: 지옥1 7단계
+            hellKeyValues['전설 지옥 열쇠 I'] = calculateHellKeyValue('지옥1', '7단계');
+            // 영웅 지옥 열쇠 I: 지옥1 6단계
+            hellKeyValues['영웅 지옥 열쇠 I'] = calculateHellKeyValue('지옥1', '6단계');
+            // 희귀 지옥 열쇠 I: 지옥1 5단계
+            hellKeyValues['희귀 지옥 열쇠 I'] = calculateHellKeyValue('지옥1', '5단계');
+          }
+          
+          return (
+            <div className="mb-6">
+              <h2 className="text-2xl font-semibold text-white mb-4">열쇠 교환 효율표</h2>
+              <div className="bg-gray-900/50 rounded-lg border border-gray-700 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gray-800/50 border-b border-gray-700">
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-300">교환</th>
+                        <th className="px-4 py-3 text-right text-sm font-semibold text-gray-300">열쇠 가치</th>
+                        <th className="px-4 py-3 text-right text-sm font-semibold text-gray-300">입장권 총 가치</th>
+                        <th className="px-4 py-3 text-right text-sm font-semibold text-gray-300">효율</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(() => {
+                        const exchangeData = [
+                          { keyName: '전설 지옥 열쇠 III', cubeStage: '4해금', cubeCount: 10 },
+                          { keyName: '영웅 지옥 열쇠 III', cubeStage: '4해금', cubeCount: 6 },
+                          { keyName: '전설 지옥 열쇠 II', cubeStage: '4해금', cubeCount: 8 },
+                          { keyName: '영웅 지옥 열쇠 II', cubeStage: '4해금', cubeCount: 5 },
+                          { keyName: '전설 지옥 열쇠 II', cubeStage: '3해금', cubeCount: 10 },
+                          { keyName: '영웅 지옥 열쇠 II', cubeStage: '3해금', cubeCount: 6 },
+                          { keyName: '전설 지옥 열쇠 I', cubeStage: '2해금', cubeCount: 10 },
+                          { keyName: '영웅 지옥 열쇠 I', cubeStage: '2해금', cubeCount: 6 },
+                          { keyName: '희귀 지옥 열쇠 I', cubeStage: '2해금', cubeCount: 4 },
+                          { keyName: '전설 지옥 열쇠 I', cubeStage: '1해금', cubeCount: 10 },
+                          { keyName: '영웅 지옥 열쇠 I', cubeStage: '1해금', cubeCount: 6 },
+                          { keyName: '희귀 지옥 열쇠 I', cubeStage: '1해금', cubeCount: 4 },
+                        ];
+                        
+                        return exchangeData.map((item, idx) => {
+                          const keyValue = hellKeyValues[item.keyName] ?? getValueDbPrice(item.keyName);
+                          // 일반 에브니 큐브 입장권 (지옥교환이 아닌 것)
+                          const cubeTicketName = `에브니 큐브 입장권 (${item.cubeStage})`;
+                          const cubeTicketValue = getValueDbPrice(cubeTicketName);
+                          
+                          let efficiency: number | null = null;
+                          let efficiencyText = '-';
+                          let efficiencyClass = 'text-gray-400';
+                          const cubeTotalValue = cubeTicketValue != null && cubeTicketValue > 0 ? cubeTicketValue * item.cubeCount : null;
+                          
+                          if (keyValue != null && keyValue > 0 && cubeTicketValue != null && cubeTicketValue > 0) {
+                            // 에브니 큐브 입장권을 내고 지옥 열쇠를 받는 개념이므로 역수로 계산
+                            // 효율 = (열쇠 가치 / 입장권 총 가치) * 100 - 100
+                            efficiency = ((keyValue / cubeTotalValue!) * 100) - 100;
+                            
+                            if (efficiency > 0) {
+                              efficiencyText = `+${formatNumberWithSignificantDigits(efficiency)}% 이득`;
+                              efficiencyClass = 'text-green-400';
+                            } else if (efficiency < 0) {
+                              efficiencyText = `${formatNumberWithSignificantDigits(efficiency)}% 손해`;
+                              efficiencyClass = 'text-red-400';
+                            } else {
+                              efficiencyText = '0%';
+                              efficiencyClass = 'text-gray-400';
+                            }
+                          }
+                          
+                          return (
+                            <tr key={idx} className="border-b border-gray-700/50 hover:bg-gray-800/30">
+                              <td className="px-4 py-3 text-sm text-gray-300">
+                                <div className="flex items-center gap-2">
+                                  <span>{item.keyName}</span>
+                                  <span className="text-gray-500">↔</span>
+                                  <span>에브니 큐브 입장권 ({item.cubeStage}) × {item.cubeCount}개</span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-right text-sm text-gray-300">
+                                {keyValue != null && keyValue > 0 ? (
+                                  <span>{formatNumberWithSignificantDigits(keyValue)}골드</span>
+                                ) : (
+                                  <span className="text-gray-500">-</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-right text-sm text-gray-300">
+                                {cubeTotalValue != null && cubeTotalValue > 0 ? (
+                                  <span>{formatNumberWithSignificantDigits(cubeTotalValue)}골드</span>
+                                ) : (
+                                  <span className="text-gray-500">-</span>
+                                )}
+                              </td>
+                              <td className={`px-4 py-3 text-right text-sm font-semibold ${efficiencyClass}`}>
+                                {efficiencyText}
+                              </td>
+                            </tr>
+                          );
+                        });
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+        
+        {/* 보상 탭 */}
+        {activeTab === '보상' && (
+          <>
         {/* 지옥 선택 UI */}
         <div className="mb-6 space-y-4">
           {/* 지옥1, 지옥2, 지옥3 선택 */}
@@ -849,6 +1086,8 @@ export default function HellClient({
             );
           })}
         </div>
+          </>
+        )}
       </div>
     </div>
   );

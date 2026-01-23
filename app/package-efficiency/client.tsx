@@ -5,6 +5,8 @@ import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
 import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
 import { useValueDb } from '../contexts/ValueDbContext';
 import type { ValueDbEntry } from '@/lib/valueDb';
+import { calculateOptimalStrategy } from '../refining-simulation/client';
+import type { RefiningStage, MarketItemInfo } from '../refining-simulation/page';
 
 type ComponentItem = {
   itemName: string;
@@ -102,6 +104,11 @@ export default function PackageEfficiencyClient({
   narakStages?: Stage[];
   narak1Stages?: Stage[];
   narak2Stages?: Stage[];
+  weaponStages?: RefiningStage[];
+  armorStages?: RefiningStage[];
+  weaponStagesSerka?: RefiningStage[];
+  armorStagesSerka?: RefiningStage[];
+  marketInfo?: Record<string, MarketItemInfo>;
   initialSavedPackages?: Array<{ id: string; package_name: string; created_at: string; updated_at: string; package_data?: any }>;
 }) {
   // 환경 정보를 API에서 받아와서 저장 기능 활성화 여부 결정
@@ -130,6 +137,138 @@ export default function PackageEfficiencyClient({
   
   // 가격 조정 스위치 변경 시 resolveUnitPrice 재계산을 위한 refresh key
   const [refreshKey, setRefreshKey] = useState(0);
+
+  // 순환 돌파석 가치를 클라이언트에서 재계산 (지옥 보상 페이지와 동일한 방식)
+  const circularBreakthroughValue = useMemo(() => {
+    if (weaponStages && armorStages && marketInfo && weaponStages.length > 0 && armorStages.length > 0) {
+      const adjustedMarketInfo: Record<string, MarketItemInfo> = {};
+      for (const [name, info] of Object.entries(marketInfo)) {
+        adjustedMarketInfo[name] = {
+          ...info,
+          unitPrice: adjustPrice(name, info.unitPrice) ?? info.unitPrice,
+        };
+      }
+
+      const getBreakthroughStoneCount = (level: number, type: 'weapon' | 'armor'): number => {
+        if (type === 'weapon') {
+          if (level >= 10 && level <= 12) return 30;
+          if (level >= 13 && level <= 16) return 40;
+          if (level >= 17 && level <= 25) return 50;
+        } else {
+          if (level >= 10 && level <= 12) return 12;
+          if (level >= 13 && level <= 16) return 16;
+          if (level >= 17 && level <= 25) return 20;
+        }
+        return 0;
+      };
+
+      const allBreakthroughValues: number[] = [];
+      
+      [...weaponStages, ...armorStages].forEach(stage => {
+        const { optimalStrategy } = calculateOptimalStrategy(stage, adjustedMarketInfo);
+        
+        const expInfo = stage.expMaterial ? (adjustedMarketInfo[stage.expMaterial.name] || { unitPrice: 0 }) : null;
+        const expMaterialCost = stage.expMaterial && expInfo
+          ? expInfo.unitPrice * stage.expMaterial.quantity
+          : 0;
+        
+        const refiningCost = optimalStrategy.expectedCost - expMaterialCost;
+        const baseSuccessRate = stage.baseSuccessRate / 100;
+        
+        const type = stage.baseMaterials.some(m => m.name === '운명의 파괴석') ? 'weapon' : 'armor';
+        const stoneCount = getBreakthroughStoneCount(stage.level, type);
+        
+        if (stoneCount > 0) {
+          const value = (refiningCost * baseSuccessRate) / stoneCount;
+          if (value > 0) {
+            allBreakthroughValues.push(value);
+          }
+        }
+      });
+
+      if (allBreakthroughValues.length > 0) {
+        const sorted = allBreakthroughValues.sort((a, b) => b - a);
+        const top5 = sorted.slice(0, 5);
+        return top5.reduce((sum, val) => sum + val, 0) / top5.length;
+      }
+    }
+    
+    const entry = Object.values(valueDbMap).find(e => e.itemName === '순환 돌파석');
+    if (entry && entry.unitType === '골드' && entry.unitValue != null) {
+      return adjustPrice('순환 돌파석', entry.unitValue);
+    }
+    return null;
+  }, [valueDbMap, adjustPrice, weaponStages, armorStages, marketInfo]);
+
+  // 전이 돌파석 가치를 클라이언트에서 재계산 (지옥 보상 페이지와 동일한 방식)
+  const transitionBreakthroughValue = useMemo(() => {
+    if (weaponStagesSerka && armorStagesSerka && marketInfo && weaponStagesSerka.length > 0 && armorStagesSerka.length > 0) {
+      const adjustedMarketInfo: Record<string, MarketItemInfo> = {};
+      for (const [name, info] of Object.entries(marketInfo)) {
+        adjustedMarketInfo[name] = {
+          ...info,
+          unitPrice: adjustPrice(name, info.unitPrice) ?? info.unitPrice,
+        };
+      }
+
+      const getTransitionStoneCount = (level: number, type: 'weapon' | 'armor'): number => {
+        if (type === 'weapon') {
+          if (level >= 10 && level <= 11) return 25;
+          if (level >= 12 && level <= 13) return 30;
+          if (level >= 14 && level <= 16) return 35;
+          if (level >= 17 && level <= 19) return 40;
+          if (level >= 20 && level <= 21) return 45;
+          if (level >= 22 && level <= 23) return 50;
+          if (level >= 24 && level <= 25) return 55;
+        } else {
+          if (level >= 10 && level <= 11) return 10;
+          if (level >= 12 && level <= 13) return 12;
+          if (level >= 14 && level <= 16) return 14;
+          if (level >= 17 && level <= 19) return 16;
+          if (level >= 20 && level <= 21) return 18;
+          if (level >= 22 && level <= 23) return 20;
+          if (level >= 24 && level <= 25) return 22;
+        }
+        return 0;
+      };
+
+      const allBreakthroughValues: number[] = [];
+      
+      [...weaponStagesSerka, ...armorStagesSerka].forEach(stage => {
+        const { optimalStrategy } = calculateOptimalStrategy(stage, adjustedMarketInfo);
+        
+        const expInfo = stage.expMaterial ? (adjustedMarketInfo[stage.expMaterial.name] || { unitPrice: 0 }) : null;
+        const expMaterialCost = stage.expMaterial && expInfo
+          ? expInfo.unitPrice * stage.expMaterial.quantity
+          : 0;
+        
+        const refiningCost = optimalStrategy.expectedCost - expMaterialCost;
+        const baseSuccessRate = stage.baseSuccessRate / 100;
+        
+        const type = stage.baseMaterials.some(m => m.name === '운명의 파괴석 결정') ? 'weapon' : 'armor';
+        const stoneCount = getTransitionStoneCount(stage.level, type);
+        
+        if (stoneCount > 0) {
+          const value = (refiningCost * baseSuccessRate) / stoneCount;
+          if (value > 0) {
+            allBreakthroughValues.push(value);
+          }
+        }
+      });
+
+      if (allBreakthroughValues.length > 0) {
+        const sorted = allBreakthroughValues.sort((a, b) => b - a);
+        const top5 = sorted.slice(0, 5);
+        return top5.reduce((sum, val) => sum + val, 0) / top5.length;
+      }
+    }
+    
+    const entry = Object.values(valueDbMap).find(e => e.itemName === '전이 돌파석');
+    if (entry && entry.unitType === '골드' && entry.unitValue != null) {
+      return adjustPrice('전이 돌파석', entry.unitValue);
+    }
+    return null;
+  }, [valueDbMap, adjustPrice, weaponStagesSerka, armorStagesSerka, marketInfo]);
   
   // 단가 직접 입력 필드의 임시 값 저장 (입력 중에는 문자열로 유지)
   const [manualPriceInputs, setManualPriceInputs] = useState<Record<string, string>>({});
@@ -430,6 +569,15 @@ export default function PackageEfficiencyClient({
     if ((isHellKey || isNarakKey) && (hellStages || hell1Stages || hell2Stages) && (narakStages || narak1Stages || narak2Stages)) {
       // 가치계산DB에서 아이템 가격 가져오기 함수
       const getValueDbPrice = (itemName: string): number | null => {
+        // 순환 돌파석은 클라이언트에서 재계산된 값 사용
+        if (itemName === '순환 돌파석') {
+          return circularBreakthroughValue;
+        }
+        // 전이 돌파석은 클라이언트에서 재계산된 값 사용
+        if (itemName === '전이 돌파석') {
+          return transitionBreakthroughValue;
+        }
+        
         const entry = valueDbMap[itemName];
         if (entry && entry.unitType === '골드' && entry.unitValue != null) {
           return entry.unitValue;
@@ -442,6 +590,10 @@ export default function PackageEfficiencyClient({
         // 모든 아이템은 가치계산DB에서 가격 가져오기 (우선순위)
         const valueDbPrice = getValueDbPrice(itemName);
         if (valueDbPrice != null) {
+          // 순환 돌파석은 이미 adjustPrice가 적용된 값이므로 그대로 반환
+          if (itemName === '순환 돌파석') {
+            return valueDbPrice;
+          }
           // 가격 조정 적용
           return adjustPrice(itemName, valueDbPrice);
         }
@@ -687,10 +839,46 @@ export default function PackageEfficiencyClient({
           }
         }
       }
+      
+      // 에브니 큐브 입장권 (지옥교환) 처리: 클라이언트에서 지옥 열쇠 가치 계산
+      if (itemName.startsWith('에브니 큐브 입장권')) {
+        const hellExchangeMatch = itemName.match(/에브니 큐브 입장권 \(([^)]+)\) \(지옥교환\)/);
+        if (hellExchangeMatch) {
+          const cubeStage = hellExchangeMatch[1]; // 1해금, 2해금, 3해금, 4해금
+          let hellKeyValue: number | null = null;
+          
+          // 해금 단계에 따라 지옥 열쇠 가치 계산 (calculateHellStageExpectedValue 재사용)
+          if ((cubeStage === '1해금' || cubeStage === '2해금') && hell1Stages) {
+            const hell1_7Stage = hell1Stages.find(s => s.stage === '7단계');
+            if (hell1_7Stage) {
+              hellKeyValue = calculateHellStageExpectedValue(hell1_7Stage, false);
+            }
+          } else if (cubeStage === '3해금' && hell2Stages) {
+            const hell2_7Stage = hell2Stages.find(s => s.stage === '7단계');
+            if (hell2_7Stage) {
+              hellKeyValue = calculateHellStageExpectedValue(hell2_7Stage, false);
+            }
+          } else if (cubeStage === '4해금' && hellStages) {
+            const hell7Stage = hellStages.find(s => s.stage === '7단계');
+            if (hell7Stage) {
+              hellKeyValue = calculateHellStageExpectedValue(hell7Stage, false);
+            }
+          }
+          
+          if (hellKeyValue != null && hellKeyValue > 0) {
+            return {
+              unitType: '골드',
+              unitPrice: hellKeyValue / 10,
+            };
+          }
+          return null;
+        }
+      }
     }
 
     // 에브니 큐브 입장권: cubeStageRewards를 사용하여 클라이언트에서 재계산 (카드경험치 미반영 반영)
     if (itemName.startsWith('에브니 큐브 입장권')) {
+      
       const m = itemName.match(/\(([^)]+)\)/);
       const key = m ? m[1] : '';
       if (key && cubeStageRewards[key]) {

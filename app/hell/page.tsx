@@ -1,6 +1,9 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
+export const metadata = {
+  title: '지옥 (낙원 시즌2) - 껨산기',
+  description: '낙원 시즌2의 지옥 보상을 비교하고 효율을 분석합니다.',
+};
 
 import HellClient from './client';
 import { getContentRewardsData } from '@/lib/contentRewards';

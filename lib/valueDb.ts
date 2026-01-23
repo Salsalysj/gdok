@@ -221,8 +221,12 @@ function computeStageExpectedValue(stage: Stage, isNarak: boolean = false): numb
       categories.find((cat) => cat.includes('보상 상자')) ||
       categories[0];
     const otherCategories = categories.filter((cat) => cat !== baseCategory);
+    
+    // 기본 보상 가치 계산 (풍요 시 10배 기대값 고려: 100% + 90% = 190%)
     const baseValue = sumCategory(grouped[baseCategory] || []);
-    if (otherCategories.length === 0) return baseValue;
+    const baseRewardValue = baseValue * 1.9; // 기본 보상 상자는 190% 반영 (100% 기본 + 90% 풍요 기대값)
+    
+    if (otherCategories.length === 0) return baseRewardValue;
 
     if (otherCategories.length >= 3) {
       const combinations: string[][] = [];
@@ -239,11 +243,11 @@ function computeStageExpectedValue(stage: Stage, isNarak: boolean = false): numb
       });
       const expectedSelection =
         maxValues.reduce((sum, val) => sum + val, 0) / (maxValues.length || 1);
-      return baseValue + expectedSelection;
+      return baseRewardValue + expectedSelection;
     } else {
       const otherValues = otherCategories.map((cat) => sumCategory(grouped[cat] || []));
       const maxOther = Math.max(...otherValues);
-      return baseValue + maxOther;
+      return baseRewardValue + maxOther;
     }
   }
 }
@@ -684,6 +688,37 @@ function resolveEntry(
   }
 
   if (itemName.startsWith('에브니 큐브 입장권')) {
+    // 지옥교환 항목 처리: 전설 지옥 열쇠 ÷ 10
+    const hellExchangeMatch = itemName.match(/에브니 큐브 입장권 \(([^)]+)\) \(지옥교환\)/);
+    if (hellExchangeMatch) {
+      const cubeStage = hellExchangeMatch[1]; // 1해금, 2해금, 3해금, 4해금
+      let hellKeyName: string | null = null;
+      
+      // 해금 단계에 따라 전설 지옥 열쇠 매핑
+      if (cubeStage === '1해금' || cubeStage === '2해금') {
+        hellKeyName = '전설 지옥 열쇠 I';
+      } else if (cubeStage === '3해금') {
+        hellKeyName = '전설 지옥 열쇠 II';
+      } else if (cubeStage === '4해금') {
+        hellKeyName = '전설 지옥 열쇠 III';
+      }
+      
+      if (hellKeyName) {
+        const hellKeyEntry = manualOverrides[hellKeyName];
+        if (hellKeyEntry && hellKeyEntry.unitValue != null && hellKeyEntry.unitValue > 0) {
+          return {
+            itemName,
+            unitType: '골드',
+            unitValue: hellKeyEntry.unitValue / 10,
+            note: `${hellKeyName} ÷ 10`,
+          };
+        }
+      }
+      // 전설 지옥 열쇠 값을 찾지 못한 경우
+      return { itemName, unitType: '골드', unitValue: null, note: `${hellKeyName || '전설 지옥 열쇠'} 값 없음` };
+    }
+    
+    // 일반 에브니 큐브 입장권 처리
     const match = itemName.match(/\(([^)]+)\)/);
     const key = match ? match[1] : '';
     if (key && cubeStageTotals[key] != null) {

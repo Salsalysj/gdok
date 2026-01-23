@@ -30,7 +30,7 @@ export default function SidebarWrapper() {
           </button>
         </div>
         <div className="p-4">
-          <ValueDBSidebar />
+        <ValueDBSidebar />
         </div>
       </div>
     </>
