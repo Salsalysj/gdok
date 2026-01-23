@@ -78,11 +78,6 @@ export default function EventShopClient({
   narakStages,
   narak1Stages,
   narak2Stages,
-  weaponStages,
-  armorStages,
-  weaponStagesSerka,
-  armorStagesSerka,
-  marketInfo,
   initialSavedShops,
 }: {
   itemList: string[];

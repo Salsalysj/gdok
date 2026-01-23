@@ -84,7 +84,7 @@ export default async function BoxSelectorPage() {
     marketInfo
   ] = await Promise.all([
     getValueDbData(),
-    getContentRewardsData(undefined),
+    getContentRewardsData(valueDbData.entryMap),
     getSavedBoxSelectors(),
     parseUpgradeCsv(UPGRADE_FILE_WEAPON, 'upgrade1.csv'),
     parseUpgradeCsv(UPGRADE_FILE_ARMOR, 'upgrade2.csv'),
