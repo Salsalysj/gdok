@@ -88,6 +88,11 @@ export default function PackageEfficiencyClient({
   narakStages,
   narak1Stages,
   narak2Stages,
+  weaponStages,
+  armorStages,
+  weaponStagesSerka,
+  armorStagesSerka,
+  marketInfo,
   initialSavedPackages = [],
 }: {
   itemList: string[];
