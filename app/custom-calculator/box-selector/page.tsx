@@ -73,8 +73,9 @@ const BASE_MATERIALS_ARMOR_SERKA = [
 ];
 
 export default async function BoxSelectorPage() {
+  const valueDbData = await getValueDbData();
+  
   const [
-    valueDbData,
     contentRewardsResult,
     initialSavedBoxSelectors,
     weaponData,
@@ -83,7 +84,6 @@ export default async function BoxSelectorPage() {
     armorDataSerka,
     marketInfo
   ] = await Promise.all([
-    getValueDbData(),
     getContentRewardsData(valueDbData.entryMap),
     getSavedBoxSelectors(),
     parseUpgradeCsv(UPGRADE_FILE_WEAPON, 'upgrade1.csv'),
