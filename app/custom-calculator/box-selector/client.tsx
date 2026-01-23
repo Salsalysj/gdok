@@ -79,6 +79,11 @@ export default function BoxSelectorClient({
   narakStages,
   narak1Stages,
   narak2Stages,
+  weaponStages,
+  armorStages,
+  weaponStagesSerka,
+  armorStagesSerka,
+  marketInfo,
   initialSavedBoxSelectors,
 }: {
   itemList: string[];
