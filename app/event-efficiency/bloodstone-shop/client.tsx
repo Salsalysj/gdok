@@ -74,6 +74,11 @@ export default function BloodstoneShopClient({
   narakStages,
   narak1Stages,
   narak2Stages,
+  weaponStages,
+  armorStages,
+  weaponStagesSerka,
+  armorStagesSerka,
+  marketInfo,
   initialSavedShops,
 }: {
   itemList: string[];
@@ -105,6 +110,138 @@ export default function BloodstoneShopClient({
   
   // 가격 조정 스위치 변경 시 resolveUnitPrice 재계산을 위한 refresh key
   const [refreshKey, setRefreshKey] = useState(0);
+  
+  // 순환 돌파석 가치를 클라이언트에서 재계산 (지옥 보상 페이지와 동일한 방식)
+  const circularBreakthroughValue = useMemo(() => {
+    if (weaponStages && armorStages && marketInfo && weaponStages.length > 0 && armorStages.length > 0) {
+      const adjustedMarketInfo: Record<string, MarketItemInfo> = {};
+      for (const [name, info] of Object.entries(marketInfo)) {
+        adjustedMarketInfo[name] = {
+          ...info,
+          unitPrice: adjustPrice(name, info.unitPrice) ?? info.unitPrice,
+        };
+      }
+
+      const getBreakthroughStoneCount = (level: number, type: 'weapon' | 'armor'): number => {
+        if (type === 'weapon') {
+          if (level >= 10 && level <= 12) return 30;
+          if (level >= 13 && level <= 16) return 40;
+          if (level >= 17 && level <= 25) return 50;
+        } else {
+          if (level >= 10 && level <= 12) return 12;
+          if (level >= 13 && level <= 16) return 16;
+          if (level >= 17 && level <= 25) return 20;
+        }
+        return 0;
+      };
+
+      const allBreakthroughValues: number[] = [];
+      
+      [...weaponStages, ...armorStages].forEach(stage => {
+        const { optimalStrategy } = calculateOptimalStrategy(stage, adjustedMarketInfo);
+        
+        const expInfo = stage.expMaterial ? (adjustedMarketInfo[stage.expMaterial.name] || { unitPrice: 0 }) : null;
+        const expMaterialCost = stage.expMaterial && expInfo
+          ? expInfo.unitPrice * stage.expMaterial.quantity
+          : 0;
+        
+        const refiningCost = optimalStrategy.expectedCost - expMaterialCost;
+        const baseSuccessRate = stage.baseSuccessRate / 100;
+        
+        const type = stage.baseMaterials.some(m => m.name === '운명의 파괴석') ? 'weapon' : 'armor';
+        const stoneCount = getBreakthroughStoneCount(stage.level, type);
+        
+        if (stoneCount > 0) {
+          const value = (refiningCost * baseSuccessRate) / stoneCount;
+          if (value > 0) {
+            allBreakthroughValues.push(value);
+          }
+        }
+      });
+
+      if (allBreakthroughValues.length > 0) {
+        const sorted = allBreakthroughValues.sort((a, b) => b - a);
+        const top5 = sorted.slice(0, 5);
+        return top5.reduce((sum, val) => sum + val, 0) / top5.length;
+      }
+    }
+    
+    const entry = Object.values(valueDbMap).find(e => e.itemName === '순환 돌파석');
+    if (entry && entry.unitType === '골드' && entry.unitValue != null) {
+      return adjustPrice('순환 돌파석', entry.unitValue);
+    }
+    return null;
+  }, [valueDbMap, adjustPrice, weaponStages, armorStages, marketInfo]);
+
+  // 전이 돌파석 가치를 클라이언트에서 재계산 (지옥 보상 페이지와 동일한 방식)
+  const transitionBreakthroughValue = useMemo(() => {
+    if (weaponStagesSerka && armorStagesSerka && marketInfo && weaponStagesSerka.length > 0 && armorStagesSerka.length > 0) {
+      const adjustedMarketInfo: Record<string, MarketItemInfo> = {};
+      for (const [name, info] of Object.entries(marketInfo)) {
+        adjustedMarketInfo[name] = {
+          ...info,
+          unitPrice: adjustPrice(name, info.unitPrice) ?? info.unitPrice,
+        };
+      }
+
+      const getTransitionStoneCount = (level: number, type: 'weapon' | 'armor'): number => {
+        if (type === 'weapon') {
+          if (level >= 10 && level <= 11) return 25;
+          if (level >= 12 && level <= 13) return 30;
+          if (level >= 14 && level <= 16) return 35;
+          if (level >= 17 && level <= 19) return 40;
+          if (level >= 20 && level <= 21) return 45;
+          if (level >= 22 && level <= 23) return 50;
+          if (level >= 24 && level <= 25) return 55;
+        } else {
+          if (level >= 10 && level <= 11) return 10;
+          if (level >= 12 && level <= 13) return 12;
+          if (level >= 14 && level <= 16) return 14;
+          if (level >= 17 && level <= 19) return 16;
+          if (level >= 20 && level <= 21) return 18;
+          if (level >= 22 && level <= 23) return 20;
+          if (level >= 24 && level <= 25) return 22;
+        }
+        return 0;
+      };
+
+      const allBreakthroughValues: number[] = [];
+      
+      [...weaponStagesSerka, ...armorStagesSerka].forEach(stage => {
+        const { optimalStrategy } = calculateOptimalStrategy(stage, adjustedMarketInfo);
+        
+        const expInfo = stage.expMaterial ? (adjustedMarketInfo[stage.expMaterial.name] || { unitPrice: 0 }) : null;
+        const expMaterialCost = stage.expMaterial && expInfo
+          ? expInfo.unitPrice * stage.expMaterial.quantity
+          : 0;
+        
+        const refiningCost = optimalStrategy.expectedCost - expMaterialCost;
+        const baseSuccessRate = stage.baseSuccessRate / 100;
+        
+        const type = stage.baseMaterials.some(m => m.name === '운명의 파괴석 결정') ? 'weapon' : 'armor';
+        const stoneCount = getTransitionStoneCount(stage.level, type);
+        
+        if (stoneCount > 0) {
+          const value = (refiningCost * baseSuccessRate) / stoneCount;
+          if (value > 0) {
+            allBreakthroughValues.push(value);
+          }
+        }
+      });
+
+      if (allBreakthroughValues.length > 0) {
+        const sorted = allBreakthroughValues.sort((a, b) => b - a);
+        const top5 = sorted.slice(0, 5);
+        return top5.reduce((sum, val) => sum + val, 0) / top5.length;
+      }
+    }
+    
+    const entry = Object.values(valueDbMap).find(e => e.itemName === '전이 돌파석');
+    if (entry && entry.unitType === '골드' && entry.unitValue != null) {
+      return adjustPrice('전이 돌파석', entry.unitValue);
+    }
+    return null;
+  }, [valueDbMap, adjustPrice, weaponStagesSerka, armorStagesSerka, marketInfo]);
   
   // 가격 조정 스위치 변경 감지
   useEffect(() => {
