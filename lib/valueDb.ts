@@ -937,6 +937,8 @@ export type ValueDbData = {
   narak1Stages: Stage[];
   narak2Stages: Stage[];
   explanationMap: Record<string, string>;
+  // 컨텐츠 보상에서 사용하는 환율 스냅샷과 동일하게 맞추기 위한 필드
+  rates: { exchange: number | null; discord: number | null };
 };
 
 async function getExplanationMap(): Promise<Record<string, string>> {
@@ -993,11 +995,17 @@ export async function getValueDbData(): Promise<ValueDbData> {
   const itemList = await getItemList();
   const etcListMap = await getEtcListData();
   const etcListDataObj = Object.fromEntries(etcListMap);
-  const crystalGoldRate = await getLatestCrystalGoldRate();
   const marketPriceMap = await getMarketPriceMap();
   const marketData = await getMarketData();
   const explanationMap = await getExplanationMap();
-  const { data: contentRewards, eponaCubeRewardsMap } = await getContentRewardsData(undefined); // 순환 참조 방지를 위해 undefined 전달
+  const { data: contentRewards, eponaCubeRewardsMap, rates } = await getContentRewardsData(undefined); // 순환 참조 방지를 위해 undefined 전달
+
+  // 컨텐츠 보상에서 사용한 exchange 환율 스냅샷을 우선 사용하고,
+  // 값이 없을 때만 기존 getLatestCrystalGoldRate()로 보충
+  let crystalGoldRate = rates.exchange;
+  if (crystalGoldRate == null) {
+    crystalGoldRate = await getLatestCrystalGoldRate();
+  }
   const hell1Stages = (contentRewards['지옥']?.['지옥1'] as Stage[]) || [];
   const hell2Stages = (contentRewards['지옥']?.['지옥2'] as Stage[]) || [];
   const hell3Stages = (contentRewards['지옥']?.['지옥3'] as Stage[]) || [];
@@ -1200,6 +1208,7 @@ export async function getValueDbData(): Promise<ValueDbData> {
     narak1Stages,
     narak2Stages,
     explanationMap,
+    rates,
   };
 }
 

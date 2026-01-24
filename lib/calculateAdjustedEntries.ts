@@ -526,7 +526,21 @@ export function calculateAdjustedEntries(params: CalculateAdjustedEntriesParams)
           else if (reward.itemName === '실링') {
             const silverEntry = entries.find(e => e.itemName === '실링');
             if (silverEntry && silverEntry.unitValue != null) {
-              originalPrice = silverEntry.unitValue;
+              // unitType에 따라 현금→골드 환산 (컨텐츠 보상 클라이언트와 동일한 방식)
+              if (silverEntry.unitType === '현금') {
+                if (!lightMode && rates?.discord && rates.discord > 0) {
+                  // 디코기준: 100골드 = discord원이므로, 1원 = 100/discord 골드
+                  originalPrice = silverEntry.unitValue * (100 / rates.discord);
+                } else if (lightMode && rates?.exchange && rates.exchange > 0) {
+                  // 크리스탈 거래소 기준: 1원 = exchange/2750 골드
+                  originalPrice = silverEntry.unitValue * (rates.exchange / 2750);
+                } else {
+                  // 환율 정보가 없으면 원래 값 그대로 사용
+                  originalPrice = silverEntry.unitValue;
+                }
+              } else if (silverEntry.unitType === '골드') {
+                originalPrice = silverEntry.unitValue;
+              }
             }
           }
           // fallback: etc_list / marketPriceMap

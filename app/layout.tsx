@@ -137,6 +137,7 @@ export default async function RootLayout({
               kurzanStageRewards={valueDbData.kurzanStageRewards}
               marketPriceMap={valueDbData.marketPriceMap}
               etcListData={valueDbData.etcListDataObj}
+              rates={valueDbData.rates}
               weaponStages={weaponStages}
               armorStages={armorStages}
               weaponStagesSerka={weaponStagesSerka}

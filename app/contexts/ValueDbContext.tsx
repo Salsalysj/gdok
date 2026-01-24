@@ -51,6 +51,8 @@ type ValueDbProviderProps = {
   valueDbEntryMap?: Map<string, ValueDbEntry>;
   cubeStageTotals: Record<string, number>;
   explanationMap?: Record<string, string>;
+  // 컨텐츠 보상에서 사용한 환율 스냅샷을 그대로 전달
+  rates: { exchange: number | null; discord: number | null };
 };
 
 export function ValueDbProvider({
@@ -74,6 +76,7 @@ export function ValueDbProvider({
   valueDbEntryMap,
   cubeStageTotals,
   explanationMap,
+  rates,
 }: ValueDbProviderProps) {
   const { adjustPrice, adjustRelicEngravingAverage } = usePriceAdjustment();
   
@@ -87,24 +90,6 @@ export function ValueDbProvider({
     const handler = (e: any) => setLightMode(!!e?.detail?.light);
     window.addEventListener('theme-change', handler);
     return () => window.removeEventListener('theme-change', handler);
-  }, []);
-  
-  // 환율 정보 가져오기
-  const [rates, setRates] = useState<{ exchange: number | null; discord: number | null }>({ exchange: null, discord: null });
-  useEffect(() => {
-    async function fetchRates() {
-      try {
-        const res = await fetch('/api/admin/crystal-gold');
-        const data = await res.json();
-        setRates({
-          exchange: data.exchange || null,
-          discord: data.discord || null,
-        });
-      } catch (error) {
-        console.error('환율 정보 조회 실패:', error);
-      }
-    }
-    fetchRates();
   }, []);
 
   const adjustedEntries = useMemo(() => {
