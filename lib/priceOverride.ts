@@ -12,6 +12,9 @@ export function getPriceOverrideState(): {
   cardSetGraduated: boolean;
   ignoreSilver: boolean;
   ignoreDestructionGuardStone: boolean;
+  ignoreFusionMaterial: boolean;
+  ignoreBreath: boolean;
+  ignoreLowTierCrafting: boolean;
 } | null {
   // 서버 사이드에서는 null 반환 (클라이언트에서만 사용)
   if (typeof window === 'undefined') return null;
@@ -106,6 +109,42 @@ export function applyPriceOverride(itemName: string, originalPrice: number | nul
       itemName === '운명의 수호석' ||
       itemName === '운명의 파괴석 결정' ||
       itemName === '운명의 수호석 결정'
+    ) {
+      return 0;
+    }
+  }
+
+  // 융화 재료 미반영 (아비도스 융화 재료, 상급 아비도스 융화 재료)
+  if (state.ignoreFusionMaterial) {
+    if (
+      itemName === '아비도스 융화 재료' ||
+      itemName === '상급 아비도스 융화 재료'
+    ) {
+      return 0;
+    }
+  }
+
+  // 숨결 미반영 (용암의 숨결, 빙하의 숨결)
+  if (state.ignoreBreath) {
+    if (
+      itemName === '용암의 숨결' ||
+      itemName === '빙하의 숨결'
+    ) {
+      return 0;
+    }
+  }
+
+  // 하위단계 야금/재봉 미반영
+  if (state.ignoreLowTierCrafting) {
+    if (
+      itemName === '야금술 : 업화 [11-14]' ||
+      itemName === '재봉술 : 업화 [11-14]' ||
+      itemName === '야금술 : 업화 [15-18]' ||
+      itemName === '재봉술 : 업화 [15-18]' ||
+      itemName === '장인의 야금술 : 1단계' ||
+      itemName === '장인의 야금술 : 2단계' ||
+      itemName === '장인의 재봉술 : 1단계' ||
+      itemName === '장인의 재봉술 : 2단계'
     ) {
       return 0;
     }

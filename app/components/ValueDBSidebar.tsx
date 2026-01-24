@@ -299,6 +299,34 @@ export default function ValueDBSidebar() {
             />
             <span>유물 각인서 미반영</span>
           </label>
+          {/* 3단 */}
+          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white">
+            <input
+              type="checkbox"
+              checked={state.ignoreFusionMaterial}
+              onChange={(e) => setState((prev) => ({ ...prev, ignoreFusionMaterial: e.target.checked }))}
+              className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
+            />
+            <span>융화 재료 미반영</span>
+          </label>
+          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white">
+            <input
+              type="checkbox"
+              checked={state.ignoreBreath}
+              onChange={(e) => setState((prev) => ({ ...prev, ignoreBreath: e.target.checked }))}
+              className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
+            />
+            <span>숨결 미반영</span>
+          </label>
+          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white">
+            <input
+              type="checkbox"
+              checked={state.ignoreLowTierCrafting}
+              onChange={(e) => setState((prev) => ({ ...prev, ignoreLowTierCrafting: e.target.checked }))}
+              className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
+            />
+            <span>하위단계 야금/재봉 미반영</span>
+          </label>
         </div>
       </div>
       

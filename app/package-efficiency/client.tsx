@@ -16,6 +16,7 @@ type ComponentItem = {
   probability?: number; // 확률 타입용
   selected?: boolean; // 선택 타입용
   nestedItem?: PackageItem; // 하위 묶음 항목
+  enabled?: boolean; // 스위치 on/off (기본값 true)
 };
 
 type PackageItem = {
@@ -1101,6 +1102,9 @@ export default function PackageEfficiencyClient({
     const calculateNestedItemValue = (nestedItem: PackageItem, priceType: '현금' | '크리스탈' | '골드'): number => {
       let nestedValue = 0;
       nestedItem.components.forEach((nestedComp) => {
+        // enabled가 false인 경우 제외
+        if (nestedComp.enabled === false) return;
+        
         // 중첩된 항목 내부에 또 중첩이 있는 경우 재귀 호출
         if (nestedComp.itemName === '__nested__' && nestedComp.nestedItem) {
           // 중첩된 하위묶음 1개당 단가
@@ -1163,6 +1167,9 @@ export default function PackageEfficiencyClient({
 
     itemsToCalculate.forEach((packageItem) => {
       packageItem.components.forEach((component) => {
+        // enabled가 false인 경우 제외
+        if (component.enabled === false) return;
+        
         // 하위 묶음 항목 처리
         if (component.itemName === '__nested__' && component.nestedItem) {
           // 하위묶음 1개당 단가 = 하위구성요소 가치 총합
@@ -1249,6 +1256,9 @@ export default function PackageEfficiencyClient({
       // 3+보너스 구성품 계산
       bonus3ItemsToCalculate.forEach((packageItem) => {
         packageItem.components.forEach((component) => {
+          // enabled가 false인 경우 제외
+          if (component.enabled === false) return;
+          
           // 하위 묶음 항목 처리
           if (component.itemName === '__nested__' && component.nestedItem) {
             const nestedItemUnitPrice = calculateNestedItemValue(component.nestedItem, packageData.priceType);
@@ -1349,6 +1359,9 @@ export default function PackageEfficiencyClient({
     const calculateNestedItemValue = (nestedItem: PackageItem, priceType: '현금' | '크리스탈' | '골드'): number => {
       let nestedValue = 0;
       nestedItem.components.forEach((nestedComp) => {
+        // enabled가 false인 경우 제외
+        if (nestedComp.enabled === false) return;
+        
         // 중첩된 항목 내부에 또 중첩이 있는 경우 재귀 호출
         if (nestedComp.itemName === '__nested__' && nestedComp.nestedItem) {
           // 중첩된 하위묶음 1개당 단가
@@ -1411,6 +1424,9 @@ export default function PackageEfficiencyClient({
     };
     
     packageItem.components.forEach((component) => {
+      // enabled가 false인 경우 제외
+      if (component.enabled === false) return;
+      
       // 중첩된 묶음 항목 처리
       if (component.itemName === '__nested__' && component.nestedItem) {
         // '보너스' 타입은 '골드'로 변환하여 처리
@@ -3330,12 +3346,30 @@ export default function PackageEfficiencyClient({
                         const isIncluded = packageItem.itemType === '확정' || 
                                          (packageItem.itemType === '확률') ||
                                          (packageItem.itemType === '선택' && component.selected);
+                        const isEnabled = component.enabled !== false; // 기본값은 true
 
                         const level0Colors = getLevelColors(0);
                         return (
-                          <div key={compIndex} className={`${level0Colors.bg} rounded-lg p-3 border ${isIncluded ? level0Colors.border : 'border-gray-800'} ${!isIncluded && 'opacity-50'}`}>
+                          <div key={compIndex} className={`${level0Colors.bg} rounded-lg p-3 border ${isIncluded && isEnabled ? level0Colors.border : 'border-gray-800'} ${(!isIncluded || !isEnabled) && 'opacity-50'}`}>
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex-1 min-w-0">
+                                {/* 스위치 */}
+                                <div className="flex items-center gap-2 mb-2">
+                                  <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={isEnabled}
+                                      onChange={(e) => {
+                                        updateComponent(itemIndex, compIndex, 'enabled', e.target.checked);
+                                      }}
+                                      className="sr-only peer"
+                                    />
+                                    <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                    <span className={`ml-2 text-xs font-medium ${isEnabled ? 'text-gray-300' : 'text-gray-500'}`}>
+                                      {isEnabled ? '포함' : '제외'}
+                                    </span>
+                                  </label>
+                                </div>
                                 {/* 선택 라디오 버튼 */}
                                 {packageItem.itemType === '선택' && (
                                   <label className="flex items-center gap-2 mb-2 cursor-pointer group">
@@ -3539,8 +3573,31 @@ export default function PackageEfficiencyClient({
                                             const nestedIsIncluded = nestedItem.itemType === '확정' || 
                                                                      (nestedItem.itemType === '확률') ||
                                                                      (nestedItem.itemType === '선택' && nestedComp.selected);
+                                            const nestedIsEnabled = nestedComp.enabled !== false; // 기본값은 true
                                           return (
-                                            <div key={nestedCompIndex} className={`${nestedItemColors.bg} rounded p-2 border ${nestedIsIncluded ? nestedItemColors.border : 'border-gray-800'} ${!nestedIsIncluded && 'opacity-50'}`}>
+                                            <div key={nestedCompIndex} className={`${nestedItemColors.bg} rounded p-2 border ${nestedIsIncluded && nestedIsEnabled ? nestedItemColors.border : 'border-gray-800'} ${(!nestedIsIncluded || !nestedIsEnabled) && 'opacity-50'}`}>
+                                              {/* 스위치 */}
+                                              <div className="flex items-center gap-1.5 mb-1">
+                                                <label className="relative inline-flex items-center cursor-pointer">
+                                                  <input
+                                                    type="checkbox"
+                                                    checked={nestedIsEnabled}
+                                                    onChange={(e) => {
+                                                      const nestedComponents = nestedItem.components.map((c, idx) => ({
+                                                        ...c,
+                                                        enabled: idx === nestedCompIndex ? e.target.checked : c.enabled,
+                                                      }));
+                                                      const updatedNestedItem = { ...nestedItem, components: nestedComponents };
+                                                      updateComponent(itemIndex, compIndex, 'nestedItem', updatedNestedItem);
+                                                    }}
+                                                    className="sr-only peer"
+                                                  />
+                                                  <div className="w-9 h-5 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                                                  <span className={`ml-1.5 text-[10px] font-medium ${nestedIsEnabled ? 'text-gray-300' : 'text-gray-500'}`}>
+                                                    {nestedIsEnabled ? '포함' : '제외'}
+                                                  </span>
+                                                </label>
+                                              </div>
                                               {/* 선택 타입일 때 라디오 버튼 */}
                                               {nestedItem.itemType === '선택' && (
                                                 <label className="flex items-center gap-1.5 mb-1 cursor-pointer group">
@@ -4782,9 +4839,27 @@ export default function PackageEfficiencyClient({
                     })()}
                     {packageItem.components.map((component, componentIndex) => {
                       const level0ItemColors = getLevelColors(0);
+                      const isEnabled = component.enabled !== false; // 기본값은 true
                       return (
-                    <div key={componentIndex} className={`${level0ItemColors.bg} rounded-lg p-3 border ${level0ItemColors.border}`}>
+                    <div key={componentIndex} className={`${level0ItemColors.bg} rounded-lg p-3 border ${isEnabled ? level0ItemColors.border : 'border-gray-800'} ${!isEnabled && 'opacity-50'}`}>
                       <div className="space-y-2">
+                        {/* 스위치 */}
+                        <div className="flex items-center gap-2 mb-2">
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={isEnabled}
+                              onChange={(e) => {
+                                updateComponent(itemIndex, componentIndex, 'enabled', e.target.checked);
+                              }}
+                              className="sr-only peer"
+                            />
+                            <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            <span className={`ml-2 text-xs font-medium ${isEnabled ? 'text-gray-300' : 'text-gray-500'}`}>
+                              {isEnabled ? '포함' : '제외'}
+                            </span>
+                          </label>
+                        </div>
                         {/* 첫 번째 줄: 라디오 버튼 + 드롭다운 */}
                         <div className="flex gap-2 items-center">
                         {/* 선택 타입: 라디오 버튼 */}
@@ -4961,9 +5036,31 @@ export default function PackageEfficiencyClient({
                               </button>
                               {expandedNestedItems[`${itemIndex}-${componentIndex}`] && component.nestedItem.components.map((nestedComp, nestedCompIndex) => {
                                 const nestedItemColors = getLevelColors(2); // 하위구성요소는 회색
+                                const nestedIsEnabled = nestedComp.enabled !== false; // 기본값은 true
                                 return (
-                                <div key={nestedCompIndex} className={`${nestedItemColors.bg} rounded-lg p-2 border ${nestedItemColors.border}`}>
+                                <div key={nestedCompIndex} className={`${nestedItemColors.bg} rounded-lg p-2 border ${nestedIsEnabled ? nestedItemColors.border : 'border-gray-800'} ${!nestedIsEnabled && 'opacity-50'}`}>
                                   <div className="space-y-2">
+                                    {/* 스위치 */}
+                                    <div className="flex items-center gap-1.5 mb-1">
+                                      <label className="relative inline-flex items-center cursor-pointer">
+                                        <input
+                                          type="checkbox"
+                                          checked={nestedIsEnabled}
+                                          onChange={(e) => {
+                                            if (!component.nestedItem) return;
+                                            const nestedComponents = [...component.nestedItem.components];
+                                            nestedComponents[nestedCompIndex] = { ...nestedComponents[nestedCompIndex], enabled: e.target.checked };
+                                            const nestedItem = { ...component.nestedItem, components: nestedComponents };
+                                            updateComponent(itemIndex, componentIndex, 'nestedItem', nestedItem);
+                                          }}
+                                          className="sr-only peer"
+                                        />
+                                        <div className="w-9 h-5 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                                        <span className={`ml-1.5 text-[10px] font-medium ${nestedIsEnabled ? 'text-gray-300' : 'text-gray-500'}`}>
+                                          {nestedIsEnabled ? '포함' : '제외'}
+                                        </span>
+                                      </label>
+                                    </div>
                                     {/* 첫 번째 줄: 드롭다운 */}
                                     <div className="flex gap-2 items-center">
                                       <SearchableSelect

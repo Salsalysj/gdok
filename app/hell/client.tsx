@@ -56,6 +56,8 @@ export default function HellClient({
   
   // 지옥3 카테고리 펼치기 상태
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  // 카테고리별 기본 보상 상자 접기/펼치기 상태 (기본: 접힘)
+  const [showBaseRewardsByCategory, setShowBaseRewardsByCategory] = useState<Record<string, boolean>>({});
 
   // 첫 로드 시 첫 번째 단계 선택
   useMemo(() => {
@@ -825,7 +827,6 @@ export default function HellClient({
                           </div>
                         ) : (
                           <>
-                            <div>기본 보상 상자: 190% 반영</div>
                             <div className="text-xs text-gray-400 mt-1">
                               기본 보상 상자는 풍요 시 10배 기대값 고려.
                             </div>
@@ -844,23 +845,49 @@ export default function HellClient({
                 </div>
 
                 {/* 카테고리별 그룹화 표시 */}
-                {isSpecialStage && groupedByCategory ? (
-                  <div className="space-y-3">
-                    {Object.entries(groupedByCategory).map(([category, rewards]) => {
-                      const isExpanded = expandedCategories.has(category);
-                      // 기본 보상 상자 카테고리 확인
-                      const categories = Object.keys(groupedByCategory);
-                      const baseCategory = !isNarak 
-                        ? (categories.find(cat => cat.includes('기본') || cat.includes('보상 상자')) || categories[0])
-                        : null;
-                      const isBaseRewardCategory = !isNarak && category === baseCategory;
+                {isSpecialStage && groupedByCategory ? (() => {
+                  // 기본 보상 상자 카테고리 찾기
+                  const categories = Object.keys(groupedByCategory);
+                  const baseCategory = !isNarak 
+                    ? (categories.find(cat => cat.includes('기본') || cat.includes('보상 상자')) || categories[0])
+                    : null;
+                  const baseRewards = baseCategory ? groupedByCategory[baseCategory] : [];
+                  
+                  // 기본 보상 상자 가치 합계 (카테고리 합계 표시 시 포함)
+                  const baseRewardsTotal = baseRewards.reduce((sum, r) => {
+                    const adjustedPrice = getAdjustedPrice(r.itemName, r.price);
+                    return sum + ((adjustedPrice || 0) * r.quantity);
+                  }, 0);
+                  
+                  // 나머지 카테고리들 (기본 보상 상자 제외)
+                  const otherCategories = baseCategory 
+                    ? categories.filter(cat => cat !== baseCategory)
+                    : categories;
+                  
+                  // 각 카테고리의 합계 계산 및 정렬
+                  const categoryData = otherCategories.map(category => {
+                    const rewards = groupedByCategory[category];
+                    const selectionTotal = rewards.reduce((sum, r) => {
+                      const adjustedPrice = getAdjustedPrice(r.itemName, r.price);
+                      return sum + ((adjustedPrice || 0) * r.quantity);
+                    }, 0);
+                    // 일반 상자 기준 합계 = 기본 보상 상자 + 해당 카테고리 선택 보상
+                    const normalTotal = baseRewardsTotal + selectionTotal;
+                    // 풍요 상자 기준 합계 = 기본 보상 상자 × 10 + 해당 카테고리 선택 보상
+                    const abundanceTotal = baseRewardsTotal * 10 + selectionTotal;
+                    return { category, rewards, normalTotal, abundanceTotal };
+                  });
+                  
+                  // 보상 합계가 높은 순서대로 정렬 (일반 상자 기준)
+                  categoryData.sort((a, b) => b.normalTotal - a.normalTotal);
+                  
+                  return (
+                    <div className="space-y-3">
+                      {categoryData.map(({ category, rewards, normalTotal, abundanceTotal }) => {
+                        const isExpanded = expandedCategories.has(category);
+                        const isBaseOpen = showBaseRewardsByCategory[category] ?? false;
                       
-                      const categoryTotal = rewards.reduce((sum, r) => {
-                        const adjustedPrice = getAdjustedPrice(r.itemName, r.price); // 모든 아이템은 가치계산DB 우선 사용
-                        return sum + ((adjustedPrice || 0) * r.quantity);
-                      }, 0);
-                      
-                      return (
+                        return (
                         <div key={category} className="bg-gray-900/50 rounded-lg border border-gray-700 overflow-hidden">
                           <button
                             onClick={() => {
@@ -881,22 +908,89 @@ export default function HellClient({
                                 ▶
                               </span>
                               <span className="font-semibold text-white">{category}</span>
-                              <span className="text-sm text-gray-400">
-                                ({rewards.length}개 구성품)
-                              </span>
+                 
                             </div>
                             <div className="text-right">
                               <div className="text-sm text-gray-400">카테고리 합계</div>
-                              <div className="text-lg font-bold text-yellow-400">
-                                {formatNumberWithSignificantDigits(categoryTotal)}골드
+                              <div className="text-base font-semibold text-yellow-400">
+                                일반: {formatNumberWithSignificantDigits(normalTotal)}골드
+                              </div>
+                              <div className="text-xs text-purple-300 mt-0.5">
+                                풍요: {formatNumberWithSignificantDigits(abundanceTotal)}골드
                               </div>
                             </div>
                           </button>
                           
                           {isExpanded && (
                             <div className="px-4 pb-4 pt-2 border-t border-gray-700">
-                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-2">
-                                {rewards.map((reward, rewardIdx) => {
+                              {/* 기본 보상 상자 구성품 표시 (접은 상태 기본) */}
+                              {baseRewards.length > 0 && (
+                                <div className="mb-4 border border-blue-700/50 rounded-lg bg-blue-950/30">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setShowBaseRewardsByCategory(prev => ({
+                                        ...prev,
+                                        [category]: !isBaseOpen,
+                                      }));
+                                    }}
+                                    className="w-full px-3 py-2 flex items-center justify-between hover:bg-blue-900/40 transition-colors"
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <span className={`transform transition-transform text-blue-300 ${isBaseOpen ? 'rotate-90' : ''}`}>
+                                        ▶
+                                      </span>
+                                      <span className="text-xs font-semibold text-blue-200">기본 보상 상자 (확정)</span>
+                                      <span className="text-[11px] text-blue-300">
+                                        {baseRewards.length}개 구성품
+                                      </span>
+                                    </div>
+                                  </button>
+                                  {isBaseOpen && (
+                                    <div className="px-3 pb-3 pt-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                      {baseRewards.map((reward, rewardIdx) => {
+                                        const adjustedPrice = getAdjustedPrice(reward.itemName, reward.price);
+                                        const itemTotal = (adjustedPrice || 0) * reward.quantity;
+                                        const quantityStr = formatNumberWithSignificantDigits(reward.quantity);
+                                        const priceStr = adjustedPrice !== null ? formatNumberWithSignificantDigits(adjustedPrice) : '';
+                                        const itemTotalStr = formatNumberWithSignificantDigits(itemTotal);
+                                        const tradeInfo = getTradeClass(reward.itemName);
+                                        
+                                        return (
+                                          <div
+                                            key={`base-${rewardIdx}`}
+                                            className="bg-blue-900/20 rounded-lg border border-blue-700/50 p-3"
+                                          >
+                                            <div className="flex items-center gap-2 mb-1">
+                                              <span className={`font-medium ${tradeInfo.nameClass}`}>{reward.itemName}</span>
+                                              <span className={`px-1.5 py-0.5 rounded text-[10px] ${tradeInfo.badgeClass}`}>{tradeInfo.badgeText}</span>
+                                              <span className="px-1.5 py-0.5 rounded text-[10px] bg-blue-900/30 text-blue-300 border border-blue-600">
+                                                기본 보상
+                                              </span>
+                                            </div>
+                                            <div className="text-gray-400 text-sm mb-1">수량: {quantityStr}</div>
+                                            {adjustedPrice !== null && adjustedPrice > 0 ? (
+                                              <div className="text-yellow-400 text-sm">
+                                                {priceStr}골드 × {quantityStr} = {itemTotalStr}골드
+                                              </div>
+                                            ) : adjustedPrice === 0 ? (
+                                              <div className="text-gray-500 text-xs">스위치로 인해 0골드로 처리됨</div>
+                                            ) : (
+                                              <div className="text-gray-500 text-xs">가격 정보 없음</div>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                              {/* 선택 보상 구성품 표시 */}
+                              {rewards.length > 0 && (
+                                <div>
+                                  
+                                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                    {rewards.map((reward, rewardIdx) => {
                                   // 모든 아이템은 가치계산DB 우선 사용
                                   const adjustedPrice = getAdjustedPrice(reward.itemName, reward.price);
                                   const itemTotal = (adjustedPrice || 0) * reward.quantity;
@@ -913,11 +1007,6 @@ export default function HellClient({
                                       <div className="flex items-center gap-2 mb-1">
                                         <span className={`font-medium ${tradeInfo.nameClass}`}>{reward.itemName}</span>
                                         <span className={`px-1.5 py-0.5 rounded text-[10px] ${tradeInfo.badgeClass}`}>{tradeInfo.badgeText}</span>
-                                        {isBaseRewardCategory && (
-                                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-blue-900/30 text-blue-300 border border-blue-600">
-                                            가치계산DB
-                                          </span>
-                                        )}
                                       </div>
                                       <div className="text-gray-400 text-sm mb-1">수량: {quantityStr}</div>
                                       {reward.itemName === '어빌리티 스톤 키트' || reward.itemName.includes('어빌리티 스톤 키트') ? (
@@ -988,14 +1077,17 @@ export default function HellClient({
                                     </div>
                                   );
                                 })}
-                              </div>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
                       );
                     })}
-                  </div>
-                ) : (
+                    </div>
+                  );
+                })() : (
                   <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                     {stage.rewards.map((reward, rewardIdx) => {
                       // 모든 아이템은 가치계산DB 우선 사용

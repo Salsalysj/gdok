@@ -60,6 +60,42 @@ export function usePriceAdjustment() {
         }
       }
 
+      // 융화 재료 미반영 (originalPrice가 null이어도 아이템 이름으로 확인)
+      if (state.ignoreFusionMaterial) {
+        if (
+          itemName === '아비도스 융화 재료' ||
+          itemName === '상급 아비도스 융화 재료'
+        ) {
+          return 0;
+        }
+      }
+
+      // 숨결 미반영 (originalPrice가 null이어도 아이템 이름으로 확인)
+      if (state.ignoreBreath) {
+        if (
+          itemName === '용암의 숨결' ||
+          itemName === '빙하의 숨결'
+        ) {
+          return 0;
+        }
+      }
+
+      // 하위단계 야금/재봉 미반영 (originalPrice가 null이어도 아이템 이름으로 확인)
+      if (state.ignoreLowTierCrafting) {
+        if (
+          itemName === '야금술 : 업화 [11-14]' ||
+          itemName === '재봉술 : 업화 [11-14]' ||
+          itemName === '야금술 : 업화 [15-18]' ||
+          itemName === '재봉술 : 업화 [15-18]' ||
+          itemName === '장인의 야금술 : 1단계' ||
+          itemName === '장인의 야금술 : 2단계' ||
+          itemName === '장인의 재봉술 : 1단계' ||
+          itemName === '장인의 재봉술 : 2단계'
+        ) {
+          return 0;
+        }
+      }
+
       if (originalPrice == null || originalPrice === 0) {
         return originalPrice;
       }
@@ -100,7 +136,7 @@ export function usePriceAdjustment() {
 
       return originalPrice;
     };
-  }, [state.has97Stone, state.ignoreCardExp, state.hasFullRelicEngraving, state.ignoreBreakthroughStone, state.ignoreFragment, state.cardSetGraduated, state.ignoreSilver, state.ignoreDestructionGuardStone]);
+  }, [state.has97Stone, state.ignoreCardExp, state.hasFullRelicEngraving, state.ignoreBreakthroughStone, state.ignoreFragment, state.cardSetGraduated, state.ignoreSilver, state.ignoreDestructionGuardStone, state.ignoreFusionMaterial, state.ignoreBreath, state.ignoreLowTierCrafting]);
 
   const adjustRelicEngravingAverage = useMemo(() => {
     return (originalPrice: number | null): number | null => {
