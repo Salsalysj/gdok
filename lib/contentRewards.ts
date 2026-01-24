@@ -431,6 +431,36 @@ function calculateGemSelectionBoxPrice(
   return { price: maxPrice > 0 ? maxPrice : null, gemName: maxPriceGemName };
 }
 
+// 질서/혼돈 젬 선택 상자 전용: 해당 계열(질서/혼돈) 3종 중 최고가
+function calculateGemSelectionBoxPriceByType(
+  gemGrade: '희귀' | '영웅',
+  marketData: any,
+  type: '질서' | '혼돈'
+): { price: number | null; gemName: string } {
+  const allItems = flattenMarketItems(marketData);
+  const targetNames =
+    type === '질서'
+      ? GEM_SELECTION_CANDIDATE_NAMES.filter((name) => name.startsWith('질서의 젬'))
+      : GEM_SELECTION_CANDIDATE_NAMES.filter((name) => name.startsWith('혼돈의 젬'));
+
+  let maxPrice = 0;
+  let maxPriceGemName = '';
+  for (const gemName of targetNames) {
+    const gem = allItems.find(
+      (item) => (item.displayName || item.Name || '').trim() === gemName && item.Grade === gemGrade
+    );
+    if (gem) {
+      const price = gem.CurrentMinPrice || gem.RecentPrice || 0;
+      if (price > maxPrice) {
+        maxPrice = price;
+        maxPriceGemName = gemName;
+      }
+    }
+  }
+
+  return { price: maxPrice > 0 ? maxPrice : null, gemName: maxPriceGemName };
+}
+
 function calculateRelicEngravingAverage(marketData: any): number | null {
   const relics = marketData?.relicEngravingResults || [];
   const prices = relics
@@ -715,6 +745,8 @@ async function processRewardForKurzan(
 export type EnrichedContentRewardsResult = {
   data: ContentRewards;
   rates: Rates;
+  eponaCubeStageTotals: Record<string, number>;
+  eponaCubeRewardsMap: Record<string, RewardItem[]>;
 };
 
 // 결과 캐싱 (6시간)
@@ -887,6 +919,25 @@ export async function getContentRewardsData(
             itemName: reward.itemName,
             quantity: reward.quantity,
             price,
+            category: reward.category,
+          };
+        }
+        // 희귀 질서/혼돈 젬 선택 상자: 해당 계열 3종 중 최고가
+        if (reward.itemName === '희귀 질서의 젬 선택 상자' || reward.itemName === '희귀 혼돈의 젬 선택 상자') {
+          const type: '질서' | '혼돈' = reward.itemName.includes('질서') ? '질서' : '혼돈';
+          const { price, gemName } = calculateGemSelectionBoxPriceByType('희귀', marketData, type);
+          if (price) {
+            return {
+              itemName: gemName ? `${reward.itemName} (${gemName})` : reward.itemName,
+              quantity: reward.quantity,
+              price,
+              category: reward.category,
+            };
+          }
+          return {
+            itemName: reward.itemName,
+            quantity: reward.quantity,
+            price: null,
             category: reward.category,
           };
         }
@@ -1296,7 +1347,12 @@ export async function getContentRewardsData(
     enrichedData[contentType] = contentData;
   }
 
-  const result = { data: enrichedData, rates };
+  const result: EnrichedContentRewardsResult = { 
+    data: enrichedData, 
+    rates, 
+    eponaCubeStageTotals, 
+    eponaCubeRewardsMap 
+  };
   
   // 결과 캐싱
   cachedContentRewards = { result, timestamp: Date.now() };

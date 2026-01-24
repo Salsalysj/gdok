@@ -15,6 +15,7 @@ export function getPriceOverrideState(): {
   ignoreFusionMaterial: boolean;
   ignoreBreath: boolean;
   ignoreLowTierCrafting: boolean;
+  ignoreGem: boolean;
 } | null {
   // 서버 사이드에서는 null 반환 (클라이언트에서만 사용)
   if (typeof window === 'undefined') return null;
@@ -22,7 +23,22 @@ export function getPriceOverrideState(): {
   try {
     const saved = localStorage.getItem('priceOverrideState');
     if (saved) {
-      return JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      return {
+        ignoreBreakthroughStone: false,
+        ignoreFragment: false,
+        ignoreCardExp: false,
+        has97Stone: false,
+        hasFullRelicEngraving: false,
+        cardSetGraduated: false,
+        ignoreSilver: false,
+        ignoreDestructionGuardStone: false,
+        ignoreFusionMaterial: false,
+        ignoreBreath: false,
+        ignoreLowTierCrafting: false,
+        ignoreGem: false,
+        ...parsed,
+      };
     }
   } catch {}
   return null;
@@ -39,6 +55,28 @@ export function applyPriceOverride(itemName: string, originalPrice: number | nul
 
   const state = getPriceOverrideState();
   if (!state) return originalPrice;
+
+  // 젬 미반영
+  if (state.ignoreGem) {
+    if (
+      itemName === '고급 젬' ||
+      itemName === '희귀 젬' ||
+      itemName === '영웅 젬' ||
+      itemName === '고급~영웅 젬 상자' ||
+      itemName === '고급~영웅 젬 랜덤 상자' ||
+      itemName === '희귀~영웅 젬 상자' ||
+      itemName === '희귀~영웅 젬 랜덤 상자' ||
+      itemName.startsWith('희귀 젬 선택 상자') ||
+      itemName.startsWith('영웅 젬 선택 상자') ||
+      itemName.startsWith('희귀 질서의 젬 선택 상자') ||
+      itemName.startsWith('희귀 혼돈의 젬 선택 상자') ||
+      itemName === '젬 가공 초기화권' ||
+      itemName.startsWith('질서의 젬 : ') ||
+      itemName.startsWith('혼돈의 젬 : ')
+    ) {
+      return 0;
+    }
+  }
 
   // 돌파석 미반영 (운명의 돌파석, 찬란한 명예의 돌파석, 위대한 운명의 돌파석)
   if (state.ignoreBreakthroughStone) {

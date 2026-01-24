@@ -996,9 +996,8 @@ export async function getValueDbData(): Promise<ValueDbData> {
   const crystalGoldRate = await getLatestCrystalGoldRate();
   const marketPriceMap = await getMarketPriceMap();
   const marketData = await getMarketData();
-  const { totals: cubeStageTotals, rewards: cubeStageRewards } = await getCubeStageTotals(etcListMap, marketPriceMap);
   const explanationMap = await getExplanationMap();
-  const { data: contentRewards } = await getContentRewardsData(undefined); // 순환 참조 방지를 위해 undefined 전달
+  const { data: contentRewards, eponaCubeRewardsMap } = await getContentRewardsData(undefined); // 순환 참조 방지를 위해 undefined 전달
   const hell1Stages = (contentRewards['지옥']?.['지옥1'] as Stage[]) || [];
   const hell2Stages = (contentRewards['지옥']?.['지옥2'] as Stage[]) || [];
   const hell3Stages = (contentRewards['지옥']?.['지옥3'] as Stage[]) || [];
@@ -1052,6 +1051,21 @@ export async function getValueDbData(): Promise<ValueDbData> {
   const itemSet = new Set([...itemList, ...Object.keys(manualOverrides), ...additionalItems, ...etcListItemNames]);
   itemSet.add('__manual__');
   const combinedItemList = Array.from(itemSet);
+
+  // 에브니 큐브 입장권 단계별 합계 및 보상 맵을 컨텐츠 보상 로직과 동일하게 구성
+  const cubeStageTotals: Record<string, number> = {};
+  const cubeStageRewards: Record<string, { itemName: string; quantity: number; price?: number | null }[]> = {};
+  if (eponaCubeRewardsMap) {
+    for (const [key, rewards] of Object.entries(eponaCubeRewardsMap)) {
+      cubeStageRewards[key] = rewards.map(r => ({
+        itemName: r.itemName,
+        quantity: r.quantity,
+        price: r.price ?? null,
+      }));
+      const total = rewards.reduce((sum, r) => sum + ((r.price || 0) * (r.quantity || 0)), 0);
+      cubeStageTotals[key] = total;
+    }
+  }
 
   const entries = combinedItemList
     .filter((name) => !!name && name !== '__manual__')

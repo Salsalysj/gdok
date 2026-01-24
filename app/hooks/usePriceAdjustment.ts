@@ -96,6 +96,28 @@ export function usePriceAdjustment() {
         }
       }
 
+      // 젬 미반영 (originalPrice가 null이어도 아이템 이름으로 확인)
+      if (state.ignoreGem) {
+        if (
+          itemName === '고급 젬' ||
+          itemName === '희귀 젬' ||
+          itemName === '영웅 젬' ||
+          itemName === '고급~영웅 젬 상자' ||
+          itemName === '고급~영웅 젬 랜덤 상자' ||
+          itemName === '희귀~영웅 젬 상자' ||
+          itemName === '희귀~영웅 젬 랜덤 상자' ||
+          itemName.startsWith('희귀 젬 선택 상자') ||
+          itemName.startsWith('영웅 젬 선택 상자') ||
+          itemName.startsWith('희귀 질서의 젬 선택 상자') ||
+          itemName.startsWith('희귀 혼돈의 젬 선택 상자') ||
+          itemName === '젬 가공 초기화권' ||
+          itemName.startsWith('질서의 젬 : ') ||
+          itemName.startsWith('혼돈의 젬 : ')
+        ) {
+          return 0;
+        }
+      }
+
       if (originalPrice == null || originalPrice === 0) {
         return originalPrice;
       }
@@ -136,7 +158,7 @@ export function usePriceAdjustment() {
 
       return originalPrice;
     };
-  }, [state.has97Stone, state.ignoreCardExp, state.hasFullRelicEngraving, state.ignoreBreakthroughStone, state.ignoreFragment, state.cardSetGraduated, state.ignoreSilver, state.ignoreDestructionGuardStone, state.ignoreFusionMaterial, state.ignoreBreath, state.ignoreLowTierCrafting]);
+  }, [state.has97Stone, state.ignoreCardExp, state.hasFullRelicEngraving, state.ignoreBreakthroughStone, state.ignoreFragment, state.cardSetGraduated, state.ignoreSilver, state.ignoreDestructionGuardStone, state.ignoreFusionMaterial, state.ignoreBreath, state.ignoreLowTierCrafting, state.ignoreGem]);
 
   const adjustRelicEngravingAverage = useMemo(() => {
     return (originalPrice: number | null): number | null => {
