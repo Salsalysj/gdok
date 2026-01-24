@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, type MouseEvent } from 'react';
 import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
 import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
 import { useValueDb } from '../contexts/ValueDbContext';
@@ -283,6 +283,28 @@ export default function PackageEfficiencyClient({
   // 기본적으로 접혀있도록 설정 (false가 기본값이므로 명시적으로 설정하지 않아도 됨)
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
   const [expandedNestedItems, setExpandedNestedItems] = useState<Record<string, boolean>>({});
+  // 추가 버튼 클릭 시, 해당 버튼이 속한 카드 위치를 고정하기 위한 스크롤 보정
+  const handleAddWithScrollAnchor = (e: MouseEvent<HTMLButtonElement>, fn: () => void) => {
+    if (typeof window === 'undefined') {
+      fn();
+      return;
+    }
+    // data-scroll-anchor가 지정된 상위 카드 기준으로 스크롤 고정
+    const anchor = (e.currentTarget.closest('[data-scroll-anchor="true"]') as HTMLElement) ?? e.currentTarget;
+    const prevTop = anchor.getBoundingClientRect().top;
+    const prevScrollY = window.scrollY;
+    fn();
+    requestAnimationFrame(() => {
+      if (!document.body.contains(anchor)) return;
+      const newTop = anchor.getBoundingClientRect().top;
+      const delta = newTop - prevTop;
+      if (Math.abs(delta) > 1) {
+        window.scrollTo({
+          top: prevScrollY + delta,
+        });
+      }
+    });
+  };
   
   // 입력 폼 참조 (스크롤 이동용)
   const inputFormRef = useRef<HTMLDivElement>(null);
@@ -3078,7 +3100,7 @@ export default function PackageEfficiencyClient({
                   const colors = typeColors[packageItem.itemType as keyof typeof typeColors] || typeColors['확정'];
                   
                   return (
-                  <div key={itemIndex} className={`relative bg-gray-900/70 rounded-lg p-5 border ${colors.border} ${colors.bg}`}>
+                  <div key={itemIndex} className={`relative bg-gray-900/70 rounded-lg p-5 border ${colors.border} ${colors.bg}`} data-scroll-anchor="true">
                     {/* 타입 배지 */}
                     <div className="absolute top-3 right-3">
                       <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${colors.badge}`}>
@@ -3242,7 +3264,7 @@ export default function PackageEfficiencyClient({
                     {/* 구성 요소 펼치기/접기 버튼 */}
                     {packageItem.components.length > 0 && (
                       <button
-                        onClick={() => toggleItemExpanded(itemIndex)}
+                        onClick={(e) => handleAddWithScrollAnchor(e, () => toggleItemExpanded(itemIndex))}
                         className="w-full flex items-center justify-between px-3 py-2 bg-gray-800/50 rounded-lg border border-gray-700 hover:bg-gray-800 transition-colors mb-2"
                       >
                         <span className="text-sm font-medium text-gray-300">
@@ -3504,7 +3526,7 @@ export default function PackageEfficiencyClient({
                                     {/* 하위 묶음 항목의 구성요소 펼치기/접기 버튼 */}
                                     {component.nestedItem && component.nestedItem.components.length > 0 && (
                                       <button
-                                        onClick={() => toggleNestedItemExpanded(itemIndex, compIndex)}
+                                        onClick={(e) => handleAddWithScrollAnchor(e, () => toggleNestedItemExpanded(itemIndex, compIndex))}
                                         className="w-full flex items-center justify-between px-2 py-1.5 bg-gray-800/30 rounded border border-blue-500/30 hover:bg-gray-800/50 transition-colors mt-2 text-xs"
                                       >
                                         <span className="text-xs font-medium text-blue-300">
@@ -3966,7 +3988,7 @@ export default function PackageEfficiencyClient({
                     {/* 구성 요소 펼치기/접기 버튼 */}
                     {packageItem.components.length > 0 && (
                       <button
-                        onClick={() => toggleItemExpanded(`bonus3-${itemIndex}`)}
+                        onClick={(e) => handleAddWithScrollAnchor(e, () => toggleItemExpanded(`bonus3-${itemIndex}`))}
                         className="w-full flex items-center justify-between px-3 py-2 bg-gray-800/50 rounded-lg border border-gray-700 hover:bg-gray-800 transition-colors mb-2"
                       >
                         <span className="text-sm font-medium text-gray-300">
@@ -4311,7 +4333,7 @@ export default function PackageEfficiencyClient({
                 <div key={roomIndex} className="bg-gray-900/50 rounded-lg border border-gray-700 p-4 max-h-[800px] overflow-y-auto">
                   <h3 className="text-lg font-semibold text-white mb-3 sticky top-0 bg-gray-900/50 backdrop-blur-sm z-10 pb-2">{room.roomName}</h3>
                   <button
-                    onClick={() => addBonusRoomItem(roomIndex)}
+                    onClick={(e) => handleAddWithScrollAnchor(e, () => addBonusRoomItem(roomIndex))}
                     className="w-full mb-3 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
                   >
                     묶음 항목 추가
@@ -4380,7 +4402,7 @@ export default function PackageEfficiencyClient({
                         </div>
                         <div className="space-y-2 pl-3 border-l-2 border-gray-600">
                           <button
-                            onClick={() => addBonusRoomComponent(roomIndex, itemIndex)}
+                            onClick={(e) => handleAddWithScrollAnchor(e, () => addBonusRoomComponent(roomIndex, itemIndex))}
                             className="w-full px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs"
                           >
                             구성요소 추가
@@ -4521,7 +4543,7 @@ export default function PackageEfficiencyClient({
                                     {/* 하위 묶음 항목 구성요소 펼치기/접기 버튼 */}
                                     {component.nestedItem.components.length > 0 && (
                                       <button
-                                        onClick={() => toggleNestedItemExpanded(itemIndex, compIndex)}
+                                        onClick={(e) => handleAddWithScrollAnchor(e, () => toggleNestedItemExpanded(itemIndex, compIndex))}
                                         className="w-full flex items-center justify-between px-2 py-1 bg-gray-700/30 rounded border border-blue-500/30 hover:bg-gray-700/50 transition-colors mb-2 text-xs"
                                       >
                                         <span className="text-[10px] font-medium text-blue-300">
@@ -4540,7 +4562,8 @@ export default function PackageEfficiencyClient({
                                     <div className="space-y-2">
                                       <div className="space-y-1">
                                         <button
-                                          onClick={() => {
+                                          onClick={(e) => {
+                                            handleAddWithScrollAnchor(e, () => {
                                             const nestedItem = {
                                               ...component.nestedItem!,
                                               components: [
@@ -4549,6 +4572,7 @@ export default function PackageEfficiencyClient({
                                               ],
                                             };
                                             updateBonusRoomComponent(roomIndex, itemIndex, compIndex, 'nestedItem', nestedItem);
+                                            });
                                           }}
                                           className="w-full px-2 py-1 bg-gray-700 text-gray-300 rounded hover:bg-gray-600 transition-colors text-xs"
                                         >
@@ -4763,7 +4787,7 @@ export default function PackageEfficiencyClient({
             {packageData.items.map((packageItem, itemIndex) => {
               const level0Colors = getLevelColors(0); // 묶음 항목 (레벨 0)
               return (
-              <div key={itemIndex} className={`${level0Colors.bg} rounded-lg border ${level0Colors.border} p-4`}>
+              <div key={itemIndex} className={`${level0Colors.bg} rounded-lg border ${level0Colors.border} p-4`} data-scroll-anchor="true">
                 <div className="flex items-center gap-3 mb-3">
                   {packageData.category === '패스' && (
                     <span className="text-sm font-semibold text-purple-400 whitespace-nowrap">
@@ -4806,7 +4830,7 @@ export default function PackageEfficiencyClient({
                 {/* 구성요소 펼치기/접기 버튼 */}
                 {packageItem.components.length > 0 && (
                   <button
-                    onClick={() => toggleItemExpanded(itemIndex)}
+                    onClick={(e) => handleAddWithScrollAnchor(e, () => toggleItemExpanded(itemIndex))}
                     className="w-full flex items-center justify-between px-3 py-2 bg-gray-800/50 rounded-lg border border-gray-700 hover:bg-gray-800 transition-colors mb-2"
                   >
                     <span className="text-sm font-medium text-gray-300">
@@ -5001,7 +5025,7 @@ export default function PackageEfficiencyClient({
                           {/* 중첩된 묶음 항목 구성요소 펼치기/접기 버튼 */}
                           {component.nestedItem.components.length > 0 && (
                             <button
-                              onClick={() => toggleNestedItemExpanded(itemIndex, componentIndex)}
+                              onClick={(e) => handleAddWithScrollAnchor(e, () => toggleNestedItemExpanded(itemIndex, componentIndex))}
                               className="w-full flex items-center justify-between px-2 py-1.5 bg-gray-800/30 rounded border border-blue-500/30 hover:bg-gray-800/50 transition-colors mb-2 text-xs"
                             >
                               <span className="text-xs font-medium text-blue-300">
@@ -5476,7 +5500,7 @@ export default function PackageEfficiencyClient({
                     );
                   })}
                   <button
-                    onClick={() => addComponent(itemIndex)}
+                    onClick={(e) => handleAddWithScrollAnchor(e, () => addComponent(itemIndex))}
                     className="w-full px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
                   >
                     구성 요소 추가
@@ -5487,7 +5511,7 @@ export default function PackageEfficiencyClient({
                 {packageItem.components.length === 0 && (
                   <div className="pl-4 border-l-2 border-gray-700">
                     <button
-                      onClick={() => addComponent(itemIndex)}
+                      onClick={(e) => handleAddWithScrollAnchor(e, () => addComponent(itemIndex))}
                       className="w-full px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
                     >
                       구성 요소 추가
@@ -5498,7 +5522,7 @@ export default function PackageEfficiencyClient({
               );
             })}
             <button
-              onClick={addPackageItem}
+              onClick={(e) => handleAddWithScrollAnchor(e, () => addPackageItem())}
               className="w-full mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
             >
               묶음 항목 추가
@@ -5877,7 +5901,7 @@ export default function PackageEfficiencyClient({
                           </div>
                         )}
                         <button
-                          onClick={() => addBonus3Component(itemIndex)}
+                          onClick={(e) => handleAddWithScrollAnchor(e, () => addBonus3Component(itemIndex))}
                           className="w-full px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors text-sm"
                         >
                           구성 요소 추가
@@ -5887,7 +5911,7 @@ export default function PackageEfficiencyClient({
                     
                     {packageItem.components.length === 0 && (
                       <button
-                        onClick={() => addBonus3Component(itemIndex)}
+                        onClick={(e) => handleAddWithScrollAnchor(e, () => addBonus3Component(itemIndex))}
                         className="w-full px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors text-sm"
                       >
                         구성 요소 추가

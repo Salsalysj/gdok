@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useMemo, useState, useRef, useEffect } from 'react';
 import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
 import { usePriceOverride } from '../contexts/PriceOverrideContext';
@@ -173,10 +174,18 @@ export default function ValueDBSidebar() {
       {/* 헤더: 골드 환율 + 디코기준 스위치 + 닫기 버튼 */}
       <div className="p-3 border-b border-gray-800 flex items-center justify-between gap-2">
         <div className="flex items-center gap-3 flex-1">
-          <div className="text-sm font-semibold text-gray-300">
-            {goldPerWon != null 
-              ? `현재 1원당 ${formatNumberWithSignificantDigits(goldPerWon)}골드`
-              : '현재 1원당 골드 계산 중...'}
+          <div className="flex items-center gap-2">
+            <Link
+              href="/crystal-gold"
+              className="inline-flex items-center px-2 py-1 rounded border border-blue-500/60 text-[11px] text-blue-300 hover:bg-blue-900/40 hover:text-blue-100 transition-colors"
+            >
+              골드 환율
+            </Link>
+            <div className="text-sm font-semibold text-gray-300">
+              {goldPerWon != null 
+                ? `현재 1원당 ${formatNumberWithSignificantDigits(goldPerWon)}골드`
+                : '현재 1원당 골드 계산 중...'}
+            </div>
           </div>
           {/* 디코기준 스위치 */}
           <div className="flex items-center gap-2">

@@ -15,6 +15,30 @@ export default function UpdatesPage() {
         </div>
 
         <div className="space-y-3 sm:space-y-4 md:space-y-6 lg:space-y-8">
+          {/* v0.3.8 */}
+          <div className="bg-gray-800 rounded-none sm:rounded-lg p-3 sm:p-4 md:p-6 border-x-0 sm:border-x border-gray-700">
+            <h2 className="text-sm sm:text-base md:text-lg lg:text-2xl font-bold text-white mb-2 sm:mb-3 md:mb-4">v0.3.8 (2026. 01. 24)</h2>
+            
+            <div className="space-y-2 sm:space-y-3 md:space-y-4">
+              <div>
+                <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold text-green-400 mb-1 sm:mb-2">신규 기능</h3>
+                <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-[10px] sm:text-xs md:text-sm text-gray-300 ml-3 sm:ml-4 whitespace-normal break-words">
+                  <li>쌀산기 (경매 최적가 계산기) 구현</li>
+                  <li>과금 효율에서 항목별 계산 제외 기능 추가</li>
+                </ul>
+              </div>
+              
+              <div>
+                <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold text-blue-400 mb-1 sm:mb-2">개선 사항</h3>
+                <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-[10px] sm:text-xs md:text-sm text-gray-300 ml-3 sm:ml-4 whitespace-normal break-words">
+                  <li>가격 조정 스위치 추가 (융화 재료, 숨결, 야금/재봉)</li>
+                  <li>지옥 보상의 카테고리 합계에서 풍요 상자 기준 추가</li>
+                  <li>과금 효율 및 지옥 보상 페이지 사용성 개선</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
           {/* v0.3.7 */}
           <div className="bg-gray-800 rounded-none sm:rounded-lg p-3 sm:p-4 md:p-6 border-x-0 sm:border-x border-gray-700">
             <h2 className="text-sm sm:text-base md:text-lg lg:text-2xl font-bold text-white mb-2 sm:mb-3 md:mb-4">v0.3.7 (2026. 01. 24)</h2>

@@ -526,7 +526,7 @@ export default function HellClient({
           
           return (
             <div className="mb-6">
-              <h2 className="text-2xl font-semibold text-white mb-4">열쇠 교환 효율표</h2>
+              <h2 className="text-2xl font-semibold text-white mb-4">지옥 열쇠 교환 (낙원 상점) 효율표</h2>
               <div className="bg-gray-900/50 rounded-lg border border-gray-700 overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full">

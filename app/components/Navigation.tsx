@@ -84,7 +84,7 @@ export default function Navigation() {
     { name: '과금 효율', href: '/package-efficiency' },
     { name: '재련 효율', href: '/refining-simulation', hasSubmenu: true },
     { name: '커스텀 계산기', href: '/custom-calculator', hasSubmenu: true },
-    { name: '골드 환율', href: '/crystal-gold' },
+    { name: '쌀산기', href: '/auction-calculator' },
   ];
 
   const contentRewardsSubTabs = [
@@ -237,17 +237,26 @@ export default function Navigation() {
                   );
                 }
                 
+                const isAuctionCalculator = tab.href === '/auction-calculator';
+
                 return (
                   <Link
                     key={tab.href}
                     href={tab.href}
-                    className={`px-4 xl:px-6 py-2 rounded font-medium text-sm xl:text-base ${
+                    className={`px-4 xl:px-6 py-2 rounded font-medium text-sm xl:text-base flex items-center gap-1.5 ${
                       isActive
                         ? 'bg-gray-700 text-white'
                         : 'text-gray-400 hover:text-white hover:bg-gray-800'
                     }`}
                   >
-                    {tab.name}
+                    {isAuctionCalculator ? (
+                      <>
+                        <span className="text-lg">🧮</span>
+                        <span>{tab.name}</span>
+                      </>
+                    ) : (
+                      <span>{tab.name}</span>
+                    )}
                   </Link>
                 );
               })}
@@ -323,6 +332,8 @@ export default function Navigation() {
                 );
               }
               
+              const isAuctionCalculator = tab.href === '/auction-calculator';
+              
               return (
                 <Link
                   key={tab.href}
@@ -331,13 +342,20 @@ export default function Navigation() {
                     // 링크 클릭은 정상적으로 처리되도록 함
                     setMobileMenuOpen(false);
                   }}
-                  className={`block px-4 py-3 rounded font-medium ${
+                  className={`block px-4 py-3 rounded font-medium flex items-center gap-1.5 ${
                     isActive
                       ? 'bg-gray-700 text-white'
                       : 'text-gray-400 hover:text-white hover:bg-gray-800'
                   }`}
                 >
-                  {tab.name}
+                  {isAuctionCalculator ? (
+                    <>
+                      <span className="text-lg">🧮</span>
+                      <span>{tab.name}</span>
+                    </>
+                  ) : (
+                    <span>{tab.name}</span>
+                  )}
                 </Link>
               );
             })}
