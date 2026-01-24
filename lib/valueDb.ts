@@ -1054,7 +1054,7 @@ export async function getValueDbData(): Promise<ValueDbData> {
 
   // 에브니 큐브 입장권 단계별 합계 및 보상 맵을 컨텐츠 보상 로직과 동일하게 구성
   const cubeStageTotals: Record<string, number> = {};
-  const cubeStageRewards: Record<string, { itemName: string; quantity: number; price?: number | null }> = {};
+  const cubeStageRewards: Record<string, { itemName: string; quantity: number; price?: number | null }[]> = {};
   if (eponaCubeRewardsMap) {
     for (const [key, rewards] of Object.entries(eponaCubeRewardsMap)) {
       cubeStageRewards[key] = rewards.map(r => ({
