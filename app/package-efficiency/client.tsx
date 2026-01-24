@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, useRef, type MouseEvent } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, type MouseEvent as ReactMouseEvent } from 'react';
 import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
 import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
 import { useValueDb } from '../contexts/ValueDbContext';
@@ -284,7 +284,7 @@ export default function PackageEfficiencyClient({
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
   const [expandedNestedItems, setExpandedNestedItems] = useState<Record<string, boolean>>({});
   // 추가 버튼 클릭 시, 해당 버튼이 속한 카드 위치를 고정하기 위한 스크롤 보정
-  const handleAddWithScrollAnchor = (e: MouseEvent<HTMLButtonElement>, fn: () => void) => {
+  const handleAddWithScrollAnchor = (e: ReactMouseEvent<HTMLButtonElement>, fn: () => void) => {
     if (typeof window === 'undefined') {
       fn();
       return;
