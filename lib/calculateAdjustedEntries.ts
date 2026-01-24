@@ -495,51 +495,52 @@ export function calculateAdjustedEntries(params: CalculateAdjustedEntriesParams)
     // entries에서 "에브니 큐브 입장권 (stageName)" 형식으로 찾기
     const entryName = `에브니 큐브 입장권 (${stageName})`;
     let sum = 0;
-    for (const reward of rewards) {
-      // 각 보상의 원본 가격 찾기
-      let originalPrice: number | null = null;
-      
-      if (reward.itemName === '카드 경험치') {
-        // 카드 경험치인 경우 가치계산DB의 '카드경험치 1당' 가격 사용
-        const cardExpEntry = entries.find(e => e.itemName === '카드경험치 1당');
-        if (cardExpEntry && cardExpEntry.unitValue != null) {
-          originalPrice = cardExpEntry.unitValue;
+    for (const reward of rewards as any[]) {
+      // 컨텐츠 보상 로직과 동일하게, cubeStageRewards에 저장된 price를 우선 사용
+      let originalPrice: number | null = reward.price ?? null;
+
+      // price 정보가 없을 때만 기존 fallback 로직 사용
+      if (originalPrice == null) {
+        if (reward.itemName === '카드 경험치') {
+          // 카드경험치 1당 값 우선
+          const cardExpEntry = entries.find(e => e.itemName === '카드경험치 1당');
+          if (cardExpEntry && cardExpEntry.unitValue != null) {
+            originalPrice = cardExpEntry.unitValue;
+          } else {
+            const etc = etcListData[reward.itemName];
+            if (etc?.gold != null) {
+              originalPrice = etc.gold;
+            } else if (marketPriceMap[reward.itemName] != null) {
+              originalPrice = marketPriceMap[reward.itemName];
+            }
+          }
         } else {
-          // fallback: etcListData나 marketPriceMap에서 찾기
-          const etc = etcListData[reward.itemName];
-          if (etc?.gold != null) {
-            originalPrice = etc.gold;
-          } else if (marketPriceMap[reward.itemName] != null) {
-            originalPrice = marketPriceMap[reward.itemName];
+          // 운명의 파편인 경우 '운명의 파편 1개당' 우선
+          if (reward.itemName === '운명의 파편') {
+            const fragmentEntry = entries.find(e => e.itemName === '운명의 파편 1개당');
+            if (fragmentEntry && fragmentEntry.unitValue != null) {
+              originalPrice = fragmentEntry.unitValue;
+            }
           }
-        }
-      } else {
-        // 다른 보상의 경우 원본 가격 찾기
-        // 운명의 파편인 경우 가치계산DB의 '운명의 파편 1개당' 가격 사용
-        if (reward.itemName === '운명의 파편') {
-          const fragmentEntry = entries.find(e => e.itemName === '운명의 파편 1개당');
-          if (fragmentEntry && fragmentEntry.unitValue != null) {
-            originalPrice = fragmentEntry.unitValue;
+          // 실링인 경우 가치계산DB에서 가격 사용
+          else if (reward.itemName === '실링') {
+            const silverEntry = entries.find(e => e.itemName === '실링');
+            if (silverEntry && silverEntry.unitValue != null) {
+              originalPrice = silverEntry.unitValue;
+            }
           }
-        }
-        // 실링인 경우 가치계산DB에서 가격 사용
-        else if (reward.itemName === '실링') {
-          const silverEntry = entries.find(e => e.itemName === '실링');
-          if (silverEntry && silverEntry.unitValue != null) {
-            originalPrice = silverEntry.unitValue;
-          }
-        }
-        // fallback: etcListData나 marketPriceMap에서 찾기
-        if (originalPrice == null) {
-          const etc = etcListData[reward.itemName];
-          if (etc?.gold != null) {
-            originalPrice = etc.gold;
-          } else if (marketPriceMap[reward.itemName] != null) {
-            originalPrice = marketPriceMap[reward.itemName];
+          // fallback: etc_list / marketPriceMap
+          if (originalPrice == null) {
+            const etc = etcListData[reward.itemName];
+            if (etc?.gold != null) {
+              originalPrice = etc.gold;
+            } else if (marketPriceMap[reward.itemName] != null) {
+              originalPrice = marketPriceMap[reward.itemName];
+            }
           }
         }
       }
-      
+
       // adjustPrice로 가격 조정 (카드경험치 미반영, 돌파석 미반영, 파편 미반영 등)
       const adjustedPrice = adjustPrice(reward.itemName, originalPrice);
       if (adjustedPrice != null && adjustedPrice > 0) {

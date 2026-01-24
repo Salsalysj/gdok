@@ -26,6 +26,14 @@ export default function ValueDBSidebar() {
   const [discordRate, setDiscordRate] = useState<number | null>(null);
   const [isSearchFocused, setIsSearchFocused] = useState<boolean>(false);
 
+  // 가격 조정 UI용 로컬 상태 (버튼 색 즉시 반응용)
+  const [localOverrides, setLocalOverrides] = useState(state);
+
+  // 컨텍스트 상태가 외부에서 변경되면 로컬 상태를 동기화
+  useEffect(() => {
+    setLocalOverrides(state);
+  }, [state]);
+
   // 디코기준 스위치 상태 동기화
   useEffect(() => {
     try {
@@ -232,110 +240,179 @@ export default function ValueDBSidebar() {
       
       {/* 가격 조정 섹션 */}
       <div className="p-3 border-b border-gray-800">
-        <h2 className="text-sm font-semibold text-gray-300 mb-3">가격 조정</h2>
-        <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+        <h2 className="text-sm font-semibold text-gray-300 mb-3">가격 조정 (클릭 시 0골드로 반영)</h2>
+        <div className="grid grid-cols-3 gap-1.5">
           {/* 1단 */}
-          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white">
-            <input
-              type="checkbox"
-              checked={state.ignoreSilver}
-              onChange={(e) => setState((prev) => ({ ...prev, ignoreSilver: e.target.checked }))}
-              className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
-            />
-            <span>실링 미반영</span>
-          </label>
-          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white">
-            <input
-              type="checkbox"
-              checked={state.ignoreDestructionGuardStone}
-              onChange={(e) => setState((prev) => ({ ...prev, ignoreDestructionGuardStone: e.target.checked }))}
-              className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
-            />
-            <span>파괴석/수호석 미반영</span>
-          </label>
-          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white">
-            <input
-              type="checkbox"
-              checked={state.ignoreBreakthroughStone}
-              onChange={(e) => setState((prev) => ({ ...prev, ignoreBreakthroughStone: e.target.checked }))}
-              className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
-            />
-            <span>돌파석 미반영</span>
-          </label>
-          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white">
-            <input
-              type="checkbox"
-              checked={state.ignoreFragment}
-              onChange={(e) => setState((prev) => ({ ...prev, ignoreFragment: e.target.checked }))}
-              className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
-            />
-            <span>파편 미반영</span>
-          </label>
+          <button
+            type="button"
+            onClick={() =>
+              setLocalOverrides(prev => {
+                const next = { ...prev, ignoreSilver: !prev.ignoreSilver };
+                setTimeout(() => setState(next), 0);
+                return next;
+              })
+            }
+            className={`text-[11px] px-2 py-1 rounded border text-left truncate
+              ${!localOverrides.ignoreSilver ? 'bg-blue-700/50 border-blue-500/70 text-blue-50' : 'bg-gray-800 border-gray-600 text-gray-300 line-through'}`}
+          >
+            실링
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              setLocalOverrides(prev => {
+                const next = { ...prev, ignoreDestructionGuardStone: !prev.ignoreDestructionGuardStone };
+                setTimeout(() => setState(next), 0);
+                return next;
+              })
+            }
+            className={`text-[11px] px-2 py-1 rounded border text-left truncate
+              ${!localOverrides.ignoreDestructionGuardStone ? 'bg-blue-700/50 border-blue-500/70 text-blue-50' : 'bg-gray-800 border-gray-600 text-gray-300 line-through'}`}
+          >
+            파괴석/수호석
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              setLocalOverrides(prev => {
+                const next = { ...prev, ignoreBreakthroughStone: !prev.ignoreBreakthroughStone };
+                setTimeout(() => setState(next), 0);
+                return next;
+              })
+            }
+            className={`text-[11px] px-2 py-1 rounded border text-left truncate
+              ${!localOverrides.ignoreBreakthroughStone ? 'bg-blue-700/50 border-blue-500/70 text-blue-50' : 'bg-gray-800 border-gray-600 text-gray-300 line-through'}`}
+          >
+            돌파석
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              setLocalOverrides(prev => {
+                const next = { ...prev, ignoreFragment: !prev.ignoreFragment };
+                setTimeout(() => setState(next), 0);
+                return next;
+              })
+            }
+            className={`text-[11px] px-2 py-1 rounded border text-left truncate
+              ${!localOverrides.ignoreFragment ? 'bg-blue-700/50 border-blue-500/70 text-blue-50' : 'bg-gray-800 border-gray-600 text-gray-300 line-through'}`}
+          >
+            파편
+          </button>
           {/* 2단 */}
-          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white">
-            <input
-              type="checkbox"
-              checked={state.cardSetGraduated}
-              onChange={(e) => setState((prev) => ({ ...prev, cardSetGraduated: e.target.checked }))}
-              className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
-            />
-            <span>전설 카드 미반영</span>
-          </label>
-          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white">
-            <input
-              type="checkbox"
-              checked={state.ignoreCardExp}
-              onChange={(e) => setState((prev) => ({ ...prev, ignoreCardExp: e.target.checked }))}
-              className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
-            />
-            <span>카드경험치 미반영</span>
-          </label>
-          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white">
-            <input
-              type="checkbox"
-              checked={state.has97Stone}
-              onChange={(e) => setState((prev) => ({ ...prev, has97Stone: e.target.checked }))}
-              className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
-            />
-            <span>어빌리티 스톤 미반영</span>
-          </label>
-          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white">
-            <input
-              type="checkbox"
-              checked={state.hasFullRelicEngraving}
-              onChange={(e) => setState((prev) => ({ ...prev, hasFullRelicEngraving: e.target.checked }))}
-              className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
-            />
-            <span>유물 각인서 미반영</span>
-          </label>
+          <button
+            type="button"
+            onClick={() =>
+              setLocalOverrides(prev => {
+                const next = { ...prev, cardSetGraduated: !prev.cardSetGraduated };
+                setTimeout(() => setState(next), 0);
+                return next;
+              })
+            }
+            className={`text-[11px] px-2 py-1 rounded border text-left truncate
+              ${!localOverrides.cardSetGraduated ? 'bg-blue-700/50 border-blue-500/70 text-blue-50' : 'bg-gray-800 border-gray-600 text-gray-300 line-through'}`}
+          >
+            전설 카드
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              setLocalOverrides(prev => {
+                const next = { ...prev, ignoreCardExp: !prev.ignoreCardExp };
+                setTimeout(() => setState(next), 0);
+                return next;
+              })
+            }
+            className={`text-[11px] px-2 py-1 rounded border text-left truncate
+              ${!localOverrides.ignoreCardExp ? 'bg-blue-700/50 border-blue-500/70 text-blue-50' : 'bg-gray-800 border-gray-600 text-gray-300 line-through'}`}
+          >
+            카드경험치
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              setLocalOverrides(prev => {
+                const next = { ...prev, has97Stone: !prev.has97Stone };
+                setTimeout(() => setState(next), 0);
+                return next;
+              })
+            }
+            className={`text-[11px] px-2 py-1 rounded border text-left truncate
+              ${!localOverrides.has97Stone ? 'bg-blue-700/50 border-blue-500/70 text-blue-50' : 'bg-gray-800 border-gray-600 text-gray-300 line-through'}`}
+          >
+            어빌리티 스톤
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              setLocalOverrides(prev => {
+                const next = { ...prev, hasFullRelicEngraving: !prev.hasFullRelicEngraving };
+                setTimeout(() => setState(next), 0);
+                return next;
+              })
+            }
+            className={`text-[11px] px-2 py-1 rounded border text-left truncate
+              ${!localOverrides.hasFullRelicEngraving ? 'bg-blue-700/50 border-blue-500/70 text-blue-50' : 'bg-gray-800 border-gray-600 text-gray-300 line-through'}`}
+          >
+            유물 각인서
+          </button>
           {/* 3단 */}
-          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white">
-            <input
-              type="checkbox"
-              checked={state.ignoreFusionMaterial}
-              onChange={(e) => setState((prev) => ({ ...prev, ignoreFusionMaterial: e.target.checked }))}
-              className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
-            />
-            <span>융화 재료 미반영</span>
-          </label>
-          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white">
-            <input
-              type="checkbox"
-              checked={state.ignoreBreath}
-              onChange={(e) => setState((prev) => ({ ...prev, ignoreBreath: e.target.checked }))}
-              className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
-            />
-            <span>숨결 미반영</span>
-          </label>
-          <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white">
-            <input
-              type="checkbox"
-              checked={state.ignoreLowTierCrafting}
-              onChange={(e) => setState((prev) => ({ ...prev, ignoreLowTierCrafting: e.target.checked }))}
-              className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
-            />
-            <span>하위단계 야금/재봉 미반영</span>
-          </label>
+          <button
+            type="button"
+            onClick={() =>
+              setLocalOverrides(prev => {
+                const next = { ...prev, ignoreFusionMaterial: !prev.ignoreFusionMaterial };
+                setTimeout(() => setState(next), 0);
+                return next;
+              })
+            }
+            className={`text-[11px] px-2 py-1 rounded border text-left truncate
+              ${!localOverrides.ignoreFusionMaterial ? 'bg-blue-700/50 border-blue-500/70 text-blue-50' : 'bg-gray-800 border-gray-600 text-gray-300 line-through'}`}
+          >
+            융화 재료
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              setLocalOverrides(prev => {
+                const next = { ...prev, ignoreBreath: !prev.ignoreBreath };
+                setTimeout(() => setState(next), 0);
+                return next;
+              })
+            }
+            className={`text-[11px] px-2 py-1 rounded border text-left truncate
+              ${!localOverrides.ignoreBreath ? 'bg-blue-700/50 border-blue-500/70 text-blue-50' : 'bg-gray-800 border-gray-600 text-gray-300 line-through'}`}
+          >
+            숨결
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              setLocalOverrides(prev => {
+                const next = { ...prev, ignoreLowTierCrafting: !prev.ignoreLowTierCrafting };
+                setTimeout(() => setState(next), 0);
+                return next;
+              })
+            }
+            className={`text-[11px] px-2 py-1 rounded border text-left truncate
+              ${!localOverrides.ignoreLowTierCrafting ? 'bg-blue-700/50 border-blue-500/70 text-blue-50' : 'bg-gray-800 border-gray-600 text-gray-300 line-through'}`}
+          >
+            하위 야금/재봉
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              setLocalOverrides(prev => {
+                const next = { ...prev, ignoreGem: !prev.ignoreGem };
+                setTimeout(() => setState(next), 0);
+                return next;
+              })
+            }
+            className={`text-[11px] px-2 py-1 rounded border text-left truncate
+              ${!localOverrides.ignoreGem ? 'bg-blue-700/50 border-blue-500/70 text-blue-50' : 'bg-gray-800 border-gray-600 text-gray-300 line-through'}`}
+          >
+            젬
+          </button>
         </div>
       </div>
       

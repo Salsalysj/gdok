@@ -14,6 +14,7 @@ type PriceOverrideState = {
   ignoreFusionMaterial: boolean;
   ignoreBreath: boolean;
   ignoreLowTierCrafting: boolean;
+  ignoreGem: boolean;
 };
 
 const PriceOverrideContext = createContext<{
@@ -34,6 +35,7 @@ export function PriceOverrideProvider({ children }: { children: ReactNode }) {
     ignoreFusionMaterial: false,
     ignoreBreath: false,
     ignoreLowTierCrafting: false,
+    ignoreGem: false,
   });
   const isInitialMount = useRef(true);
   const previousStateRef = useRef<PriceOverrideState | undefined>(undefined);
