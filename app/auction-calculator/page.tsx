@@ -3,7 +3,7 @@ import AuctionCalculatorClient from './client';
 
 export const metadata = {
   title: '경매 계산기 - 껨산기',
-  description: '로스트아크 경매 입찰 최적가를 계산하세요.',
+  description: '로스트아크 경매 입찰 최적가를 계산하세요. (쌀산기)',
 };
 
 export default async function AuctionCalculatorPage() {
