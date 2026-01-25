@@ -876,7 +876,7 @@ function CharacterSimulation({ weaponStages, armorStages, weaponStagesSerka, arm
       };
     }
     adjusted['실링'] = {
-      unitPrice: sillingUnitPrice,
+      unitPrice: adjustPrice('실링', sillingUnitPrice) ?? sillingUnitPrice,
       icon: marketInfo['실링']?.icon || FALLBACK_ICON[SILVER_ITEM] || null,
     };
     return adjusted;
@@ -1177,142 +1177,100 @@ function CharacterSimulation({ weaponStages, armorStages, weaponStagesSerka, arm
             ) : (
               <>
                 {/* 요약 정보 */}
-                <div className="bg-gray-900/70 rounded-lg border border-gray-700 overflow-hidden">
-                  <div className="px-5 py-3 bg-gray-800/50 border-b border-gray-700">
-                    <h3 className="text-lg font-semibold text-white">요약 정보</h3>
+                <div className="bg-gray-900/70 rounded-lg border border-gray-700 overflow-hidden text-xs">
+                  <div className="px-3 py-2 bg-gray-800/50 border-b border-gray-700">
+                    <h3 className="text-base font-semibold text-white">요약 정보</h3>
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full border border-gray-800 text-sm">
-                      <thead>
-                        <tr className="bg-gray-900/90 text-gray-200">
-                          <th className="px-4 py-3 text-left font-medium border-b border-gray-700">아이템</th>
-                          <th className="px-4 py-3 text-right font-medium border-b border-gray-700">실제 가치</th>
-                          <th className="px-4 py-3 text-right font-medium border-b border-gray-700">거래소 가격</th>
-                          <th className="px-4 py-3 text-center font-medium border-b border-gray-700">비교</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {summaryValues.craftItems.length > 0 && summaryValues.craftItems.map((item, idx) => {
-                          const isProfitable = item.marketPrice != null && item.value > item.marketPrice;
-                          const isLoss = item.marketPrice != null && item.value < item.marketPrice;
-                          return (
-                            <tr key={idx} className={idx % 2 === 0 ? 'bg-gray-900/50' : 'bg-gray-800/50'}>
-                              <td className="px-4 py-3 text-gray-300 border-b border-gray-800">{item.name}</td>
-                              <td className="px-4 py-3 text-right text-yellow-300 font-medium border-b border-gray-800">
-                                {formatNumberWithSignificantDigits(item.value)} 골드
-                              </td>
-                              <td className="px-4 py-3 text-right text-gray-400 border-b border-gray-800">
-                                {item.marketPrice != null 
-                                  ? `${formatNumberWithSignificantDigits(item.marketPrice)} 골드`
-                                  : '-'}
-                              </td>
-                              <td className="px-4 py-3 text-center border-b border-gray-800">
-                                {item.marketPrice != null ? (
-                                  isProfitable ? (
-                                    <span className="text-green-400 font-medium">사는 게 이득</span>
-                                  ) : isLoss ? (
-                                    <span className="text-red-400 font-medium">사는 게 손해</span>
-                                  ) : (
-                                    <span className="text-gray-400">-</span>
-                                  )
-                                ) : (
-                                  <span className="text-gray-500">-</span>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                        <tr className={summaryValues.craftItems.length % 2 === 0 ? 'bg-gray-900/50' : 'bg-gray-800/50'}>
-                          <td className="px-4 py-3 text-gray-300 border-b border-gray-800">용암의 숨결</td>
-                          <td className="px-4 py-3 text-right text-blue-300 font-medium border-b border-gray-800">
-                            {summaryValues.lavaBreathValue != null 
-                              ? `${formatNumberWithSignificantDigits(summaryValues.lavaBreathValue)} 골드`
-                              : '-'}
-                          </td>
-                          <td className="px-4 py-3 text-right text-gray-400 border-b border-gray-800">
-                            {summaryValues.lavaBreathMarketPrice != null 
-                              ? `${formatNumberWithSignificantDigits(summaryValues.lavaBreathMarketPrice)} 골드`
-                              : '-'}
-                          </td>
-                          <td className="px-4 py-3 text-center border-b border-gray-800">
-                            {summaryValues.lavaBreathValue != null && summaryValues.lavaBreathMarketPrice != null ? (
-                              summaryValues.lavaBreathValue > summaryValues.lavaBreathMarketPrice ? (
-                                <span className="text-green-400 font-medium">사는 게 이득</span>
-                              ) : summaryValues.lavaBreathValue < summaryValues.lavaBreathMarketPrice ? (
-                                <span className="text-red-400 font-medium">사는 게 손해</span>
-                              ) : (
-                                <span className="text-gray-400">-</span>
-                              )
+                  <ul className="divide-y divide-gray-800">
+                    {summaryValues.craftItems.length > 0 && summaryValues.craftItems.map((item, idx) => {
+                      const isProfitable = item.marketPrice != null && item.value > item.marketPrice;
+                      const isLoss = item.marketPrice != null && item.value < item.marketPrice;
+                      return (
+                        <li key={idx} className={`flex items-center gap-3 px-3 py-1.5 ${idx % 2 === 0 ? 'bg-gray-900/50' : 'bg-gray-800/30'}`}>
+                          <span className="min-w-[7rem] text-gray-300 shrink-0">{item.name}</span>
+                          <span className="text-yellow-300 font-medium shrink-0">{formatNumberWithSignificantDigits(item.value)}g</span>
+                          <span className="text-gray-500 shrink-0">
+                            {item.marketPrice != null ? `${formatNumberWithSignificantDigits(item.marketPrice)}g` : '-'}
+                          </span>
+                          {item.marketPrice != null ? (
+                            isProfitable ? (
+                              <span className="text-green-400 ml-auto">사는 게 이득</span>
+                            ) : isLoss ? (
+                              <span className="text-red-400 ml-auto">사는 게 손해</span>
                             ) : (
-                              <span className="text-gray-500">-</span>
-                            )}
-                          </td>
-                        </tr>
-                        <tr className={(summaryValues.craftItems.length + 1) % 2 === 0 ? 'bg-gray-900/50' : 'bg-gray-800/50'}>
-                          <td className="px-4 py-3 text-gray-300 border-b border-gray-800">빙하의 숨결</td>
-                          <td className="px-4 py-3 text-right text-purple-300 font-medium border-b border-gray-800">
-                            {summaryValues.iceBreathValue != null 
-                              ? `${formatNumberWithSignificantDigits(summaryValues.iceBreathValue)} 골드`
-                              : '-'}
-                          </td>
-                          <td className="px-4 py-3 text-right text-gray-400 border-b border-gray-800">
-                            {summaryValues.iceBreathMarketPrice != null 
-                              ? `${formatNumberWithSignificantDigits(summaryValues.iceBreathMarketPrice)} 골드`
-                              : '-'}
-                          </td>
-                          <td className="px-4 py-3 text-center border-b border-gray-800">
-                            {summaryValues.iceBreathValue != null && summaryValues.iceBreathMarketPrice != null ? (
-                              summaryValues.iceBreathValue > summaryValues.iceBreathMarketPrice ? (
-                                <span className="text-green-400 font-medium">사는 게 이득</span>
-                              ) : summaryValues.iceBreathValue < summaryValues.iceBreathMarketPrice ? (
-                                <span className="text-red-400 font-medium">사는 게 손해</span>
-                              ) : (
-                                <span className="text-gray-400">-</span>
-                              )
-                            ) : (
-                              <span className="text-gray-500">-</span>
-                            )}
-                          </td>
-                        </tr>
-                        {summaryValues.circularBreakthroughValue != null && (
-                          <tr className={(summaryValues.craftItems.length + 3) % 2 === 0 ? 'bg-gray-900/50' : 'bg-gray-800/50'}>
-                            <td className="px-4 py-3 text-gray-300 border-b border-gray-800">순환 돌파석</td>
-                            <td className="px-4 py-3 text-right text-green-300 font-medium border-b border-gray-800">
-                              {formatNumberWithSignificantDigits(summaryValues.circularBreakthroughValue)} 골드
-                            </td>
-                            <td className="px-4 py-3 text-right text-gray-400 border-b border-gray-800">-</td>
-                            <td className="px-4 py-3 text-center border-b border-gray-800">
-                              {summaryValues.circularBreakthroughBestEquipment ? (
-                                <span className="text-gray-300">
-                                  {summaryValues.circularBreakthroughBestEquipment.replace(/\s*\+\d+.*$/, '').trim()} 부위에 우선 사용
-                                </span>
-                              ) : (
-                                <span className="text-gray-500">-</span>
-                              )}
-                            </td>
-                          </tr>
-                        )}
-                        {summaryValues.transitionBreakthroughValue != null && (
-                          <tr className={(summaryValues.craftItems.length + 4) % 2 === 0 ? 'bg-gray-900/50' : 'bg-gray-800/50'}>
-                            <td className="px-4 py-3 text-gray-300 border-b border-gray-800">전이 돌파석</td>
-                            <td className="px-4 py-3 text-right text-green-300 font-medium border-b border-gray-800">
-                              {formatNumberWithSignificantDigits(summaryValues.transitionBreakthroughValue)} 골드
-                            </td>
-                            <td className="px-4 py-3 text-right text-gray-400 border-b border-gray-800">-</td>
-                            <td className="px-4 py-3 text-center border-b border-gray-800">
-                              {summaryValues.transitionBreakthroughBestEquipment ? (
-                                <span className="text-gray-300">
-                                  {summaryValues.transitionBreakthroughBestEquipment.replace(/\s*\+\d+.*$/, '').trim()} 부위에 우선 사용
-                                </span>
-                              ) : (
-                                <span className="text-gray-500">-</span>
-                              )}
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
+                              <span className="text-gray-500 ml-auto">-</span>
+                            )
+                          ) : (
+                            <span className="text-gray-500 ml-auto">-</span>
+                          )}
+                        </li>
+                      );
+                    })}
+                    <li className={`flex items-center gap-3 px-3 py-1.5 ${summaryValues.craftItems.length % 2 === 0 ? 'bg-gray-900/50' : 'bg-gray-800/30'}`}>
+                      <span className="min-w-[7rem] text-gray-300 shrink-0">용암의 숨결</span>
+                      <span className="text-blue-300 font-medium shrink-0">
+                        {summaryValues.lavaBreathValue != null ? `${formatNumberWithSignificantDigits(summaryValues.lavaBreathValue)}g` : '-'}
+                      </span>
+                      <span className="text-gray-500 shrink-0">
+                        {summaryValues.lavaBreathMarketPrice != null ? `${formatNumberWithSignificantDigits(summaryValues.lavaBreathMarketPrice)}g` : '-'}
+                      </span>
+                      {summaryValues.lavaBreathValue != null && summaryValues.lavaBreathMarketPrice != null ? (
+                        summaryValues.lavaBreathValue > summaryValues.lavaBreathMarketPrice ? (
+                          <span className="text-green-400 ml-auto">사는 게 이득</span>
+                        ) : summaryValues.lavaBreathValue < summaryValues.lavaBreathMarketPrice ? (
+                          <span className="text-red-400 ml-auto">사는 게 손해</span>
+                        ) : (
+                          <span className="text-gray-500 ml-auto">-</span>
+                        )
+                      ) : (
+                        <span className="text-gray-500 ml-auto">-</span>
+                      )}
+                    </li>
+                    <li className={`flex items-center gap-3 px-3 py-1.5 ${(summaryValues.craftItems.length + 1) % 2 === 0 ? 'bg-gray-900/50' : 'bg-gray-800/30'}`}>
+                      <span className="min-w-[7rem] text-gray-300 shrink-0">빙하의 숨결</span>
+                      <span className="text-purple-300 font-medium shrink-0">
+                        {summaryValues.iceBreathValue != null ? `${formatNumberWithSignificantDigits(summaryValues.iceBreathValue)}g` : '-'}
+                      </span>
+                      <span className="text-gray-500 shrink-0">
+                        {summaryValues.iceBreathMarketPrice != null ? `${formatNumberWithSignificantDigits(summaryValues.iceBreathMarketPrice)}g` : '-'}
+                      </span>
+                      {summaryValues.iceBreathValue != null && summaryValues.iceBreathMarketPrice != null ? (
+                        summaryValues.iceBreathValue > summaryValues.iceBreathMarketPrice ? (
+                          <span className="text-green-400 ml-auto">사는 게 이득</span>
+                        ) : summaryValues.iceBreathValue < summaryValues.iceBreathMarketPrice ? (
+                          <span className="text-red-400 ml-auto">사는 게 손해</span>
+                        ) : (
+                          <span className="text-gray-500 ml-auto">-</span>
+                        )
+                      ) : (
+                        <span className="text-gray-500 ml-auto">-</span>
+                      )}
+                    </li>
+                    {summaryValues.circularBreakthroughValue != null && (
+                      <li className={`flex items-center gap-3 px-3 py-1.5 ${(summaryValues.craftItems.length + 3) % 2 === 0 ? 'bg-gray-900/50' : 'bg-gray-800/30'}`}>
+                        <span className="min-w-[7rem] text-gray-300 shrink-0">순환 돌파석</span>
+                        <span className="text-green-300 font-medium shrink-0">{formatNumberWithSignificantDigits(summaryValues.circularBreakthroughValue)}g</span>
+                        <span className="text-gray-500 shrink-0">-</span>
+                        <span className="text-gray-300 ml-auto truncate">
+                          {summaryValues.circularBreakthroughBestEquipment
+                            ? `${summaryValues.circularBreakthroughBestEquipment.replace(/\s*\+\d+.*$/, '').trim()} 부위 우선`
+                            : '-'}
+                        </span>
+                      </li>
+                    )}
+                    {summaryValues.transitionBreakthroughValue != null && (
+                      <li className={`flex items-center gap-3 px-3 py-1.5 ${(summaryValues.craftItems.length + 4) % 2 === 0 ? 'bg-gray-900/50' : 'bg-gray-800/30'}`}>
+                        <span className="min-w-[7rem] text-gray-300 shrink-0">전이 돌파석</span>
+                        <span className="text-green-300 font-medium shrink-0">{formatNumberWithSignificantDigits(summaryValues.transitionBreakthroughValue)}g</span>
+                        <span className="text-gray-500 shrink-0">-</span>
+                        <span className="text-gray-300 ml-auto truncate">
+                          {summaryValues.transitionBreakthroughBestEquipment
+                            ? `${summaryValues.transitionBreakthroughBestEquipment.replace(/\s*\+\d+.*$/, '').trim()} 부위 우선`
+                            : '-'}
+                        </span>
+                      </li>
+                    )}
+                  </ul>
                 </div>
 
                 {/* 장비 표 */}
