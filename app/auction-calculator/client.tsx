@@ -19,6 +19,7 @@ export default function AuctionCalculatorClient({ marketData }: AuctionCalculato
   const [searchQuery, setSearchQuery] = useState('');
   const [itemPrice, setItemPrice] = useState('');
   const [partySize, setPartySize] = useState<4 | 8 | 16>(8);
+  const [copied, setCopied] = useState(false);
   
   // 검색 + 가격 정렬 (서버에서 이미 유물 각인서 + 야금술/재봉술만 전달)
   const filteredItems = useMemo(() => {
@@ -89,6 +90,20 @@ export default function AuctionCalculatorClient({ marketData }: AuctionCalculato
       setItemPrice(prev => prev.slice(0, -1));
     } else {
       setItemPrice(prev => prev + num);
+    }
+  };
+
+  // 추천 입찰가 클립보드 복사
+  const copyRecommendedBid = async () => {
+    if (!auctionResults) return;
+    
+    const bidValue = Math.round(auctionResults.recommendedBid);
+    try {
+      await navigator.clipboard.writeText(bidValue.toString());
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('클립보드 복사 실패:', err);
     }
   };
   
@@ -240,9 +255,45 @@ export default function AuctionCalculatorClient({ marketData }: AuctionCalculato
                     </div>
                     <div className="flex flex-col items-center">
                       <span className="text-[11px] text-green-300 font-medium">추천 입찰가</span>
-                      <span className="text-sm text-green-400 font-semibold">
-                        {formatNumberWithSignificantDigits(auctionResults.recommendedBid)}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm text-green-400 font-semibold">
+                          {formatNumberWithSignificantDigits(auctionResults.recommendedBid)}
+                        </span>
+                        <button
+                          onClick={copyRecommendedBid}
+                          className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors ${
+                            copied
+                              ? 'bg-green-600 text-white'
+                              : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
+                          }`}
+                          title="클립보드에 복사"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-3 w-3"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            {copied ? (
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M5 13l4 4L19 7"
+                              />
+                            ) : (
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                              />
+                            )}
+                          </svg>
+                          <span>{copied ? '복사됨' : '복사'}</span>
+                        </button>
+                      </div>
                       <span className="text-[10px] text-green-400 mt-0.5">
                         {auctionResults.recommendedProfit > 0 ? '+' : ''}
                         {formatNumberWithSignificantDigits(auctionResults.recommendedProfit)}골드 이득
