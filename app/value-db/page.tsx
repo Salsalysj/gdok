@@ -158,6 +158,7 @@ export type RefiningStage = {
   baseMaterials: { name: string; quantity: number }[];
   breathMaterial: { name: string; quantity: number } | null;
   metallurgyMaterial: { name: string; quantity: number } | null;
+  enhancedMetallurgyMaterial: { name: string; quantity: number } | null; // 19-20단계용 강화 야금술/재봉술
   goldCost: number;
   silverCost: number;
   baseSuccessRate: number;
@@ -201,6 +202,7 @@ export function createStages(
       baseMaterials: baseMaterialsList,
       breathMaterial,
       metallurgyMaterial,
+      enhancedMetallurgyMaterial: null, // value-db에서는 강화 야금술/재봉술 미사용
       goldCost,
       silverCost,
       baseSuccessRate,
