@@ -15,6 +15,31 @@ export default function UpdatesPage() {
         </div>
 
         <div className="space-y-3 sm:space-y-4 md:space-y-6 lg:space-y-8">
+          {/* v0.3.9 */}
+          <div className="bg-gray-800 rounded-none sm:rounded-lg p-3 sm:p-4 md:p-6 border-x-0 sm:border-x border-gray-700">
+            <h2 className="text-sm sm:text-base md:text-lg lg:text-2xl font-bold text-white mb-2 sm:mb-3 md:mb-4">v0.3.9 (2026. 01. 25)</h2>
+            
+            <div className="space-y-2 sm:space-y-3 md:space-y-4">
+              <div>
+                <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold text-green-400 mb-1 sm:mb-2">신규 기능</h3>
+                <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-[10px] sm:text-xs md:text-sm text-gray-300 ml-3 sm:ml-4 whitespace-normal break-words">
+                  <li>재련 효율에 강화 야금술/재봉술 포함</li>
+                  <li>내 캐릭터 시뮬레이션에서 강화 야금술/재봉술도 표시되도록 변경</li>
+                </ul>
+              </div>
+              
+              <div>
+                <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold text-blue-400 mb-1 sm:mb-2">개선 사항</h3>
+                <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-[10px] sm:text-xs md:text-sm text-gray-300 ml-3 sm:ml-4 whitespace-normal break-words">
+                  <li>가격 조정 스위치 추가 (젬)</li>
+                  <li>가격 조정 스위치 UI 변경 (체크박스 → 단추)</li>
+                  <li>경매 계산기(쌀산기)에 추천 입찰가 복사 기능 추가</li>
+                  <li>페이지 간 컴포넌트 계산 로직 통일</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
           {/* v0.3.8 */}
           <div className="bg-gray-800 rounded-none sm:rounded-lg p-3 sm:p-4 md:p-6 border-x-0 sm:border-x border-gray-700">
             <h2 className="text-sm sm:text-base md:text-lg lg:text-2xl font-bold text-white mb-2 sm:mb-3 md:mb-4">v0.3.8 (2026. 01. 24)</h2>

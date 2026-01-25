@@ -495,6 +495,11 @@ function CharacterSimulation({ weaponStages, armorStages, weaponStagesSerka, arm
       const craftItemName = stage.metallurgyMaterial?.name || null;
       const craftMarketPrice = craftItemName ? (adjustedMarketInfo[craftItemName]?.unitPrice ?? null) : null;
       
+      // 강화 야금/재봉 가치 및 아이템 정보 (19-20단계)
+      const enhancedCraftValue = materialValueAnalysis?.enhancedMetallurgy?.actualValuePerItem ?? null;
+      const enhancedCraftItemName = stage.enhancedMetallurgyMaterial?.name || null;
+      const enhancedCraftMarketPrice = enhancedCraftItemName ? (adjustedMarketInfo[enhancedCraftItemName]?.unitPrice ?? null) : null;
+      
       // 숨결 가치 및 아이템 정보
       const breathValue = materialValueAnalysis?.breath?.actualValuePerItem ?? null;
       const breathItemName = stage.breathMaterial?.name || null;
@@ -555,6 +560,9 @@ function CharacterSimulation({ weaponStages, armorStages, weaponStagesSerka, arm
         craftValue,
         craftItemName,
         craftMarketPrice,
+        enhancedCraftValue,
+        enhancedCraftItemName,
+        enhancedCraftMarketPrice,
         breathValue,
         breathItemName,
         breathMarketPrice,
@@ -632,6 +640,7 @@ function CharacterSimulation({ weaponStages, armorStages, weaponStagesSerka, arm
     }>();
     
     equipmentWithValues.forEach(eq => {
+      // 일반 야금술/재봉술
       if (eq.craftItemName && eq.craftValue != null) {
         const existing = craftItemsMap.get(eq.craftItemName);
         // 같은 아이템이 여러 장비에서 사용되는 경우, 가장 높은 가치를 유지
@@ -640,6 +649,19 @@ function CharacterSimulation({ weaponStages, armorStages, weaponStagesSerka, arm
             name: eq.craftItemName,
             value: eq.craftValue,
             marketPrice: eq.craftMarketPrice,
+            type: eq.type,
+          });
+        }
+      }
+      
+      // 강화 야금술/재봉술 (19-20단계)
+      if (eq.enhancedCraftItemName && eq.enhancedCraftValue != null) {
+        const existing = craftItemsMap.get(eq.enhancedCraftItemName);
+        if (!existing || eq.enhancedCraftValue > existing.value) {
+          craftItemsMap.set(eq.enhancedCraftItemName, {
+            name: eq.enhancedCraftItemName,
+            value: eq.enhancedCraftValue,
+            marketPrice: eq.enhancedCraftMarketPrice,
             type: eq.type,
           });
         }
@@ -919,19 +941,42 @@ function CharacterSimulation({ weaponStages, armorStages, weaponStagesSerka, arm
                           {eq.targetLevel != null ? `+${eq.targetLevel}` : '-'}
                         </td>
                         <td className="px-4 py-3 text-right border-b border-gray-800">
-                          {eq.craftValue != null ? (
-                            <div>
-                              <div className="text-yellow-300 font-medium">
-                                {formatNumberWithSignificantDigits(eq.craftValue)} 골드
-                              </div>
-                              {eq.craftItemName && (
-                                <div className="text-xs text-gray-400 mt-1">
-                                  {eq.craftItemName}
+                          {eq.craftValue != null || eq.enhancedCraftValue != null ? (
+                            <div className="space-y-2">
+                              {/* 일반 야금술/재봉술 */}
+                              {eq.craftValue != null && (
+                                <div>
+                                  <div className="text-yellow-300 font-medium">
+                                    {formatNumberWithSignificantDigits(eq.craftValue)} 골드
+                                  </div>
+                                  {eq.craftItemName && (
+                                    <div className="text-xs text-gray-400 mt-1">
+                                      {eq.craftItemName}
+                                    </div>
+                                  )}
+                                  {eq.craftMarketPrice != null && (
+                                    <div className="text-xs text-gray-500 mt-0.5">
+                                      거래소: {formatNumberWithSignificantDigits(eq.craftMarketPrice)} 골드
+                                    </div>
+                                  )}
                                 </div>
                               )}
-                              {eq.craftMarketPrice != null && (
-                                <div className="text-xs text-gray-500 mt-0.5">
-                                  거래소: {formatNumberWithSignificantDigits(eq.craftMarketPrice)} 골드
+                              {/* 강화 야금술/재봉술 (19-20단계) */}
+                              {eq.enhancedCraftValue != null && (
+                                <div className={eq.craftValue != null ? 'pt-2 border-t border-gray-700' : ''}>
+                                  <div className="text-amber-300 font-medium">
+                                    {formatNumberWithSignificantDigits(eq.enhancedCraftValue)} 골드
+                                  </div>
+                                  {eq.enhancedCraftItemName && (
+                                    <div className="text-xs text-gray-400 mt-1">
+                                      {eq.enhancedCraftItemName}
+                                    </div>
+                                  )}
+                                  {eq.enhancedCraftMarketPrice != null && (
+                                    <div className="text-xs text-gray-500 mt-0.5">
+                                      거래소: {formatNumberWithSignificantDigits(eq.enhancedCraftMarketPrice)} 골드
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>
@@ -1053,6 +1098,7 @@ type MaterialValueInsight = {
 type MaterialValueAnalysis = {
   breath: MaterialValueInsight;
   metallurgy: MaterialValueInsight;
+  enhancedMetallurgy: MaterialValueInsight | null; // 19-20단계용 강화 야금술/재봉술
 };
 
 const GOLD_ITEM = '골드';
@@ -1079,6 +1125,8 @@ const FALLBACK_ICON: Record<string, string> = {
   '재봉술 : 업화 [11-14]': '🧵',
   '재봉술 : 업화 [15-18]': '🧵',
   '재봉술 : 업화 [19-20]': '🧵',
+  '강화 야금술 : 업화 [19-20]': '⚒️',
+  '강화 재봉술 : 업화 [19-20]': '🪡',
 };
 
 function clampRate(value: number | null): number | null {
@@ -1115,6 +1163,7 @@ export function calculateOptimalStrategy(
   baseStrategy: StrategySummary;
   fullBreathStrategy: StrategySummary | null;
   fullMetallurgyStrategy: StrategySummary | null;
+  fullEnhancedMetallurgyStrategy: StrategySummary | null;
   fullBothStrategy: StrategySummary | null;
   materialValueAnalysis: MaterialValueAnalysis | null;
 } {
@@ -1140,9 +1189,14 @@ export function calculateOptimalStrategy(
   const metallurgyInfo = stage.metallurgyMaterial ? getUnitInfo(stage.metallurgyMaterial.name) : null;
   const metallurgyUnitPrice = metallurgyInfo?.unitPrice || 0;
 
+  // 19-20단계용 강화 야금술/재봉술
+  const enhancedMetallurgyInfo = stage.enhancedMetallurgyMaterial ? getUnitInfo(stage.enhancedMetallurgyMaterial.name) : null;
+  const enhancedMetallurgyUnitPrice = enhancedMetallurgyInfo?.unitPrice || 0;
+
   const calculateExpectedCost = (
     breathUses: number,
-    metallurgyUses: number
+    metallurgyUses: number,
+    useEnhancedMetallurgy: boolean = false
   ): {
     expectedTotalCost: number;
     averageAttempts: number;
@@ -1178,19 +1232,34 @@ export function calculateOptimalStrategy(
       const isLowRate = stage.baseSuccessRate === 0.5;
       const bonusRate = isLowRate ? 1.0 : stage.baseSuccessRate;
 
+      // 강화 야금술/재봉술 사용 시 보너스 2배
+      const metallurgyBonusMultiplier = useEnhancedMetallurgy ? 2 : 1;
+
       if (useBreath && useMetallurgy) {
-        actualSuccessRate = Math.min(currentBaseRate + 2 * bonusRate, 100);
+        actualSuccessRate = Math.min(currentBaseRate + bonusRate + bonusRate * metallurgyBonusMultiplier, 100);
         currentBreathCost = stage.breathMaterial!.quantity * breathUnitPrice;
-        currentMetallurgyCost = stage.metallurgyMaterial!.quantity * metallurgyUnitPrice;
-        strategyLabel = `${stage.breathMaterial!.name} & ${stage.metallurgyMaterial!.name}`;
+        
+        if (useEnhancedMetallurgy && stage.enhancedMetallurgyMaterial) {
+          currentMetallurgyCost = stage.enhancedMetallurgyMaterial.quantity * enhancedMetallurgyUnitPrice;
+          strategyLabel = `${stage.breathMaterial!.name} & ${stage.enhancedMetallurgyMaterial.name}`;
+        } else {
+          currentMetallurgyCost = stage.metallurgyMaterial!.quantity * metallurgyUnitPrice;
+          strategyLabel = `${stage.breathMaterial!.name} & ${stage.metallurgyMaterial!.name}`;
+        }
       } else if (useBreath) {
         actualSuccessRate = Math.min(currentBaseRate + bonusRate, 100);
         currentBreathCost = stage.breathMaterial!.quantity * breathUnitPrice;
         strategyLabel = stage.breathMaterial!.name;
       } else if (useMetallurgy) {
-        actualSuccessRate = Math.min(currentBaseRate + bonusRate, 100);
-        currentMetallurgyCost = stage.metallurgyMaterial!.quantity * metallurgyUnitPrice;
-        strategyLabel = stage.metallurgyMaterial!.name;
+        actualSuccessRate = Math.min(currentBaseRate + bonusRate * metallurgyBonusMultiplier, 100);
+        
+        if (useEnhancedMetallurgy && stage.enhancedMetallurgyMaterial) {
+          currentMetallurgyCost = stage.enhancedMetallurgyMaterial.quantity * enhancedMetallurgyUnitPrice;
+          strategyLabel = stage.enhancedMetallurgyMaterial.name;
+        } else {
+          currentMetallurgyCost = stage.metallurgyMaterial!.quantity * metallurgyUnitPrice;
+          strategyLabel = stage.metallurgyMaterial!.name;
+        }
       }
 
       if (artisanEnergy >= 100) {
@@ -1245,6 +1314,7 @@ export function calculateOptimalStrategy(
   let minExpectedCost = Infinity;
   let optimalBreathUses = 0;
   let optimalMetallurgyUses = 0;
+  let optimalUseEnhancedMetallurgy = false;
   let optimalSimulationDetails: SimulationDetail[] = [];
   let optimalAverageAttempts = 0;
   let optimalBreathAttempts = 0;
@@ -1252,7 +1322,7 @@ export function calculateOptimalStrategy(
   let optimalBreathCost = 0;
   let optimalMetallurgyCost = 0;
 
-  const baseStrategyResult = calculateExpectedCost(0, 0);
+  const baseStrategyResult = calculateExpectedCost(0, 0, false);
   const baseStrategy: StrategySummary = {
     label: '기본 재련 전략',
     description: '보조 재료 미사용',
@@ -1273,42 +1343,66 @@ export function calculateOptimalStrategy(
   optimalBreathCost = baseStrategyResult.breathTotalCost;
   optimalMetallurgyCost = baseStrategyResult.metallurgyTotalCost;
 
+  // 19-20단계인 경우 일반/강화 야금술/재봉술 모두 탐색
+  const hasEnhancedOption = stage.enhancedMetallurgyMaterial && (stage.level === 19 || stage.level === 20);
+  const enhancedOptions = hasEnhancedOption ? [false, true] : [false];
+
   for (let b = 0; b <= maxBreathUses; b++) {
     for (let m = 0; m <= maxMetallurgyUses; m++) {
-      const {
-        expectedTotalCost,
-        averageAttempts,
-        simulationDetails,
-        breathAttempts,
-        metallurgyAttempts,
-        breathTotalCost,
-        metallurgyTotalCost,
-      } = calculateExpectedCost(b, m);
+      for (const useEnhanced of enhancedOptions) {
+        const {
+          expectedTotalCost,
+          averageAttempts,
+          simulationDetails,
+          breathAttempts,
+          metallurgyAttempts,
+          breathTotalCost,
+          metallurgyTotalCost,
+        } = calculateExpectedCost(b, m, useEnhanced);
 
-      if (expectedTotalCost < minExpectedCost) {
-        minExpectedCost = expectedTotalCost;
-        optimalBreathUses = b;
-        optimalMetallurgyUses = m;
-        optimalSimulationDetails = simulationDetails;
+        if (expectedTotalCost < minExpectedCost) {
+          minExpectedCost = expectedTotalCost;
+          optimalBreathUses = b;
+          optimalMetallurgyUses = m;
+          optimalUseEnhancedMetallurgy = useEnhanced;
+          optimalSimulationDetails = simulationDetails;
         optimalAverageAttempts = averageAttempts;
         optimalBreathAttempts = breathAttempts;
         optimalMetallurgyAttempts = metallurgyAttempts;
         optimalBreathCost = breathTotalCost;
         optimalMetallurgyCost = metallurgyTotalCost;
+        }
       }
     }
   }
 
-  let optimalStrategyLabel = '';
-  if (optimalBreathUses > 0 && optimalMetallurgyUses > 0) {
-    optimalStrategyLabel = `숨결 ${optimalBreathUses}회, 야금술 ${optimalMetallurgyUses}회 투입`;
-  } else if (optimalBreathUses > 0) {
-    optimalStrategyLabel = `숨결 ${optimalBreathUses}회 투입`;
-  } else if (optimalMetallurgyUses > 0) {
-    optimalStrategyLabel = `야금술 ${optimalMetallurgyUses}회 투입`;
-  } else {
-    optimalStrategyLabel = '보조 재료 미사용 (기본 전략과 동일)';
-  }
+  // 장인 에너지가 100%에 도달한 시점 찾기
+  const artisanEnergy100Attempt = optimalSimulationDetails.find(detail => detail.artisanEnergy >= 100)?.attempt || Infinity;
+  
+  // 숨결과 야금술 모두 사용하는 경우
+  const formatStrategyLabel = (breathUses: number, metallurgyUses: number, useEnhanced: boolean): string => {
+    const breathAllUsed = breathUses >= 25 || (breathUses > 0 && artisanEnergy100Attempt <= breathUses);
+    const metallurgyAllUsed = metallurgyUses >= 25 || (metallurgyUses > 0 && artisanEnergy100Attempt <= metallurgyUses);
+    
+    // 강화 야금술/재봉술 표기
+    const metallurgyName = useEnhanced && stage.enhancedMetallurgyMaterial
+      ? (stage.enhancedMetallurgyMaterial.name.includes('야금술') ? '강화 야금술' : '강화 재봉술')
+      : (stage.metallurgyMaterial?.name.includes('야금술') ? '야금술' : '재봉술');
+    
+    if (breathUses > 0 && metallurgyUses > 0) {
+      const breathLabel = breathAllUsed ? '숨결 모두 투입' : `숨결 ${breathUses}회까지 투입`;
+      const metallurgyLabel = metallurgyAllUsed ? `${metallurgyName} 모두 투입` : `${metallurgyName} ${metallurgyUses}회까지 투입`;
+      return `${breathLabel}, ${metallurgyLabel}`;
+    } else if (breathUses > 0) {
+      return breathAllUsed ? '숨결 모두 투입' : `숨결 ${breathUses}회까지 투입`;
+    } else if (metallurgyUses > 0) {
+      return metallurgyAllUsed ? `${metallurgyName} 모두 투입` : `${metallurgyName} ${metallurgyUses}회까지 투입`;
+    } else {
+      return '보조 재료 미사용 (기본 전략과 동일)';
+    }
+  };
+
+  const optimalStrategyLabel = formatStrategyLabel(optimalBreathUses, optimalMetallurgyUses, optimalUseEnhancedMetallurgy);
 
   const optimalStrategy: StrategySummary = {
     label: '최적 재련 전략',
@@ -1324,10 +1418,10 @@ export function calculateOptimalStrategy(
 
   let fullBreathStrategy: StrategySummary | null = null;
   if (stage.breathMaterial) {
-    const fullBreathResult = calculateExpectedCost(maxAttempts, 0);
+    const fullBreathResult = calculateExpectedCost(maxAttempts, 0, false);
     fullBreathStrategy = {
       label: '풀숨 전략',
-      description: '모든 회차에 숨결 투입',
+      description: '숨결 모두 투입',
       expectedCost: fullBreathResult.expectedTotalCost,
       averageAttempts: fullBreathResult.averageAttempts,
       simulationDetails: fullBreathResult.simulationDetails,
@@ -1340,10 +1434,13 @@ export function calculateOptimalStrategy(
 
   let fullMetallurgyStrategy: StrategySummary | null = null;
   if (stage.metallurgyMaterial) {
-    const fullMetallurgyResult = calculateExpectedCost(0, maxAttempts);
+    // 풀책 전략은 항상 일반 야금술/재봉술만 사용 (강화 버전은 별도 전략)
+    const fullMetallurgyResult = calculateExpectedCost(0, maxAttempts, false);
+    const metallurgyName = stage.metallurgyMaterial.name.includes('야금술') ? '야금술' : '재봉술';
+    
     fullMetallurgyStrategy = {
       label: '풀책 전략',
-      description: '모든 회차에 야금술 투입',
+      description: `${metallurgyName} 모두 투입`,
       expectedCost: fullMetallurgyResult.expectedTotalCost,
       averageAttempts: fullMetallurgyResult.averageAttempts,
       simulationDetails: fullMetallurgyResult.simulationDetails,
@@ -1356,17 +1453,32 @@ export function calculateOptimalStrategy(
 
   let fullBothStrategy: StrategySummary | null = null;
   if (stage.breathMaterial && stage.metallurgyMaterial) {
-    const fullBothResult = calculateExpectedCost(maxAttempts, maxAttempts);
+    // 19-20단계인 경우 일반/강화 버전 중 더 저렴한 것 선택
+    let bestResult = calculateExpectedCost(maxAttempts, maxAttempts, false);
+    let useEnhanced = false;
+    
+    if (hasEnhancedOption) {
+      const enhancedResult = calculateExpectedCost(maxAttempts, maxAttempts, true);
+      if (enhancedResult.expectedTotalCost < bestResult.expectedTotalCost) {
+        bestResult = enhancedResult;
+        useEnhanced = true;
+      }
+    }
+    
+    const metallurgyName = useEnhanced && stage.enhancedMetallurgyMaterial
+      ? (stage.enhancedMetallurgyMaterial.name.includes('야금술') ? '강화 야금술' : '강화 재봉술')
+      : (stage.metallurgyMaterial.name.includes('야금술') ? '야금술' : '재봉술');
+    
     fullBothStrategy = {
       label: '풀숨 & 풀책 전략',
-      description: '모든 회차에 숨결과 야금술 투입',
-      expectedCost: fullBothResult.expectedTotalCost,
-      averageAttempts: fullBothResult.averageAttempts,
-      simulationDetails: fullBothResult.simulationDetails,
-      breathAttempts: fullBothResult.breathAttempts,
-      metallurgyAttempts: fullBothResult.metallurgyAttempts,
-      breathTotalCost: fullBothResult.breathTotalCost,
-      metallurgyTotalCost: fullBothResult.metallurgyTotalCost,
+      description: `숨결 모두 투입, ${metallurgyName} 모두 투입`,
+      expectedCost: bestResult.expectedTotalCost,
+      averageAttempts: bestResult.averageAttempts,
+      simulationDetails: bestResult.simulationDetails,
+      breathAttempts: bestResult.breathAttempts,
+      metallurgyAttempts: bestResult.metallurgyAttempts,
+      breathTotalCost: bestResult.breathTotalCost,
+      metallurgyTotalCost: bestResult.metallurgyTotalCost,
     };
   }
 
@@ -1380,18 +1492,17 @@ export function calculateOptimalStrategy(
   ): MaterialValueInsight => {
     const available = quantityPerUse > 0;
 
+    // 가치 분석은 항상 풀 전략(fallbackStrategy)을 기준으로 비교
+    // - 숨결: 기본 전략 vs 풀숨 전략
+    // - 야금술/재봉술: 기본 전략 vs 풀책 전략
+    // - 강화 야금술/재봉술: 기본 전략 vs 풀 강화책 전략
     let reference: StrategySummary | null = null;
     let basis: 'optimal' | 'full' | 'none' = 'none';
-    if (available) {
-      if (strategy && ((type === 'breath' && strategy.breathAttempts > 0) || (type === 'metallurgy' && strategy.metallurgyAttempts > 0))) {
-        reference = strategy;
-        basis = 'optimal';
-      } else if (fallbackStrategy) {
-        const hasUsage = type === 'breath' ? fallbackStrategy.breathAttempts > 0 : fallbackStrategy.metallurgyAttempts > 0;
-        if (hasUsage) {
-          reference = fallbackStrategy;
-          basis = 'full';
-        }
+    if (available && fallbackStrategy) {
+      const hasUsage = type === 'breath' ? fallbackStrategy.breathAttempts > 0 : fallbackStrategy.metallurgyAttempts > 0;
+      if (hasUsage) {
+        reference = fallbackStrategy;
+        basis = 'full';
       }
     }
 
@@ -1408,11 +1519,22 @@ export function calculateOptimalStrategy(
       };
     }
 
-    const usedCount = type === 'breath' ? reference.breathAttempts : reference.metallurgyAttempts;
-    const totalAuxCost = reference.breathTotalCost + reference.metallurgyTotalCost;
-    const actualValueGain = baseStrategy.expectedCost - (reference.expectedCost - totalAuxCost);
+    const rawUsedCount = type === 'breath' ? reference.breathAttempts : reference.metallurgyAttempts;
+    // n(횟수): 풀 전략 기준이므로 평균 시도 횟수 사용
+    // 풀 전략에서는 모든 시도에 사용하므로 n = 평균 시도 횟수
+    const usedCount = reference.averageAttempts;
+    // 해당 보조재료의 비용만 사용 (다른 보조재료 비용 제외)
+    const currentMaterialCost = type === 'breath' ? reference.breathTotalCost : reference.metallurgyTotalCost;
+    // 보조재료 투입 시 비용에서 해당 보조재료 비용을 제외한 순수 비용
+    // = 보조재료 없이 계산한 비용
+    const costWithoutCurrentMaterial = reference.expectedCost - currentMaterialCost;
+    // 실제 가치 = (기본 전략 비용 - 보조재료 투입 시 비용) / 총 개수 + 단가
+    // 공식: (a - b) / m + p
+    // a = 기본 전략 비용, b = 보조재료 투입 시 비용, m = 총 개수(= n * 1회당 투입 개수), p = 단가
+    // n = 평균 시도 횟수 기반 기대 사용 횟수
+    const actualValueGain = baseStrategy.expectedCost - reference.expectedCost;
     const totalItems = usedCount * quantityPerUse;
-    const actualValuePerItem = totalItems > 0 ? actualValueGain / totalItems : null;
+    const actualValuePerItem = totalItems > 0 ? (actualValueGain / totalItems) + unitPrice : null;
     const diffFromMarket = actualValuePerItem !== null ? actualValuePerItem - unitPrice : null;
 
     return {
@@ -1427,6 +1549,24 @@ export function calculateOptimalStrategy(
     };
   };
 
+  // 19-20단계용 강화 야금술/재봉술 풀 전략 계산
+  let fullEnhancedMetallurgyStrategy: StrategySummary | null = null;
+  if (stage.enhancedMetallurgyMaterial && hasEnhancedOption) {
+    const fullEnhancedResult = calculateExpectedCost(0, maxAttempts, true);
+    const enhancedName = stage.enhancedMetallurgyMaterial.name.includes('야금술') ? '강화 야금술' : '강화 재봉술';
+    fullEnhancedMetallurgyStrategy = {
+      label: '풀 강화책 전략',
+      description: `${enhancedName} 모두 투입`,
+      expectedCost: fullEnhancedResult.expectedTotalCost,
+      averageAttempts: fullEnhancedResult.averageAttempts,
+      simulationDetails: fullEnhancedResult.simulationDetails,
+      breathAttempts: fullEnhancedResult.breathAttempts,
+      metallurgyAttempts: fullEnhancedResult.metallurgyAttempts,
+      breathTotalCost: fullEnhancedResult.breathTotalCost,
+      metallurgyTotalCost: fullEnhancedResult.metallurgyTotalCost,
+    };
+  }
+
   const materialValueAnalysis: MaterialValueAnalysis = {
     breath: computeMaterialInsight('breath', optimalStrategy, fullBreathStrategy, breathUnitPrice, stage.breathMaterial?.quantity || 0, stage.breathMaterial?.name || BREATH_ITEM),
     metallurgy: computeMaterialInsight(
@@ -1437,9 +1577,17 @@ export function calculateOptimalStrategy(
       stage.metallurgyMaterial?.quantity || 0,
       stage.metallurgyMaterial?.name || '야금술'
     ),
+    enhancedMetallurgy: stage.enhancedMetallurgyMaterial ? computeMaterialInsight(
+      'metallurgy',
+      optimalStrategy,
+      fullEnhancedMetallurgyStrategy,
+      enhancedMetallurgyUnitPrice,
+      stage.enhancedMetallurgyMaterial.quantity,
+      stage.enhancedMetallurgyMaterial.name
+    ) : null,
   };
 
-  return { optimalStrategy, baseStrategy, fullBreathStrategy, fullMetallurgyStrategy, fullBothStrategy, materialValueAnalysis };
+  return { optimalStrategy, baseStrategy, fullBreathStrategy, fullMetallurgyStrategy, fullEnhancedMetallurgyStrategy, fullBothStrategy, materialValueAnalysis };
 }
 
 function calculateScenarioSummaries(
@@ -1515,6 +1663,22 @@ function calculateScenarioSummaries(
     });
   }
 
+  // 19-20단계용 강화 야금술/재봉술
+  const enhancedMetallurgyInfo = stage.enhancedMetallurgyMaterial ? getUnitInfo(stage.enhancedMetallurgyMaterial.name) : null;
+  const enhancedMetallurgyUnitPrice = stage.enhancedMetallurgyMaterial
+    ? (enhancedMetallurgyInfo?.unitPrice || 0)
+    : 0;
+  const enhancedMetallurgyCost = stage.enhancedMetallurgyMaterial ? enhancedMetallurgyUnitPrice * stage.enhancedMetallurgyMaterial.quantity : 0;
+  if (stage.enhancedMetallurgyMaterial) {
+    optionalCosts.push({
+      name: stage.enhancedMetallurgyMaterial.name,
+      quantity: stage.enhancedMetallurgyMaterial.quantity,
+      unitPrice: enhancedMetallurgyUnitPrice,
+      totalPrice: enhancedMetallurgyCost,
+      icon: enhancedMetallurgyInfo?.icon,
+    });
+  }
+
   const baseRate = stage.baseSuccessRate;
   // 최초 성공률이 0.5%인 경우 보조 재료 보너스는 +1.0% 고정
   const isLowRate = stage.baseSuccessRate === 0.5;
@@ -1551,12 +1715,34 @@ function calculateScenarioSummaries(
     });
   }
 
+  // 19-20단계용 강화 야금술/재봉술 (보너스 2배)
+  if (stage.enhancedMetallurgyMaterial) {
+    const enhancedMetallurgyRate = clampRate(baseRate + bonusRate * 2);
+    scenarios.push({
+      label: `${stage.enhancedMetallurgyMaterial.name} 사용`,
+      description: '강화 야금술/재봉술만 추가',
+      cost: perAttemptBaseCost + enhancedMetallurgyCost,
+      successRate: enhancedMetallurgyRate,
+    });
+  }
+
   if (stage.breathMaterial && stage.metallurgyMaterial) {
     scenarios.push({
       label: `${stage.breathMaterial.name} & ${stage.metallurgyMaterial.name}`,
       description: '숨결과 야금술 모두 추가',
       cost: perAttemptBaseCost + breathCost + metallurgyCost,
       successRate: bothRate,
+    });
+  }
+
+  // 19-20단계용 강화 야금술/재봉술 + 숨결 (보너스: 숨결 +1x, 강화 야금술/재봉술 +2x)
+  if (stage.breathMaterial && stage.enhancedMetallurgyMaterial) {
+    const enhancedBothRate = clampRate(baseRate + bonusRate + bonusRate * 2);
+    scenarios.push({
+      label: `${stage.breathMaterial.name} & ${stage.enhancedMetallurgyMaterial.name}`,
+      description: '숨결과 강화 야금술/재봉술 모두 추가',
+      cost: perAttemptBaseCost + breathCost + enhancedMetallurgyCost,
+      successRate: enhancedBothRate,
     });
   }
 
@@ -1643,7 +1829,7 @@ function StageCard({ stage, marketInfo, sillingUnitPrice, selectedTier, allStage
     [stage, adjustedMarketInfo]
   );
 
-  const { optimalStrategy, baseStrategy, fullBreathStrategy, fullMetallurgyStrategy, fullBothStrategy, materialValueAnalysis } = useMemo(
+  const { optimalStrategy, baseStrategy, fullBreathStrategy, fullMetallurgyStrategy, fullEnhancedMetallurgyStrategy, fullBothStrategy, materialValueAnalysis } = useMemo(
     () => calculateOptimalStrategy(stage, adjustedMarketInfo),
     [stage, adjustedMarketInfo]
   );
@@ -1679,8 +1865,27 @@ function StageCard({ stage, marketInfo, sillingUnitPrice, selectedTier, allStage
   const isWeapon = stage.breathMaterial?.name === '용암의 숨결' || stage.metallurgyMaterial?.name?.includes('야금술') || false;
   const breathName = isWeapon ? '용암의 숨결' : '빙하의 숨결';
   const craftName = isWeapon ? '야금술' : '재봉술';
-  const breathStatus = optimalStrategy.breathAttempts > 0 ? '투입' : '투입 안함';
-  const craftCount = optimalStrategy.metallurgyAttempts;
+  
+  // description에서 숨결과 야금술 정보 추출
+  const parseStrategyDescription = (description: string) => {
+    const breathMatch = description.match(/숨결\s*(모두\s*투입|(\d+)회까지\s*투입)/);
+    const metallurgyMatch = description.match(/야금술\s*(모두\s*투입|(\d+)회까지\s*투입)/);
+    
+    const breathText = breathMatch ? (breathMatch[1] === '모두 투입' ? '모두 투입' : `${breathMatch[2]}회까지 투입`) : null;
+    const metallurgyText = metallurgyMatch ? (metallurgyMatch[1] === '모두 투입' ? '모두 투입' : `${metallurgyMatch[2]}회까지 투입`) : null;
+    
+    return { breathText, metallurgyText };
+  };
+  
+  const { breathText, metallurgyText } = parseStrategyDescription(optimalStrategy.description);
+  const breathStatus = breathText || (optimalStrategy.breathAttempts > 0 ? '투입' : '투입 안함');
+  const craftStatus = metallurgyText || (optimalStrategy.metallurgyAttempts > 0 ? `${optimalStrategy.metallurgyAttempts}회 투입` : '투입 안함');
+
+  // 강화 야금술/재봉술 (19-20단계)
+  const enhancedCraftName = isWeapon ? '강화 야금술' : '강화 재봉술';
+  const hasEnhancedOption = !!stage.enhancedMetallurgyMaterial;
+  const enhancedUsed = hasEnhancedOption && /강화\s*(야금술|재봉술)/.test(optimalStrategy.description);
+  const enhancedStatus = enhancedUsed ? '투입' : '투입 안함';
 
   return (
     <div className="bg-gray-900/70 rounded-lg border border-gray-700 overflow-hidden">
@@ -1705,12 +1910,20 @@ function StageCard({ stage, marketInfo, sillingUnitPrice, selectedTier, allStage
                 {breathStatus}
               </span>
             </div>
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-900/60 border ${craftCount > 0 ? 'border-purple-500/50' : 'border-gray-700/50'}`}>
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-900/60 border ${optimalStrategy.metallurgyAttempts > 0 ? 'border-purple-500/50' : 'border-gray-700/50'}`}>
               <span className="text-xs text-gray-400">{craftName}</span>
-              <span className={`text-sm font-semibold ${craftCount > 0 ? 'text-purple-400' : 'text-gray-500'}`}>
-                {craftCount > 0 ? `${craftCount}회 투입` : '투입 안함'}
+              <span className={`text-sm font-semibold ${optimalStrategy.metallurgyAttempts > 0 ? 'text-purple-400' : 'text-gray-500'}`}>
+                {craftStatus}
               </span>
             </div>
+            {hasEnhancedOption && (
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-900/60 border ${enhancedUsed ? 'border-amber-500/50' : 'border-gray-700/50'}`}>
+                <span className="text-xs text-gray-400">{enhancedCraftName}</span>
+                <span className={`text-sm font-semibold ${enhancedUsed ? 'text-amber-400' : 'text-gray-500'}`}>
+                  {enhancedStatus}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -1838,10 +2051,10 @@ function StageCard({ stage, marketInfo, sillingUnitPrice, selectedTier, allStage
             </div>
           </div>
 
-          {(fullBreathStrategy || fullMetallurgyStrategy || fullBothStrategy) && (
+          {(fullBreathStrategy || fullMetallurgyStrategy || fullEnhancedMetallurgyStrategy || fullBothStrategy) && (
             <div className="mt-3">
               <h5 className="text-xs font-semibold text-purple-200 mb-2">기타 전략</h5>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className={`grid grid-cols-1 md:grid-cols-2 ${stage.enhancedMetallurgyMaterial ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-3`}>
                 {fullBreathStrategy && (
                   <div className="bg-gray-900/80 rounded-lg border border-orange-500/70 p-3 space-y-1 text-xs">
                     <div className="text-sm font-semibold text-orange-200">{fullBreathStrategy.label}</div>
@@ -1898,6 +2111,34 @@ function StageCard({ stage, marketInfo, sillingUnitPrice, selectedTier, allStage
                     </div>
                   </div>
                 )}
+                {fullEnhancedMetallurgyStrategy && (
+                  <div className="bg-gray-900/80 rounded-lg border border-purple-500/70 p-3 space-y-1 text-xs">
+                    <div className="text-sm font-semibold text-purple-200">{fullEnhancedMetallurgyStrategy.label}</div>
+                    <div className="text-gray-400">{fullEnhancedMetallurgyStrategy.description}</div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-300">예상 비용</span>
+                      <span className="text-green-300 font-medium">{formatCost(fullEnhancedMetallurgyStrategy.expectedCost)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-300">평균 시도</span>
+                      <span className="text-blue-300 font-medium">{formatNumberWithSignificantDigits(fullEnhancedMetallurgyStrategy.averageAttempts)}회</span>
+                    </div>
+                    <div className="flex justify-between pt-1 border-t border-gray-700">
+                      <span className="text-gray-300">기본 대비</span>
+                      {(() => {
+                        const diff = fullEnhancedMetallurgyStrategy.expectedCost - baseStrategy.expectedCost;
+                        if (Math.abs(diff) < 1e-6) return <span className="text-gray-400">동일</span>;
+                        const sign = diff > 0 ? '+' : '-';
+                        const color = diff > 0 ? 'text-red-300' : 'text-green-300';
+                        return (
+                          <span className={`${color} font-medium`}>
+                            {sign}{formatNumberWithSignificantDigits(Math.abs(diff))} 골드
+                          </span>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                )}
                 {fullBothStrategy && (
                   <div className="bg-gray-900/80 rounded-lg border border-indigo-500/70 p-3 space-y-1 text-xs">
                     <div className="text-sm font-semibold text-indigo-200">{fullBothStrategy.label}</div>
@@ -1934,7 +2175,9 @@ function StageCard({ stage, marketInfo, sillingUnitPrice, selectedTier, allStage
             <div className="mt-3 bg-gray-900/80 rounded-lg border border-gray-800 p-4">
               <h5 className="text-xs font-semibold text-purple-200 mb-3">보조 재료 가치 분석</h5>
               <div className="space-y-3 text-xs">
-                {[materialValueAnalysis.breath, materialValueAnalysis.metallurgy].map((insight) => {
+                {[materialValueAnalysis.breath, materialValueAnalysis.metallurgy, materialValueAnalysis.enhancedMetallurgy]
+                  .filter((insight): insight is MaterialValueInsight => insight !== null)
+                  .map((insight) => {
                   const totalAmount = insight.usedCount * insight.quantityPerUse;
                   const usageText = !insight.available
                     ? '사용 불가'
@@ -2515,60 +2758,65 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
       return '기본';
     }
     
-    // 풀숨&풀책 전략 확인 (모든 회차에 둘 다 사용)
-    if (description.includes('모든 회차에 숨결과 야금술')) {
+    // 새로운 표기 형식 파싱: "숨결 모두 투입", "숨결 n회까지 투입" 등
+    const breathAllMatch = description.match(/숨결\s*모두\s*투입/);
+    const metallurgyAllMatch = description.match(/야금술\s*모두\s*투입/);
+    const breathPartialMatch = description.match(/숨결\s*(\d+)회까지\s*투입/);
+    const metallurgyPartialMatch = description.match(/야금술\s*(\d+)회까지\s*투입/);
+    
+    // 둘 다 모두 투입
+    if (breathAllMatch && metallurgyAllMatch) {
       return '풀숨&풀책';
     }
     
-    // 풀숨 전략 확인 (모든 회차에 숨결만 사용)
-    if (description.includes('모든 회차에 숨결')) {
+    // 숨결만 모두 투입
+    if (breathAllMatch && !metallurgyAllMatch && !metallurgyPartialMatch) {
       return '풀숨';
     }
     
-    // 풀책 전략 확인 (모든 회차에 야금술만 사용)
+    // 야금술만 모두 투입
+    if (metallurgyAllMatch && !breathAllMatch && !breathPartialMatch) {
+      return '풀책';
+    }
+    
+    // 둘 다 일부 투입
+    if (breathPartialMatch && metallurgyPartialMatch) {
+      return '숨결&야금술';
+    }
+    
+    // 숨결만 일부 투입
+    if (breathPartialMatch && !metallurgyPartialMatch && !metallurgyAllMatch) {
+      return '숨결';
+    }
+    
+    // 야금술만 일부 투입
+    if (metallurgyPartialMatch && !breathPartialMatch && !breathAllMatch) {
+      return '야금술';
+    }
+    
+    // 레거시 형식 지원 (하위 호환성)
+    if (description.includes('모든 회차에 숨결과 야금술')) {
+      return '풀숨&풀책';
+    }
+    if (description.includes('모든 회차에 숨결')) {
+      return '풀숨';
+    }
     if (description.includes('모든 회차에 야금술')) {
       return '풀책';
     }
     
-    // 숨결과 야금술 모두 사용 (일부 회차)
+    // 레거시 숫자 형식
     if (description.includes('숨결') && description.includes('야금술')) {
-      // 숫자 추출
       const breathMatch = description.match(/숨결\s*(\d+)/);
       const metallurgyMatch = description.match(/야금술\s*(\d+)/);
       if (breathMatch && metallurgyMatch) {
-        const breathCount = parseInt(breathMatch[1]);
-        const metallurgyCount = parseInt(metallurgyMatch[1]);
-        const maxAttempts = 500; // calculateOptimalStrategy에서 사용하는 maxAttempts
-        if (breathCount >= maxAttempts && metallurgyCount >= maxAttempts) {
-          return '풀숨&풀책';
-        }
+        return '숨결&야금술';
       }
-      return '숨결&야금술';
     }
-    
-    // 숨결만 사용
     if (description.includes('숨결')) {
-      const breathMatch = description.match(/숨결\s*(\d+)/);
-      if (breathMatch) {
-        const breathCount = parseInt(breathMatch[1]);
-        const maxAttempts = 500;
-        if (breathCount >= maxAttempts) {
-          return '풀숨';
-        }
-      }
       return '숨결';
     }
-    
-    // 야금술만 사용
     if (description.includes('야금술')) {
-      const metallurgyMatch = description.match(/야금술\s*(\d+)/);
-      if (metallurgyMatch) {
-        const metallurgyCount = parseInt(metallurgyMatch[1]);
-        const maxAttempts = 500;
-        if (metallurgyCount >= maxAttempts) {
-          return '풀책';
-        }
-      }
       return '야금술';
     }
     
@@ -2581,25 +2829,46 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
       return '기본';
     }
 
-    const maxAttempts = 500;
     const breathName = type === 'weapon' ? '숨결' : (stage.breathMaterial?.name.includes('빙하') ? '숨결' : '숨결');
     const craftName = type === 'weapon' ? '야금술' : '재봉술';
+
+    // description에서 정보 추출 (새로운 표기 형식)
+    const breathAllMatch = strategy.description.match(/숨결\s*모두\s*투입/);
+    const metallurgyAllMatch = strategy.description.match(/야금술\s*모두\s*투입/);
+    const breathPartialMatch = strategy.description.match(/숨결\s*(\d+)회까지\s*투입/);
+    const metallurgyPartialMatch = strategy.description.match(/야금술\s*(\d+)회까지\s*투입/);
 
     const parts: string[] = [];
 
     if (strategy.breathAttempts > 0) {
-      if (strategy.breathAttempts >= maxAttempts) {
-        parts.push(`${breathName} Full 투입`);
+      if (breathAllMatch) {
+        parts.push(`${breathName} 모두 투입`);
+      } else if (breathPartialMatch) {
+        parts.push(`${breathName} ${breathPartialMatch[1]}회까지 투입`);
       } else {
-        parts.push(`${breathName} ${strategy.breathAttempts}회 투입`);
+        // 레거시 형식 지원
+        const maxAttempts = 500;
+        if (strategy.breathAttempts >= maxAttempts) {
+          parts.push(`${breathName} 모두 투입`);
+        } else {
+          parts.push(`${breathName} ${strategy.breathAttempts}회까지 투입`);
+        }
       }
     }
 
     if (strategy.metallurgyAttempts > 0) {
-      if (strategy.metallurgyAttempts >= maxAttempts) {
-        parts.push(`${craftName} Full 투입`);
+      if (metallurgyAllMatch) {
+        parts.push(`${craftName} 모두 투입`);
+      } else if (metallurgyPartialMatch) {
+        parts.push(`${craftName} ${metallurgyPartialMatch[1]}회까지 투입`);
       } else {
-        parts.push(`${craftName} ${strategy.metallurgyAttempts}회 투입`);
+        // 레거시 형식 지원
+        const maxAttempts = 500;
+        if (strategy.metallurgyAttempts >= maxAttempts) {
+          parts.push(`${craftName} 모두 투입`);
+        } else {
+          parts.push(`${craftName} ${strategy.metallurgyAttempts}회까지 투입`);
+        }
       }
     }
 

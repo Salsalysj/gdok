@@ -23,6 +23,8 @@ const OPTIONAL_METALLURGY_ITEMS_WEAPON = [
   '야금술 : 업화 [19-20]',
 ];
 
+const ENHANCED_METALLURGY_ITEM_WEAPON = '강화 야금술 : 업화 [19-20]';
+
 const BASE_MATERIALS_WEAPON = [
   '운명의 파괴석',
   '운명의 돌파석',
@@ -44,6 +46,8 @@ const OPTIONAL_METALLURGY_ITEMS_ARMOR = [
   '재봉술 : 업화 [15-18]',
   '재봉술 : 업화 [19-20]',
 ];
+
+const ENHANCED_METALLURGY_ITEM_ARMOR = '강화 재봉술 : 업화 [19-20]';
 
 const BASE_MATERIALS_ARMOR = [
   '운명의 수호석',
@@ -298,6 +302,7 @@ export type RefiningStage = {
   baseMaterials: { name: string; quantity: number }[];
   breathMaterial: { name: string; quantity: number } | null;
   metallurgyMaterial: { name: string; quantity: number } | null;
+  enhancedMetallurgyMaterial: { name: string; quantity: number } | null; // 19-20단계용 강화 야금술/재봉술
   goldCost: number;
   silverCost: number;
   baseSuccessRate: number;
@@ -308,7 +313,8 @@ function createStages(
   rowMap: Record<string, number[]>,
   baseMaterials: string[],
   breathItem: string,
-  optionalMetallurgyItems: string[]
+  optionalMetallurgyItems: string[],
+  enhancedMetallurgyItem?: string
 ): RefiningStage[] {
   return levels.map((level, idx) => {
     const expQty = rowMap[EXP_MATERIAL]?.[idx] ?? 0;
@@ -329,6 +335,15 @@ function createStages(
       }
     }
 
+    // 19-20단계인 경우 강화 야금술/재봉술도 확인
+    let enhancedMetallurgyMaterial: { name: string; quantity: number } | null = null;
+    if ((level === 19 || level === 20) && enhancedMetallurgyItem) {
+      const enhancedQty = rowMap[enhancedMetallurgyItem]?.[idx] ?? 0;
+      if (enhancedQty > 0) {
+        enhancedMetallurgyMaterial = { name: enhancedMetallurgyItem, quantity: enhancedQty };
+      }
+    }
+
     const goldCost = rowMap[GOLD_ITEM]?.[idx] ?? 0;
     const silverCost = rowMap[SILVER_ITEM]?.[idx] ?? 0;
     const baseSuccessRate = rowMap[BASE_SUCCESS_RATE]?.[idx] ?? 0;
@@ -341,6 +356,7 @@ function createStages(
       baseMaterials: baseMaterialsList,
       breathMaterial,
       metallurgyMaterial,
+      enhancedMetallurgyMaterial,
       goldCost,
       silverCost,
       baseSuccessRate,
@@ -374,7 +390,8 @@ export default async function RefiningSimulationPage() {
     weaponData.rowMap,
     BASE_MATERIALS_WEAPON,
     BREATH_ITEM_WEAPON,
-    OPTIONAL_METALLURGY_ITEMS_WEAPON
+    OPTIONAL_METALLURGY_ITEMS_WEAPON,
+    ENHANCED_METALLURGY_ITEM_WEAPON
   );
 
   const armorStages = createStages(
@@ -382,7 +399,8 @@ export default async function RefiningSimulationPage() {
     armorData.rowMap,
     BASE_MATERIALS_ARMOR,
     BREATH_ITEM_ARMOR,
-    OPTIONAL_METALLURGY_ITEMS_ARMOR
+    OPTIONAL_METALLURGY_ITEMS_ARMOR,
+    ENHANCED_METALLURGY_ITEM_ARMOR
   );
 
   const weaponStagesSerka = createStages(
@@ -390,7 +408,8 @@ export default async function RefiningSimulationPage() {
     weaponDataSerka.rowMap,
     BASE_MATERIALS_WEAPON_SERKA,
     BREATH_ITEM_WEAPON,
-    OPTIONAL_METALLURGY_ITEMS_WEAPON
+    OPTIONAL_METALLURGY_ITEMS_WEAPON,
+    ENHANCED_METALLURGY_ITEM_WEAPON
   );
 
   const armorStagesSerka = createStages(
@@ -398,7 +417,8 @@ export default async function RefiningSimulationPage() {
     armorDataSerka.rowMap,
     BASE_MATERIALS_ARMOR_SERKA,
     BREATH_ITEM_ARMOR,
-    OPTIONAL_METALLURGY_ITEMS_ARMOR
+    OPTIONAL_METALLURGY_ITEMS_ARMOR,
+    ENHANCED_METALLURGY_ITEM_ARMOR
   );
 
   return (
