@@ -180,62 +180,79 @@ export default function ValueDBSidebar() {
   return (
     <div className="h-full flex flex-col bg-gray-900 border-r border-gray-800">
       {/* 헤더: 골드 환율 + 디코기준 스위치 + 닫기 버튼 */}
-      <div className="p-3 border-b border-gray-800 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-3 flex-1">
-          <div className="flex items-center gap-2">
+      <div className="p-3 border-b border-gray-800">
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
             <Link
               href="/crystal-gold"
-              className="inline-flex items-center px-2 py-1 rounded border border-blue-500/60 text-[11px] text-blue-300 hover:bg-blue-900/40 hover:text-blue-100 transition-colors"
+              className="inline-flex items-center px-2 py-1 rounded border border-blue-500/60 text-[11px] text-blue-300 hover:bg-blue-900/40 hover:text-blue-100 transition-colors whitespace-nowrap flex-shrink-0 group"
+              title="골드 환율 페이지로 이동"
             >
-              골드 환율
+              <span className="mr-1">📈</span>
+              <span>골드 환율</span>
+              <svg className="w-3 h-3 ml-1 opacity-60 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
             </Link>
-            <div className="text-sm font-semibold text-gray-300">
+            <div className="text-xs font-semibold text-gray-300 truncate min-w-0">
               {goldPerWon != null 
-                ? `현재 1원당 ${formatNumberWithSignificantDigits(goldPerWon)}골드`
-                : '현재 1원당 골드 계산 중...'}
+                ? `1원당 ${formatNumberWithSignificantDigits(goldPerWon)}골드`
+                : '1원당 골드 계산 중...'}
             </div>
           </div>
-          {/* 디코기준 스위치 */}
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                const newLightMode = !lightMode;
-                setLightMode(newLightMode);
-                try {
-                  localStorage.setItem('themeLight', newLightMode ? '1' : '0');
-                  window.dispatchEvent(new CustomEvent('theme-change', { detail: { light: newLightMode } }));
-                  if (newLightMode) {
-                    document.documentElement.classList.add('light');
-                    document.documentElement.classList.remove('dark');
-                  } else {
-                    document.documentElement.classList.add('dark');
-                    document.documentElement.classList.remove('light');
-                  }
-                } catch {}
-              }}
-              aria-pressed={!lightMode}
-              title="디코기준"
-              className={`relative inline-flex h-6 w-11 items-center rounded-full border ${
-                !lightMode ? 'bg-gray-600 border-gray-500' : 'bg-gray-700 border-gray-600'
-              }`}
-            >
-              <span className={`inline-block h-5 w-5 rounded-full bg-white ${
-                !lightMode ? 'translate-x-5' : 'translate-x-1'
-              }`} />
-            </button>
-            <span className="text-xs text-gray-300">디코기준</span>
-          </div>
+          <button
+            onClick={closeSidebar}
+            className="text-gray-400 hover:text-white p-1 rounded hover:bg-gray-800 flex-shrink-0"
+            aria-label="닫기"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
-        <button
-          onClick={closeSidebar}
-          className="text-gray-400 hover:text-white p-1 rounded hover:bg-gray-800 flex-shrink-0"
-          aria-label="닫기"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+        {/* 디코기준 스위치 */}
+        <div className="flex items-center gap-1.5">
+          <span className={`text-[11px] whitespace-nowrap transition-colors ${
+            lightMode 
+              ? 'font-bold text-blue-400' 
+              : 'text-gray-500'
+          }`}>
+            화폐거래소
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              const newLightMode = !lightMode;
+              setLightMode(newLightMode);
+              try {
+                localStorage.setItem('themeLight', newLightMode ? '1' : '0');
+                window.dispatchEvent(new CustomEvent('theme-change', { detail: { light: newLightMode } }));
+                if (newLightMode) {
+                  document.documentElement.classList.add('light');
+                  document.documentElement.classList.remove('dark');
+                } else {
+                  document.documentElement.classList.add('dark');
+                  document.documentElement.classList.remove('light');
+                }
+              } catch {}
+            }}
+            aria-pressed={!lightMode}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full border transition-colors flex-shrink-0 ${
+              !lightMode ? 'bg-gray-600 border-gray-500' : 'bg-gray-700 border-gray-600'
+            }`}
+          >
+            <span className={`inline-block h-5 w-5 rounded-full bg-white transition-transform ${
+              !lightMode ? 'translate-x-5' : 'translate-x-1'
+            }`} />
+          </button>
+          <span className={`text-[11px] whitespace-nowrap transition-colors ${
+            !lightMode 
+              ? 'font-bold text-purple-400' 
+              : 'text-gray-500'
+          }`}>
+            디코기준
+          </span>
+        </div>
       </div>
       
       {/* 가격 조정 섹션 */}

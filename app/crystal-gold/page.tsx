@@ -2,24 +2,77 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
-import { Line } from 'react-chartjs-2';
+import { Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   Tooltip,
   Legend,
   Filler,
 } from 'chart.js';
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Filler);
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Tooltip, Legend, Filler);
+
+// 일간 그래프에서 화요일과 수요일 사이에 굵은 선을 그리는 플러그인 생성 함수
+const createWeeklyDividerPlugin = (period: string, dayOfWeeks: number[] | null) => {
+  return {
+    id: 'weeklyDivider',
+    afterDraw: (chart: any) => {
+      if (period !== 'daily' || !dayOfWeeks || dayOfWeeks.length === 0) {
+        return;
+      }
+
+      const ctx = chart.ctx;
+      const chartArea = chart.chartArea;
+      const meta = chart.getDatasetMeta(0);
+      
+      if (!meta.data) {
+        return;
+      }
+
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([]);
+
+      // 각 데이터 포인트 사이를 확인하여 화요일과 수요일 사이에 선 그리기
+      for (let i = 0; i < dayOfWeeks.length - 1; i++) {
+        const currentDay = dayOfWeeks[i];
+        const nextDay = dayOfWeeks[i + 1];
+        
+        if (currentDay === 2 && nextDay === 3) {
+          // 화요일 다음이 수요일인 경우
+          const currentPoint = meta.data[i];
+          const nextPoint = meta.data[i + 1];
+          
+          if (currentPoint && nextPoint) {
+            const x = (currentPoint.x + nextPoint.x) / 2;
+            ctx.beginPath();
+            ctx.moveTo(x, chartArea.top);
+            ctx.lineTo(x, chartArea.bottom);
+            ctx.stroke();
+          }
+        }
+      }
+
+      ctx.restore();
+    }
+  };
+};
 
 type ExchangeRateEntry = {
   date: string;
   exchange: number; // 화폐거래소 100크리당 골드
   discord: number;  // 디스코드 100:n에서 n 값
+};
+
+type ExchangeHistoryEntry = {
+  timestamp: string;
+  exchange: number;
 };
 
 type CrystalGoldData = {
@@ -28,6 +81,7 @@ type CrystalGoldData = {
   updatedAt?: string | null; // 실제 갱신 시간
   discord?: number | null;
   exchangeRates?: ExchangeRateEntry[]; // 하위 호환성
+  exchangeHistory?: ExchangeHistoryEntry[]; // 히스토리 데이터
 };
 
 export default function CrystalGoldPage() {
@@ -35,6 +89,7 @@ export default function CrystalGoldPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<'exchange' | 'discord'>('exchange');
+  const [chartPeriod, setChartPeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [lightMode, setLightMode] = useState<boolean>(false);
   const [discordValue, setDiscordValue] = useState<string>('');
   const [isEditingDiscord, setIsEditingDiscord] = useState(false);
@@ -198,12 +253,190 @@ export default function CrystalGoldPage() {
   // 사용자가 수정한 값이 있으면 그것을, 없으면 서버에서 가져온 기본값 사용
   const displayDiscord = userDiscordValue ?? data?.discord ?? null;
 
-  // 차트 데이터 준비 (캐시 데이터 사용)
+  // 수요일 기준 주차 계산 함수
+  const getWeekKey = (date: Date): string => {
+    // 수요일부터 다음 화요일까지를 한 주로 계산
+    // 해당 주의 수요일 날짜를 키로 사용
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const day = date.getDate();
+    const dayOfWeek = date.getDay(); // 0: 일요일, 3: 수요일, 6: 토요일
+    
+    // 가장 최근 수요일(포함) 찾기
+    // 수요일~토요일(3~6): 이번 주 수요일 (dayOfWeek - 3 일 전)
+    // 일요일~화요일(0~2): 지난 주 수요일 (dayOfWeek + 4 일 전)
+    const daysToSubtract = dayOfWeek >= 3 ? dayOfWeek - 3 : dayOfWeek + 4;
+    
+    const wednesday = new Date(year, month, day - daysToSubtract);
+    const wYear = wednesday.getFullYear();
+    const wMonth = String(wednesday.getMonth() + 1).padStart(2, '0');
+    const wDay = String(wednesday.getDate()).padStart(2, '0');
+    return `${wYear}-${wMonth}-${wDay}`;
+  };
+
+  // 월 키 생성 함수
+  const getMonthKey = (date: Date): string => {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+  };
+
+  // 차트 데이터 준비 (히스토리 데이터 사용)
   const chartData = useMemo(() => {
-    // 차트는 현재 지원하지 않음 (시간별 캐시 데이터 구조가 다름)
-    // 필요시 별도 API 엔드포인트로 캐시 데이터를 시간별로 가져와야 함
-    return null;
-  }, [data, activeTab]);
+    if (!data?.exchangeHistory || data.exchangeHistory.length === 0 || activeTab !== 'exchange') {
+      return null;
+    }
+
+    type GroupedData = { [key: string]: number[] };
+    const grouped: GroupedData = {};
+    
+    // 선택된 기간에 따라 데이터 그룹화
+    data.exchangeHistory.forEach((entry) => {
+      const date = new Date(entry.timestamp);
+      let key: string;
+      
+      if (chartPeriod === 'daily') {
+        // 로컬 날짜 기준으로 YYYY-MM-DD 생성
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        key = `${year}-${month}-${day}`;
+      } else if (chartPeriod === 'weekly') {
+        key = getWeekKey(date); // 수요일 기준
+        // 디버깅: 처음 몇 개만 출력
+        if (Object.keys(grouped).length < 5) {
+          const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+          console.log(`[주간] ${entry.timestamp.split('T')[0]} (${dayNames[date.getDay()]}요일) -> ${key} 주`);
+        }
+      } else {
+        key = getMonthKey(date); // YYYY-MM
+      }
+      
+      if (!grouped[key]) {
+        grouped[key] = [];
+      }
+      grouped[key].push(entry.exchange);
+    });
+
+    // 정렬 및 최소/최대값 계산
+    const keys = Object.keys(grouped).sort();
+    const minMaxData = keys.map(key => {
+      const values = grouped[key];
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+      return { key, min, max };
+    });
+
+    // 일간 그래프의 경우: 데이터가 없는 날짜도 포함하여 연속적인 날짜 생성
+    let finalMinMaxData = minMaxData;
+    let allDates: string[] = [];
+    
+    if (chartPeriod === 'daily' && minMaxData.length > 0) {
+      // 최신 날짜와 가장 오래된 날짜 찾기
+      const sortedKeys = keys.sort();
+      const oldestDate = new Date(sortedKeys[0]);
+      const newestDate = new Date(sortedKeys[sortedKeys.length - 1]);
+      
+      // 모든 날짜 생성 (가장 오래된 날짜부터 최신 날짜까지)
+      const dateMap = new Map<string, { min: number; max: number }>();
+      minMaxData.forEach(item => {
+        dateMap.set(item.key, { min: item.min, max: item.max });
+      });
+      
+      const currentDate = new Date(oldestDate);
+      while (currentDate <= newestDate) {
+        const year = currentDate.getFullYear();
+        const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+        const day = String(currentDate.getDate()).padStart(2, '0');
+        const dateKey = `${year}-${month}-${day}`;
+        allDates.push(dateKey);
+        
+        // 데이터가 없는 날짜는 null로 표시
+        if (!dateMap.has(dateKey)) {
+          dateMap.set(dateKey, { min: NaN, max: NaN });
+        }
+        
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+      
+      // 날짜 순서대로 정렬하여 최종 데이터 생성
+      finalMinMaxData = allDates.map(key => {
+        const data = dateMap.get(key);
+        return {
+          key,
+          min: data?.min ?? NaN,
+          max: data?.max ?? NaN,
+        };
+      });
+    }
+
+    // 표시할 라벨 생성 및 요일 정보 저장 (일간 그래프용)
+    const labels = finalMinMaxData.map(item => {
+      if (chartPeriod === 'daily') {
+        const date = new Date(item.key);
+        return `${date.getMonth() + 1}/${date.getDate()}`;
+      } else if (chartPeriod === 'weekly') {
+        const date = new Date(item.key);
+        return `${date.getMonth() + 1}/${date.getDate()} 주`;
+      } else {
+        const [year, month] = item.key.split('-');
+        return `${year}년 ${parseInt(month)}월`;
+      }
+    });
+
+    // 전체 최소/최대값 계산 (y축 범위용) - 데이터가 있는 날짜만 계산
+    const validData = finalMinMaxData.filter(d => !isNaN(d.min) && !isNaN(d.max));
+    const allMins = validData.map(d => d.min);
+    const allMaxs = validData.map(d => d.max);
+    const globalMin = allMins.length > 0 ? Math.min(...allMins) : 0;
+    const globalMax = allMaxs.length > 0 ? Math.max(...allMaxs) : 100;
+
+    // 일간 그래프용: 각 날짜의 요일 정보 저장 (화요일 다음이 수요일인지 확인용)
+    const dayOfWeeks = chartPeriod === 'daily' 
+      ? finalMinMaxData.map(item => {
+          const date = new Date(item.key);
+          return date.getDay(); // 0: 일, 1: 월, 2: 화, 3: 수, ...
+        })
+      : null;
+
+    // 바 차트용 데이터 (floating bar: [min, max])
+    // 데이터가 없는 날짜는 투명하게 표시하기 위해 매우 작은 값으로 설정
+    const barData = finalMinMaxData.map(item => {
+      if (isNaN(item.min) || isNaN(item.max)) {
+        // 데이터가 없는 날짜: y축 최소값으로 설정하여 보이지 않게
+        return [globalMin, globalMin];
+      }
+      return [item.min, item.max];
+    });
+
+    return {
+      labels,
+      datasets: [
+        {
+          label: '환율 범위 (최소-최대)',
+          data: barData,
+          backgroundColor: finalMinMaxData.map((item, index) => {
+            // 데이터가 없는 날짜는 투명하게
+            if (isNaN(item.min) || isNaN(item.max)) {
+              return 'transparent';
+            }
+            return 'rgba(59, 130, 246, 0.5)'; // blue-500 with opacity
+          }),
+          borderColor: finalMinMaxData.map((item) => {
+            // 데이터가 없는 날짜는 투명하게
+            if (isNaN(item.min) || isNaN(item.max)) {
+              return 'transparent';
+            }
+            return 'rgba(59, 130, 246, 1)';
+          }),
+          borderWidth: 1,
+        },
+      ],
+      yAxisRange: {
+        min: globalMin * 0.8, // 최소값 -20%
+        max: globalMax * 1.2, // 최대값 +20%
+      },
+      dayOfWeeks, // 일간 그래프용 요일 정보
+    };
+  }, [data, activeTab, chartPeriod]);
 
   // 테마 고정: 항상 다크 테마 유지
   const titleText = 'text-white';
@@ -389,14 +622,53 @@ export default function CrystalGoldPage() {
             </div>
 
             {/* 차트 */}
-            {chartData && (
+            {chartData && activeTab === 'exchange' && (
               <div className="bg-gray-800 rounded-lg p-4 sm:p-6 border border-gray-700">
-                <h2 className="text-base sm:text-lg lg:text-xl font-semibold text-white mb-4">
-                  최근 30일 추이
-                </h2>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
+                  <h2 className="text-base sm:text-lg lg:text-xl font-semibold text-white">
+                    화폐거래소 환율 추이 (100크리당 골드)
+                  </h2>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setChartPeriod('daily')}
+                      className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${
+                        chartPeriod === 'daily'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                      }`}
+                    >
+                      일간
+                    </button>
+                    <button
+                      onClick={() => setChartPeriod('weekly')}
+                      className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${
+                        chartPeriod === 'weekly'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                      }`}
+                    >
+                      주간
+                    </button>
+                    <button
+                      onClick={() => setChartPeriod('monthly')}
+                      className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${
+                        chartPeriod === 'monthly'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                      }`}
+                    >
+                      월간
+                    </button>
+                  </div>
+                </div>
+                <div className="text-xs text-gray-400 mb-2">
+                  * 각 막대는 해당 {chartPeriod === 'daily' ? '날짜' : chartPeriod === 'weekly' ? '주' : '월'}의 최소값과 최대값을 나타냅니다
+                  {chartPeriod === 'weekly' && ' (매주 수요일 기준)'}
+                </div>
                 <div style={{ height: '300px', position: 'relative' }}>
-                  <Line
+                  <Bar
                     data={chartData}
+                    plugins={[createWeeklyDividerPlugin(chartPeriod, chartData.dayOfWeeks)]}
                     options={{
                       responsive: true,
                       maintainAspectRatio: false,
@@ -409,18 +681,42 @@ export default function CrystalGoldPage() {
                           backgroundColor: 'rgba(0, 0, 0, 0.8)',
                           titleColor: '#fff',
                           bodyColor: '#fff',
+                          callbacks: {
+                            label: function(context) {
+                              const value = context.raw as [number, number];
+                              if (Array.isArray(value)) {
+                                return [
+                                  `최소: ${formatNumberWithSignificantDigits(value[0])} 골드`,
+                                  `최대: ${formatNumberWithSignificantDigits(value[1])} 골드`,
+                                  `범위: ${formatNumberWithSignificantDigits(value[1] - value[0])} 골드`,
+                                ];
+                              }
+                              return '';
+                            }
+                          }
                         }
                       },
-                    scales: {
-                      x: {
-                        ticks: { color: '#9ca3af' },
-                        grid: { color: 'rgba(255,255,255,0.05)' }
+                      scales: {
+                        x: {
+                          ticks: { 
+                            color: '#9ca3af',
+                            maxRotation: 45,
+                            minRotation: 45,
+                          },
+                          grid: { color: 'rgba(255,255,255,0.05)' }
+                        },
+                        y: {
+                          min: chartData.yAxisRange.min,
+                          max: chartData.yAxisRange.max,
+                          ticks: { 
+                            color: '#9ca3af',
+                            callback: function(value) {
+                              return formatNumberWithSignificantDigits(value as number);
+                            }
+                          },
+                          grid: { color: 'rgba(255,255,255,0.05)' }
+                        },
                       },
-                      y: {
-                        ticks: { color: '#9ca3af' },
-                        grid: { color: 'rgba(255,255,255,0.05)' }
-                      },
-                    },
                     }}
                   />
                 </div>

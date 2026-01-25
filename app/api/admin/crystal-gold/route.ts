@@ -173,12 +173,51 @@ async function saveDiscordToSupabase(discord: number): Promise<boolean> {
   }
 }
 
+async function getExchangeHistory(days: number = 30): Promise<Array<{
+  timestamp: string;
+  exchange: number;
+}> | null> {
+  if (!supabase) {
+    console.error('Supabase 클라이언트가 초기화되지 않았습니다.');
+    return null;
+  }
+
+  try {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - days);
+
+    const { data, error } = await supabase
+      .from('crystal_exchange_rates')
+      .select('timestamp, exchange')
+      .gte('timestamp', thirtyDaysAgo.toISOString())
+      .order('timestamp', { ascending: true });
+
+    if (error) {
+      console.error('Supabase 히스토리 조회 실패:', error);
+      return null;
+    }
+
+    if (!data || data.length === 0) {
+      return [];
+    }
+
+    return data.map(row => ({
+      timestamp: row.timestamp,
+      exchange: Number(row.exchange),
+    }));
+  } catch (err) {
+    console.error('Supabase 히스토리 조회 중 오류:', err);
+    return null;
+  }
+}
+
 // GET: 환율 기록 조회
 export async function GET() {
   try {
     // Supabase에서 최신 환율 가져오기
     const cachedExchange = await getLatestExchangeFromSupabase();
     const cachedDiscord = await getLatestDiscordFromSupabase();
+    const exchangeHistory = await getExchangeHistory(30);
 
     return NextResponse.json({
       exchange: cachedExchange?.exchange ?? null,
@@ -189,6 +228,8 @@ export async function GET() {
       discordUpdatedAt: cachedDiscord?.updatedAt ?? null,
       // 하위 호환성을 위해 exchangeRates 유지 (빈 배열)
       exchangeRates: [],
+      // 히스토리 데이터 추가
+      exchangeHistory: exchangeHistory ?? [],
     });
   } catch (error) {
     console.error('환율 기록 조회 실패:', error);
