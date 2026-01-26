@@ -1376,13 +1376,57 @@ export function calculateOptimalStrategy(
     }
   }
 
+  // 최적 전략이 25회까지 투입인 경우, 모든 시도에 투입하는 경우도 비교
+  // 25회까지도 투입이 이득이면 나머지 회차에도 전부 투입하는 게 이득일 확률이 높음
+  if (optimalBreathUses === maxBreathUses || optimalMetallurgyUses === maxMetallurgyUses) {
+    // 숨결이 25회인 경우, 모든 시도에 투입하는 경우 비교
+    const breathUsesToCheck = optimalBreathUses === maxBreathUses ? maxAttempts : optimalBreathUses;
+    // 야금술/재봉술이 25회인 경우, 모든 시도에 투입하는 경우 비교
+    const metallurgyUsesToCheck = optimalMetallurgyUses === maxMetallurgyUses ? maxAttempts : optimalMetallurgyUses;
+    
+    const {
+      expectedTotalCost,
+      averageAttempts,
+      simulationDetails,
+      breathAttempts,
+      metallurgyAttempts,
+      breathTotalCost,
+      metallurgyTotalCost,
+    } = calculateExpectedCost(breathUsesToCheck, metallurgyUsesToCheck, optimalUseEnhancedMetallurgy);
+
+    if (expectedTotalCost < minExpectedCost) {
+      minExpectedCost = expectedTotalCost;
+      optimalBreathUses = breathUsesToCheck;
+      optimalMetallurgyUses = metallurgyUsesToCheck;
+      optimalSimulationDetails = simulationDetails;
+      optimalAverageAttempts = averageAttempts;
+      optimalBreathAttempts = breathAttempts;
+      optimalMetallurgyAttempts = metallurgyAttempts;
+      optimalBreathCost = breathTotalCost;
+      optimalMetallurgyCost = metallurgyTotalCost;
+    }
+  }
+
   // 장인 에너지가 100%에 도달한 시점 찾기
   const artisanEnergy100Attempt = optimalSimulationDetails.find(detail => detail.artisanEnergy >= 100)?.attempt || Infinity;
   
   // 숨결과 야금술 모두 사용하는 경우
-  const formatStrategyLabel = (breathUses: number, metallurgyUses: number, useEnhanced: boolean): string => {
-    const breathAllUsed = breathUses >= 25 || (breathUses > 0 && artisanEnergy100Attempt <= breathUses);
-    const metallurgyAllUsed = metallurgyUses >= 25 || (metallurgyUses > 0 && artisanEnergy100Attempt <= metallurgyUses);
+  const formatStrategyLabel = (
+    breathUses: number, 
+    metallurgyUses: number, 
+    useEnhanced: boolean, 
+    avgAttempts: number,
+    breathAttempts: number,
+    metallurgyAttempts: number
+  ): string => {
+    // 실제로 모든 시도에 숨결을 사용하는지 확인
+    // - breathUses가 maxAttempts 이상이면 모든 시도에 사용
+    // - 또는 실제 숨결 사용 횟수(breathAttempts)가 평균 시도 횟수와 거의 같으면 (차이가 0.1 이하) 모든 시도에 사용한 것으로 간주
+    // - 또는 장인 에너지가 100%에 도달한 시점이 breathUses 이하이면 그 이후에는 성공률 100%이므로 모든 시도에 사용한 것으로 간주
+    const breathAllUsed = breathUses >= maxAttempts || 
+      (breathUses > 0 && (Math.abs(breathAttempts - avgAttempts) < 0.1 || artisanEnergy100Attempt <= breathUses));
+    const metallurgyAllUsed = metallurgyUses >= maxAttempts || 
+      (metallurgyUses > 0 && (Math.abs(metallurgyAttempts - avgAttempts) < 0.1 || artisanEnergy100Attempt <= metallurgyUses));
     
     // 강화 야금술/재봉술 표기
     const metallurgyName = useEnhanced && stage.enhancedMetallurgyMaterial
@@ -1402,7 +1446,14 @@ export function calculateOptimalStrategy(
     }
   };
 
-  const optimalStrategyLabel = formatStrategyLabel(optimalBreathUses, optimalMetallurgyUses, optimalUseEnhancedMetallurgy);
+  const optimalStrategyLabel = formatStrategyLabel(
+    optimalBreathUses, 
+    optimalMetallurgyUses, 
+    optimalUseEnhancedMetallurgy, 
+    optimalAverageAttempts,
+    optimalBreathAttempts,
+    optimalMetallurgyAttempts
+  );
 
   const optimalStrategy: StrategySummary = {
     label: '최적 재련 전략',
