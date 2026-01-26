@@ -868,35 +868,64 @@ export default function PackageEfficiencyClient({
         }
       }
       
-      // 에브니 큐브 입장권 (지옥교환) 처리: 클라이언트에서 지옥 열쇠 가치 계산
+      // 에브니 큐브 입장권 (지옥교환) 처리: 여러 지옥 열쇠 중 최대값 사용
       if (itemName.startsWith('에브니 큐브 입장권')) {
         const hellExchangeMatch = itemName.match(/에브니 큐브 입장권 \(([^)]+)\) \(지옥교환\)/);
         if (hellExchangeMatch) {
           const cubeStage = hellExchangeMatch[1]; // 1해금, 2해금, 3해금, 4해금
-          let hellKeyValue: number | null = null;
+          const candidates: number[] = [];
           
-          // 해금 단계에 따라 지옥 열쇠 가치 계산 (calculateHellStageExpectedValue 재사용)
-          if ((cubeStage === '1해금' || cubeStage === '2해금') && hell1Stages) {
-            const hell1_7Stage = hell1Stages.find(s => s.stage === '7단계');
-            if (hell1_7Stage) {
-              hellKeyValue = calculateHellStageExpectedValue(hell1_7Stage, false);
+          // 해금 단계에 따라 비교할 지옥 열쇠 목록 정의
+          if (cubeStage === '1해금' || cubeStage === '2해금') {
+            // 전설 지옥 열쇠 I / 10, 영웅 지옥 열쇠 I / 6, 희귀 지옥 열쇠 I / 4
+            const legendary = valueDbMap['전설 지옥 열쇠 I'];
+            if (legendary?.unitValue != null && legendary.unitValue > 0) {
+              candidates.push(legendary.unitValue / 10);
             }
-          } else if (cubeStage === '3해금' && hell2Stages) {
-            const hell2_7Stage = hell2Stages.find(s => s.stage === '7단계');
-            if (hell2_7Stage) {
-              hellKeyValue = calculateHellStageExpectedValue(hell2_7Stage, false);
+            const heroic = valueDbMap['영웅 지옥 열쇠 I'];
+            if (heroic?.unitValue != null && heroic.unitValue > 0) {
+              candidates.push(heroic.unitValue / 6);
             }
-          } else if (cubeStage === '4해금' && hellStages) {
-            const hell7Stage = hellStages.find(s => s.stage === '7단계');
-            if (hell7Stage) {
-              hellKeyValue = calculateHellStageExpectedValue(hell7Stage, false);
+            const rare = valueDbMap['희귀 지옥 열쇠 I'];
+            if (rare?.unitValue != null && rare.unitValue > 0) {
+              candidates.push(rare.unitValue / 4);
+            }
+          } else if (cubeStage === '3해금') {
+            // 전설 지옥 열쇠 II / 10, 영웅 지옥 열쇠 II / 6
+            const legendary = valueDbMap['전설 지옥 열쇠 II'];
+            if (legendary?.unitValue != null && legendary.unitValue > 0) {
+              candidates.push(legendary.unitValue / 10);
+            }
+            const heroic = valueDbMap['영웅 지옥 열쇠 II'];
+            if (heroic?.unitValue != null && heroic.unitValue > 0) {
+              candidates.push(heroic.unitValue / 6);
+            }
+          } else if (cubeStage === '4해금') {
+            // 전설 지옥 열쇠 III / 10, 영웅 지옥 열쇠 III / 6, 전설 지옥 열쇠 II / 8, 영웅 지옥 열쇠 II / 5
+            const legendary3 = valueDbMap['전설 지옥 열쇠 III'];
+            if (legendary3?.unitValue != null && legendary3.unitValue > 0) {
+              candidates.push(legendary3.unitValue / 10);
+            }
+            const heroic3 = valueDbMap['영웅 지옥 열쇠 III'];
+            if (heroic3?.unitValue != null && heroic3.unitValue > 0) {
+              candidates.push(heroic3.unitValue / 6);
+            }
+            const legendary2 = valueDbMap['전설 지옥 열쇠 II'];
+            if (legendary2?.unitValue != null && legendary2.unitValue > 0) {
+              candidates.push(legendary2.unitValue / 8);
+            }
+            const heroic2 = valueDbMap['영웅 지옥 열쇠 II'];
+            if (heroic2?.unitValue != null && heroic2.unitValue > 0) {
+              candidates.push(heroic2.unitValue / 5);
             }
           }
           
-          if (hellKeyValue != null && hellKeyValue > 0) {
+          // 후보 중 최대값 선택
+          if (candidates.length > 0) {
+            const maxValue = Math.max(...candidates);
             return {
               unitType: '골드',
-              unitPrice: hellKeyValue / 10,
+              unitPrice: maxValue,
             };
           }
           return null;
@@ -905,7 +934,9 @@ export default function PackageEfficiencyClient({
     }
 
     // 에브니 큐브 입장권: cubeStageRewards를 사용하여 클라이언트에서 재계산 (카드경험치 미반영 반영)
-    if (itemName.startsWith('에브니 큐브 입장권')) {
+    // 가치계산DB와 동일한 로직 사용: reward.price 우선, 운명의 파편/실링 특별 처리
+    // 지옥교환 항목은 위에서 이미 처리되었으므로 제외
+    if (itemName.startsWith('에브니 큐브 입장권') && !itemName.includes('지옥교환')) {
       
       const m = itemName.match(/\(([^)]+)\)/);
       const key = m ? m[1] : '';
@@ -913,31 +944,69 @@ export default function PackageEfficiencyClient({
         // cubeStageRewards를 사용하여 재계산
         let sum = 0;
         for (const reward of cubeStageRewards[key]) {
-          let originalPrice: number | null = null;
-          
-          if (reward.itemName === '카드 경험치') {
-            // 카드 경험치인 경우 가치계산DB의 '카드경험치 1당' 가격 사용
-            const cardExpEntry = Object.values(valueDbMap).find(e => e.itemName === '카드경험치 1당');
-            if (cardExpEntry && cardExpEntry.unitValue != null) {
-              originalPrice = cardExpEntry.unitValue;
+          // 컨텐츠 보상 로직과 동일하게, cubeStageRewards에 저장된 price를 우선 사용
+          let originalPrice: number | null = (reward as any).price ?? null;
+
+          // price 정보가 없을 때만 기존 fallback 로직 사용
+          if (originalPrice == null) {
+            if (reward.itemName === '카드 경험치') {
+              // 카드경험치 1당 값 우선
+              const cardExpEntry = Object.values(valueDbMap).find(e => e.itemName === '카드경험치 1당');
+              if (cardExpEntry && cardExpEntry.unitValue != null) {
+                originalPrice = cardExpEntry.unitValue;
+              } else {
+                const etc = etcListData[reward.itemName];
+                if (etc?.gold != null) {
+                  originalPrice = etc.gold;
+                } else if (marketPriceMap[reward.itemName] != null) {
+                  originalPrice = marketPriceMap[reward.itemName];
+                }
+              }
             } else {
-              const etc = etcListData[reward.itemName];
-              if (etc?.gold != null) {
-                originalPrice = etc.gold;
-              } else if (marketPriceMap[reward.itemName] != null) {
-                originalPrice = marketPriceMap[reward.itemName];
+              // 운명의 파편인 경우 '운명의 파편 1개당' 우선
+              if (reward.itemName === '운명의 파편') {
+                const fragmentEntry = Object.values(valueDbMap).find(e => e.itemName === '운명의 파편 1개당');
+                if (fragmentEntry && fragmentEntry.unitValue != null) {
+                  originalPrice = fragmentEntry.unitValue;
+                }
+              }
+              // 실링인 경우 가치계산DB에서 가격 사용
+              else if (reward.itemName === '실링') {
+                const silverEntry = Object.values(valueDbMap).find(e => e.itemName === '실링');
+                if (silverEntry && silverEntry.unitValue != null) {
+                  // unitType에 따라 현금→골드 환산 (컨텐츠 보상 클라이언트와 동일한 방식)
+                  if (silverEntry.unitType === '현금') {
+                    if (!lightMode && discordRate && discordRate > 0) {
+                      // 디코기준: 100골드 = discord원이므로, 1원 = 100/discord 골드
+                      originalPrice = silverEntry.unitValue * (100 / discordRate);
+                    } else if (lightMode && crystalGoldRate && crystalGoldRate > 0) {
+                      // 크리스탈 거래소 기준: 1원 = crystalGoldRate/2750 골드
+                      // crystalGoldRate는 100크리당 골드이므로, 1크리 = crystalGoldRate/100 골드
+                      // 1크리 = 2750원이므로, 1원 = (crystalGoldRate/100)/2750 = crystalGoldRate/275000 골드
+                      // 하지만 가치계산DB에서는 exchange/2750을 사용하므로, 여기서는 crystalGoldRate/2750을 사용
+                      // (exchange는 100크리당 골드와 동일한 개념으로 가정)
+                      originalPrice = silverEntry.unitValue * (crystalGoldRate / 2750);
+                    } else {
+                      // 환율 정보가 없으면 원래 값 그대로 사용
+                      originalPrice = silverEntry.unitValue;
+                    }
+                  } else if (silverEntry.unitType === '골드') {
+                    originalPrice = silverEntry.unitValue;
+                  }
+                }
+              }
+              // fallback: etc_list / marketPriceMap
+              if (originalPrice == null) {
+                const etc = etcListData[reward.itemName];
+                if (etc?.gold != null) {
+                  originalPrice = etc.gold;
+                } else if (marketPriceMap[reward.itemName] != null) {
+                  originalPrice = marketPriceMap[reward.itemName];
+                }
               }
             }
-          } else {
-            // 다른 보상의 경우 원본 가격 찾기
-            const etc = etcListData[reward.itemName];
-            if (etc?.gold != null) {
-              originalPrice = etc.gold;
-            } else if (marketPriceMap[reward.itemName] != null) {
-              originalPrice = marketPriceMap[reward.itemName];
-            }
           }
-          
+
           // adjustPrice로 가격 조정 (카드경험치 미반영, 돌파석 미반영, 파편 미반영 등)
           const adjustedPrice = adjustPrice(reward.itemName, originalPrice);
           if (adjustedPrice != null && adjustedPrice > 0) {

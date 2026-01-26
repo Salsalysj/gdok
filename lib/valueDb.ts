@@ -688,34 +688,71 @@ function resolveEntry(
   }
 
   if (itemName.startsWith('에브니 큐브 입장권')) {
-    // 지옥교환 항목 처리: 전설 지옥 열쇠 ÷ 10
+    // 지옥교환 항목 처리: 여러 지옥 열쇠 중 최대값 사용
     const hellExchangeMatch = itemName.match(/에브니 큐브 입장권 \(([^)]+)\) \(지옥교환\)/);
     if (hellExchangeMatch) {
       const cubeStage = hellExchangeMatch[1]; // 1해금, 2해금, 3해금, 4해금
-      let hellKeyName: string | null = null;
+      const candidates: Array<{ value: number; note: string }> = [];
       
-      // 해금 단계에 따라 전설 지옥 열쇠 매핑
+      // 해금 단계에 따라 비교할 지옥 열쇠 목록 정의
       if (cubeStage === '1해금' || cubeStage === '2해금') {
-        hellKeyName = '전설 지옥 열쇠 I';
+        // 전설 지옥 열쇠 I / 10, 영웅 지옥 열쇠 I / 6, 희귀 지옥 열쇠 I / 4
+        const legendary = manualOverrides['전설 지옥 열쇠 I'];
+        if (legendary?.unitValue != null && legendary.unitValue > 0) {
+          candidates.push({ value: legendary.unitValue / 10, note: '전설 지옥 열쇠 I ÷ 10' });
+        }
+        const heroic = manualOverrides['영웅 지옥 열쇠 I'];
+        if (heroic?.unitValue != null && heroic.unitValue > 0) {
+          candidates.push({ value: heroic.unitValue / 6, note: '영웅 지옥 열쇠 I ÷ 6' });
+        }
+        const rare = manualOverrides['희귀 지옥 열쇠 I'];
+        if (rare?.unitValue != null && rare.unitValue > 0) {
+          candidates.push({ value: rare.unitValue / 4, note: '희귀 지옥 열쇠 I ÷ 4' });
+        }
       } else if (cubeStage === '3해금') {
-        hellKeyName = '전설 지옥 열쇠 II';
+        // 전설 지옥 열쇠 II / 10, 영웅 지옥 열쇠 II / 6
+        const legendary = manualOverrides['전설 지옥 열쇠 II'];
+        if (legendary?.unitValue != null && legendary.unitValue > 0) {
+          candidates.push({ value: legendary.unitValue / 10, note: '전설 지옥 열쇠 II ÷ 10' });
+        }
+        const heroic = manualOverrides['영웅 지옥 열쇠 II'];
+        if (heroic?.unitValue != null && heroic.unitValue > 0) {
+          candidates.push({ value: heroic.unitValue / 6, note: '영웅 지옥 열쇠 II ÷ 6' });
+        }
       } else if (cubeStage === '4해금') {
-        hellKeyName = '전설 지옥 열쇠 III';
-      }
-      
-      if (hellKeyName) {
-        const hellKeyEntry = manualOverrides[hellKeyName];
-        if (hellKeyEntry && hellKeyEntry.unitValue != null && hellKeyEntry.unitValue > 0) {
-          return {
-            itemName,
-            unitType: '골드',
-            unitValue: hellKeyEntry.unitValue / 10,
-            note: `${hellKeyName} ÷ 10`,
-          };
+        // 전설 지옥 열쇠 III / 10, 영웅 지옥 열쇠 III / 6, 전설 지옥 열쇠 II / 8, 영웅 지옥 열쇠 II / 5
+        const legendary3 = manualOverrides['전설 지옥 열쇠 III'];
+        if (legendary3?.unitValue != null && legendary3.unitValue > 0) {
+          candidates.push({ value: legendary3.unitValue / 10, note: '전설 지옥 열쇠 III ÷ 10' });
+        }
+        const heroic3 = manualOverrides['영웅 지옥 열쇠 III'];
+        if (heroic3?.unitValue != null && heroic3.unitValue > 0) {
+          candidates.push({ value: heroic3.unitValue / 6, note: '영웅 지옥 열쇠 III ÷ 6' });
+        }
+        const legendary2 = manualOverrides['전설 지옥 열쇠 II'];
+        if (legendary2?.unitValue != null && legendary2.unitValue > 0) {
+          candidates.push({ value: legendary2.unitValue / 8, note: '전설 지옥 열쇠 II ÷ 8' });
+        }
+        const heroic2 = manualOverrides['영웅 지옥 열쇠 II'];
+        if (heroic2?.unitValue != null && heroic2.unitValue > 0) {
+          candidates.push({ value: heroic2.unitValue / 5, note: '영웅 지옥 열쇠 II ÷ 5' });
         }
       }
-      // 전설 지옥 열쇠 값을 찾지 못한 경우
-      return { itemName, unitType: '골드', unitValue: null, note: `${hellKeyName || '전설 지옥 열쇠'} 값 없음` };
+      
+      // 후보 중 최대값 선택
+      if (candidates.length > 0) {
+        const maxCandidate = candidates.reduce((max, candidate) => 
+          candidate.value > max.value ? candidate : max
+        );
+        return {
+          itemName,
+          unitType: '골드',
+          unitValue: maxCandidate.value,
+          note: maxCandidate.note,
+        };
+      }
+      // 지옥 열쇠 값을 찾지 못한 경우
+      return { itemName, unitType: '골드', unitValue: null, note: '지옥 열쇠 값 없음' };
     }
     
     // 일반 에브니 큐브 입장권 처리

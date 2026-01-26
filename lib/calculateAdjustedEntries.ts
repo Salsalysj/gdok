@@ -1069,23 +1069,51 @@ export function calculateAdjustedEntries(params: CalculateAdjustedEntriesParams)
     }
     // 에브니 큐브 입장권: 재계산된 값 사용
     else if (entry.itemName.startsWith('에브니 큐브 입장권')) {
-      // 지옥교환 항목 처리: 클라이언트에서 재계산된 지옥 열쇠 값 사용
+      // 지옥교환 항목 처리: 여러 지옥 열쇠 중 최대값 사용
       const hellExchangeMatch = entry.itemName.match(/에브니 큐브 입장권 \(([^)]+)\) \(지옥교환\)/);
       if (hellExchangeMatch) {
         const cubeStage = hellExchangeMatch[1]; // 1해금, 2해금, 3해금, 4해금
-        let hellKeyName: string | null = null;
+        const candidates: number[] = [];
         
-        // 해금 단계에 따라 전설 지옥 열쇠 매핑
+        // 해금 단계에 따라 비교할 지옥 열쇠 목록 정의
         if (cubeStage === '1해금' || cubeStage === '2해금') {
-          hellKeyName = '전설 지옥 열쇠 I';
+          // 전설 지옥 열쇠 I / 10, 영웅 지옥 열쇠 I / 6, 희귀 지옥 열쇠 I / 4
+          if (hellKeyValues['전설 지옥 열쇠 I'] != null && hellKeyValues['전설 지옥 열쇠 I']! > 0) {
+            candidates.push(hellKeyValues['전설 지옥 열쇠 I']! / 10);
+          }
+          if (hellKeyValues['영웅 지옥 열쇠 I'] != null && hellKeyValues['영웅 지옥 열쇠 I']! > 0) {
+            candidates.push(hellKeyValues['영웅 지옥 열쇠 I']! / 6);
+          }
+          if (hellKeyValues['희귀 지옥 열쇠 I'] != null && hellKeyValues['희귀 지옥 열쇠 I']! > 0) {
+            candidates.push(hellKeyValues['희귀 지옥 열쇠 I']! / 4);
+          }
         } else if (cubeStage === '3해금') {
-          hellKeyName = '전설 지옥 열쇠 II';
+          // 전설 지옥 열쇠 II / 10, 영웅 지옥 열쇠 II / 6
+          if (hellKeyValues['전설 지옥 열쇠 II'] != null && hellKeyValues['전설 지옥 열쇠 II']! > 0) {
+            candidates.push(hellKeyValues['전설 지옥 열쇠 II']! / 10);
+          }
+          if (hellKeyValues['영웅 지옥 열쇠 II'] != null && hellKeyValues['영웅 지옥 열쇠 II']! > 0) {
+            candidates.push(hellKeyValues['영웅 지옥 열쇠 II']! / 6);
+          }
         } else if (cubeStage === '4해금') {
-          hellKeyName = '전설 지옥 열쇠 III';
+          // 전설 지옥 열쇠 III / 10, 영웅 지옥 열쇠 III / 6, 전설 지옥 열쇠 II / 8, 영웅 지옥 열쇠 II / 5
+          if (hellKeyValues['전설 지옥 열쇠 III'] != null && hellKeyValues['전설 지옥 열쇠 III']! > 0) {
+            candidates.push(hellKeyValues['전설 지옥 열쇠 III']! / 10);
+          }
+          if (hellKeyValues['영웅 지옥 열쇠 III'] != null && hellKeyValues['영웅 지옥 열쇠 III']! > 0) {
+            candidates.push(hellKeyValues['영웅 지옥 열쇠 III']! / 6);
+          }
+          if (hellKeyValues['전설 지옥 열쇠 II'] != null && hellKeyValues['전설 지옥 열쇠 II']! > 0) {
+            candidates.push(hellKeyValues['전설 지옥 열쇠 II']! / 8);
+          }
+          if (hellKeyValues['영웅 지옥 열쇠 II'] != null && hellKeyValues['영웅 지옥 열쇠 II']! > 0) {
+            candidates.push(hellKeyValues['영웅 지옥 열쇠 II']! / 5);
+          }
         }
         
-        if (hellKeyName && hellKeyValues[hellKeyName] != null && hellKeyValues[hellKeyName]! > 0) {
-          adjustedValue = hellKeyValues[hellKeyName]! / 10;
+        // 후보 중 최대값 선택
+        if (candidates.length > 0) {
+          adjustedValue = Math.max(...candidates);
         }
       } else if (recalculatedValues[entry.itemName] != null) {
         // 일반 에브니 큐브 입장권은 recalculatedValues에서 가져오기

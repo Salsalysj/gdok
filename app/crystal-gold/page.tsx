@@ -80,6 +80,8 @@ type CrystalGoldData = {
   exchangeTimestamp?: string | null;
   updatedAt?: string | null; // 실제 갱신 시간
   discord?: number | null;
+  discordTimestamp?: string | null;
+  discordUpdatedAt?: string | null; // 디스코드 환율 실제 갱신 시간
   exchangeRates?: ExchangeRateEntry[]; // 하위 호환성
   exchangeHistory?: ExchangeHistoryEntry[]; // 히스토리 데이터
 };
@@ -249,7 +251,10 @@ export default function CrystalGoldPage() {
   };
 
   const displayExchange = data?.exchange ?? null;
-  const displayTimestamp = data?.exchangeTimestamp ?? null; // API에서 제공한 시간 사용
+  // 탭에 따라 다른 타임스탬프 사용
+  const displayTimestamp = activeTab === 'discord' 
+    ? (data?.discordUpdatedAt ?? data?.discordTimestamp ?? null)  // 디스코드 탭: discordUpdatedAt 우선
+    : (data?.exchangeTimestamp ?? null);  // 화폐거래소 탭: exchangeTimestamp
   // 사용자가 수정한 값이 있으면 그것을, 없으면 서버에서 가져온 기본값 사용
   const displayDiscord = userDiscordValue ?? data?.discord ?? null;
 

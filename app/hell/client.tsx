@@ -555,27 +555,64 @@ export default function HellClient({
                           { keyName: '희귀 지옥 열쇠 I', cubeStage: '1해금', cubeCount: 4 },
                         ];
                         
-                        return exchangeData.map((item, idx) => {
+                        // 먼저 모든 항목의 효율 계산
+                        const itemsWithEfficiency = exchangeData.map((item, idx) => {
                           const keyValue = hellKeyValues[item.keyName] ?? getValueDbPrice(item.keyName);
-                          // 일반 에브니 큐브 입장권 (지옥교환이 아닌 것)
                           const cubeTicketName = `에브니 큐브 입장권 (${item.cubeStage})`;
                           const cubeTicketValue = getValueDbPrice(cubeTicketName);
-                          
-                          let efficiency: number | null = null;
-                          let efficiencyText = '-';
-                          let efficiencyClass = 'text-gray-400';
                           const cubeTotalValue = cubeTicketValue != null && cubeTicketValue > 0 ? cubeTicketValue * item.cubeCount : null;
                           
+                          let efficiency: number | null = null;
                           if (keyValue != null && keyValue > 0 && cubeTicketValue != null && cubeTicketValue > 0) {
-                            // 에브니 큐브 입장권을 내고 지옥 열쇠를 받는 개념이므로 역수로 계산
-                            // 효율 = (열쇠 가치 / 입장권 총 가치) * 100 - 100
                             efficiency = ((keyValue / cubeTotalValue!) * 100) - 100;
-                            
-                            if (efficiency > 0) {
-                              efficiencyText = `+${formatNumberWithSignificantDigits(efficiency)}% 이득`;
+                          }
+                          
+                          return { ...item, idx, keyValue, cubeTicketValue, cubeTotalValue, efficiency };
+                        });
+                        
+                        // 각 해금 단계별로 효율이 양수인 항목 중 최고 효율 항목 찾기
+                        const recommendedIndices = new Set<number>();
+                        const cubeStages = ['1해금', '2해금', '3해금', '4해금'];
+                        
+                        cubeStages.forEach(cubeStage => {
+                          const stageItems = itemsWithEfficiency.filter(item => item.cubeStage === cubeStage);
+                          const positiveEfficiencyItems = stageItems.filter(item => item.efficiency != null && item.efficiency > 0);
+                          
+                          if (positiveEfficiencyItems.length > 0) {
+                            // 효율이 가장 높은 항목 찾기
+                            const bestItem = positiveEfficiencyItems.reduce((best, current) => 
+                              (current.efficiency ?? -Infinity) > (best.efficiency ?? -Infinity) ? current : best
+                            );
+                            recommendedIndices.add(bestItem.idx);
+                          }
+                        });
+                        
+                        return itemsWithEfficiency.map((item, mapIdx) => {
+                          let efficiencyText = '-';
+                          let efficiencyClass = 'text-gray-400';
+                          const isRecommended = recommendedIndices.has(item.idx);
+                          
+                          // 이전 항목과 해금 단계가 다른지 확인 (구분선 표시용)
+                          const prevItem = mapIdx > 0 ? itemsWithEfficiency[mapIdx - 1] : null;
+                          const isNewStage = prevItem && prevItem.cubeStage !== item.cubeStage;
+                          
+                          // 해금 단계별 배경색 설정
+                          const getStageBgColor = (stage: string) => {
+                            switch(stage) {
+                              case '1해금': return 'bg-gray-800/20';
+                              case '2해금': return 'bg-gray-800/10';
+                              case '3해금': return 'bg-gray-800/20';
+                              case '4해금': return 'bg-gray-800/10';
+                              default: return '';
+                            }
+                          };
+                          
+                          if (item.efficiency != null) {
+                            if (item.efficiency > 0) {
+                              efficiencyText = `+${formatNumberWithSignificantDigits(item.efficiency)}% 이득`;
                               efficiencyClass = 'text-green-400';
-                            } else if (efficiency < 0) {
-                              efficiencyText = `${formatNumberWithSignificantDigits(efficiency)}% 손해`;
+                            } else if (item.efficiency < 0) {
+                              efficiencyText = `${formatNumberWithSignificantDigits(item.efficiency)}% 손해`;
                               efficiencyClass = 'text-red-400';
                             } else {
                               efficiencyText = '0%';
@@ -584,32 +621,46 @@ export default function HellClient({
                           }
                           
                           return (
-                            <tr key={idx} className="border-b border-gray-700/50 hover:bg-gray-800/30">
-                              <td className="px-4 py-3 text-sm text-gray-300">
-                                <div className="flex items-center gap-2">
-                                  <span>{item.keyName}</span>
-                                  <span className="text-gray-500">↔</span>
-                                  <span>에브니 큐브 입장권 ({item.cubeStage}) × {item.cubeCount}개</span>
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 text-right text-sm text-gray-300">
-                                {keyValue != null && keyValue > 0 ? (
-                                  <span>{formatNumberWithSignificantDigits(keyValue)}골드</span>
-                                ) : (
-                                  <span className="text-gray-500">-</span>
-                                )}
-                              </td>
-                              <td className="px-4 py-3 text-right text-sm text-gray-300">
-                                {cubeTotalValue != null && cubeTotalValue > 0 ? (
-                                  <span>{formatNumberWithSignificantDigits(cubeTotalValue)}골드</span>
-                                ) : (
-                                  <span className="text-gray-500">-</span>
-                                )}
-                              </td>
-                              <td className={`px-4 py-3 text-right text-sm font-semibold ${efficiencyClass}`}>
-                                {efficiencyText}
-                              </td>
-                            </tr>
+                            <>
+                              {isNewStage && (
+                                <tr key={`divider-${item.idx}`}>
+                                  <td colSpan={4} className="px-0 py-0">
+                                    <div className="border-t-2 border-gray-600/60 my-1"></div>
+                                  </td>
+                                </tr>
+                              )}
+                              <tr key={item.idx} className={`border-b border-gray-700/50 hover:bg-gray-800/30 ${getStageBgColor(item.cubeStage)}`}>
+                                <td className="px-4 py-3 text-sm text-gray-300">
+                                  <div className="flex items-center gap-2">
+                                    <span>{item.keyName}</span>
+                                    <span className="text-gray-500">↔</span>
+                                    <span>에브니 큐브 입장권 ({item.cubeStage}) × {item.cubeCount}개</span>
+                                    {isRecommended && (
+                                      <span className="ml-2 px-2 py-0.5 text-xs font-semibold bg-green-600/20 text-green-400 border border-green-600/40 rounded">
+                                        교환 추천
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-right text-sm text-gray-300">
+                                  {item.keyValue != null && item.keyValue > 0 ? (
+                                    <span>{formatNumberWithSignificantDigits(item.keyValue)}골드</span>
+                                  ) : (
+                                    <span className="text-gray-500">-</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 text-right text-sm text-gray-300">
+                                  {item.cubeTotalValue != null && item.cubeTotalValue > 0 ? (
+                                    <span>{formatNumberWithSignificantDigits(item.cubeTotalValue)}골드</span>
+                                  ) : (
+                                    <span className="text-gray-500">-</span>
+                                  )}
+                                </td>
+                                <td className={`px-4 py-3 text-right text-sm font-semibold ${efficiencyClass}`}>
+                                  {efficiencyText}
+                                </td>
+                              </tr>
+                            </>
                           );
                         });
                       })()}
