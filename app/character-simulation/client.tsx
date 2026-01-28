@@ -529,6 +529,16 @@ export function calculateOptimalStrategy(
 }
 
 const STORAGE_KEY = 'character-simulation-cache';
+const ROSTER_CACHE_KEY = 'character-simulation-roster-cache';
+const ARMORY_FETCH_DELAY_MS = 350;
+
+type RosterCache = {
+  rosterOwner: string;
+  roster: RosterCharacter[];
+  armories: Record<string, CharacterArmory>;
+};
+
+const delay = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
 
 function CharacterSimulation({
   weaponStages,
@@ -559,123 +569,139 @@ function CharacterSimulation({
   const [characterData, setCharacterData] = useState<CharacterArmory | null>(null);
   const [rosterCharacters, setRosterCharacters] = useState<RosterCharacter[]>([]);
   const [loadingRoster, setLoadingRoster] = useState(false);
+  const [rosterCache, setRosterCache] = useState<RosterCache | null>(null);
 
-  // 원정대 캐릭터 목록 불러오기
-  const loadRoster = async (name: string) => {
-    if (!name.trim()) return;
-    
+  // 원정대 1640+ 전원 armory 조회 후 캐시 저장 (preloaded 있으면 해당 캐릭터는 스킵)
+  const loadRoster = async (
+    rosterOwner: string,
+    opts?: { preloaded?: Record<string, CharacterArmory> }
+  ): Promise<{ roster: RosterCharacter[]; armories: Record<string, CharacterArmory> } | null> => {
+    if (!rosterOwner.trim()) return null;
+    const preloaded = opts?.preloaded ?? {};
+    const armories: Record<string, CharacterArmory> = { ...preloaded };
+
+    setLoadingRoster(true);
     try {
-      setLoadingRoster(true);
-      const res = await fetch(`/api/character/roster?characterName=${encodeURIComponent(name.trim())}`);
+      const res = await fetch(`/api/character/roster?characterName=${encodeURIComponent(rosterOwner.trim())}`);
       const data = await res.json();
-      
-      if (res.ok && Array.isArray(data)) {
-        const characterPromises = data.map(async (char: any) => {
-          const characterName = char.CharacterName || char.characterName;
-          if (!characterName) {
-            const itemLevel = char.ItemAvgLevel
-              || char.ItemLevel 
-              || char.ItemMaxLevel 
-              || char.itemAvgLevel
-              || char.itemLevel
-              || char.itemMaxLevel
-              || char.CharacterItemLevel
-              || char.characterItemLevel
-              || '?';
-            
-            return {
-              CharacterName: characterName,
-              CharacterClassName: char.CharacterClassName || char.characterClassName,
-              ItemAvgLevel: char.ItemAvgLevel || char.itemAvgLevel || itemLevel,
-              ItemLevel: char.ItemLevel || char.itemLevel || itemLevel,
-              ItemMaxLevel: char.ItemMaxLevel || char.itemMaxLevel,
-              ServerName: char.ServerName || char.serverName,
-            };
-          }
-          
-          try {
-            const detailRes = await fetch('/api/character/search', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ characterName }),
-            });
-            
-            if (detailRes.ok) {
-              const detailData = await detailRes.json();
-              const armoryProfile = detailData.ArmoryProfile || {};
-              
-              const latestItemAvgLevel = armoryProfile.ItemAvgLevel 
-                || armoryProfile.ItemLevel
-                || detailData.ItemAvgLevel
-                || detailData.ItemLevel
-                || detailData.ItemMaxLevel
-                || detailData.itemAvgLevel
-                || detailData.itemLevel
-                || detailData.itemMaxLevel
-                || null;
-              
-              const itemLevel = latestItemAvgLevel
-                || char.ItemAvgLevel
-                || char.ItemLevel
-                || char.ItemMaxLevel
-                || char.itemAvgLevel
-                || char.itemLevel
-                || char.itemMaxLevel
-                || '?';
-              
-              return {
-                CharacterName: characterName,
-                CharacterClassName: char.CharacterClassName || char.characterClassName,
-                ItemAvgLevel: armoryProfile.ItemAvgLevel || latestItemAvgLevel || itemLevel,
-                ItemLevel: armoryProfile.ItemLevel || detailData.ItemLevel || detailData.itemLevel || itemLevel,
-                ItemMaxLevel: armoryProfile.ItemMaxLevel || detailData.ItemMaxLevel || detailData.itemMaxLevel,
-                ServerName: char.ServerName || char.serverName,
-              };
-            }
-          } catch (err) {
-            console.warn(`캐릭터 ${characterName} 상세 정보 조회 실패:`, err);
-          }
-          
-          const itemLevel = char.ItemAvgLevel
-            || char.ItemLevel 
-            || char.ItemMaxLevel 
-            || char.itemAvgLevel
-            || char.itemLevel
-            || char.itemMaxLevel
-            || char.CharacterItemLevel
-            || char.characterItemLevel
-            || '?';
-          
-          return {
-            CharacterName: characterName,
-            CharacterClassName: char.CharacterClassName || char.characterClassName,
-            ItemAvgLevel: char.ItemAvgLevel || char.itemAvgLevel || itemLevel,
-            ItemLevel: char.ItemLevel || char.itemLevel || itemLevel,
-            ItemMaxLevel: char.ItemMaxLevel || char.itemMaxLevel,
-            ServerName: char.ServerName || char.serverName,
-          };
-        });
-        
-        const characters = await Promise.all(characterPromises);
-        setRosterCharacters(characters);
-      } else {
+
+      if (!res.ok || !Array.isArray(data)) {
         setRosterCharacters([]);
+        setRosterCache(null);
+        return null;
       }
+
+      const parsed = data.map((char: any) => {
+        const n = char.CharacterName || char.characterName || '';
+        const levelStr = String(char.ItemAvgLevel || char.ItemLevel || char.ItemMaxLevel || char.itemAvgLevel || char.itemLevel || char.itemMaxLevel || '0').replace(/,/g, '');
+        const level = parseFloat(levelStr);
+        return {
+          CharacterName: n,
+          CharacterClassName: char.CharacterClassName || char.characterClassName,
+          ItemAvgLevel: char.ItemAvgLevel || char.itemAvgLevel,
+          ItemLevel: char.ItemLevel || char.itemLevel,
+          ItemMaxLevel: char.ItemMaxLevel || char.itemMaxLevel,
+          ServerName: char.ServerName || char.serverName,
+          _level: level,
+        };
+      });
+
+      const filtered = parsed.filter((c: { _level: number }) => !isNaN(c._level) && c._level >= 1640);
+      const roster: RosterCharacter[] = filtered.map(({ _level, ...r }: any) => r);
+
+      const namesToFetch = new Set<string>([rosterOwner.trim()]);
+      roster.forEach((c) => { if (c.CharacterName) namesToFetch.add(c.CharacterName); });
+      const namesList = Array.from(namesToFetch).filter((name) => !(name in armories));
+
+      for (let i = 0; i < namesList.length; i++) {
+        const name = namesList[i];
+        try {
+          const armoryRes = await fetch('/api/character/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ characterName: name }),
+          });
+          const armoryData = await armoryRes.json();
+          if (armoryRes.ok && armoryData) {
+            armories[name] = armoryData;
+            const profile = armoryData.ArmoryProfile || {};
+            const ilvl = profile.ItemAvgLevel ?? profile.ItemLevel ?? armoryData.ItemAvgLevel ?? armoryData.ItemLevel;
+            const idx = roster.findIndex((r) => (r.CharacterName || '') === name);
+            if (ilvl != null && idx >= 0) {
+              roster[idx] = { ...roster[idx], ItemAvgLevel: String(ilvl), ItemLevel: String(ilvl) };
+            }
+          }
+        } catch (e) {
+          console.warn(`캐릭터 ${name} armory 조회 실패:`, e);
+        }
+        if (i < namesList.length - 1) await delay(ARMORY_FETCH_DELAY_MS);
+      }
+
+      const cache: RosterCache = { rosterOwner: rosterOwner.trim(), roster, armories };
+      try {
+        localStorage.setItem(ROSTER_CACHE_KEY, JSON.stringify(cache));
+      } catch {
+        /* ignore */
+      }
+      setRosterCache(cache);
+      setRosterCharacters(roster);
+      return { roster, armories };
     } catch (err) {
       console.error('원정대 정보 조회 실패:', err);
       setRosterCharacters([]);
+      setRosterCache(null);
+      return null;
     } finally {
       setLoadingRoster(false);
     }
   };
 
-  const handleSearch = async (searchName?: string) => {
-    const nameToSearch = searchName || characterName.trim();
+  const handleSearch = async (searchName?: string, persistToStorage = false) => {
+    const nameToSearch = (searchName ?? characterName).trim();
     if (!nameToSearch) {
       setError('캐릭터명을 입력해주세요.');
       return;
     }
 
+    if (persistToStorage) {
+      try {
+        setLoading(true);
+        setError('');
+        const res = await fetch('/api/character/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ characterName: nameToSearch }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setError(data.error || '캐릭터를 찾을 수 없습니다.');
+          setCharacterData(null);
+          setRosterCharacters([]);
+          return;
+        }
+        setCharacterData(data);
+        setCharacterName(nameToSearch);
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            characterName: nameToSearch,
+            characterData: data,
+            rosterOwner: nameToSearch,
+          }));
+        } catch {
+          /* ignore */
+        }
+        loadRoster(nameToSearch, { preloaded: { [nameToSearch]: data } }).catch(() => {});
+      } catch (err) {
+        setError('캐릭터 검색 중 오류가 발생했습니다.');
+        setCharacterData(null);
+        setRosterCharacters([]);
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // 갱신: 현재 캐릭터만 재조회 후 캐시 갱신
     try {
       setLoading(true);
       setError('');
@@ -684,33 +710,39 @@ function CharacterSimulation({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ characterName: nameToSearch }),
       });
-
       const data = await res.json();
       if (res.ok) {
         setCharacterData(data);
-        loadRoster(nameToSearch);
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify({ characterName: nameToSearch, characterData: data }));
-        } catch {
-          /* ignore */
+        setCharacterName(nameToSearch);
+        if (rosterCache && nameToSearch) {
+          const next = { ...rosterCache, armories: { ...rosterCache.armories, [nameToSearch]: data } };
+          setRosterCache(next);
+          try {
+            localStorage.setItem(ROSTER_CACHE_KEY, JSON.stringify(next));
+          } catch {
+            /* ignore */
+          }
         }
       } else {
         setError(data.error || '캐릭터를 찾을 수 없습니다.');
-        setCharacterData(null);
-        setRosterCharacters([]);
       }
     } catch (err) {
       setError('캐릭터 검색 중 오류가 발생했습니다.');
-      setCharacterData(null);
-      setRosterCharacters([]);
     } finally {
       setLoading(false);
     }
   };
 
   const handleCharacterSelect = (selectedName: string) => {
+    if (!selectedName) return;
+    const armory = rosterCache?.armories[selectedName];
+    if (armory) {
+      setCharacterName(selectedName);
+      setCharacterData(armory);
+      return;
+    }
     setCharacterName(selectedName);
-    handleSearch(selectedName);
+    handleSearch(selectedName, false);
   };
 
   // 마운트 시 localStorage에서 가장 최근 캐릭터 복원
@@ -718,12 +750,22 @@ function CharacterSimulation({
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return;
-      const parsed = JSON.parse(raw) as { characterName?: string; characterData?: CharacterArmory };
+      const parsed = JSON.parse(raw) as { characterName?: string; characterData?: CharacterArmory; rosterOwner?: string };
       const name = typeof parsed?.characterName === 'string' ? parsed.characterName.trim() : '';
       const data = parsed?.characterData && typeof parsed.characterData === 'object' ? parsed.characterData : null;
       if (name && data) {
         setCharacterName(name);
         setCharacterData(data);
+        const owner = typeof parsed?.rosterOwner === 'string' ? parsed.rosterOwner.trim() : '';
+        const rosterRaw = localStorage.getItem(ROSTER_CACHE_KEY);
+        if (rosterRaw && owner) {
+          const rosterParsed = JSON.parse(rosterRaw) as RosterCache;
+          if (rosterParsed?.rosterOwner === owner && Array.isArray(rosterParsed?.roster) && rosterParsed?.armories && typeof rosterParsed.armories === 'object') {
+            setRosterCache(rosterParsed);
+            setRosterCharacters(rosterParsed.roster);
+            return;
+          }
+        }
         loadRoster(name);
       }
     } catch {
@@ -1547,21 +1589,21 @@ function CharacterSimulation({
               onChange={(e) => setCharacterName(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !loading) {
-                  handleSearch();
+                  handleSearch(undefined, true);
                 }
               }}
               placeholder="캐릭터명을 입력하세요"
               className="flex-1 min-w-[10rem] px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:border-purple-500 focus:outline-none"
             />
             <button
-              onClick={() => handleSearch()}
+              onClick={() => handleSearch(undefined, true)}
               disabled={loading}
               className="px-5 sm:px-6 py-2 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
             >
               {loading ? '검색 중...' : '검색'}
             </button>
             <button
-              onClick={() => handleSearch()}
+              onClick={() => handleSearch(undefined, false)}
               disabled={loading || !characterName.trim()}
               className="px-5 sm:px-6 py-2 bg-gray-700 text-white font-semibold rounded-lg hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed border border-gray-600"
             >
@@ -1606,7 +1648,76 @@ function CharacterSimulation({
           </div>
         )}
 
-        {characterData && (
+        {loading ? (
+          <div className="space-y-4">
+            {/* 일반 재련 요약 스켈레톤 */}
+            <div className="bg-gray-900/70 rounded-lg border border-gray-700 overflow-hidden">
+              <div className="px-3 py-2 bg-gray-800/50 border-b border-gray-700">
+                <div className="h-4 w-32 bg-gray-700 rounded animate-pulse" />
+              </div>
+              <ul className="divide-y divide-gray-800">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <li key={i} className={`flex items-center gap-3 px-3 py-2 ${i % 2 === 0 ? 'bg-gray-900/50' : 'bg-gray-800/30'}`}>
+                    <div className="h-3 w-24 bg-gray-700 rounded animate-pulse shrink-0" />
+                    <div className="h-3 w-16 bg-gray-700 rounded animate-pulse shrink-0" />
+                    <div className="h-3 w-12 bg-gray-700 rounded animate-pulse shrink-0" />
+                    <div className="h-3 w-20 bg-gray-700 rounded animate-pulse ml-auto" />
+                  </li>
+                ))}
+              </ul>
+            </div>
+            {/* 상급재련 전략 요약 스켈레톤 */}
+            <div className="bg-gray-900/70 rounded-lg border border-gray-700 overflow-hidden">
+              <div className="px-3 py-2 bg-gray-800/50 border-b border-gray-700">
+                <div className="h-4 w-40 bg-gray-700 rounded animate-pulse mb-1" />
+                <div className="h-3 w-64 bg-gray-700/80 rounded animate-pulse" />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3">
+                <div className="border border-gray-600 rounded-lg p-3 bg-gray-800/50 space-y-2">
+                  <div className="h-3 w-12 bg-gray-700 rounded animate-pulse" />
+                  <div className="h-3 w-full bg-gray-700 rounded animate-pulse" />
+                  <div className="h-3 w-4/5 bg-gray-700 rounded animate-pulse" />
+                  <div className="h-3 w-3/4 bg-gray-700 rounded animate-pulse" />
+                </div>
+                <div className="border border-gray-600 rounded-lg p-3 bg-gray-800/50 space-y-2">
+                  <div className="h-3 w-14 bg-gray-700 rounded animate-pulse" />
+                  <div className="h-3 w-full bg-gray-700 rounded animate-pulse" />
+                  <div className="h-3 w-4/5 bg-gray-700 rounded animate-pulse" />
+                  <div className="h-3 w-3/4 bg-gray-700 rounded animate-pulse" />
+                </div>
+              </div>
+            </div>
+            {/* 장비 표 스켈레톤 */}
+            <div className="bg-gray-900/70 rounded-lg border border-gray-700 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[880px] border border-gray-800">
+                  <thead>
+                    <tr className="bg-gray-900/90 border-b border-gray-700">
+                      <th className="px-3 py-3"><div className="h-3 w-14 bg-gray-700 rounded animate-pulse" /></th>
+                      <th className="px-3 py-3"><div className="h-3 w-16 bg-gray-700 rounded animate-pulse" /></th>
+                      <th className="px-3 py-3"><div className="h-3 w-16 bg-gray-700 rounded animate-pulse mx-auto" /></th>
+                      <th className="px-3 py-3"><div className="h-3 w-20 bg-gray-700 rounded animate-pulse ml-auto" /></th>
+                      <th className="px-3 py-3"><div className="h-3 w-16 bg-gray-700 rounded animate-pulse ml-auto" /></th>
+                      <th className="px-3 py-3"><div className="h-3 w-16 bg-gray-700 rounded animate-pulse ml-auto" /></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                      <tr key={i} className={i % 2 === 0 ? 'bg-gray-900/50' : 'bg-gray-800/50'}>
+                        <td className="px-3 py-3"><div className="h-4 w-10 bg-gray-700 rounded animate-pulse" /></td>
+                        <td className="px-3 py-3"><div className="h-4 w-28 bg-gray-700 rounded animate-pulse" /></td>
+                        <td className="px-3 py-3 text-center"><div className="h-4 w-8 bg-gray-700 rounded animate-pulse inline-block" /></td>
+                        <td className="px-3 py-3"><div className="h-4 w-16 bg-gray-700 rounded animate-pulse ml-auto" /></td>
+                        <td className="px-3 py-3"><div className="h-4 w-14 bg-gray-700 rounded animate-pulse ml-auto" /></td>
+                        <td className="px-3 py-3"><div className="h-4 w-12 bg-gray-700 rounded animate-pulse ml-auto" /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        ) : characterData ? (
           <>
             {hasTier3Equipment ? (
               <div className="bg-yellow-900/30 border border-yellow-500 rounded-lg p-6 text-center">
@@ -2143,7 +2254,7 @@ function CharacterSimulation({
               </>
             )}
           </>
-        )}
+        ) : null}
       </div>
     </div>
   );
