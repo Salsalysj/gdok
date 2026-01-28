@@ -6,6 +6,7 @@ import { formatNumberWithSignificantDigits } from '../../utils/formatNumber';
 import { usePriceAdjustment } from '../../hooks/usePriceAdjustment';
 import { usePriceOverride } from '../../contexts/PriceOverrideContext';
 import { useValueDb } from '../../contexts/ValueDbContext';
+import FavoriteButton from '../../components/FavoriteButton';
 
 type RewardData = {
   [itemName: string]: number;
@@ -381,20 +382,23 @@ export default function RaidRewardsClient({
     <div className="min-h-screen bg-gray-950 p-4 md:p-6 lg:p-8">
       <div>
         <div className="mb-8 md:mb-12">
-          <div className="flex items-start justify-between gap-4 mb-3">
-            <div className="flex-1">
-              <h1 className="text-4xl font-bold tracking-tight text-white mb-3 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                레이드 보상 계산기
-              </h1>
-              <p className="text-lg text-gray-400">레이드별 보상과 골드 가치를 확인하세요.</p>
+          <div className="mb-3">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex items-center gap-3 flex-wrap">
+                <h1 className="text-4xl font-bold tracking-tight text-white bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                  레이드 보상 계산기
+                </h1>
+                <FavoriteButton title="레이드 (더보기 효율)" />
+              </div>
+              <Link
+                href="/content-rewards/raid-rewards/recommended"
+                className="flex-shrink-0 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2"
+              >
+                <span className="text-lg">✨</span>
+                <span>더보기 추천</span>
+              </Link>
             </div>
-            <Link
-              href="/content-rewards/raid-rewards/recommended"
-              className="flex-shrink-0 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2"
-            >
-              <span className="text-lg">✨</span>
-              <span>더보기 추천</span>
-            </Link>
+            <p className="text-lg text-gray-400 mt-3">레이드별 보상과 골드 가치를 확인하세요.</p>
           </div>
         </div>
 

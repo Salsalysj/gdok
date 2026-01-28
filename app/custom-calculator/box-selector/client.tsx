@@ -8,6 +8,7 @@ import { createClient } from '@supabase/supabase-js';
 import type { ValueDbEntry } from '@/lib/valueDb';
 import { calculateOptimalStrategy } from '../../refining-simulation/client';
 import type { RefiningStage, MarketItemInfo } from '../../refining-simulation/page';
+import FavoriteButton from '../../components/FavoriteButton';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -1711,7 +1712,10 @@ export default function BoxSelectorClient({
     <div className="min-h-screen bg-gray-950 text-white p-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-semibold mb-2">상자 선택 도우미</h1>
+          <div className="flex items-center gap-3 flex-wrap mb-2">
+            <h1 className="text-3xl font-semibold">상자 선택 도우미</h1>
+            <FavoriteButton title="상자 선택 도우미" />
+          </div>
           <p className="text-gray-400">선택 상자 속 아이템들의 가치를 계산하여 최적의 결과를 알려주는 도구입니다.</p>
         </div>
 

@@ -5,6 +5,7 @@ import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
 import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
 import { usePriceOverride } from '../contexts/PriceOverrideContext';
 import { useValueDb } from '../contexts/ValueDbContext';
+import FavoriteButton from '../components/FavoriteButton';
 
 type EventTab = {
   key: string;
@@ -3731,29 +3732,18 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
 
   return (
     <div className="px-4 py-8 space-y-6">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">PC방 이벤트</h1>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {/* 저장 버튼 (로컬에서만 표시) */}
-          {allowEventEfficiencySave && (
-            <button
-              onClick={handleSaveEventEfficiency}
-              disabled={isLoading || !eventName.trim()}
-              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm font-medium disabled:opacity-50"
-            >
-              저장
-            </button>
-          )}
+      <div className="mb-6">
+        <div className="flex items-center gap-3 flex-wrap mb-2">
+          <h1 className="text-3xl font-semibold tracking-tight text-white">PC방 이벤트</h1>
+          <FavoriteButton title="PC방 이벤트" />
         </div>
       </div>
       <div className="bg-gray-800 border border-gray-700 rounded p-8">
         <div className="flex flex-col gap-4">
           
-          {/* 새로 만들기 버튼 (로컬에서만 표시) */}
+          {/* 새로 만들기 / 저장 버튼 (로컬에서만 표시, 카드 영역 안) */}
           {allowEventEfficiencySave && (
-            <div className="mb-3">
+            <div className="mb-3 flex flex-wrap gap-2">
               <button
                 onClick={handleNewEventEfficiency}
                 className="px-5 py-2.5 bg-gray-700 text-white rounded hover:bg-gray-600 disabled:opacity-50 font-semibold border border-gray-700"
@@ -3765,6 +3755,13 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                   </svg>
                   새로 만들기
                 </span>
+              </button>
+              <button
+                onClick={handleSaveEventEfficiency}
+                disabled={isLoading || !eventName.trim()}
+                className="px-5 py-2.5 bg-gray-700 hover:bg-gray-600 text-white rounded font-semibold border border-gray-700 disabled:opacity-50"
+              >
+                저장
               </button>
             </div>
           )}

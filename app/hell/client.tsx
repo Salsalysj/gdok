@@ -9,6 +9,7 @@ import type { ValueDbEntry } from '@/lib/valueDb';
 import type { RefiningStage } from '../value-db/page';
 import type { MarketItemInfo } from '../refining-simulation/page';
 import { calculateOptimalStrategy } from '../refining-simulation/client';
+import FavoriteButton from '../components/FavoriteButton';
 
 type RewardItem = {
   itemName: string;
@@ -348,6 +349,30 @@ export default function HellClient({
     return price;
   };
 
+  /** 카테고리 가치 계산. 파괴석/수호석 상자는 둘 중 하나 선택이므로 max 사용, 나머지는 합산. */
+  const getCategoryValue = (
+    category: string,
+    rewards: RewardItem[],
+    getPrice: (r: RewardItem) => number
+  ): { value: number; chosen?: string } => {
+    if (category === '파괴석/수호석') {
+      let bestValue = 0;
+      let chosen: string | undefined;
+      for (const r of rewards) {
+        const v = getPrice(r) * r.quantity;
+        if (v > bestValue) {
+          bestValue = v;
+          chosen = r.itemName;
+        }
+      }
+      return { value: bestValue, chosen };
+    }
+    const value = rewards.reduce((sum, r) => sum + getPrice(r) * r.quantity, 0);
+    return { value };
+  };
+
+  const getItemValue = (r: RewardItem) => (getAdjustedPrice(r.itemName, r.price) ?? 0);
+
   // 디코기준 스위치 상태 동기화 (전역 테마 스위치 사용)
   const [lightMode, setLightMode] = useState<boolean>(false);
   useEffect(() => {
@@ -395,7 +420,10 @@ export default function HellClient({
     <div className="min-h-screen bg-gray-950 p-4 md:p-6 lg:p-8">
       <div>
         <div className="mb-6 md:mb-10">
-          <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">지옥 보상 계산기 (낙원 시즌2 반영)</h1>
+          <div className="flex items-center gap-3 flex-wrap mb-2">
+            <h1 className="text-3xl font-semibold tracking-tight text-white">지옥 보상 계산기 (낙원 시즌2 반영)</h1>
+            <FavoriteButton title="지옥 보상" />
+          </div>
           <p className="text-base text-gray-400">지옥 보상과 골드 가치를 확인하세요.</p>
         </div>
         
@@ -463,7 +491,7 @@ export default function HellClient({
               baseRewardValue = baseValue * 1.9;
             }
             
-            // 선택 보상 기대값 계산
+            // 선택 보상 기대값 계산 (파괴석/수호석 상자는 max 사용)
             if (otherCategories.length >= 3) {
               const combinations: string[][] = [];
               for (let i = 0; i < otherCategories.length; i++) {
@@ -476,24 +504,18 @@ export default function HellClient({
               
               const maxValues: number[] = [];
               combinations.forEach(combo => {
-                const comboValues = combo.map(cat => {
-                  return groupedByCategory[cat].reduce((sum, r) => {
-                    const adjustedPrice = getAdjustedPrice(r.itemName, r.price);
-                    return sum + ((adjustedPrice || 0) * r.quantity);
-                  }, 0);
-                });
+                const comboValues = combo.map(cat =>
+                  getCategoryValue(cat, groupedByCategory[cat], getItemValue).value
+                );
                 maxValues.push(Math.max(...comboValues));
               });
               
               const expectedSelectionValue = maxValues.reduce((sum, val) => sum + val, 0) / maxValues.length;
               return baseRewardValue + expectedSelectionValue;
             } else if (otherCategories.length > 0) {
-              const otherValues = otherCategories.map(cat => {
-                return groupedByCategory[cat].reduce((sum, r) => {
-                  const adjustedPrice = getAdjustedPrice(r.itemName, r.price);
-                  return sum + ((adjustedPrice || 0) * r.quantity);
-                }, 0);
-              });
+              const otherValues = otherCategories.map(cat =>
+                getCategoryValue(cat, groupedByCategory[cat], getItemValue).value
+              );
               const maxOtherValue = Math.max(...otherValues);
               return baseRewardValue + maxOtherValue;
             } else {
@@ -780,28 +802,22 @@ export default function HellClient({
                     }
                   }
                   
-                  // 각 조합의 최고값 계산 (가격 조정 적용, 가치계산DB 우선 사용)
+                  // 각 조합의 최고값 계산 (가격 조정 적용, 가치계산DB 우선 사용, 파괴석/수호석 상자는 max)
                   const maxValues: number[] = [];
                   combinations.forEach(combo => {
-                    const comboValues = combo.map(cat => {
-                      return groupedByCategory[cat].reduce((sum, r) => {
-                        const adjustedPrice = getAdjustedPrice(r.itemName, r.price); // 모든 아이템은 가치계산DB 우선 사용
-                        return sum + ((adjustedPrice || 0) * r.quantity);
-                      }, 0);
-                    });
+                    const comboValues = combo.map(cat =>
+                      getCategoryValue(cat, groupedByCategory[cat], getItemValue).value
+                    );
                     maxValues.push(Math.max(...comboValues));
                   });
                   
                   // 기대값 = 모든 최고값의 평균
                   hellExpectedValue = maxValues.reduce((sum, val) => sum + val, 0) / maxValues.length;
                 } else if (categories.length > 0) {
-                  // 카테고리가 3개 미만이면 모든 카테고리의 최고값 (가격 조정 적용, 가치계산DB 우선 사용)
-                  const categoryValues = categories.map(cat => {
-                    return groupedByCategory[cat].reduce((sum, r) => {
-                      const adjustedPrice = getAdjustedPrice(r.itemName, r.price); // 모든 아이템은 가치계산DB 우선 사용
-                      return sum + ((adjustedPrice || 0) * r.quantity);
-                    }, 0);
-                  });
+                  // 카테고리가 3개 미만이면 모든 카테고리의 최고값 (파괴석/수호석 상자는 max)
+                  const categoryValues = categories.map(cat =>
+                    getCategoryValue(cat, groupedByCategory[cat], getItemValue).value
+                  );
                   hellExpectedValue = Math.max(...categoryValues);
                 }
               } else {
@@ -821,7 +837,7 @@ export default function HellClient({
                   baseRewardValue = baseValue * 1.9;
                 }
                 
-                // 선택 보상 기대값 계산: 나머지 카테고리 중 3개를 랜덤으로 선택하고 그 중 최고값을 선택
+                // 선택 보상 기대값 계산: 나머지 카테고리 중 3개를 랜덤으로 선택하고 그 중 최고값을 선택 (파괴석/수호석 상자는 max)
                 if (otherCategories.length >= 3) {
                   // 모든 3개 조합 생성
                   const combinations: string[][] = [];
@@ -833,15 +849,12 @@ export default function HellClient({
                     }
                   }
                   
-                  // 각 조합의 최고값 계산 (가격 조정 적용, 가치계산DB 우선 사용)
+                  // 각 조합의 최고값 계산 (파괴석/수호석 상자는 max)
                   const maxValues: number[] = [];
                   combinations.forEach(combo => {
-                    const comboValues = combo.map(cat => {
-                      return groupedByCategory[cat].reduce((sum, r) => {
-                        const adjustedPrice = getAdjustedPrice(r.itemName, r.price); // 모든 아이템은 가치계산DB 우선 사용
-                        return sum + ((adjustedPrice || 0) * r.quantity);
-                      }, 0);
-                    });
+                    const comboValues = combo.map(cat =>
+                      getCategoryValue(cat, groupedByCategory[cat], getItemValue).value
+                    );
                     maxValues.push(Math.max(...comboValues));
                   });
                   
@@ -849,13 +862,10 @@ export default function HellClient({
                   const expectedSelectionValue = maxValues.reduce((sum, val) => sum + val, 0) / maxValues.length;
                   hellExpectedValue = baseRewardValue + expectedSelectionValue;
                 } else if (otherCategories.length > 0) {
-                  // 카테고리가 3개 미만이면 모든 카테고리의 최고값 (가격 조정 적용, 가치계산DB 우선 사용)
-                  const otherValues = otherCategories.map(cat => {
-                    return groupedByCategory[cat].reduce((sum, r) => {
-                      const adjustedPrice = getAdjustedPrice(r.itemName, r.price); // 모든 아이템은 가치계산DB 우선 사용
-                      return sum + ((adjustedPrice || 0) * r.quantity);
-                    }, 0);
-                  });
+                  // 카테고리가 3개 미만이면 모든 카테고리의 최고값 (파괴석/수호석 상자는 max)
+                  const otherValues = otherCategories.map(cat =>
+                    getCategoryValue(cat, groupedByCategory[cat], getItemValue).value
+                  );
                   const maxOtherValue = Math.max(...otherValues);
                   hellExpectedValue = baseRewardValue + maxOtherValue;
                 } else {
@@ -915,18 +925,15 @@ export default function HellClient({
                     ? categories.filter(cat => cat !== baseCategory)
                     : categories;
                   
-                  // 각 카테고리의 합계 계산 및 정렬
+                  // 각 카테고리의 합계 계산 및 정렬 (파괴석/수호석 상자는 max 사용, chosen 표시)
                   const categoryData = otherCategories.map(category => {
                     const rewards = groupedByCategory[category];
-                    const selectionTotal = rewards.reduce((sum, r) => {
-                      const adjustedPrice = getAdjustedPrice(r.itemName, r.price);
-                      return sum + ((adjustedPrice || 0) * r.quantity);
-                    }, 0);
+                    const { value: selectionTotal, chosen } = getCategoryValue(category, rewards, getItemValue);
                     // 일반 상자 기준 합계 = 기본 보상 상자 + 해당 카테고리 선택 보상
                     const normalTotal = baseRewardsTotal + selectionTotal;
                     // 풍요 상자 기준 합계 = 기본 보상 상자 × 10 + 해당 카테고리 선택 보상
                     const abundanceTotal = baseRewardsTotal * 10 + selectionTotal;
-                    return { category, rewards, normalTotal, abundanceTotal };
+                    return { category, rewards, normalTotal, abundanceTotal, chosen };
                   });
                   
                   // 보상 합계가 높은 순서대로 정렬 (일반 상자 기준)
@@ -934,7 +941,7 @@ export default function HellClient({
                   
                   return (
                     <div className="space-y-3">
-                      {categoryData.map(({ category, rewards, normalTotal, abundanceTotal }) => {
+                      {categoryData.map(({ category, rewards, normalTotal, abundanceTotal, chosen }) => {
                         const isExpanded = expandedCategories.has(category);
                         const isBaseOpen = showBaseRewardsByCategory[category] ?? false;
                       
@@ -958,7 +965,14 @@ export default function HellClient({
                               <span className={`transform transition-transform ${isExpanded ? 'rotate-90' : ''}`}>
                                 ▶
                               </span>
-                              <span className="font-semibold text-white">{category}</span>
+                              <div className="text-left">
+                                <span className="font-semibold text-white">{category}</span>
+                                {chosen != null && (
+                                  <div className="text-xs text-amber-300/90 mt-0.5">
+                                    선택: {chosen}
+                                  </div>
+                                )}
+                              </div>
                  
                             </div>
                             <div className="text-right">
@@ -1049,15 +1063,21 @@ export default function HellClient({
                                   const priceStr = adjustedPrice !== null ? formatNumberWithSignificantDigits(adjustedPrice) : '';
                                   const itemTotalStr = formatNumberWithSignificantDigits(itemTotal);
                                   const tradeInfo = getTradeClass(reward.itemName);
+                                  const isChosen = category === '파괴석/수호석' && chosen != null && reward.itemName === chosen;
                                   
                                   return (
                                     <div
                                       key={rewardIdx}
-                                      className="bg-gray-900/50 rounded-lg border border-gray-700 p-3"
+                                      className={`rounded-lg border p-3 ${isChosen ? 'bg-amber-900/20 border-amber-600/60' : 'bg-gray-900/50 border-gray-700'}`}
                                     >
                                       <div className="flex items-center gap-2 mb-1">
                                         <span className={`font-medium ${tradeInfo.nameClass}`}>{reward.itemName}</span>
                                         <span className={`px-1.5 py-0.5 rounded text-[10px] ${tradeInfo.badgeClass}`}>{tradeInfo.badgeText}</span>
+                                        {isChosen && (
+                                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-900/50 text-amber-300 border border-amber-600">
+                                            선택
+                                          </span>
+                                        )}
                                       </div>
                                       <div className="text-gray-400 text-sm mb-1">수량: {quantityStr}</div>
                                       {reward.itemName === '어빌리티 스톤 키트' || reward.itemName.includes('어빌리티 스톤 키트') ? (

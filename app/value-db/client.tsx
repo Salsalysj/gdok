@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
 import { useValueDb } from '../contexts/ValueDbContext';
+import FavoriteButton from '../components/FavoriteButton';
 
 export default function ValueDBClient() {
   const { adjustedEntries } = useValueDb();
@@ -32,7 +33,10 @@ export default function ValueDBClient() {
     <div className="min-h-screen bg-gray-950 p-4 md:p-6 lg:p-8">
       <div>
         <div className="mb-6 md:mb-10">
-          <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">가치 계산 DB</h1>
+          <div className="flex items-center gap-3 flex-wrap mb-2">
+            <h1 className="text-3xl font-semibold tracking-tight text-white">가치 계산 DB</h1>
+            <FavoriteButton title="가치 계산 DB" />
+          </div>
           <p className="text-base text-gray-400 mb-4">
             과금 효율 탭에서 선택 가능한 아이템들의 기준 가치를 확인합니다. 크리스탈/골드/현금 항목은
             각 단위로 표시되며, 별도 정보가 없으면 시장가(골드 기준)가 사용됩니다.

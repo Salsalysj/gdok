@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useValueDb } from '../../contexts/ValueDbContext';
+import FavoriteButton from '../../components/FavoriteButton';
 
 // 숫자 포맷팅 함수
 function formatNumberWithSignificantDigits(value: number): string {
@@ -1099,9 +1100,10 @@ export default function ArkpassGuideClient({
   return (
     <div className="min-h-screen bg-gray-950 py-8">
       <div className="px-4 space-y-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">아크패스 선택 가이드</h1>
+        <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-3xl font-semibold tracking-tight text-white">아크패스 선택 가이드</h1>
+            <FavoriteButton title="아크패스 선택 가이드" />
           </div>
           <div className="flex flex-wrap gap-2">
             {/* 저장 버튼 (로컬에서만 표시) */}

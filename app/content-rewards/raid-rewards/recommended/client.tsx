@@ -6,6 +6,7 @@ import { formatNumberWithSignificantDigits } from '../../../utils/formatNumber';
 import { usePriceAdjustment } from '../../../hooks/usePriceAdjustment';
 import { usePriceOverride } from '../../../contexts/PriceOverrideContext';
 import { useValueDb } from '../../../contexts/ValueDbContext';
+import FavoriteButton from '../../../components/FavoriteButton';
 
 type RewardData = {
   [itemName: string]: number;
@@ -372,19 +373,24 @@ export default function RecommendedClient({
     <div className="min-h-screen bg-gray-950 p-4 md:p-6 lg:p-8">
       <div>
         <div className="mb-8 md:mb-12">
-          <div className="flex items-start justify-between gap-4 mb-3">
-            <div className="flex-1">
-              <h1 className="text-4xl font-bold tracking-tight text-white mb-3 bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
-                더보기 추천
-              </h1>
+          <div className="flex items-start justify-between gap-4 mb-3 flex-wrap">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-3 flex-wrap mb-2">
+                <h1 className="text-4xl font-bold tracking-tight text-white bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
+                  더보기 추천
+                </h1>
+                <FavoriteButton title="더보기 추천" />
+              </div>
               <p className="text-lg text-gray-400">더보기 이득률이 20% 이상인 레이드 관문들만 자동 필터링하여 추천드립니다.</p>
             </div>
-            <Link
-              href="/content-rewards/raid-rewards"
-              className="flex-shrink-0 px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
-            >
-              ← 돌아가기
-            </Link>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Link
+                href="/content-rewards/raid-rewards"
+                className="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+              >
+                ← 돌아가기
+              </Link>
+            </div>
           </div>
         </div>
 

@@ -1,3 +1,5 @@
+import FavoriteButton from '../components/FavoriteButton';
+
 export const metadata = {
   title: '업데이트 내역 - 껨산기',
   description: '껨산기 업데이트 내역',
@@ -8,13 +10,40 @@ export default function UpdatesPage() {
     <div className="min-h-screen bg-gray-950 sm:p-6 lg:p-8">
       <div className="max-w-4xl mx-auto">
         <div className="mb-4 sm:mb-6 md:mb-8 px-4 sm:px-0">
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold tracking-tight text-white mb-1 sm:mb-2">
-            업데이트 내역
-          </h1>
+          <div className="flex items-center gap-3 flex-wrap mb-1 sm:mb-2">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold tracking-tight text-white">
+              업데이트 내역
+            </h1>
+            <FavoriteButton title="업데이트 내역" />
+          </div>
           <p className="text-[10px] sm:text-xs md:text-sm text-gray-400 whitespace-normal break-words">껨산기의 업데이트 내역을 확인하세요.</p>
         </div>
 
         <div className="space-y-3 sm:space-y-4 md:space-y-6 lg:space-y-8">
+          {/* v0.3.10 */}
+          <div className="bg-gray-800 rounded-none sm:rounded-lg p-3 sm:p-4 md:p-6 border-x-0 sm:border-x border-gray-700">
+            <h2 className="text-sm sm:text-base md:text-lg lg:text-2xl font-bold text-white mb-2 sm:mb-3 md:mb-4">v0.3.10 (2026. 01. 28)</h2>
+            
+            <div className="space-y-2 sm:space-y-3 md:space-y-4">
+              <div>
+                <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold text-green-400 mb-1 sm:mb-2">신규 기능</h3>
+                <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-[10px] sm:text-xs md:text-sm text-gray-300 ml-3 sm:ml-4 whitespace-normal break-words">
+                  <li>즐겨찾기 기능 추가</li>
+                  <li>화폐거래소 환율 추이 그래프 추가</li>
+                  <li>내 캐릭터 시뮬레이션에 상재 효율도 추가 (이제 별도의 페이지로 구분되어 내 캐릭터에 맞는 일반재련, 상급재련 전략을 한번에 볼 수 있습니다)</li>
+                </ul>
+              </div>
+              
+              <div>
+                <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold text-blue-400 mb-1 sm:mb-2">개선 사항</h3>
+                <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-[10px] sm:text-xs md:text-sm text-gray-300 ml-3 sm:ml-4 whitespace-normal break-words">
+                  <li>지옥 보상에 천상 입장권+1 (3000골) 가치 계산에 포함</li>
+                  <li>정련된 운명의 돌 가치 조정</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
           {/* v0.3.9 */}
           <div className="bg-gray-800 rounded-none sm:rounded-lg p-3 sm:p-4 md:p-6 border-x-0 sm:border-x border-gray-700">
             <h2 className="text-sm sm:text-base md:text-lg lg:text-2xl font-bold text-white mb-2 sm:mb-3 md:mb-4">v0.3.9 (2026. 01. 26)</h2>

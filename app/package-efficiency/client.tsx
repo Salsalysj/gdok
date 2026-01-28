@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef, type MouseEvent as ReactMouseEvent } from 'react';
 import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
 import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
+import FavoriteButton from '../components/FavoriteButton';
 import { useValueDb } from '../contexts/ValueDbContext';
 import type { ValueDbEntry } from '@/lib/valueDb';
 import { calculateOptimalStrategy } from '../refining-simulation/client';
@@ -2285,8 +2286,9 @@ export default function PackageEfficiencyClient({
     <div className="min-h-screen bg-gray-950 p-8">
       <div>
         <div className="mb-10">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-3 flex-wrap mb-2">
             <h1 className="text-3xl font-semibold tracking-tight text-white">과금 효율 계산기</h1>
+            <FavoriteButton title="과금 효율" />
           </div>
           <p className="text-base text-gray-400">과금 상품을 스스로 계산해볼 수 있습니다.</p>
         </div>

@@ -88,10 +88,8 @@ export default function Navigation() {
   ];
 
   const contentRewardsSubTabs = [
+    { name: '핵심 컨텐츠', href: '/content-rewards' },
     { name: '레이드 (더보기 효율)', href: '/content-rewards/raid-rewards' },
-    { name: '전선 & 균열', href: '/content-rewards?tab=쿠르잔 전선' },
-    { name: '가디언 토벌', href: '/content-rewards?tab=가디언 토벌' },
-    { name: '큐브 & 모래시계', href: '/content-rewards?tab=에브니 큐브' },
     { name: '필보 & 카게', href: '/content-rewards/boss-gate' },
     { name: '지옥 (시즌2)', href: '/hell' },
   ];
@@ -99,6 +97,7 @@ export default function Navigation() {
   const refiningSubTabs = [
     { name: '일반 재련', href: '/refining-simulation' },
     { name: '상급 재련', href: '/advanced-refining' },
+    { name: '내 캐릭터 시뮬레이션', href: '/character-simulation' },
   ];
 
   const eventEfficiencySubTabs = [
@@ -175,7 +174,7 @@ export default function Navigation() {
               {tabs.map((tab) => {
                 const isActive = pathname === tab.href || 
                   (tab.href === '/content-rewards' && pathname.startsWith('/content-rewards')) ||
-                  (tab.href === '/refining-simulation' && (pathname.startsWith('/refining-simulation') || pathname.startsWith('/advanced-refining'))) ||
+                  (tab.href === '/refining-simulation' && (pathname.startsWith('/refining-simulation') || pathname.startsWith('/advanced-refining') || pathname.startsWith('/character-simulation'))) ||
                   (tab.href === '/event-efficiency' && pathname.startsWith('/event-efficiency')) ||
                   (tab.href === '/custom-calculator' && pathname.startsWith('/custom-calculator'));
                 
@@ -271,7 +270,7 @@ export default function Navigation() {
             {tabs.map((tab) => {
               const isActive = pathname === tab.href || 
                 (tab.href === '/content-rewards' && pathname.startsWith('/content-rewards')) ||
-                (tab.href === '/refining-simulation' && (pathname.startsWith('/refining-simulation') || pathname.startsWith('/advanced-refining'))) ||
+                (tab.href === '/refining-simulation' && (pathname.startsWith('/refining-simulation') || pathname.startsWith('/advanced-refining') || pathname.startsWith('/character-simulation'))) ||
                 (tab.href === '/event-efficiency' && pathname.startsWith('/event-efficiency'));
               
               if (tab.hasSubmenu) {

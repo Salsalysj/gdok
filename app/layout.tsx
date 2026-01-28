@@ -8,6 +8,7 @@ import ValueDBSidebar from './components/ValueDBSidebar'
 import { SidebarProvider } from './contexts/SidebarContext'
 import { PriceOverrideProvider } from './contexts/PriceOverrideContext'
 import { ValueDbProvider } from './contexts/ValueDbContext'
+import { FavoritesProvider } from './contexts/FavoritesContext'
 import { getValueDbData } from '@/lib/valueDb'
 import { parseUpgradeCsv, getMarketInfoMap, createStages } from './value-db/page'
 import { 
@@ -129,9 +130,10 @@ export default async function RootLayout({
         />
       </head>
       <body suppressHydrationWarning className="flex flex-col min-h-screen">
-        <SidebarProvider>
-          <PriceOverrideProvider>
-            <ValueDbProvider
+        <FavoritesProvider>
+          <SidebarProvider>
+            <PriceOverrideProvider>
+              <ValueDbProvider
               entries={valueDbData.entries}
               cubeStageRewards={valueDbData.cubeStageRewards}
               kurzanStageRewards={valueDbData.kurzanStageRewards}
@@ -191,9 +193,10 @@ export default async function RootLayout({
                   <Footer />
                 </div>
               </div>
-            </ValueDbProvider>
-          </PriceOverrideProvider>
-        </SidebarProvider>
+              </ValueDbProvider>
+            </PriceOverrideProvider>
+          </SidebarProvider>
+        </FavoritesProvider>
       </body>
     </html>
   )

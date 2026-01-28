@@ -7,6 +7,7 @@ import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
 import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
 import { usePriceOverride } from '../contexts/PriceOverrideContext';
 import { useValueDb } from '../contexts/ValueDbContext';
+import FavoriteButton from '../components/FavoriteButton';
 
 type RewardItem = {
   itemName: string;
@@ -370,10 +371,38 @@ export default function ContentRewardsClient({
     <div className="min-h-screen bg-gray-950 p-4 md:p-6 lg:p-8">
       <div>
         <div className="mb-6 md:mb-10">
-          <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">
-            {activeContent ? `${activeContent === '쿠르잔 전선' ? '전선&균열' : activeContent === '에브니 큐브' ? '큐브&모래시계' : activeContent} 보상 계산기` : '컨텐츠 보상 계산기'}
-          </h1>
+          <div className="flex items-center gap-3 flex-wrap mb-2">
+            <h1 className="text-3xl font-semibold tracking-tight text-white">
+              컨텐츠 보상 계산기
+            </h1>
+            <FavoriteButton title="핵심 컨텐츠" />
+          </div>
           <p className="text-base text-gray-400">컨텐츠별 보상과 골드 가치를 확인하세요. (악세, 유각, 편린 등 일부 보상 제외)</p>
+        </div>
+
+        {/* 컨텐츠 타입 선택 탭 */}
+        <div className="mb-6">
+          <div className="flex flex-wrap gap-2">
+            {availableContents.map(content => (
+              <button
+                key={content}
+                onClick={() => {
+                  setActiveContent(content);
+                  // URL 업데이트
+                  const url = new URL(window.location.href);
+                  url.searchParams.set('tab', content);
+                  window.history.pushState({}, '', url.toString());
+                }}
+                className={`px-4 py-2 rounded-lg font-semibold text-sm md:text-base transition-colors ${
+                  activeContent === content
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
+                }`}
+              >
+                {content === '쿠르잔 전선' ? '전선 & 균열' : content === '에브니 큐브' ? '큐브 & 모래시계' : content}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* 레벨 선택 */}

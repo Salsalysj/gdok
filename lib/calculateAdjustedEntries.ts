@@ -671,6 +671,22 @@ export function calculateAdjustedEntries(params: CalculateAdjustedEntriesParams)
       return price;
     };
 
+    /** 파괴석/수호석 상자: 둘 중 하나 선택이므로 max. 그 외 카테고리는 합산. */
+    const getCategoryValue = (cat: string, rewards: RewardItem[]): number => {
+      if (cat === '파괴석/수호석') {
+        let best = 0;
+        for (const r of rewards) {
+          const v = (getAdjustedPrice(r.itemName, r.price) ?? 0) * r.quantity;
+          if (v > best) best = v;
+        }
+        return best;
+      }
+      return rewards.reduce((sum, r) => {
+        const p = getAdjustedPrice(r.itemName, r.price);
+        return sum + ((p ?? 0) * r.quantity);
+      }, 0);
+    };
+
     // 지옥3 스테이지 기대값 계산
     const calculateHellStageExpectedValue = (stage: Stage, isNarak: boolean = false): number | null => {
       if (!stage || !stage.rewards || stage.rewards.length === 0) return null;
@@ -701,28 +717,18 @@ export function calculateAdjustedEntries(params: CalculateAdjustedEntriesParams)
             }
           }
           
-          // 각 조합의 최고값 계산 (가격 조정 적용, 가치계산DB 우선 사용)
+          // 각 조합의 최고값 계산 (가격 조정 적용, 파괴석/수호석 상자는 max)
           const maxValues: number[] = [];
           combinations.forEach(combo => {
-            const comboValues = combo.map(cat => {
-              return groupedByCategory[cat].reduce((sum, r) => {
-                const adjustedPrice = getAdjustedPrice(r.itemName, r.price);
-                return sum + ((adjustedPrice || 0) * r.quantity);
-              }, 0);
-            });
+            const comboValues = combo.map(cat => getCategoryValue(cat, groupedByCategory[cat] || []));
             maxValues.push(Math.max(...comboValues));
           });
           
           // 기대값 = 모든 최고값의 평균
           return maxValues.reduce((sum, val) => sum + val, 0) / maxValues.length;
         } else if (categories.length > 0) {
-          // 카테고리가 3개 미만이면 모든 카테고리의 최고값
-          const categoryValues = categories.map(cat => {
-            return groupedByCategory[cat].reduce((sum, r) => {
-              const adjustedPrice = getAdjustedPrice(r.itemName, r.price);
-              return sum + ((adjustedPrice || 0) * r.quantity);
-            }, 0);
-          });
+          // 카테고리가 3개 미만이면 모든 카테고리의 최고값 (파괴석/수호석 상자는 max)
+          const categoryValues = categories.map(cat => getCategoryValue(cat, groupedByCategory[cat] || []));
           return Math.max(...categoryValues);
         }
         return null;
@@ -757,15 +763,10 @@ export function calculateAdjustedEntries(params: CalculateAdjustedEntriesParams)
             }
           }
           
-          // 각 조합의 최고값 계산
+          // 각 조합의 최고값 계산 (파괴석/수호석 상자는 max)
           const maxValues: number[] = [];
           combinations.forEach(combo => {
-            const comboValues = combo.map(cat => {
-              return groupedByCategory[cat].reduce((sum, r) => {
-                const adjustedPrice = getAdjustedPrice(r.itemName, r.price);
-                return sum + ((adjustedPrice || 0) * r.quantity);
-              }, 0);
-            });
+            const comboValues = combo.map(cat => getCategoryValue(cat, groupedByCategory[cat] || []));
             maxValues.push(Math.max(...comboValues));
           });
           
@@ -773,13 +774,8 @@ export function calculateAdjustedEntries(params: CalculateAdjustedEntriesParams)
           const expectedSelectionValue = maxValues.reduce((sum, val) => sum + val, 0) / maxValues.length;
           return baseRewardValue + expectedSelectionValue;
         } else if (otherCategories.length > 0) {
-          // 카테고리가 3개 미만이면 모든 카테고리의 최고값
-          const otherValues = otherCategories.map(cat => {
-            return groupedByCategory[cat].reduce((sum, r) => {
-              const adjustedPrice = getAdjustedPrice(r.itemName, r.price);
-              return sum + ((adjustedPrice || 0) * r.quantity);
-            }, 0);
-          });
+          // 카테고리가 3개 미만이면 모든 카테고리의 최고값 (파괴석/수호석 상자는 max)
+          const otherValues = otherCategories.map(cat => getCategoryValue(cat, groupedByCategory[cat] || []));
           const maxOtherValue = Math.max(...otherValues);
           return baseRewardValue + maxOtherValue;
         } else {

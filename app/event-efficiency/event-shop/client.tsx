@@ -8,6 +8,7 @@ import { usePriceOverride } from '../../contexts/PriceOverrideContext';
 import type { ValueDbEntry } from '@/lib/valueDb';
 import { calculateOptimalStrategy } from '../../refining-simulation/client';
 import type { RefiningStage, MarketItemInfo } from '../../refining-simulation/page';
+import FavoriteButton from '../../components/FavoriteButton';
 
 type ComponentItem = {
   itemName: string;
@@ -1984,8 +1985,11 @@ export default function EventShopClient({
   return (
     <div className="min-h-screen bg-gray-950 text-white p-6">
       <div>
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-semibold tracking-tight">이벤트 상점 교환 효율</h1>
+        <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-3xl font-semibold tracking-tight">이벤트 상점 교환 효율</h1>
+            <FavoriteButton title="이벤트 상점 교환" />
+          </div>
           {allowShopSave && (
           <div className="flex gap-2">
             <button

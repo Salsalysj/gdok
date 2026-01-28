@@ -7,6 +7,7 @@ import { formatNumberWithSignificantDigits } from '../../utils/formatNumber';
 import { usePriceAdjustment } from '../../hooks/usePriceAdjustment';
 import { usePriceOverride } from '../../contexts/PriceOverrideContext';
 import { useValueDb } from '../../contexts/ValueDbContext';
+import FavoriteButton from '../../components/FavoriteButton';
 
 type RewardItem = {
   itemName: string;
@@ -367,9 +368,12 @@ export default function BossGateClient({
     <div className="min-h-screen bg-gray-950 p-4 md:p-6 lg:p-8">
       <div>
         <div className="mb-6 md:mb-10">
-          <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">
-            {activeContent ? `${activeContent} 보상 계산기` : '필드보스/카오스게이트 보상 계산기'}
-          </h1>
+          <div className="flex items-center gap-3 flex-wrap mb-2">
+            <h1 className="text-3xl font-semibold tracking-tight text-white">
+              {activeContent ? `${activeContent} 보상 계산기` : '필드보스/카오스게이트 보상 계산기'}
+            </h1>
+            <FavoriteButton title="필보 & 카게" />
+          </div>
           <p className="text-base text-gray-400">컨텐츠별 보상과 골드 가치를 확인하세요. (악세, 유각 등 일부 보상 제외)</p>
         </div>
 

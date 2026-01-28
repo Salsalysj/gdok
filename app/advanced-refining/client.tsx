@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
+import FavoriteButton from '../components/FavoriteButton';
 import {
   getMaterialsForLevel,
   type GearType,
@@ -1007,9 +1008,12 @@ export default function AdvancedRefiningClient({
     <div className="min-h-screen bg-gray-950 p-4 md:p-6 lg:p-8">
       <div>
         <div className="mb-6 md:mb-10">
-          <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">
-            상급 재련 시뮬레이션
-          </h1>
+          <div className="flex items-center gap-3 flex-wrap mb-2">
+            <h1 className="text-3xl font-semibold tracking-tight text-white">
+              상급 재련 시뮬레이션
+            </h1>
+            <FavoriteButton title="상급 재련" />
+          </div>
           <p className="text-base text-gray-400">
             상급 재련의 효율을 시뮬레이션하고 최적의 전략을 제시합니다
           </p>

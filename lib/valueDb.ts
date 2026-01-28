@@ -178,6 +178,19 @@ function sumCategory(rewards: any[]) {
   return rewards.reduce((sum, reward) => sum + ((reward.price || 0) * (reward.quantity || 0)), 0);
 }
 
+/** 파괴석/수호석 상자: 둘 중 하나 선택이므로 max. 그 외 카테고리는 합산. */
+function categoryValue(cat: string, rewards: any[]): number {
+  if (cat === '파괴석/수호석') {
+    let best = 0;
+    for (const r of rewards) {
+      const v = (r.price || 0) * (r.quantity || 0);
+      if (v > best) best = v;
+    }
+    return best;
+  }
+  return sumCategory(rewards);
+}
+
 function computeStageExpectedValue(stage: Stage, isNarak: boolean = false): number | null {
   if (!stage || !stage.rewards || stage.rewards.length === 0) return null;
   const grouped: Record<string, any[]> = {};
@@ -201,16 +214,16 @@ function computeStageExpectedValue(stage: Stage, isNarak: boolean = false): numb
           }
         }
       }
-      // 각 조합의 최고값 계산
+      // 각 조합의 최고값 계산 (파괴석/수호석 상자는 max)
       const maxValues = combinations.map((combo) => {
-        const comboTotals = combo.map((cat) => sumCategory(grouped[cat] || []));
+        const comboTotals = combo.map((cat) => categoryValue(cat, grouped[cat] || []));
         return Math.max(...comboTotals);
       });
       // 기대값 = 모든 최고값의 평균
       return maxValues.reduce((sum, val) => sum + val, 0) / (maxValues.length || 1);
     } else if (categories.length > 0) {
-      // 카테고리가 3개 미만이면 모든 카테고리의 최고값
-      const categoryValues = categories.map((cat) => sumCategory(grouped[cat] || []));
+      // 카테고리가 3개 미만이면 모든 카테고리의 최고값 (파괴석/수호석 상자는 max)
+      const categoryValues = categories.map((cat) => categoryValue(cat, grouped[cat] || []));
       return Math.max(...categoryValues);
     }
     return null;
@@ -238,14 +251,14 @@ function computeStageExpectedValue(stage: Stage, isNarak: boolean = false): numb
         }
       }
       const maxValues = combinations.map((combo) => {
-        const comboTotals = combo.map((cat) => sumCategory(grouped[cat] || []));
+        const comboTotals = combo.map((cat) => categoryValue(cat, grouped[cat] || []));
         return Math.max(...comboTotals);
       });
       const expectedSelection =
         maxValues.reduce((sum, val) => sum + val, 0) / (maxValues.length || 1);
       return baseRewardValue + expectedSelection;
     } else {
-      const otherValues = otherCategories.map((cat) => sumCategory(grouped[cat] || []));
+      const otherValues = otherCategories.map((cat) => categoryValue(cat, grouped[cat] || []));
       const maxOther = Math.max(...otherValues);
       return baseRewardValue + maxOther;
     }

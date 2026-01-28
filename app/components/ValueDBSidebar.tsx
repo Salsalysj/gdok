@@ -640,11 +640,16 @@ export default function ValueDBSidebar() {
       
       {/* 검색어가 없고 포커스되지 않았을 때 표시할 영역 */}
       {!searchQuery.trim() && !isSearchFocused && (
-        <div className="flex-1 overflow-y-auto flex items-center justify-center">
-          <div className="text-gray-400 text-sm">여긴 뭐 넣을까...흠</div>
+        <div className="flex-1 overflow-y-auto flex items-center justify-center min-h-0">
+          <div className="text-gray-400 text-sm">광고주를 위한 공간 (많관부)</div>
         </div>
       )}
       
+      {/* 하단 광고 영역 (남는 공간) */}
+      {/* <div className="mt-auto flex-shrink-0 p-3 pt-2 border-t border-gray-800 flex justify-center items-center min-h-[80px]">
+        <img src="/adraising.png" alt="ad" className="w-full h-auto object-contain" />
+      </div>
+       */}
       {/* 툴팁 */}
       {tooltip && (
         <div

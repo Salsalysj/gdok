@@ -10,6 +10,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import CharacterSimulationClient from './client';
 import { getMarketCache } from '@/lib/marketCache';
+import { getValueDbData } from '@/lib/valueDb';
 
 const UPGRADE_FILE_WEAPON = path.join(process.cwd(), 'upgrade1.csv');
 const UPGRADE_FILE_ARMOR = path.join(process.cwd(), 'upgrade2.csv');
@@ -224,6 +225,49 @@ async function getMarketInfoMap(): Promise<{ infoMap: Record<string, MarketItemI
   }
 }
 
+async function getLatestRates(): Promise<{ exchange: number | null; discord: number | null }> {
+  try {
+    const RATES_FILE = path.join(process.cwd(), 'data', 'crystal-gold-rates.json');
+    const content = await fs.readFile(RATES_FILE, 'utf-8');
+    const data = JSON.parse(content);
+    const list = data?.exchangeRates || [];
+    if (list.length === 0) return { exchange: null, discord: null };
+    const sorted = [...list].sort((a: { date?: string }, b: { date?: string }) => (b.date || '').localeCompare(a.date || ''));
+    const latestWithExchange = sorted.find((item: { exchange?: number }) => item.exchange && item.exchange > 0);
+    const latestWithDiscord = sorted.find((item: { discord?: number }) => item.discord && item.discord > 0);
+    return { exchange: latestWithExchange?.exchange ?? null, discord: latestWithDiscord?.discord ?? null };
+  } catch {
+    return { exchange: null, discord: null };
+  }
+}
+
+async function getLatestCrystalGoldRate(): Promise<number | null> {
+  try {
+    try {
+      const { supabase } = await import('../utils/supabase');
+      if (supabase) {
+        const { data, error } = await supabase
+          .from('crystal_exchange_rates')
+          .select('exchange')
+          .order('timestamp', { ascending: false })
+          .limit(1)
+          .single();
+        if (!error && data && data.exchange) return Number(data.exchange);
+      }
+    } catch {}
+    const RATES_FILE = path.join(process.cwd(), 'data', 'crystal-gold-rates.json');
+    const content = await fs.readFile(RATES_FILE, 'utf-8');
+    const data = JSON.parse(content);
+    const list = data?.exchangeRates || [];
+    if (list.length === 0) return null;
+    const sorted = [...list].sort((a: { date?: string }, b: { date?: string }) => (b.date || '').localeCompare(a.date || ''));
+    const latest = sorted.find((item: { exchange?: number }) => item.exchange && item.exchange > 0);
+    return latest?.exchange ?? null;
+  } catch {
+    return null;
+  }
+}
+
 function createStages(
   levels: number[],
   rowMap: Record<string, number[]>,
@@ -286,13 +330,21 @@ export default async function CharacterSimulationPage() {
     weaponDataSerka,
     armorDataSerka,
     { infoMap, lastUpdated, silverCashValue },
+    valueDbData,
+    rates,
+    crystalGoldRate,
   ] = await Promise.all([
     parseUpgradeCsv(UPGRADE_FILE_WEAPON, 'upgrade1.csv'),
     parseUpgradeCsv(UPGRADE_FILE_ARMOR, 'upgrade2.csv'),
     parseUpgradeCsv(UPGRADE_FILE_WEAPON_SERKA, 'upgrade3.csv'),
     parseUpgradeCsv(UPGRADE_FILE_ARMOR_SERKA, 'upgrade4.csv'),
     getMarketInfoMap(),
+    getValueDbData(),
+    getLatestRates(),
+    getLatestCrystalGoldRate(),
   ]);
+
+  const valueDbMap = valueDbData.entryMap;
 
   const weaponStages = createStages(
     weaponData.levels,
@@ -338,6 +390,10 @@ export default async function CharacterSimulationPage() {
       armorStagesSerka={armorStagesSerka}
       marketInfo={infoMap}
       sillingUnitPrice={silverCashValue ?? 0}
+      valueDbMap={valueDbMap}
+      silverCashValue={silverCashValue ?? null}
+      initialRates={rates}
+      initialCrystalGoldRate={crystalGoldRate}
     />
   );
 }

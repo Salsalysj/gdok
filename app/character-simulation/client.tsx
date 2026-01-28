@@ -1,9 +1,17 @@
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
 import type { RefiningStage, MarketItemInfo } from './page';
 import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
+import FavoriteButton from '../components/FavoriteButton';
+import simulationDataLevel1 from '@/lib/advancedRefiningData.json';
+import simulationDataLevel2 from '@/lib/advancedRefiningData-level2.json';
+import simulationDataLevel3 from '@/lib/advancedRefiningData-level3.json';
+import simulationDataLevel4 from '@/lib/advancedRefiningData-level4.json';
+import type { GearType, RefiningLevel, SimulationResult, ScenarioWithCost } from '@/lib/advancedRefining';
+import { getMaterialsForLevel } from '@/lib/advancedRefining';
+import type { ValueDbEntry } from '@/lib/valueDb';
 
 type CharacterEquipment = {
   Type?: string;
@@ -520,7 +528,31 @@ export function calculateOptimalStrategy(
   return { optimalStrategy, baseStrategy, fullBreathStrategy, fullMetallurgyStrategy, fullEnhancedMetallurgyStrategy, fullBothStrategy, materialValueAnalysis };
 }
 
-function CharacterSimulation({ weaponStages, armorStages, weaponStagesSerka, armorStagesSerka, marketInfo, sillingUnitPrice }: { weaponStages: RefiningStage[]; armorStages: RefiningStage[]; weaponStagesSerka: RefiningStage[]; armorStagesSerka: RefiningStage[]; marketInfo: Record<string, MarketItemInfo>; sillingUnitPrice: number }) {
+const STORAGE_KEY = 'character-simulation-cache';
+
+function CharacterSimulation({
+  weaponStages,
+  armorStages,
+  weaponStagesSerka,
+  armorStagesSerka,
+  marketInfo,
+  sillingUnitPrice,
+  valueDbMap = {},
+  silverCashValue = null,
+  initialRates,
+  initialCrystalGoldRate,
+}: {
+  weaponStages: RefiningStage[];
+  armorStages: RefiningStage[];
+  weaponStagesSerka: RefiningStage[];
+  armorStagesSerka: RefiningStage[];
+  marketInfo: Record<string, MarketItemInfo>;
+  sillingUnitPrice: number;
+  valueDbMap?: Record<string, ValueDbEntry>;
+  silverCashValue?: number | null;
+  initialRates?: { exchange: number | null; discord: number | null };
+  initialCrystalGoldRate?: number | null;
+}) {
   const [characterName, setCharacterName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -657,6 +689,11 @@ function CharacterSimulation({ weaponStages, armorStages, weaponStagesSerka, arm
       if (res.ok) {
         setCharacterData(data);
         loadRoster(nameToSearch);
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify({ characterName: nameToSearch, characterData: data }));
+        } catch {
+          /* ignore */
+        }
       } else {
         setError(data.error || '캐릭터를 찾을 수 없습니다.');
         setCharacterData(null);
@@ -675,6 +712,24 @@ function CharacterSimulation({ weaponStages, armorStages, weaponStagesSerka, arm
     setCharacterName(selectedName);
     handleSearch(selectedName);
   };
+
+  // 마운트 시 localStorage에서 가장 최근 캐릭터 복원
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { characterName?: string; characterData?: CharacterArmory };
+      const name = typeof parsed?.characterName === 'string' ? parsed.characterName.trim() : '';
+      const data = parsed?.characterData && typeof parsed.characterData === 'object' ? parsed.characterData : null;
+      if (name && data) {
+        setCharacterName(name);
+        setCharacterData(data);
+        loadRoster(name);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   const equipmentTypeMap: Record<string, string> = {
     '무기': '무기',
@@ -846,10 +901,12 @@ function CharacterSimulation({ weaponStages, armorStages, weaponStagesSerka, arm
       .map(eq => {
         const type = getEquipmentType(eq);
         const level = extractRefiningLevel(eq.Tooltip);
+        const itemLevel = extractItemLevel(eq);
         return {
           ...eq,
           type,
           level,
+          itemLevel,
         };
       })
       .filter(eq => equipmentOrder.slice(0, 6).includes(eq.type))
@@ -882,6 +939,88 @@ function CharacterSimulation({ weaponStages, armorStages, weaponStagesSerka, arm
     return adjusted;
   }, [marketInfo, adjustPrice, sillingUnitPrice]);
 
+  // 상급재련 전략 요약: 상급재련 페이지와 동일한 가격 소스 (valueDb + 실링 환산)
+  const goldPerWon = useMemo(() => {
+    if (initialCrystalGoldRate != null && initialCrystalGoldRate > 0) return initialCrystalGoldRate / 2750;
+    const d = initialRates?.discord;
+    if (d != null && d > 0) return 100 / d;
+    return null;
+  }, [initialCrystalGoldRate, initialRates?.discord]);
+
+  const baseSillingUnitPrice = useMemo(() => {
+    if (silverCashValue != null && goldPerWon != null) return silverCashValue * goldPerWon;
+    return 0;
+  }, [silverCashValue, goldPerWon]);
+
+  const sillingUnitPriceAdv = useMemo(() => {
+    const v = adjustPrice('실링', baseSillingUnitPrice);
+    return v ?? baseSillingUnitPrice;
+  }, [adjustPrice, baseSillingUnitPrice]);
+
+  const getMaterialValueAdv = useCallback((itemName: string): number | null => {
+    if (itemName === '골드') return 1;
+    if (itemName === '실링') return sillingUnitPriceAdv;
+    let basePrice: number | null = null;
+    const key = itemName === '운명의 파편' ? '운명의 파편 1개당' : itemName;
+    const entry = valueDbMap[key];
+    if (entry?.unitType === '골드' && entry.unitValue != null) basePrice = entry.unitValue;
+    if (basePrice != null) return adjustPrice(itemName, basePrice) ?? basePrice;
+    return null;
+  }, [valueDbMap, adjustPrice, sillingUnitPriceAdv]);
+
+  const calculateRequiredMaterialsCostAdv = useCallback((materials: { name: string; amount: number; isOptional?: boolean }[]): number => {
+    return materials
+      .filter(m => !m.isOptional)
+      .reduce((sum, mat) => {
+        const v = getMaterialValueAdv(mat.name);
+        return sum + (v != null ? v * mat.amount : 0);
+      }, 0);
+  }, [getMaterialValueAdv]);
+
+  const calculateAuxiliaryCostAdv = useCallback((materials: { name: string; amount: number; isOptional?: boolean }[], useBreath: boolean, useCraftsmanship: boolean): number => {
+    return materials
+      .filter(m => m.isOptional)
+      .reduce((sum, mat) => {
+        if (mat.name.includes('숨결') && !useBreath) return sum;
+        if ((mat.name.includes('야금술') || mat.name.includes('재봉술')) && !useCraftsmanship) return sum;
+        const v = getMaterialValueAdv(mat.name);
+        return sum + (v != null ? v * mat.amount : 0);
+      }, 0);
+  }, [getMaterialValueAdv]);
+
+  const calculateAdvancedTotalCostAdv = useCallback((
+    result: SimulationResult,
+    materials: { name: string; amount: number; isOptional?: boolean }[],
+    useBreathNormal: boolean,
+    useCraftsmanshipNormal: boolean,
+    useBreathAncestor: boolean,
+    useCraftsmanshipAncestor: boolean,
+    useBreathEnhancedAncestor?: boolean,
+    useCraftsmanshipEnhancedAncestor?: boolean
+  ): { totalCost: number; normalTurnCost: number; ancestorTurnCost: number; enhancedAncestorTurnCost?: number; freeTurnCost: number } => {
+    const requiredCost = calculateRequiredMaterialsCostAdv(materials);
+    const normalTurnCost = requiredCost + calculateAuxiliaryCostAdv(materials, useBreathNormal, useCraftsmanshipNormal);
+    const ancestorTurnCost = requiredCost + calculateAuxiliaryCostAdv(materials, useBreathAncestor, useCraftsmanshipAncestor);
+    const freeTurnCost = calculateAuxiliaryCostAdv(materials, useBreathNormal, useCraftsmanshipNormal);
+    const normalTurnTotal = result.normalTurns * normalTurnCost;
+    const ancestorTurnTotal = result.ancestorTurns * ancestorTurnCost;
+    const freeTurnTotal = result.freeTurns * freeTurnCost;
+    let enhancedAncestorTurnCost: number | undefined;
+    let enhancedAncestorTurnTotal: number | undefined;
+    if (result.enhancedAncestorTurns !== undefined && useBreathEnhancedAncestor !== undefined && useCraftsmanshipEnhancedAncestor !== undefined) {
+      enhancedAncestorTurnCost = requiredCost + calculateAuxiliaryCostAdv(materials, useBreathEnhancedAncestor, useCraftsmanshipEnhancedAncestor);
+      enhancedAncestorTurnTotal = result.enhancedAncestorTurns * enhancedAncestorTurnCost;
+    }
+    const totalCost = normalTurnTotal + ancestorTurnTotal + freeTurnTotal + (enhancedAncestorTurnTotal || 0);
+    return {
+      totalCost,
+      normalTurnCost,
+      ancestorTurnCost,
+      ...(enhancedAncestorTurnCost !== undefined && { enhancedAncestorTurnCost }),
+      freeTurnCost,
+    };
+  }, [calculateRequiredMaterialsCostAdv, calculateAuxiliaryCostAdv]);
+
   const [refreshKey, setRefreshKey] = useState(0);
   
   useEffect(() => {
@@ -904,17 +1043,37 @@ function CharacterSimulation({ weaponStages, armorStages, weaponStagesSerka, arm
       const stages = isWeapon 
         ? (isSerkaEquipment ? weaponStagesSerka : weaponStages)
         : (isSerkaEquipment ? armorStagesSerka : armorStages);
-      const targetLevel = eq.level != null ? eq.level + 1 : null;
+      const currentLevel = eq.level ?? null;  // 현재 재련 단계 (캐릭터 장비 기준)
+      const targetLevel = currentLevel != null ? currentLevel + 1 : null;  // 목표 재련 단계 = 현재 + 1
       const stage = targetLevel != null ? stages.find(s => s.level === targetLevel) : null;
       
-      if (!stage || eq.level == null || targetLevel == null) {
+      if (!stage || currentLevel == null || targetLevel == null) {
         return {
           ...eq,
           craftValue: null,
           breathValue: null,
           breakthroughValue: null,
-          targetLevel: targetLevel,
+          currentLevel,
+          targetLevel,
+          advancedProgress: null,
         };
+      }
+
+      const a = eq.itemLevel ?? null;  // 장비의 실제 아이템 레벨
+      const b = stage.itemLevel ?? null;  // 목표 재련 단계에 매칭되는 베이스라인 아이템 레벨 (upgrade CSV)
+      let advancedProgress: string | null = null;
+      if (a != null && b != null) {
+        const diff = a - b + 5;
+        if (diff === 0) advancedProgress = '미진행';
+        else if (diff > 0 && diff < 10) advancedProgress = '1단계 진행중';
+        else if (diff === 10) advancedProgress = '상급 재련 1단계 완료';
+        else if (diff > 10 && diff < 20) advancedProgress = '2단계 진행중';
+        else if (diff === 20) advancedProgress = '상급 재련 2단계 완료';
+        else if (diff > 20 && diff < 30) advancedProgress = '3단계 진행중';
+        else if (diff === 30) advancedProgress = '상급 재련 3단계 완료';
+        else if (diff > 30 && diff < 40) advancedProgress = '4단계 진행중';
+        else if (diff >= 40) advancedProgress = '상급 재련 4단계 완료';
+        else advancedProgress = '미진행';
       }
 
       const { materialValueAnalysis } = calculateOptimalStrategy(stage, adjustedMarketInfo);
@@ -991,8 +1150,10 @@ function CharacterSimulation({ weaponStages, armorStages, weaponStagesSerka, arm
         breathItemName,
         breathMarketPrice,
         breakthroughValue,
+        currentLevel,
         targetLevel,
         isSerkaEquipment,
+        advancedProgress,
       };
     });
   }, [sortedEquipment, weaponStages, armorStages, weaponStagesSerka, armorStagesSerka, adjustedMarketInfo, refreshKey]);
@@ -1097,17 +1258,289 @@ function CharacterSimulation({ weaponStages, armorStages, weaponStagesSerka, arm
     };
   }, [equipmentWithValues]);
 
+  // 상급재련 전략 분석
+  const advancedRefiningAnalysis = useMemo(() => {
+    if (!equipmentWithValues.length) return null;
+
+    // 장비별 상급재련 목표 단계 집계
+    const advancedTargets = equipmentWithValues
+      .map(eq => ({
+        type: eq.type,
+        advancedTarget: (() => {
+          const progress = eq.advancedProgress;
+          if (!progress) return null;
+          if (progress === '상급 재련 4단계 완료') return null;
+          if (progress === '미진행' || progress === '1단계 진행중') return '상재1';
+          if (progress === '상급 재련 1단계 완료' || progress === '2단계 진행중') return '상재2';
+          if (progress === '상급 재련 2단계 완료' || progress === '3단계 진행중') return '상재3';
+          if (progress === '상급 재련 3단계 완료' || progress === '4단계 진행중') return '상재4';
+          return null;
+        })(),
+        advancedProgress: eq.advancedProgress,
+      }))
+      .filter(eq => eq.advancedTarget != null);
+
+    if (advancedTargets.length === 0) return null;
+
+    // 단계별로 그룹화
+    const grouped = advancedTargets.reduce((acc, eq) => {
+      const key = eq.advancedTarget!;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(eq);
+      return acc;
+    }, {} as Record<string, typeof advancedTargets>);
+
+    // 각 단계별 분석
+    const analyses = Object.entries(grouped).flatMap(([stage, items]) => {
+      const hasWeapon = items.some(eq => eq.type === '무기');
+      const hasArmor = items.some(eq => eq.type !== '무기');
+      const refiningLevel = stage as RefiningLevel;
+      
+      // 무기와 방어구를 별도로 분석
+      const gearTypes: GearType[] = [];
+      if (hasWeapon) gearTypes.push('무기');
+      if (hasArmor) gearTypes.push('방어구');
+      
+      return gearTypes.map(gearType => {
+
+      // 해당 단계의 시뮬레이션 데이터 로드
+      let simulationData: any;
+      if (stage === '상재3') {
+        simulationData = simulationDataLevel3;
+      } else if (stage === '상재4') {
+        simulationData = simulationDataLevel4;
+      } else if (stage === '상재2') {
+        simulationData = simulationDataLevel2;
+      } else {
+        simulationData = simulationDataLevel1;
+      }
+
+      const isLevel3Or4 = stage === '상재3' || stage === '상재4';
+
+      // 시뮬레이션 결과 필터링 및 변환
+      const filteredData = (simulationData as any).data.filter((item: any) => item.gearType === gearType);
+      const simulationResults = filteredData.map((item: any) => ({
+        strategy: {
+          normalTurn: {
+            useBreath: item.strategy.normalBreath,
+            useCraftsmanship: item.strategy.normalCraft,
+          },
+          ancestorTurn: {
+            useBreath: item.strategy.ancestorBreath,
+            useCraftsmanship: item.strategy.ancestorCraft,
+          },
+          ...(isLevel3Or4 && {
+            enhancedAncestorTurn: {
+              useBreath: item.strategy.enhancedAncestorBreath || false,
+              useCraftsmanship: item.strategy.enhancedAncestorCraft || false,
+            },
+          }),
+        },
+        result: {
+          expectedAttempts: item.result.expectedAttempts,
+          normalTurns: item.result.normalTurns,
+          ancestorTurns: item.result.ancestorTurns,
+          ...(isLevel3Or4 && { enhancedAncestorTurns: item.result.enhancedAncestorTurns || 0 }),
+          freeTurns: item.result.freeTurns,
+          totalCost: 0,
+          materialBreakdown: item.result.materialBreakdown,
+        } as SimulationResult,
+      }));
+
+      // 재료 정보
+      const materials = getMaterialsForLevel(refiningLevel, gearType);
+
+      // 모든 시나리오 비용 계산
+      const allResults = simulationResults.map((simResult: any) => {
+        const costBreakdown = calculateAdvancedTotalCostAdv(
+          simResult.result,
+          materials,
+          simResult.strategy.normalTurn.useBreath,
+          simResult.strategy.normalTurn.useCraftsmanship,
+          simResult.strategy.ancestorTurn.useBreath,
+          simResult.strategy.ancestorTurn.useCraftsmanship,
+          simResult.strategy.enhancedAncestorTurn?.useBreath,
+          simResult.strategy.enhancedAncestorTurn?.useCraftsmanship
+        );
+        return {
+          strategy: simResult.strategy,
+          result: simResult.result,
+          costBreakdown,
+        } as ScenarioWithCost;
+      });
+
+      // 보조재료 미투입 시나리오
+      const noAux = allResults.find(
+        (r: ScenarioWithCost) => 
+          !r.strategy.normalTurn.useBreath && 
+          !r.strategy.normalTurn.useCraftsmanship &&
+          !r.strategy.ancestorTurn.useBreath && 
+          !r.strategy.ancestorTurn.useCraftsmanship &&
+          !r.strategy.enhancedAncestorTurn?.useBreath &&
+          !r.strategy.enhancedAncestorTurn?.useCraftsmanship
+      );
+
+      // 보조재료별 분석
+      const craftMaterial = materials.find(m => m.name.includes('야금술') || m.name.includes('재봉술'));
+      const breathMaterial = materials.find(m => m.name.includes('숨결'));
+
+      const craftItemName = craftMaterial?.name || null;
+      const breathItemName = breathMaterial?.name || null;
+      const craftMarketPrice = craftItemName ? getMaterialValueAdv(craftItemName) : null;
+      const breathMarketPrice = breathItemName ? getMaterialValueAdv(breathItemName) : null;
+
+      // 강화선조턴, 선조턴, 일반턴 각각에서의 이득/손해 분석
+      type TurnAnalysis = {
+        profitable: boolean;
+        valuePerUnit: number | null; // 순이득 (비용절감 - 구매비용이 이미 반영됨)
+        realValue: number | null; // 실제가치 = valuePerUnit + marketPrice
+        marketPrice: number | null;
+      };
+
+      const material = (mt: 'craft' | 'breath') => mt === 'craft' ? craftMaterial : breathMaterial;
+      const marketPrice = (mt: 'craft' | 'breath') => mt === 'craft' ? craftMarketPrice : breathMarketPrice;
+      const matName = (mt: 'craft' | 'breath') => material(mt)?.name;
+
+      const getUsed = (r: ScenarioWithCost, mt: 'craft' | 'breath') => {
+        const name = matName(mt);
+        return name ? (r.result.materialBreakdown[name] || 0) : 0;
+      };
+
+      const analyzeMaterial = (
+        materialType: 'craft' | 'breath',
+        turnType: 'normal' | 'ancestor' | 'enhancedAncestor'
+      ): TurnAnalysis => {
+        const mp = marketPrice(materialType);
+        if (!noAux) return { profitable: false, valuePerUnit: null, realValue: null, marketPrice: mp };
+
+        let valuePerUnit: number | null = null;
+
+        if (isLevel3Or4) {
+          const enhOnly = allResults.find((r: ScenarioWithCost) =>
+            materialType === 'craft'
+              ? r.strategy.enhancedAncestorTurn?.useCraftsmanship && !r.strategy.enhancedAncestorTurn?.useBreath && !r.strategy.ancestorTurn.useCraftsmanship && !r.strategy.ancestorTurn.useBreath && !r.strategy.normalTurn.useCraftsmanship && !r.strategy.normalTurn.useBreath
+              : r.strategy.enhancedAncestorTurn?.useBreath && !r.strategy.enhancedAncestorTurn?.useCraftsmanship && !r.strategy.ancestorTurn.useBreath && !r.strategy.ancestorTurn.useCraftsmanship && !r.strategy.normalTurn.useBreath && !r.strategy.normalTurn.useCraftsmanship
+          );
+          const ancEnh = allResults.find((r: ScenarioWithCost) => {
+            if (materialType === 'craft') {
+              return !!(
+                r.strategy.enhancedAncestorTurn?.useCraftsmanship && !r.strategy.enhancedAncestorTurn?.useBreath &&
+                r.strategy.ancestorTurn.useCraftsmanship && !r.strategy.ancestorTurn.useBreath &&
+                !r.strategy.normalTurn.useCraftsmanship && !r.strategy.normalTurn.useBreath
+              );
+            }
+            return !!(
+              r.strategy.enhancedAncestorTurn?.useBreath && !r.strategy.enhancedAncestorTurn?.useCraftsmanship &&
+              r.strategy.ancestorTurn.useBreath && !r.strategy.ancestorTurn.useCraftsmanship &&
+              !r.strategy.normalTurn.useBreath && !r.strategy.normalTurn.useCraftsmanship
+            );
+          });
+          const allThree = allResults.find((r: ScenarioWithCost) => {
+            if (materialType === 'craft') {
+              return !!(
+                r.strategy.normalTurn.useCraftsmanship && !r.strategy.normalTurn.useBreath &&
+                r.strategy.ancestorTurn.useCraftsmanship && !r.strategy.ancestorTurn.useBreath &&
+                r.strategy.enhancedAncestorTurn?.useCraftsmanship && !r.strategy.enhancedAncestorTurn?.useBreath
+              );
+            }
+            return !!(
+              r.strategy.normalTurn.useBreath && !r.strategy.normalTurn.useCraftsmanship &&
+              r.strategy.ancestorTurn.useBreath && !r.strategy.ancestorTurn.useCraftsmanship &&
+              r.strategy.enhancedAncestorTurn?.useBreath && !r.strategy.enhancedAncestorTurn?.useCraftsmanship
+            );
+          });
+
+          if (turnType === 'enhancedAncestor' && enhOnly) {
+            const costReduction = noAux.costBreakdown.totalCost - enhOnly.costBreakdown.totalCost;
+            const used = getUsed(enhOnly, materialType);
+            valuePerUnit = used > 0 ? costReduction / used : null;
+          } else if (turnType === 'ancestor' && enhOnly && ancEnh) {
+            const costReduction = enhOnly.costBreakdown.totalCost - ancEnh.costBreakdown.totalCost;
+            const usedDelta = getUsed(ancEnh, materialType) - getUsed(enhOnly, materialType);
+            valuePerUnit = usedDelta > 0 ? costReduction / usedDelta : null;
+          } else if (turnType === 'normal' && ancEnh && allThree) {
+            const costReduction = ancEnh.costBreakdown.totalCost - allThree.costBreakdown.totalCost;
+            const usedDelta = getUsed(allThree, materialType) - getUsed(ancEnh, materialType);
+            valuePerUnit = usedDelta > 0 ? costReduction / usedDelta : null;
+          }
+        } else {
+          const onlyTurn = allResults.find((r: ScenarioWithCost) => {
+            if (turnType === 'ancestor') {
+              return materialType === 'craft'
+                ? r.strategy.ancestorTurn.useCraftsmanship && !r.strategy.ancestorTurn.useBreath && !r.strategy.normalTurn.useCraftsmanship && !r.strategy.normalTurn.useBreath
+                : r.strategy.ancestorTurn.useBreath && !r.strategy.ancestorTurn.useCraftsmanship && !r.strategy.normalTurn.useBreath && !r.strategy.normalTurn.useCraftsmanship;
+            } else {
+              return materialType === 'craft'
+                ? r.strategy.normalTurn.useCraftsmanship && !r.strategy.normalTurn.useBreath && !r.strategy.ancestorTurn.useCraftsmanship && !r.strategy.ancestorTurn.useBreath
+                : r.strategy.normalTurn.useBreath && !r.strategy.normalTurn.useCraftsmanship && !r.strategy.ancestorTurn.useBreath && !r.strategy.ancestorTurn.useCraftsmanship;
+            }
+          });
+          if (onlyTurn) {
+            const costReduction = noAux.costBreakdown.totalCost - onlyTurn.costBreakdown.totalCost;
+            const used = getUsed(onlyTurn, materialType);
+            valuePerUnit = used > 0 ? costReduction / used : null;
+          }
+        }
+
+        // realValue = valuePerUnit + marketPrice (상급재련 페이지와 동일)
+        const realValue = valuePerUnit != null && mp != null ? valuePerUnit + mp : null;
+        // 이득/손해 판단: valuePerUnit >= 0 이면 이득 (상급재련 페이지와 동일)
+        const profitable = valuePerUnit != null && valuePerUnit >= 0;
+        return { profitable, valuePerUnit, realValue, marketPrice: mp };
+      };
+
+      const craftAnalysis = {
+        enhancedAncestor: isLevel3Or4 ? analyzeMaterial('craft', 'enhancedAncestor') : null,
+        ancestor: analyzeMaterial('craft', 'ancestor'),
+        normal: analyzeMaterial('craft', 'normal'),
+      };
+
+      const breathAnalysis = {
+        enhancedAncestor: isLevel3Or4 ? analyzeMaterial('breath', 'enhancedAncestor') : null,
+        ancestor: analyzeMaterial('breath', 'ancestor'),
+        normal: analyzeMaterial('breath', 'normal'),
+      };
+
+        return {
+          stage,
+          gearType,
+          craftItemName,
+          craftMarketPrice,
+          craftAnalysis,
+          breathItemName,
+          breathMarketPrice,
+          breathAnalysis,
+        };
+      });
+    });
+
+    return analyses;
+  }, [equipmentWithValues, calculateAdvancedTotalCostAdv, getMaterialValueAdv]);
+
+  const getAdvancedTargetLabel = (progress: string | null): string | null => {
+    if (!progress) return null;
+    if (progress === '상급 재련 4단계 완료') return null;
+    if (progress === '미진행' || progress === '1단계 진행중') return '상재1단계';
+    if (progress === '상급 재련 1단계 완료' || progress === '2단계 진행중') return '상재2단계';
+    if (progress === '상급 재련 2단계 완료' || progress === '3단계 진행중') return '상재3단계';
+    if (progress === '상급 재련 3단계 완료' || progress === '4단계 진행중') return '상재4단계';
+    return null;
+  };
+
   return (
     <div className="min-h-screen bg-gray-950 sm:p-6 lg:p-8">
       <div className="mb-4 sm:mb-6 md:mb-10 px-4 sm:px-0">
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold tracking-tight text-white mb-1 sm:mb-2">내 캐릭터 시뮬레이션</h1>
+        <div className="flex items-center gap-3 flex-wrap mb-1 sm:mb-2">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold tracking-tight text-white">내 캐릭터 시뮬레이션</h1>
+          <FavoriteButton title="내 캐릭터 시뮬레이션" />
+        </div>
         <p className="text-[10px] sm:text-xs md:text-sm text-gray-400 whitespace-normal break-words">캐릭터명을 입력하여 착용 중인 장비의 재련 단계를 확인할 수 있습니다.</p>
       </div>
 
       <div className="space-y-8 px-4 sm:px-0">
         {/* 검색 입력 */}
         <div className="bg-gray-900/70 rounded-xl border border-gray-700 p-6 space-y-4">
-          <div className="flex gap-3">
+          <div className="flex gap-2 sm:gap-3 flex-wrap">
             <input
               type="text"
               value={characterName}
@@ -1118,19 +1551,25 @@ function CharacterSimulation({ weaponStages, armorStages, weaponStagesSerka, arm
                 }
               }}
               placeholder="캐릭터명을 입력하세요"
-              className="flex-1 px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:border-purple-500 focus:outline-none"
+              className="flex-1 min-w-[10rem] px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:border-purple-500 focus:outline-none"
             />
             <button
               onClick={() => handleSearch()}
               disabled={loading}
-              className="px-6 py-2 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
+              className="px-5 sm:px-6 py-2 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
             >
               {loading ? '검색 중...' : '검색'}
             </button>
+            <button
+              onClick={() => handleSearch()}
+              disabled={loading || !characterName.trim()}
+              className="px-5 sm:px-6 py-2 bg-gray-700 text-white font-semibold rounded-lg hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed border border-gray-600"
+            >
+              갱신
+            </button>
           </div>
           
-          {rosterCharacters.length > 0 && (
-            <div>
+          <div>
               <label className="block text-sm text-gray-300 mb-2">내 원정대 캐릭터</label>
               <select
                 value={characterName}
@@ -1138,7 +1577,9 @@ function CharacterSimulation({ weaponStages, armorStages, weaponStagesSerka, arm
                 disabled={loading || loadingRoster}
                 className="w-full px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:border-purple-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <option value="">캐릭터 선택</option>
+                <option value="">
+                  {loadingRoster ? '원정대 불러오는 중...' : '캐릭터 선택'}
+                </option>
                 {rosterCharacters.map((char, idx) => {
                   const charName = char.CharacterName || '알 수 없음';
                   const className = char.CharacterClassName || '알 수 없음';
@@ -1157,7 +1598,6 @@ function CharacterSimulation({ weaponStages, armorStages, weaponStagesSerka, arm
                 })}
               </select>
             </div>
-          )}
         </div>
 
         {error && (
@@ -1176,10 +1616,10 @@ function CharacterSimulation({ weaponStages, armorStages, weaponStagesSerka, arm
               </div>
             ) : (
               <>
-                {/* 요약 정보 */}
+                {/* 일반 재련 요약 정보 */}
                 <div className="bg-gray-900/70 rounded-lg border border-gray-700 overflow-hidden text-xs">
                   <div className="px-3 py-2 bg-gray-800/50 border-b border-gray-700">
-                    <h3 className="text-base font-semibold text-white">요약 정보</h3>
+                    <h3 className="text-base font-semibold text-white">일반 재련 요약</h3>
                   </div>
                   <ul className="divide-y divide-gray-800">
                     {summaryValues.craftItems.length > 0 && summaryValues.craftItems.map((item, idx) => {
@@ -1273,70 +1713,375 @@ function CharacterSimulation({ weaponStages, armorStages, weaponStagesSerka, arm
                   </ul>
                 </div>
 
+                {/* 상급재련 전략 요약 */}
+                <div className="bg-gray-900/70 rounded-lg border border-gray-700 overflow-hidden text-xs">
+                  <div className="px-3 py-2 bg-gray-800/50 border-b border-gray-700">
+                    <h3 className="text-base font-semibold text-white">상급재련 전략 요약</h3>
+                    <p className="text-[11px] text-gray-400 mt-0.5">목표 상급재련 단계별 보조재료 가치 및 전략 분석 (상급 재련 시뮬레이션 기반)</p>
+                  </div>
+                  <div className="p-3 space-y-4">
+                    {!advancedRefiningAnalysis || advancedRefiningAnalysis.length === 0 ? (
+                      <p className="text-gray-400 text-center py-2">상급재련 목표가 있는 장비가 없습니다.</p>
+                    ) : (
+                      (() => {
+                        // 단계별로 그룹화
+                        const groupedByStage = advancedRefiningAnalysis.reduce((acc, analysis) => {
+                          if (!acc[analysis.stage]) acc[analysis.stage] = [];
+                          acc[analysis.stage].push(analysis);
+                          return acc;
+                        }, {} as Record<string, typeof advancedRefiningAnalysis>);
+                        // 가장 낮은 단계만 표시
+                        const stageOrder = ['상재1', '상재2', '상재3', '상재4'];
+                        const lowestStage = stageOrder.find(s => groupedByStage[s]);
+                        if (!lowestStage) return null;
+                        const analyses = groupedByStage[lowestStage];
+                        const stage = lowestStage;
+
+                        const isLevel3Or4 = stage === '상재3' || stage === '상재4';
+                        const weaponAnalysis = analyses.find(a => a.gearType === '무기');
+                        const armorAnalysis = analyses.find(a => a.gearType === '방어구');
+
+                        return (
+                            <div key={stage} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {/* 무기 */}
+                                {weaponAnalysis && (
+                                  <div className="border border-gray-600 rounded-lg p-2 bg-gray-800/50">
+                                    <h5 className="text-xs font-semibold text-blue-300 mb-2">무기</h5>
+                                    <div className="space-y-2.5 text-[11px]">
+                                      {/* 장인의 야금술 */}
+                                      {weaponAnalysis.craftItemName && (
+                                        <div className="flex flex-col gap-1 pb-2 border-b border-gray-700">
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-gray-200 font-medium">{weaponAnalysis.craftItemName}</span>
+                                            <span className="text-gray-500 text-[10px]">
+                                              거래소: {weaponAnalysis.craftMarketPrice != null ? `${formatNumberWithSignificantDigits(weaponAnalysis.craftMarketPrice)}g` : '-'}
+                                            </span>
+                                          </div>
+                                          <div className="pl-2 space-y-0.5">
+                                            {isLevel3Or4 && weaponAnalysis.craftAnalysis.enhancedAncestor && (
+                                              <div className="flex items-center justify-between">
+                                                <span className="text-gray-400">강화선조턴</span>
+                                                <div className="flex items-center gap-2">
+                                                  {weaponAnalysis.craftAnalysis.enhancedAncestor.realValue != null ? (
+                                                    <>
+                                                      <span className="text-yellow-300">{formatNumberWithSignificantDigits(weaponAnalysis.craftAnalysis.enhancedAncestor.realValue)}g</span>
+                                                      <span className={weaponAnalysis.craftAnalysis.enhancedAncestor.profitable ? 'text-green-400 text-[10px]' : 'text-red-400 text-[10px]'}>
+                                                        {weaponAnalysis.craftAnalysis.enhancedAncestor.profitable ? '사는 게 이득' : '사는 게 손해'}
+                                                      </span>
+                                                    </>
+                                                  ) : (
+                                                    <span className="text-gray-500">-</span>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            )}
+                                            <div className="flex items-center justify-between">
+                                              <span className="text-gray-400">선조턴</span>
+                                              <div className="flex items-center gap-2">
+                                                {weaponAnalysis.craftAnalysis.ancestor.realValue != null ? (
+                                                  <>
+                                                    <span className="text-yellow-300">{formatNumberWithSignificantDigits(weaponAnalysis.craftAnalysis.ancestor.realValue)}g</span>
+                                                    <span className={weaponAnalysis.craftAnalysis.ancestor.profitable ? 'text-green-400 text-[10px]' : 'text-red-400 text-[10px]'}>
+                                                      {weaponAnalysis.craftAnalysis.ancestor.profitable ? '사는 게 이득' : '사는 게 손해'}
+                                                    </span>
+                                                  </>
+                                                ) : (
+                                                  <span className="text-gray-500">-</span>
+                                                )}
+                                              </div>
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                              <span className="text-gray-400">일반턴</span>
+                                              <div className="flex items-center gap-2">
+                                                {weaponAnalysis.craftAnalysis.normal.realValue != null ? (
+                                                  <>
+                                                    <span className="text-yellow-300">{formatNumberWithSignificantDigits(weaponAnalysis.craftAnalysis.normal.realValue)}g</span>
+                                                    <span className={weaponAnalysis.craftAnalysis.normal.profitable ? 'text-green-400 text-[10px]' : 'text-red-400 text-[10px]'}>
+                                                      {weaponAnalysis.craftAnalysis.normal.profitable ? '사는 게 이득' : '사는 게 손해'}
+                                                    </span>
+                                                  </>
+                                                ) : (
+                                                  <span className="text-gray-500">-</span>
+                                                )}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
+                                      {/* 용암의 숨결 */}
+                                      {weaponAnalysis.breathItemName && (
+                                        <div className="flex flex-col gap-1">
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-gray-200 font-medium">{weaponAnalysis.breathItemName}</span>
+                                            <span className="text-gray-500 text-[10px]">
+                                              거래소: {weaponAnalysis.breathMarketPrice != null ? `${formatNumberWithSignificantDigits(weaponAnalysis.breathMarketPrice)}g` : '-'}
+                                            </span>
+                                          </div>
+                                          <div className="pl-2 space-y-0.5">
+                                            {isLevel3Or4 && weaponAnalysis.breathAnalysis.enhancedAncestor && (
+                                              <div className="flex items-center justify-between">
+                                                <span className="text-gray-400">강화선조턴</span>
+                                                <div className="flex items-center gap-2">
+                                                  {weaponAnalysis.breathAnalysis.enhancedAncestor.realValue != null ? (
+                                                    <>
+                                                      <span className="text-orange-300">{formatNumberWithSignificantDigits(weaponAnalysis.breathAnalysis.enhancedAncestor.realValue)}g</span>
+                                                      <span className={weaponAnalysis.breathAnalysis.enhancedAncestor.profitable ? 'text-green-400 text-[10px]' : 'text-red-400 text-[10px]'}>
+                                                        {weaponAnalysis.breathAnalysis.enhancedAncestor.profitable ? '사는 게 이득' : '사는 게 손해'}
+                                                      </span>
+                                                    </>
+                                                  ) : (
+                                                    <span className="text-gray-500">-</span>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            )}
+                                            <div className="flex items-center justify-between">
+                                              <span className="text-gray-400">선조턴</span>
+                                              <div className="flex items-center gap-2">
+                                                {weaponAnalysis.breathAnalysis.ancestor.realValue != null ? (
+                                                  <>
+                                                      <span className="text-orange-300">{formatNumberWithSignificantDigits(weaponAnalysis.breathAnalysis.ancestor.realValue)}g</span>
+                                                      <span className={weaponAnalysis.breathAnalysis.ancestor.profitable ? 'text-green-400 text-[10px]' : 'text-red-400 text-[10px]'}>
+                                                        {weaponAnalysis.breathAnalysis.ancestor.profitable ? '사는 게 이득' : '사는 게 손해'}
+                                                      </span>
+                                                  </>
+                                                ) : (
+                                                  <span className="text-gray-500">-</span>
+                                                )}
+                                              </div>
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                              <span className="text-gray-400">일반턴</span>
+                                              <div className="flex items-center gap-2">
+                                                {weaponAnalysis.breathAnalysis.normal.realValue != null ? (
+                                                  <>
+                                                      <span className="text-orange-300">{formatNumberWithSignificantDigits(weaponAnalysis.breathAnalysis.normal.realValue)}g</span>
+                                                      <span className={weaponAnalysis.breathAnalysis.normal.profitable ? 'text-green-400 text-[10px]' : 'text-red-400 text-[10px]'}>
+                                                        {weaponAnalysis.breathAnalysis.normal.profitable ? '사는 게 이득' : '사는 게 손해'}
+                                                      </span>
+                                                  </>
+                                                ) : (
+                                                  <span className="text-gray-500">-</span>
+                                                )}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* 방어구 */}
+                                {armorAnalysis && (
+                                  <div className="border border-gray-600 rounded-lg p-2 bg-gray-800/50">
+                                    <h5 className="text-xs font-semibold text-purple-300 mb-2">방어구</h5>
+                                    <div className="space-y-2.5 text-[11px]">
+                                      {/* 장인의 재봉술 */}
+                                      {armorAnalysis.craftItemName && (
+                                        <div className="flex flex-col gap-1 pb-2 border-b border-gray-700">
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-gray-200 font-medium">{armorAnalysis.craftItemName}</span>
+                                            <span className="text-gray-500 text-[10px]">
+                                              거래소: {armorAnalysis.craftMarketPrice != null ? `${formatNumberWithSignificantDigits(armorAnalysis.craftMarketPrice)}g` : '-'}
+                                            </span>
+                                          </div>
+                                          <div className="pl-2 space-y-0.5">
+                                            {isLevel3Or4 && armorAnalysis.craftAnalysis.enhancedAncestor && (
+                                              <div className="flex items-center justify-between">
+                                                <span className="text-gray-400">강화선조턴</span>
+                                                <div className="flex items-center gap-2">
+                                                  {armorAnalysis.craftAnalysis.enhancedAncestor.realValue != null ? (
+                                                    <>
+                                                      <span className="text-yellow-300">{formatNumberWithSignificantDigits(armorAnalysis.craftAnalysis.enhancedAncestor.realValue)}g</span>
+                                                      <span className={armorAnalysis.craftAnalysis.enhancedAncestor.profitable ? 'text-green-400 text-[10px]' : 'text-red-400 text-[10px]'}>
+                                                        {armorAnalysis.craftAnalysis.enhancedAncestor.profitable ? '사는 게 이득' : '사는 게 손해'}
+                                                      </span>
+                                                    </>
+                                                  ) : (
+                                                    <span className="text-gray-500">-</span>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            )}
+                                            <div className="flex items-center justify-between">
+                                              <span className="text-gray-400">선조턴</span>
+                                              <div className="flex items-center gap-2">
+                                                {armorAnalysis.craftAnalysis.ancestor.realValue != null ? (
+                                                  <>
+                                                      <span className="text-yellow-300">{formatNumberWithSignificantDigits(armorAnalysis.craftAnalysis.ancestor.realValue)}g</span>
+                                                      <span className={armorAnalysis.craftAnalysis.ancestor.profitable ? 'text-green-400 text-[10px]' : 'text-red-400 text-[10px]'}>
+                                                        {armorAnalysis.craftAnalysis.ancestor.profitable ? '사는 게 이득' : '사는 게 손해'}
+                                                      </span>
+                                                  </>
+                                                ) : (
+                                                  <span className="text-gray-500">-</span>
+                                                )}
+                                              </div>
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                              <span className="text-gray-400">일반턴</span>
+                                              <div className="flex items-center gap-2">
+                                                {armorAnalysis.craftAnalysis.normal.realValue != null ? (
+                                                  <>
+                                                      <span className="text-yellow-300">{formatNumberWithSignificantDigits(armorAnalysis.craftAnalysis.normal.realValue)}g</span>
+                                                      <span className={armorAnalysis.craftAnalysis.normal.profitable ? 'text-green-400 text-[10px]' : 'text-red-400 text-[10px]'}>
+                                                        {armorAnalysis.craftAnalysis.normal.profitable ? '사는 게 이득' : '사는 게 손해'}
+                                                      </span>
+                                                  </>
+                                                ) : (
+                                                  <span className="text-gray-500">-</span>
+                                                )}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
+                                      {/* 빙하의 숨결 */}
+                                      {armorAnalysis.breathItemName && (
+                                        <div className="flex flex-col gap-1">
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-gray-200 font-medium">{armorAnalysis.breathItemName}</span>
+                                            <span className="text-gray-500 text-[10px]">
+                                              거래소: {armorAnalysis.breathMarketPrice != null ? `${formatNumberWithSignificantDigits(armorAnalysis.breathMarketPrice)}g` : '-'}
+                                            </span>
+                                          </div>
+                                          <div className="pl-2 space-y-0.5">
+                                            {isLevel3Or4 && armorAnalysis.breathAnalysis.enhancedAncestor && (
+                                              <div className="flex items-center justify-between">
+                                                <span className="text-gray-400">강화선조턴</span>
+                                                <div className="flex items-center gap-2">
+                                                  {armorAnalysis.breathAnalysis.enhancedAncestor.realValue != null ? (
+                                                    <>
+                                                      <span className="text-orange-300">{formatNumberWithSignificantDigits(armorAnalysis.breathAnalysis.enhancedAncestor.realValue)}g</span>
+                                                      <span className={armorAnalysis.breathAnalysis.enhancedAncestor.profitable ? 'text-green-400 text-[10px]' : 'text-red-400 text-[10px]'}>
+                                                        {armorAnalysis.breathAnalysis.enhancedAncestor.profitable ? '사는 게 이득' : '사는 게 손해'}
+                                                      </span>
+                                                    </>
+                                                  ) : (
+                                                    <span className="text-gray-500">-</span>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            )}
+                                            <div className="flex items-center justify-between">
+                                              <span className="text-gray-400">선조턴</span>
+                                              <div className="flex items-center gap-2">
+                                                {armorAnalysis.breathAnalysis.ancestor.realValue != null ? (
+                                                  <>
+                                                      <span className="text-orange-300">{formatNumberWithSignificantDigits(armorAnalysis.breathAnalysis.ancestor.realValue)}g</span>
+                                                      <span className={armorAnalysis.breathAnalysis.ancestor.profitable ? 'text-green-400 text-[10px]' : 'text-red-400 text-[10px]'}>
+                                                        {armorAnalysis.breathAnalysis.ancestor.profitable ? '사는 게 이득' : '사는 게 손해'}
+                                                      </span>
+                                                  </>
+                                                ) : (
+                                                  <span className="text-gray-500">-</span>
+                                                )}
+                                              </div>
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                              <span className="text-gray-400">일반턴</span>
+                                              <div className="flex items-center gap-2">
+                                                {armorAnalysis.breathAnalysis.normal.realValue != null ? (
+                                                  <>
+                                                      <span className="text-orange-300">{formatNumberWithSignificantDigits(armorAnalysis.breathAnalysis.normal.realValue)}g</span>
+                                                      <span className={armorAnalysis.breathAnalysis.normal.profitable ? 'text-green-400 text-[10px]' : 'text-red-400 text-[10px]'}>
+                                                        {armorAnalysis.breathAnalysis.normal.profitable ? '사는 게 이득' : '사는 게 손해'}
+                                                      </span>
+                                                  </>
+                                                ) : (
+                                                  <span className="text-gray-500">-</span>
+                                                )}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                            </div>
+                        );
+                      })()
+                    )}
+                  </div>
+                </div>
+
                 {/* 장비 표 */}
                 <div className="bg-gray-900/70 rounded-lg border border-gray-700 overflow-hidden">
                   <div className="overflow-x-auto">
-                    <table className="min-w-full border border-gray-800 text-sm">
+                    <table className="w-full min-w-[880px] border border-gray-800 text-[13px] sm:text-sm">
                       <thead>
                         <tr className="bg-gray-900/90 text-gray-200">
-                          <th className="px-4 py-3 text-left font-medium border-b border-gray-700">장비 부위</th>
-                          <th className="px-4 py-3 text-left font-medium border-b border-gray-700">장비명</th>
-                          <th className="px-4 py-3 text-center font-medium border-b border-gray-700">목표 재련 단계</th>
-                          <th className="px-4 py-3 text-right font-medium border-b border-gray-700">야금/재봉 가치</th>
-                          <th className="px-4 py-3 text-right font-medium border-b border-gray-700">숨결 가치</th>
-                          <th className="px-4 py-3 text-right font-medium border-b border-gray-700">돌파석 가치</th>
+                          <th className="px-2 sm:px-3 py-2 sm:py-3 text-left font-medium border-b border-gray-700 min-w-[3.5rem]">장비 부위</th>
+                          <th className="px-2 sm:px-3 py-2 sm:py-3 text-left font-medium border-b border-gray-700 min-w-[7rem]">장비명</th>
+                          <th className="px-2 sm:px-3 py-2 sm:py-3 text-center font-medium border-b border-gray-700 min-w-[4.5rem]">목표 재련</th>
+                          <th className="px-2 sm:px-3 py-2 sm:py-3 text-right font-medium border-b border-gray-700 min-w-[6.5rem]">야금/재봉 가치</th>
+                          <th className="px-2 sm:px-3 py-2 sm:py-3 text-right font-medium border-b border-gray-700 min-w-[5.5rem]">숨결 가치</th>
+                          <th className="px-2 sm:px-3 py-2 sm:py-3 text-right font-medium border-b border-gray-700 min-w-[5rem]">돌파석 가치</th>
                         </tr>
                       </thead>
                       <tbody>
                         {equipmentWithValues.length > 0 ? (
                           equipmentWithValues.map((eq, idx) => (
                             <tr key={idx} className={idx % 2 === 0 ? 'bg-gray-900/50' : 'bg-gray-800/50'}>
-                              <td className="px-4 py-3 text-white font-medium border-b border-gray-800">
+                              <td className="px-2 sm:px-3 py-2 sm:py-3 text-white font-medium border-b border-gray-800 align-top whitespace-nowrap">
                                 {eq.type}
                               </td>
-                              <td className="px-4 py-3 text-gray-300 border-b border-gray-800">
-                                <div className="flex items-center gap-2">
-                                  {eq.Icon && (
-                                    <img src={eq.Icon} alt={eq.Name} className="w-6 h-6 object-contain" />
+                              <td className="px-2 sm:px-3 py-2 sm:py-3 text-gray-300 border-b border-gray-800 align-top max-w-[12rem]">
+                                <div className="flex flex-col gap-0.5 min-w-0">
+                                  <div className="flex items-start gap-2 min-w-0">
+                                    {eq.Icon && (
+                                      <img src={eq.Icon} alt={eq.Name} className="w-5 h-5 sm:w-6 sm:h-6 object-contain flex-shrink-0" />
+                                    )}
+                                    <span className="break-words min-w-0">{eq.Name}</span>
+                                  </div>
+                                  {eq.advancedProgress != null && (
+                                    <span className="text-[11px] sm:text-xs text-gray-400 break-words">{eq.advancedProgress}</span>
                                   )}
-                                  <span>{eq.Name}</span>
                                 </div>
                               </td>
-                              <td className="px-4 py-3 text-center text-blue-300 font-medium border-b border-gray-800">
-                                {eq.targetLevel != null ? `+${eq.targetLevel}` : '-'}
+                              <td className="px-2 sm:px-3 py-2 sm:py-3 text-center text-blue-300 font-medium border-b border-gray-800 align-top">
+                                <div className="flex flex-col items-center gap-0.5">
+                                  <span className="whitespace-nowrap">{eq.targetLevel != null ? `+${eq.targetLevel}` : '-'}</span>
+                                  {(() => {
+                                    const adv = getAdvancedTargetLabel(eq.advancedProgress);
+                                    return adv ? <span className="text-[11px] sm:text-xs text-gray-400">{adv}</span> : null;
+                                  })()}
+                                </div>
                               </td>
-                              <td className="px-4 py-3 text-right border-b border-gray-800">
+                              <td className="px-2 sm:px-3 py-2 sm:py-3 text-right border-b border-gray-800 align-top min-w-0">
                                 {eq.craftValue != null || eq.enhancedCraftValue != null ? (
-                                  <div className="space-y-2">
+                                  <div className="space-y-1.5">
                                     {eq.craftValue != null && (
-                                      <div>
+                                      <div className="break-words">
                                         <div className="text-yellow-300 font-medium">
                                           {formatNumberWithSignificantDigits(eq.craftValue)} 골드
                                         </div>
                                         {eq.craftItemName && (
-                                          <div className="text-xs text-gray-400 mt-1">
+                                          <div className="text-[11px] sm:text-xs text-gray-400 mt-0.5 break-words">
                                             {eq.craftItemName}
                                           </div>
                                         )}
                                         {eq.craftMarketPrice != null && (
-                                          <div className="text-xs text-gray-500 mt-0.5">
+                                          <div className="text-[10px] sm:text-xs text-gray-500 mt-0.5">
                                             거래소: {formatNumberWithSignificantDigits(eq.craftMarketPrice)} 골드
                                           </div>
                                         )}
                                       </div>
                                     )}
                                     {eq.enhancedCraftValue != null && (
-                                      <div className={eq.craftValue != null ? 'pt-2 border-t border-gray-700' : ''}>
+                                      <div className={eq.craftValue != null ? 'pt-1.5 border-t border-gray-700' : ''}>
                                         <div className="text-amber-300 font-medium">
                                           {formatNumberWithSignificantDigits(eq.enhancedCraftValue)} 골드
                                         </div>
                                         {eq.enhancedCraftItemName && (
-                                          <div className="text-xs text-gray-400 mt-1">
+                                          <div className="text-[11px] sm:text-xs text-gray-400 mt-0.5 break-words">
                                             {eq.enhancedCraftItemName}
                                           </div>
                                         )}
                                         {eq.enhancedCraftMarketPrice != null && (
-                                          <div className="text-xs text-gray-500 mt-0.5">
+                                          <div className="text-[10px] sm:text-xs text-gray-500 mt-0.5">
                                             거래소: {formatNumberWithSignificantDigits(eq.enhancedCraftMarketPrice)} 골드
                                           </div>
                                         )}
@@ -1347,19 +2092,19 @@ function CharacterSimulation({ weaponStages, armorStages, weaponStagesSerka, arm
                                   <span className="text-gray-500">-</span>
                                 )}
                               </td>
-                              <td className="px-4 py-3 text-right border-b border-gray-800">
+                              <td className="px-2 sm:px-3 py-2 sm:py-3 text-right border-b border-gray-800 align-top min-w-0">
                                 {eq.breathValue != null ? (
-                                  <div>
+                                  <div className="break-words">
                                     <div className="text-orange-300 font-medium">
                                       {formatNumberWithSignificantDigits(eq.breathValue)} 골드
                                     </div>
                                     {eq.breathItemName && (
-                                      <div className="text-xs text-gray-400 mt-1">
+                                      <div className="text-[11px] sm:text-xs text-gray-400 mt-0.5 break-words">
                                         {eq.breathItemName}
                                       </div>
                                     )}
                                     {eq.breathMarketPrice != null && (
-                                      <div className="text-xs text-gray-500 mt-0.5">
+                                      <div className="text-[10px] sm:text-xs text-gray-500 mt-0.5">
                                         거래소: {formatNumberWithSignificantDigits(eq.breathMarketPrice)} 골드
                                       </div>
                                     )}
@@ -1368,13 +2113,13 @@ function CharacterSimulation({ weaponStages, armorStages, weaponStagesSerka, arm
                                   <span className="text-gray-500">-</span>
                                 )}
                               </td>
-                              <td className="px-4 py-3 text-right border-b border-gray-800">
+                              <td className="px-2 sm:px-3 py-2 sm:py-3 text-right border-b border-gray-800 align-top min-w-0">
                                 {eq.breakthroughValue != null ? (
                                   <div>
                                     <div className="text-green-300 font-medium">
                                       {formatNumberWithSignificantDigits(eq.breakthroughValue)} 골드
                                     </div>
-                                    <div className="text-xs text-gray-400 mt-1">
+                                    <div className="text-[11px] sm:text-xs text-gray-400 mt-0.5">
                                       {eq.isSerkaEquipment ? '전이 돌파석' : '순환 돌파석'}
                                     </div>
                                   </div>
@@ -1386,7 +2131,7 @@ function CharacterSimulation({ weaponStages, armorStages, weaponStagesSerka, arm
                           ))
                         ) : (
                           <tr>
-                            <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
+                            <td colSpan={6} className="px-2 sm:px-4 py-8 text-center text-gray-400 text-sm">
                               장비 정보를 불러올 수 없습니다.
                             </td>
                           </tr>
@@ -1411,9 +2156,13 @@ type Props = {
   armorStagesSerka: RefiningStage[];
   marketInfo: Record<string, MarketItemInfo>;
   sillingUnitPrice: number;
+  valueDbMap?: Record<string, ValueDbEntry>;
+  silverCashValue?: number | null;
+  initialRates?: { exchange: number | null; discord: number | null };
+  initialCrystalGoldRate?: number | null;
 };
 
-export default function CharacterSimulationClient({ weaponStages, armorStages, weaponStagesSerka, armorStagesSerka, marketInfo, sillingUnitPrice }: Props) {
+export default function CharacterSimulationClient({ weaponStages, armorStages, weaponStagesSerka, armorStagesSerka, marketInfo, sillingUnitPrice, valueDbMap = {}, silverCashValue = null, initialRates, initialCrystalGoldRate }: Props) {
   return (
     <CharacterSimulation
       weaponStages={weaponStages}
@@ -1422,6 +2171,10 @@ export default function CharacterSimulationClient({ weaponStages, armorStages, w
       armorStagesSerka={armorStagesSerka}
       marketInfo={marketInfo}
       sillingUnitPrice={sillingUnitPrice}
+      valueDbMap={valueDbMap}
+      silverCashValue={silverCashValue}
+      initialRates={initialRates}
+      initialCrystalGoldRate={initialCrystalGoldRate}
     />
   );
 }

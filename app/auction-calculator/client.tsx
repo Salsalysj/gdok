@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
+import FavoriteButton from '../components/FavoriteButton';
 
 type MarketItem = {
   Name: string;
@@ -111,9 +112,12 @@ export default function AuctionCalculatorClient({ marketData }: AuctionCalculato
     <div className="min-h-screen bg-gray-950 p-3 md:p-4 lg:p-5">
       <div className="max-w-7xl mx-auto">
         <div className="mb-4 md:mb-5">
-          <h1 className="text-2xl md:text-[26px] font-semibold tracking-tight text-white mb-1.5">
-            경매 계산기
-          </h1>
+          <div className="flex items-center gap-3 flex-wrap mb-1.5">
+            <h1 className="text-2xl md:text-[26px] font-semibold tracking-tight text-white">
+              경매 계산기
+            </h1>
+            <FavoriteButton title="경매 계산기" />
+          </div>
           <p className="text-sm md:text-[13px] text-gray-400">
             레이드 클리어 후 경매 입찰 최적가를 계산하세요.
           </p>
