@@ -28,7 +28,6 @@ export default function UpdatesPage() {
               <div>
                 <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold text-green-400 mb-1 sm:mb-2">신규 기능</h3>
                 <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-[10px] sm:text-xs md:text-sm text-gray-300 ml-3 sm:ml-4 whitespace-normal break-words">
-                  <li>시급 계산기 구현 (소요시간 변경 가능)</li>
                   <li>아이템 이름 앞에 아이콘 이미지 추가</li>
                 </ul>
               </div>

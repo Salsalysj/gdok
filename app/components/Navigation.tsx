@@ -108,8 +108,8 @@ export default function Navigation() {
   ];
 
   const customCalcSubTabs = [
-    { name: '상자 선택 도우미', href: '/custom-calculator/box-selector' },
-    { name: '시급 계산기', href: '/custom-calculator/wage-calculator' }
+    { name: '상자 선택 도우미', href: '/custom-calculator/box-selector' }
+  //  { name: '시급 계산기', href: '/custom-calculator/wage-calculator' }
   ];
 
   return (
