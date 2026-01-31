@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { ITEM_ICON_MAP } from '@/lib/valueDbIcons';
 
 type ItemIconProps = {
   icon?: string;
@@ -12,18 +13,19 @@ type ItemIconProps = {
 export default function ItemIcon({ icon, name, size = 'md', className = '' }: ItemIconProps) {
   const [imageError, setImageError] = useState(false);
 
-  // Lost Ark 아이콘 URL 생성
+  // Lost Ark 아이콘 URL 생성 (CDN 경로 또는 전체 URL)
   const getIconUrl = (iconPath?: string) => {
     if (!iconPath) return null;
-    // Icon 필드가 이미 전체 URL인 경우 그대로 사용
-    if (iconPath.startsWith('http')) {
+    if (iconPath.startsWith('http') || iconPath.startsWith('/')) {
       return iconPath;
     }
-    // 경로만 있는 경우 CDN URL 생성
     return `https://cdn-lostark.game.onstove.com${iconPath}`;
   };
 
-  const iconUrl = getIconUrl(icon);
+  // value-db와 동일: name만 있으면 ITEM_ICON_MAP으로 /value-db-icons/ 파일 매칭
+  const valueDbIcon =
+    name && ITEM_ICON_MAP[name] ? `/value-db-icons/${ITEM_ICON_MAP[name]}` : null;
+  const iconUrl = getIconUrl(icon) ?? valueDbIcon;
   const sizeClasses = {
     sm: 'w-8 h-8',
     md: 'w-10 h-10',

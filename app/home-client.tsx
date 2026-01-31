@@ -29,23 +29,16 @@ export default function HomeClient({
 
   return (
     <div className="min-h-screen bg-gray-950">
+      <h1 className="sr-only">껨산기</h1>
       <div className="py-6 sm:py-8 md:py-12 sm:px-6 max-w-7xl mx-auto">
-        {/* 헤더 */}
-        <div className="text-center mb-6 sm:mb-8 md:mb-12 space-y-2 sm:space-y-3 px-4 sm:px-0">
-          <div>
-            <span className="inline-block px-2 sm:px-3 py-0.5 sm:py-1 border border-gray-700 rounded text-[10px] sm:text-xs md:text-sm text-gray-300">
-              Open Beta
-            </span>
-          </div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-5xl font-semibold tracking-tight text-white">
-            껨산기
-          </h1>
-
+        {/* 헤더 (광고) */}
+        <div className="text-center mb-8 sm:mb-10 md:mb-18 space-y-2 sm:space-y-3 px-4 sm:px-0">
+          <div className="text-gray-400 text-sm">광고주를 위한 공간 (많관부)</div>
         </div>
 
         {/* 사이트 소개 */}
         <div className="bg-gray-900 border-x-0 sm:border-x border-gray-800 rounded-none sm:rounded-lg p-3 sm:p-6 md:p-8 mb-6 sm:mb-8">
-
+        
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
             <div className="space-y-1 sm:space-y-2">
               <h4 className="text-sm sm:text-base md:text-lg font-semibold text-white">실시간 시세 반영</h4>

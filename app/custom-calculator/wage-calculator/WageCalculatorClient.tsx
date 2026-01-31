@@ -106,25 +106,26 @@ export default function WageCalculatorClient({
     '할의 모래시계': 5,
     '가디언 토벌': 3,
     '레이드': 30,
-    '필드보스': 3,
-    '카오스게이트': 3,
+    '필드보스': 10,
+    '카오스게이트': 5,
   };
-  const [durations, setDurations] = useState<Record<string, number>>(() => {
-    if (typeof window === 'undefined') return {};
-    try {
-      const v = localStorage.getItem('wage-calculator-durations');
-      if (v) {
-        const o = JSON.parse(v);
-        if (o && typeof o === 'object' && !Array.isArray(o)) return o;
-      }
-    } catch {}
-    return {};
-  });
+  const [durations, setDurations] = useState<Record<string, number>>({});
   const [editingRowKey, setEditingRowKey] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState('');
   const setDuration = (rowKey: string, minutes: number) => {
     setDurations((prev) => ({ ...prev, [rowKey]: Math.max(0.1, minutes) }));
   };
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem('wage-calculator-durations');
+      if (v) {
+        const o = JSON.parse(v);
+        if (o && typeof o === 'object' && !Array.isArray(o) && Object.keys(o).length > 0) {
+          setDurations(o);
+        }
+      }
+    } catch {}
+  }, []);
   useEffect(() => {
     try {
       localStorage.setItem('wage-calculator-durations', JSON.stringify(durations));
@@ -138,17 +139,16 @@ export default function WageCalculatorClient({
     return durations[key] ?? DEFAULT_DURATIONS[row.durationKey] ?? 1;
   };
 
-  const [sortBy, setSortBy] = useState<'보상' | '시급' | null>(() => {
-    if (typeof window === 'undefined') return null;
-    try {
-      const v = localStorage.getItem('wage-calculator-sortBy');
-      if (v === '보상' || v === '시급') return v;
-    } catch {}
-    return null;
-  });
+  const [sortBy, setSortBy] = useState<'보상' | '시급' | null>(null);
   useEffect(() => {
     try {
-      localStorage.setItem('wage-calculator-sortBy', sortBy ?? '');
+      const v = localStorage.getItem('wage-calculator-sortBy');
+      if (v === '보상' || v === '시급') setSortBy(v);
+    } catch {}
+  }, []);
+  useEffect(() => {
+    try {
+      if (sortBy != null) localStorage.setItem('wage-calculator-sortBy', sortBy);
     } catch {}
   }, [sortBy]);
 

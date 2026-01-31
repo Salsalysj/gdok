@@ -547,7 +547,9 @@ export default function ContentRewardsClient({
                         }`}
                       >
                         {isSimpleLayout ? (
-                          <div>
+                          <div className="flex items-start gap-2">
+                            <ItemIcon name={reward.itemName} size="sm" className="flex-shrink-0 mt-0.5" />
+                            <div>
                             <div className="flex items-center gap-2 mb-1">
                               <span className={`font-medium ${tradeInfo.nameClass} ${strike}`}>{reward.itemName}</span>
                               <span className={`px-1.5 py-0.5 rounded text-[10px] ${tradeInfo.badgeClass}`}>{tradeInfo.badgeText}</span>
@@ -583,6 +585,7 @@ export default function ContentRewardsClient({
                                 </div>
                               )
                             )}
+                            </div>
                           </div>
                         ) : (
                           <>
@@ -648,7 +651,8 @@ export default function ContentRewardsClient({
                             const info = getTradeClass(r.itemName);
                             const strikeCube = (!isGuardianTab && isExcludedForTotal(r.itemName)) ? 'line-through opacity-60' : '';
                             return (
-                              <div key={i} className="text-xs">
+                              <div key={i} className="text-xs flex items-center gap-2">
+                                <ItemIcon name={r.itemName} size="sm" className="flex-shrink-0" />
                                 <span className={`${info.nameClass} ${strikeCube}`}>{r.itemName}</span>
                                 <span className={`ml-1 px-1 py-0.5 rounded ${info.badgeClass}`}>{info.badgeText}</span>
                                 <span className="text-gray-400"> × {formatNumberWithSignificantDigits(r.quantity)}</span>

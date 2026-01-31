@@ -116,18 +116,12 @@ export default function Navigation() {
     <nav className="bg-gray-900 border-b border-gray-700 fixed top-0 left-0 right-0 z-40">
       <div className="w-full">
         {/* 상단 헤더 */}
-        <div className="flex items-center h-14 md:h-16 px-3 md:px-4">
-          {/* 모바일 로고 - 데스크톱에서는 숨김 (좌측 사이드바로 이동) */}
-          <Link href="/" className="flex lg:hidden items-center space-x-2 flex-shrink-0">
-            <span className="text-xl md:text-2xl font-bold text-white">
-              껨산기
-            </span>
-            <span className="text-xs px-2 py-0.5 bg-gray-800 text-gray-300 border border-gray-700 rounded">
-              오픈베타
-            </span>
-            <span className="text-xs text-gray-400 hidden sm:inline">
-              by 스누껨독
-            </span>
+        <div className="flex items-center h-14 md:h-16 px-3 md:px-4 overflow-x-auto min-w-0">
+          {/* 모바일: 로고만 (데스크톱에서는 숨김) */}
+          <Link href="/" className="flex lg:hidden items-center gap-2 flex-shrink-0">
+            <img src="/page_logo_white.png" alt="껨산기" className="h-10 md:h-11 w-auto object-contain" />
+            <span className="text-xs px-2 py-0.5 bg-gray-800 text-gray-300 border border-gray-700 rounded">오픈베타</span>
+            <span className="text-xs text-gray-400 hidden sm:inline">by 스누껨독</span>
           </Link>
 
           {/* 모바일: DB/필터 버튼 + 햄버거 메뉴 */}
@@ -158,19 +152,18 @@ export default function Navigation() {
             </button>
           </div>
 
-          {/* 데스크톱: 홈 링크 + 네비게이션 탭 (1024px 이상) - 가운데 정렬 */}
-          <div className="hidden lg:flex items-center gap-3 absolute left-1/2 transform -translate-x-1/2">
-            {/* 홈 링크 (집 이모지) */}
-            <Link 
-              href="/" 
-              className="flex items-center justify-center w-10 h-10 text-white hover:bg-gray-800 rounded transition-colors"
+          {/* 데스크톱: 로고(홈) + 네비게이션 탭 (1024px 이상) - 가운데 정렬 */}
+          <div className="hidden lg:flex items-center gap-3 absolute left-1/2 transform -translate-x-1/2 flex-shrink-0">
+            <Link
+              href="/"
+              className="flex items-center justify-center text-white hover:bg-gray-800 rounded-lg p-2 transition-colors flex-shrink-0"
               aria-label="홈으로 이동"
               title="홈"
             >
-              <span className="text-xl">🏠︎</span>
+              <img src="/page_logo_white.png" alt="껨산기" className="h-10 w-auto object-contain" />
             </Link>
             
-            <div className="flex items-center space-x-1 relative">
+            <div className="flex items-center space-x-1 relative flex-shrink-0">
               {tabs.map((tab) => {
                 const isActive = pathname === tab.href || 
                   (tab.href === '/content-rewards' && pathname.startsWith('/content-rewards')) ||
@@ -192,7 +185,7 @@ export default function Navigation() {
                     <div key={tab.href} className={`relative ${menuClass}`}>
                       <button
                         onClick={() => setIsOpen(!isOpen)}
-                        className={`px-4 xl:px-6 py-2 rounded font-medium text-sm xl:text-base flex items-center gap-1 ${
+                        className={`px-4 xl:px-6 py-2 rounded font-medium text-sm xl:text-base flex items-center gap-1 whitespace-nowrap flex-shrink-0 ${
                           isActive
                             ? 'bg-gray-700 text-white'
                             : 'text-gray-400 hover:text-white hover:bg-gray-800'
@@ -242,7 +235,7 @@ export default function Navigation() {
                   <Link
                     key={tab.href}
                     href={tab.href}
-                    className={`px-4 xl:px-6 py-2 rounded font-medium text-sm xl:text-base flex items-center gap-1.5 ${
+                    className={`px-4 xl:px-6 py-2 rounded font-medium text-sm xl:text-base flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 ${
                       isActive
                         ? 'bg-gray-700 text-white'
                         : 'text-gray-400 hover:text-white hover:bg-gray-800'

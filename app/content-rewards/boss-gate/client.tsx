@@ -512,7 +512,9 @@ export default function BossGateClient({
                         }`}
                       >
                         {isSimpleLayout ? (
-                          <div>
+                          <div className="flex items-start gap-2">
+                            <ItemIcon name={reward.itemName} size="sm" className="flex-shrink-0 mt-0.5" />
+                            <div>
                             <div className="flex items-center gap-2 mb-1">
                               <span className={`font-medium ${tradeInfo.nameClass} ${strike}`}>{reward.itemName}</span>
                               <span className={`px-1.5 py-0.5 rounded text-[10px] ${tradeInfo.badgeClass}`}>{tradeInfo.badgeText}</span>
@@ -548,6 +550,7 @@ export default function BossGateClient({
                                 </div>
                               )
                             )}
+                            </div>
                           </div>
                         ) : (
                           <>

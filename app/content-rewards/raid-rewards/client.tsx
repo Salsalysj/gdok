@@ -7,6 +7,7 @@ import { usePriceAdjustment } from '../../hooks/usePriceAdjustment';
 import { usePriceOverride } from '../../contexts/PriceOverrideContext';
 import { useValueDb } from '../../contexts/ValueDbContext';
 import FavoriteButton from '../../components/FavoriteButton';
+import ItemIcon from '../../components/ItemIcon';
 
 type RewardData = {
   [itemName: string]: number;
@@ -676,14 +677,15 @@ export default function RaidRewardsClient({
                             ) && priceInfo.method;
                             
                             return (
-                              <div key={itemName} className={`flex items-center justify-between py-1 pl-3 ${strike}`}>
-                                <span className="text-gray-300 text-xs">
+                              <div key={itemName} className={`flex items-center justify-between gap-2 py-1 pl-3 ${strike}`}>
+                                <span className="text-gray-300 text-xs flex items-center gap-2 min-w-0">
+                                  <ItemIcon name={itemName} size="sm" className="flex-shrink-0" />
                                   {itemName} {formatNumberWithSignificantDigits(quantity)}개
                                   {showMethod && (
                                     <span className="text-xs text-gray-500 font-medium ml-1.5">({priceInfo.method})</span>
                                   )}
                                 </span>
-                                <span className="text-gray-400 text-xs">
+                                <span className="text-gray-400 text-xs flex-shrink-0">
                                   ({formatNumberWithSignificantDigits(itemTotal)}골드)
                                 </span>
                               </div>
@@ -743,14 +745,15 @@ export default function RaidRewardsClient({
                             ) && priceInfo.method;
                             
                             return (
-                              <div key={itemName} className={`flex items-center justify-between py-1 pl-3 ${strike}`}>
-                                <span className="text-gray-300 text-xs">
+                              <div key={itemName} className={`flex items-center justify-between gap-2 py-1 pl-3 ${strike}`}>
+                                <span className="text-gray-300 text-xs flex items-center gap-2 min-w-0">
+                                  <ItemIcon name={itemName} size="sm" className="flex-shrink-0" />
                                   {itemName} {formatNumberWithSignificantDigits(quantity)}개
                                   {showMethod && (
                                     <span className="text-xs text-gray-500 font-medium ml-1.5">({priceInfo.method})</span>
                                   )}
                                 </span>
-                                <span className="text-gray-400 text-xs">
+                                <span className="text-gray-400 text-xs flex-shrink-0">
                                   ({formatNumberWithSignificantDigits(itemTotal)}골드)
                                 </span>
                               </div>

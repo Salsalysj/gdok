@@ -1027,6 +1027,7 @@ export default function HellClient({
                                             className="bg-blue-900/20 rounded-lg border border-blue-700/50 p-3"
                                           >
                                             <div className="flex items-center gap-2 mb-1">
+                                              <ItemIcon name={reward.itemName} size="sm" />
                                               <span className={`font-medium ${tradeInfo.nameClass}`}>{reward.itemName}</span>
                                               <span className={`px-1.5 py-0.5 rounded text-[10px] ${tradeInfo.badgeClass}`}>{tradeInfo.badgeText}</span>
                                               <span className="px-1.5 py-0.5 rounded text-[10px] bg-blue-900/30 text-blue-300 border border-blue-600">
@@ -1071,6 +1072,7 @@ export default function HellClient({
                                       className={`rounded-lg border p-3 ${isChosen ? 'bg-amber-900/20 border-amber-600/60' : 'bg-gray-900/50 border-gray-700'}`}
                                     >
                                       <div className="flex items-center gap-2 mb-1">
+                                        <ItemIcon name={reward.itemName} size="sm" />
                                         <span className={`font-medium ${tradeInfo.nameClass}`}>{reward.itemName}</span>
                                         <span className={`px-1.5 py-0.5 rounded text-[10px] ${tradeInfo.badgeClass}`}>{tradeInfo.badgeText}</span>
                                         {isChosen && (
@@ -1126,6 +1128,7 @@ export default function HellClient({
                                                 >
                                                   <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-1.5">
+                                                      <ItemIcon name={component.itemName} size="sm" />
                                                       <span className={isSelected ? 'text-yellow-400 font-semibold' : 'text-gray-300'}>
                                                         {component.itemName}
                                                       </span>
@@ -1221,6 +1224,7 @@ export default function HellClient({
                                     >
                                       <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
+                                          <ItemIcon name={component.itemName} size="sm" />
                                           <span className={isSelected ? 'text-yellow-400 font-semibold' : 'text-gray-300'}>
                                             {component.itemName}
                                           </span>

@@ -2,6 +2,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { getMarketCache } from './marketCache';
 import { getContentRewardsData } from './contentRewards';
+import { ITEM_ICON_MAP } from './valueDbIcons';
 
 const P_LISTS_FILE = path.join(process.cwd(), 'p_lists.csv');
 const P_LIST_FILE_ALT = path.join(process.cwd(), 'p_list.csv');
@@ -21,6 +22,8 @@ export type ValueDbEntry = {
   unitType: '크리스탈' | '골드' | '현금' | null;
   unitValue: number | null;
   note?: string;
+  /** public/value-db-icons 폴더 내 아이콘 파일명 (ITEM_ICON_MAP에서 매칭) */
+  iconFileName?: string;
 };
 
 type Stage = {
@@ -1238,6 +1241,15 @@ export async function getValueDbData(): Promise<ValueDbData> {
     return order.indexOf(a.unitType!) - order.indexOf(b.unitType!);
   });
 
+  // 아이콘 파일명 매핑 적용 (public/value-db-icons)
+  const entriesWithIcons = uniqueEntries.map((entry) => ({
+    ...entry,
+    iconFileName: ITEM_ICON_MAP[entry.itemName],
+  }));
+  const entryMapWithIcons: Record<string, ValueDbEntry> = Object.fromEntries(
+    entriesWithIcons.map((e) => [e.itemName, e])
+  );
+
   return {
     itemList: combinedItemList,
     etcListDataObj,
@@ -1249,8 +1261,8 @@ export async function getValueDbData(): Promise<ValueDbData> {
     stageValueOverrides,
     kurzanStageTotals,
     kurzanStageRewards,
-    entries: uniqueEntries,
-    entryMap,
+    entries: entriesWithIcons,
+    entryMap: entryMapWithIcons,
     hellStages: hell3Stages, // 기존 호환성을 위해 지옥3 stages 유지
     hell1Stages,
     hell2Stages,

@@ -13,7 +13,8 @@ export default function LeftSidebarPlaceholder() {
   return (
     <div className="h-full flex flex-col bg-gray-900 border-r border-gray-800">
       <div className="p-4 border-b border-gray-800">
-        <Link href="/" className="flex items-center space-x-2">
+        <Link href="/" className="flex items-center gap-2">
+          <img src="/page_logo_white.png" alt="" className="h-8 w-auto object-contain flex-shrink-0" />
           <span className="text-xl md:text-2xl font-bold text-white">
             껨산기
           </span>

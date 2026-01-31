@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
 import { useValueDb } from '../contexts/ValueDbContext';
 import FavoriteButton from '../components/FavoriteButton';
+import { ITEM_ICON_MAP } from '@/lib/valueDbIcons';
 
 export default function ValueDBClient() {
   const { adjustedEntries } = useValueDb();
@@ -95,7 +96,24 @@ export default function ValueDBClient() {
             <tbody className="divide-y divide-gray-800">
               {filteredEntries.map((entry) => (
                 <tr key={entry.itemName}>
-                  <td className="px-4 py-3 text-white">{entry.itemName}</td>
+                  <td className="px-4 py-3 text-white">
+                    <div className="flex items-center gap-2">
+                      {(entry.iconFileName ?? ITEM_ICON_MAP[entry.itemName]) ? (
+                        <img
+                          src={`/value-db-icons/${entry.iconFileName ?? ITEM_ICON_MAP[entry.itemName]}`}
+                          alt=""
+                          className="w-8 h-8 object-contain flex-shrink-0 rounded border border-gray-600"
+                        />
+                      ) : (
+                        <span className="w-8 h-8 flex-shrink-0 flex items-center justify-center bg-gray-700/50 rounded border border-gray-600">
+                          <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                          </svg>
+                        </span>
+                      )}
+                      <span>{entry.itemName}</span>
+                    </div>
+                  </td>
                   <td className="px-4 py-3 text-gray-300">{entry.unitType ?? '-'}</td>
                   <td className="px-4 py-3 text-right text-yellow-300">
                     {entry.unitValue != null
