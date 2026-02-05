@@ -15,6 +15,7 @@ import simulationDataLevel2 from '@/lib/advancedRefiningData-level2.json';
 import simulationDataLevel3 from '@/lib/advancedRefiningData-level3.json';
 import simulationDataLevel4 from '@/lib/advancedRefiningData-level4.json';
 import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
+import ItemIcon from '../components/ItemIcon';
 
 interface SummaryTableProps {
   valueDbMap: Record<string, ValueDbEntry>;
@@ -347,16 +348,45 @@ export default function SummaryTable({ valueDbMap, silverCashValue = null, initi
   }, [valueDbMap, getMaterialValue, calculateAuxiliaryCost, calculateTotalCost]);
 
   const formatNumber = (num: number) => Math.round(num).toLocaleString();
-  const formatStrategy = (breath: boolean, craft: boolean, gearType: GearType) => {
-    const breathText = breath ? '숨결O' : '숨결X';
-    const craftText = craft
-      ? gearType === '무기'
-        ? '야금술O'
-        : '재봉술O'
-      : gearType === '무기'
-      ? '야금술X'
-      : '재봉술X';
-    return `${breathText}, ${craftText}`;
+
+  // 행별 보조재료 이름 (숨결, 야금술/재봉술) — 아이콘 표시용
+  const getOptionalMaterialNames = useCallback((level: RefiningLevel, gearType: GearType) => {
+    const materials = getMaterialsForLevel(level, gearType);
+    const optional = materials.filter((m: { isOptional?: boolean }) => m.isOptional);
+    const breathMat = optional.find((m: { name: string }) => m.name.includes('숨결'));
+    const craftMat = optional.find((m: { name: string }) => m.name.includes('야금술') || m.name.includes('재봉술'));
+    return { breathName: breathMat?.name ?? null, craftName: craftMat?.name ?? null };
+  }, []);
+
+  // 턴별로 O(투입 이득)인 아이템 아이콘만 표시
+  const TurnIcons = ({
+    breath,
+    craft,
+    level,
+    gearType,
+  }: {
+    breath: boolean;
+    craft: boolean;
+    level: RefiningLevel;
+    gearType: GearType;
+  }) => {
+    const { breathName, craftName } = getOptionalMaterialNames(level, gearType);
+    const show = (breath && breathName) || (craft && craftName);
+    if (!show) return <span className="text-gray-500">-</span>;
+    return (
+      <div className="flex items-center gap-1.5">
+        {breath && breathName && (
+          <span title={breathName}>
+            <ItemIcon name={breathName} size="sm" className="flex-shrink-0" />
+          </span>
+        )}
+        {craft && craftName && (
+          <span title={craftName}>
+            <ItemIcon name={craftName} size="sm" className="flex-shrink-0" />
+          </span>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -384,19 +414,32 @@ export default function SummaryTable({ valueDbMap, silverCashValue = null, initi
               <td className="py-3 px-4 text-white font-medium">{row.gearType}</td>
               <td className="py-3 px-4 text-gray-300">{row.level}</td>
               <td className="py-3 px-4 text-gray-400 text-sm">
-                {formatStrategy(row.normalTurn.breath, row.normalTurn.craft, row.gearType)}
+                <TurnIcons
+                  breath={row.normalTurn.breath}
+                  craft={row.normalTurn.craft}
+                  level={row.level}
+                  gearType={row.gearType}
+                />
               </td>
               <td className="py-3 px-4 text-gray-400 text-sm">
-                {formatStrategy(row.ancestorTurn.breath, row.ancestorTurn.craft, row.gearType)}
+                <TurnIcons
+                  breath={row.ancestorTurn.breath}
+                  craft={row.ancestorTurn.craft}
+                  level={row.level}
+                  gearType={row.gearType}
+                />
               </td>
               <td className="py-3 px-4 text-gray-400 text-sm">
-                {row.enhancedAncestorTurn
-                  ? formatStrategy(
-                      row.enhancedAncestorTurn.breath,
-                      row.enhancedAncestorTurn.craft,
-                      row.gearType
-                    )
-                  : '-'}
+                {row.enhancedAncestorTurn ? (
+                  <TurnIcons
+                    breath={row.enhancedAncestorTurn.breath}
+                    craft={row.enhancedAncestorTurn.craft}
+                    level={row.level}
+                    gearType={row.gearType}
+                  />
+                ) : (
+                  <span className="text-gray-500">-</span>
+                )}
               </td>
               <td className="py-3 px-4 text-right text-white font-semibold">
                 {formatNumber(row.totalCost)} 골드

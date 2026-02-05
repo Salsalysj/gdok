@@ -6,6 +6,7 @@ import type { RefiningStage, MarketItemInfo } from './page';
 import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
 import { usePriceOverride } from '../contexts/PriceOverrideContext';
 import FavoriteButton from '../components/FavoriteButton';
+import ItemIcon from '../components/ItemIcon';
 
 type Props = {
   weaponStages: RefiningStage[];
@@ -772,35 +773,6 @@ function calculateScenarioSummaries(
   };
 }
 
-function ItemIcon({ name, icon }: { name: string; icon?: string | null }) {
-  const fallback = FALLBACK_ICON[name] || '📦';
-  // icon이 없거나 빈 문자열이면 fallback 사용
-  if (!icon || icon.trim() === '') {
-    return <span className="w-6 h-6 flex items-center justify-center text-lg">{fallback}</span>;
-  }
-  return (
-    <img 
-      src={icon} 
-      alt={name} 
-      className="w-6 h-6 object-contain" 
-      onError={(e) => {
-        // 이미지 로드 실패 시 fallback으로 교체
-        const target = e.target as HTMLImageElement;
-        const parent = target.parentElement;
-        if (parent) {
-          target.style.display = 'none';
-          if (!parent.querySelector('.fallback-icon')) {
-            const fallbackSpan = document.createElement('span');
-            fallbackSpan.className = 'w-6 h-6 flex items-center justify-center text-lg fallback-icon';
-            fallbackSpan.textContent = fallback;
-            parent.appendChild(fallbackSpan);
-          }
-        }
-      }} 
-    />
-  );
-}
-
 type StageCardProps = {
   stage: RefiningStage;
   marketInfo: Record<string, MarketItemInfo>;
@@ -1329,12 +1301,11 @@ function MaterialLine({
   const totalText = data.totalPrice > 0
     ? `${formatNumberWithSignificantDigits(data.totalPrice)} 골드`
     : '-';
-  const iconUrl = data.icon;
 
   return (
     <div className="flex items-center justify-between gap-3 px-4 py-2">
       <div className="flex items-center gap-2 text-sm text-white">
-        {isGold || isSilver ? null : <ItemIcon name={displayName} icon={iconUrl} />}
+        <ItemIcon name={displayName} size="sm" className="flex-shrink-0" />
         <span className="font-medium">{displayName}</span>
       </div>
       <div className="flex flex-col text-right text-xs text-gray-300">

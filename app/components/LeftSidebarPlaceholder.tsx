@@ -18,9 +18,6 @@ export default function LeftSidebarPlaceholder() {
           <span className="text-xl md:text-2xl font-bold text-white">
             껨산기
           </span>
-          <span className="text-xs px-2 py-0.5 bg-gray-800 text-gray-300 border border-gray-700 rounded">
-            오픈베타
-          </span>
           <span className="text-xs text-gray-400 hidden sm:inline">
             by 스누껨독
           </span>

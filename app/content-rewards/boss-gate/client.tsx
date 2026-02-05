@@ -95,7 +95,18 @@ export default function BossGateClient({
   const { adjustedEntries } = useValueDb();
   const searchParams = useSearchParams();
   const [refreshKey, setRefreshKey] = useState(0);
+  /** 펼친 큐브/모래시계 보상: key = `${stageIdx}-${rewardIdx}` */
+  const [expandedCubeKeys, setExpandedCubeKeys] = useState<Set<string>>(new Set());
   const contentTypes: ContentType[] = ['필드보스', '카오스게이트'];
+
+  const toggleCubeExpand = (key: string) => {
+    setExpandedCubeKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
   
   // price-override-change 이벤트 리스너: 가격 조정이 변경되면 강제로 재계산
   useEffect(() => {
@@ -377,7 +388,7 @@ export default function BossGateClient({
           <p className="text-base text-gray-400">컨텐츠별 보상과 골드 가치를 확인하세요. (악세, 유각 등 일부 보상 제외)</p>
         </div>
 
-        {/* 탭 버튼 */}
+        {/* 컨텐츠 타입 선택 탭 */}
         <div className="mb-6">
           <div className="flex flex-wrap gap-2">
             {contentTypes.map(type => {
@@ -386,10 +397,15 @@ export default function BossGateClient({
               return (
                 <button
                   key={type}
-                  onClick={() => setActiveContent(type)}
-                  className={`px-4 py-2 rounded font-semibold ${
+                  onClick={() => {
+                    setActiveContent(type);
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('tab', type);
+                    window.history.pushState({}, '', url.toString());
+                  }}
+                  className={`px-4 py-2 rounded-lg font-semibold text-sm md:text-base transition-colors ${
                     activeContent === type
-                      ? 'bg-gray-700 text-white'
+                      ? 'bg-blue-600 text-white'
                       : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
                   }`}
                 >
@@ -404,28 +420,19 @@ export default function BossGateClient({
         {levels.length > 0 && (
           <div className="mb-6">
             <div className="flex flex-wrap gap-2">
-              {levels.map(level => {
-                let displayText = level;
-                if (data[activeContent!]?.[level]) {
-                  const stage = data[activeContent!]![level][0];
-                //   if (stage) {
-                //     displayText = `${stage.stage} (${level})`;
-                //   }
-                }
-                return (
-                  <button
-                    key={level}
-                    onClick={() => setActiveLevel(level)}
-                    className={`px-4 py-2 rounded font-semibold ${
-                      activeLevel === level
-                        ? 'bg-gray-700 text-white'
-                        : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
-                    }`}
-                  >
-                    {displayText}
-                  </button>
-                );
-              })}
+              {levels.map(level => (
+                <button
+                  key={level}
+                  onClick={() => setActiveLevel(level)}
+                  className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                    activeLevel === level
+                      ? 'bg-gray-700 text-white'
+                      : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
+                  }`}
+                >
+                  {level}
+                </button>
+              ))}
             </div>
           </div>
         )}
@@ -443,7 +450,7 @@ export default function BossGateClient({
             return (
               <div key={idx} className="bg-gray-800 rounded p-6 border border-gray-700">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-2xl font-bold text-white">단계 {stage.stage}</h3>
+                  <h3 className="text-2xl font-bold text-white">원정대 레벨 {stage.stage}</h3>
                   <div className="flex flex-wrap items-end gap-4 justify-end text-right">
                     <div>
                       <div className="text-xs text-green-300 mb-1">거래가능 합계</div>
@@ -470,130 +477,92 @@ export default function BossGateClient({
                   </div>
                 </div>
 
-                {/* 보상 표시 */}
-                <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+                {/* 보상 표시 - 레이드/컨텐츠 보상처럼 세로 나열, 큐브/모래시계는 해당 항목 밑 펼치기 */}
+                <div className="bg-gray-900/80 rounded-lg border border-gray-700/50 p-4">
+                  <div className="space-y-1.5">
                     {stage.rewards.map((reward, rewardIdx) => {
-                    // 계산은 원본 데이터로 수행
-                    const itemTotal = (reward.price || 0) * reward.quantity;
-                    const isSimpleLayout = true;
-                    
-                    // 표시용: 계산 완료 후 최종 표시 시에만 유효숫자 규칙 적용
-                    const quantityStr = formatNumberWithSignificantDigits(reward.quantity);
-                    const priceStr = reward.price ? formatNumberWithSignificantDigits(reward.price) : '';
-                    const itemTotalStr = formatNumberWithSignificantDigits(itemTotal);
-                    const isCubeTicket = !!reward.cubeStageRewards && reward.cubeStageRewards.length > 0;
+                      const itemTotal = (reward.price || 0) * reward.quantity;
+                      const quantityStr = formatNumberWithSignificantDigits(reward.quantity);
+                      const itemTotalStr = formatNumberWithSignificantDigits(itemTotal);
+                      const isCubeTicket = !!reward.cubeStageRewards && reward.cubeStageRewards.length > 0;
+                      const expandKey = `${idx}-${rewardIdx}`;
+                      const isExpanded = expandedCubeKeys.has(expandKey);
 
-                    // 에브니 큐브 입장권: 단가(거래가능/전체) 계산
-                    let cubeUnitTradable: number | null = null;
-                    let cubeUnitTotal: number | null = null;
-                    if (isCubeTicket) {
-                      const tradableSum = reward.cubeStageRewards!.reduce((sum, r) => {
-                        const price = r.price || 0;
-                        const qty = r.quantity || 0;
-                        const amount = price * qty;
-                        const tradable = tradableSet.has(r.itemName);
-                        return sum + (tradable ? amount : 0);
-                      }, 0);
-                      const totalSum = reward.cubeStageRewards!.reduce((sum, r) => {
-                        if (isExcludedForTotal(r.itemName)) return sum;
-                        return sum + ((r.price || 0) * (r.quantity || 0));
-                      }, 0);
-                      cubeUnitTradable = tradableSum;
-                      cubeUnitTotal = totalSum;
-                    }
-                    const tradeInfo = getTradeClass(reward.itemName);
-                    const strike = isExcludedForTotal(reward.itemName) ? 'line-through opacity-60' : '';
-                    
-                    return (
-                      <div
-                        key={rewardIdx}
-                        className={`bg-gray-900 rounded border border-gray-700 ${
-                          isSimpleLayout ? 'p-3' : 'p-4 flex items-center gap-3'
-                        }`}
-                      >
-                        {isSimpleLayout ? (
-                          <div className="flex items-start gap-2">
-                            <ItemIcon name={reward.itemName} size="sm" className="flex-shrink-0 mt-0.5" />
-                            <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className={`font-medium ${tradeInfo.nameClass} ${strike}`}>{reward.itemName}</span>
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] ${tradeInfo.badgeClass}`}>{tradeInfo.badgeText}</span>
+                      let cubeUnitTotal: number | null = null;
+                      if (isCubeTicket) {
+                        cubeUnitTotal = reward.cubeStageRewards!.reduce((sum, r) => {
+                          if (isExcludedForTotal(r.itemName)) return sum;
+                          return sum + ((r.price || 0) * (r.quantity || 0));
+                        }, 0);
+                      }
+
+                      const tradeInfo = getTradeClass(reward.itemName);
+                      const strike = isExcludedForTotal(reward.itemName) ? 'line-through opacity-60' : '';
+
+                      if (isCubeTicket) {
+                        const displayTotal = (cubeUnitTotal ?? 0) * reward.quantity;
+                        const list = reward.cubeStageRewards!;
+                        return (
+                          <div key={rewardIdx} className="border-b border-gray-700/50 last:border-0">
+                            <div className={`flex items-center justify-between gap-2 py-1.5 pl-3 ${strike}`}>
+                              <span className="text-gray-300 text-sm flex items-center gap-2 min-w-0">
+                                <ItemIcon name={reward.itemName} size="sm" className="flex-shrink-0" />
+                                {reward.itemName} {quantityStr}개
+                                <span className={`ml-1 px-1.5 py-0.5 rounded text-[10px] ${tradeInfo.badgeClass}`}>{tradeInfo.badgeText}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleCubeExpand(expandKey)}
+                                  className="ml-1 px-2 py-0.5 rounded bg-gray-700/80 hover:bg-gray-600 text-gray-300 text-xs font-medium transition-colors"
+                                  aria-expanded={isExpanded}
+                                >
+                                  {isExpanded ? '접기' : '펼치기'}
+                                </button>
+                              </span>
+                              <span className="text-gray-400 text-sm flex-shrink-0">
+                                ({formatNumberWithSignificantDigits(displayTotal)}골드)
+                              </span>
                             </div>
-                            <div className="text-gray-400 text-sm mb-1">수량: {quantityStr}</div>
-                            {isCubeTicket ? (
-                              <div className="space-y-0.5">
-                                <div className="text-green-300 text-sm">
-                                  {formatNumberWithSignificantDigits(cubeUnitTradable || 0)}골드 × {quantityStr} = {formatNumberWithSignificantDigits((cubeUnitTradable || 0) * reward.quantity)}골드
-                                </div>
-                                <div className="text-yellow-400 text-sm">
-                                  {formatNumberWithSignificantDigits(cubeUnitTotal || 0)}골드 × {quantityStr} = {formatNumberWithSignificantDigits((cubeUnitTotal || 0) * reward.quantity)}골드
-                                </div>
-                                {reward.cubeStageRewards && reward.cubeStageRewards.length > 0 && (
-                                  <div className="text-xs text-gray-400 mt-2 pt-2 border-t border-gray-700">
-                                    <div className="mb-1">
-                                      보상:{' '}
-                                      {reward.cubeStageRewards.map((r, idx) => (
-                                        <span key={idx}>
-                                          {idx > 0 && ', '}
-                                          <span className={isExcludedForTotal(r.itemName) ? 'line-through opacity-60' : ''}>{r.itemName}</span>
-                                          <span className="text-gray-500"> × {formatNumberWithSignificantDigits(r.quantity)}</span>
+                            {isExpanded && list.length > 0 && (
+                              <div className="pl-6 pr-3 pb-2 pt-0.5 border-t border-gray-700/30 bg-gray-950/50 rounded-b">
+                                <div className="space-y-1">
+                                  {list.map((r, i) => {
+                                    const info = getTradeClass(r.itemName);
+                                    const strikeCube = isExcludedForTotal(r.itemName) ? 'line-through opacity-60' : '';
+                                    const rTotal = (r.price || 0) * r.quantity;
+                                    return (
+                                      <div key={i} className={`flex items-center justify-between gap-2 py-1 pl-2 text-sm ${strikeCube}`}>
+                                        <span className="text-gray-400 flex items-center gap-2 min-w-0">
+                                          <ItemIcon name={r.itemName} size="sm" className="flex-shrink-0" />
+                                          {r.itemName} {formatNumberWithSignificantDigits(r.quantity)}개
+                                          <span className={`ml-1 px-1.5 py-0.5 rounded text-[10px] ${info.badgeClass}`}>{info.badgeText}</span>
                                         </span>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              reward.price && (
-                                <div className="text-yellow-400 text-sm">
-                                  {priceStr}골드 × {quantityStr} = {itemTotalStr}골드
+                                        <span className="text-gray-500 text-xs flex-shrink-0">
+                                          ({formatNumberWithSignificantDigits(rTotal)}골드)
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
-                              )
+                              </div>
                             )}
-                            </div>
                           </div>
-                        ) : (
-                          <>
-                            <ItemIcon name={reward.itemName} />
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <span className={`font-medium ${tradeInfo.nameClass} ${strike}`}>{reward.itemName}</span>
-                                <span className={`px-1.5 py-0.5 rounded text-[10px] ${tradeInfo.badgeClass}`}>{tradeInfo.badgeText}</span>
-                              </div>
-                              <div className="text-gray-400 text-sm">수량: {quantityStr}</div>
-                              {isCubeTicket ? (
-                                <div className="space-y-0.5">
-                                  <div className="text-green-300 text-sm">
-                                    {formatNumberWithSignificantDigits(cubeUnitTradable || 0)}골드 × {quantityStr} = {formatNumberWithSignificantDigits((cubeUnitTradable || 0) * reward.quantity)}골드
-                                  </div>
-                                  <div className="text-yellow-400 text-sm">
-                                    {formatNumberWithSignificantDigits(cubeUnitTotal || 0)}골드 × {quantityStr} = {formatNumberWithSignificantDigits((cubeUnitTotal || 0) * reward.quantity)}골드
-                                  </div>
-                                  {reward.cubeStageRewards && reward.cubeStageRewards.length > 0 && (
-                                    <div className="text-xs text-gray-400 mt-2 pt-2 border-t border-gray-700">
-                                      <div className="mb-1">보상: {reward.cubeStageRewards.map((r, idx) => (
-                                        <span key={idx}>
-                                          {idx > 0 && ', '}
-                                          <span className={isExcludedForTotal(r.itemName) ? 'line-through opacity-60' : ''}>{r.itemName}</span>
-                                          <span className="text-gray-500"> × {formatNumberWithSignificantDigits(r.quantity)}</span>
-                                        </span>
-                                      )).reduce((acc, elem) => acc === null ? elem : <>{acc}{elem}</>, null as React.ReactNode)}</div>
-                                    </div>
-                                  )}
-                                </div>
-                              ) : (
-                                reward.price && (
-                                  <div className="text-yellow-400 text-sm">
-                                    {priceStr}골드 × {quantityStr} = {itemTotalStr}골드
-                                  </div>
-                                )
-                              )}
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    );
-                  })}
+                        );
+                      }
+
+                      return (
+                        <div key={rewardIdx} className={`flex items-center justify-between gap-2 py-1.5 pl-3 border-b border-gray-700/50 last:border-0 ${strike}`}>
+                          <span className="text-gray-300 text-sm flex items-center gap-2 min-w-0">
+                            <ItemIcon name={reward.itemName} size="sm" className="flex-shrink-0" />
+                            {reward.itemName} {quantityStr}개
+                            <span className={`ml-1 px-1.5 py-0.5 rounded text-[10px] ${tradeInfo.badgeClass}`}>{tradeInfo.badgeText}</span>
+                          </span>
+                          <span className="text-gray-400 text-sm flex-shrink-0">
+                            ({itemTotalStr}골드)
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             );

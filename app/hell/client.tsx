@@ -654,8 +654,10 @@ export default function HellClient({
                               <tr key={item.idx} className={`border-b border-gray-700/50 hover:bg-gray-800/30 ${getStageBgColor(item.cubeStage)}`}>
                                 <td className="px-4 py-3 text-sm text-gray-300">
                                   <div className="flex items-center gap-2">
+                                    <ItemIcon name={item.keyName} size="sm" className="flex-shrink-0" />
                                     <span>{item.keyName}</span>
                                     <span className="text-gray-500">↔</span>
+                                    <ItemIcon name={`에브니 큐브 입장권 (${item.cubeStage})`} size="sm" className="flex-shrink-0" />
                                     <span>에브니 큐브 입장권 ({item.cubeStage}) × {item.cubeCount}개</span>
                                     {isRecommended && (
                                       <span className="ml-2 px-2 py-0.5 text-xs font-semibold bg-green-600/20 text-green-400 border border-green-600/40 rounded">
@@ -1012,41 +1014,40 @@ export default function HellClient({
                                     </div>
                                   </button>
                                   {isBaseOpen && (
-                                    <div className="px-3 pb-3 pt-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                      {baseRewards.map((reward, rewardIdx) => {
-                                        const adjustedPrice = getAdjustedPrice(reward.itemName, reward.price);
-                                        const itemTotal = (adjustedPrice || 0) * reward.quantity;
-                                        const quantityStr = formatNumberWithSignificantDigits(reward.quantity);
-                                        const priceStr = adjustedPrice !== null ? formatNumberWithSignificantDigits(adjustedPrice) : '';
-                                        const itemTotalStr = formatNumberWithSignificantDigits(itemTotal);
-                                        const tradeInfo = getTradeClass(reward.itemName);
-                                        
-                                        return (
-                                          <div
-                                            key={`base-${rewardIdx}`}
-                                            className="bg-blue-900/20 rounded-lg border border-blue-700/50 p-3"
-                                          >
-                                            <div className="flex items-center gap-2 mb-1">
-                                              <ItemIcon name={reward.itemName} size="sm" />
-                                              <span className={`font-medium ${tradeInfo.nameClass}`}>{reward.itemName}</span>
-                                              <span className={`px-1.5 py-0.5 rounded text-[10px] ${tradeInfo.badgeClass}`}>{tradeInfo.badgeText}</span>
-                                              <span className="px-1.5 py-0.5 rounded text-[10px] bg-blue-900/30 text-blue-300 border border-blue-600">
-                                                기본 보상
+                                    <div className="px-3 pb-3 pt-2 bg-gray-900/80 rounded-lg border border-gray-700/50">
+                                      <div className="space-y-1.5 p-2">
+                                        {baseRewards.map((reward, rewardIdx) => {
+                                          const adjustedPrice = getAdjustedPrice(reward.itemName, reward.price);
+                                          const itemTotal = (adjustedPrice || 0) * reward.quantity;
+                                          const quantityStr = formatNumberWithSignificantDigits(reward.quantity);
+                                          const itemTotalStr = formatNumberWithSignificantDigits(itemTotal);
+                                          const tradeInfo = getTradeClass(reward.itemName);
+                                          return (
+                                            <div
+                                              key={`base-${rewardIdx}`}
+                                              className="flex items-center justify-between gap-2 py-1.5 pl-3 border-b border-gray-700/50 last:border-0"
+                                            >
+                                              <span className="text-gray-300 text-sm flex items-center gap-2 min-w-0">
+                                                <ItemIcon name={reward.itemName} size="sm" className="flex-shrink-0" />
+                                                {reward.itemName} {quantityStr}개
+                                                <span className={`ml-1 px-1.5 py-0.5 rounded text-[10px] ${tradeInfo.badgeClass}`}>{tradeInfo.badgeText}</span>
+                                                <span className="ml-1 px-1.5 py-0.5 rounded text-[10px] bg-blue-900/30 text-blue-300 border border-blue-600">
+                                                  기본 보상
+                                                </span>
+                                              </span>
+                                              <span className="text-gray-400 text-sm flex-shrink-0">
+                                                {adjustedPrice !== null && adjustedPrice > 0 ? (
+                                                  `(${itemTotalStr}골드)`
+                                                ) : adjustedPrice === 0 ? (
+                                                  <span className="text-gray-500 text-xs">0골드</span>
+                                                ) : (
+                                                  <span className="text-gray-500 text-xs">가격 없음</span>
+                                                )}
                                               </span>
                                             </div>
-                                            <div className="text-gray-400 text-sm mb-1">수량: {quantityStr}</div>
-                                            {adjustedPrice !== null && adjustedPrice > 0 ? (
-                                              <div className="text-yellow-400 text-sm">
-                                                {priceStr}골드 × {quantityStr} = {itemTotalStr}골드
-                                              </div>
-                                            ) : adjustedPrice === 0 ? (
-                                              <div className="text-gray-500 text-xs">스위치로 인해 0골드로 처리됨</div>
-                                            ) : (
-                                              <div className="text-gray-500 text-xs">가격 정보 없음</div>
-                                            )}
-                                          </div>
-                                        );
-                                      })}
+                                          );
+                                        })}
+                                      </div>
                                     </div>
                                   )}
                                 </div>

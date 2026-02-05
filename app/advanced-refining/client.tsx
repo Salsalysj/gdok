@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import FavoriteButton from '../components/FavoriteButton';
+import ItemIcon from '../components/ItemIcon';
 import {
   getMaterialsForLevel,
   type GearType,
@@ -1090,7 +1091,10 @@ export default function AdvancedRefiningClient({
                       return (
                         <div key={mat.name} className="bg-gray-900/50 px-3 py-2 rounded">
                           <div className="flex justify-between items-center mb-1">
-                            <span className="text-gray-300 text-sm">{mat.name}</span>
+                            <span className="text-gray-300 text-sm flex items-center gap-2">
+                              <ItemIcon name={mat.name} size="sm" className="flex-shrink-0" />
+                              {mat.name}
+                            </span>
                             <span className="text-white font-medium">{formatNumber(mat.amount)}</span>
                           </div>
                           {value?.totalValue != null && (
@@ -1111,7 +1115,10 @@ export default function AdvancedRefiningClient({
                       return (
                         <div key={mat.name} className="bg-gray-900/50 px-3 py-2 rounded">
                           <div className="flex justify-between items-center mb-1">
-                            <span className="text-gray-300 text-sm">{mat.name}</span>
+                            <span className="text-gray-300 text-sm flex items-center gap-2">
+                              <ItemIcon name={mat.name} size="sm" className="flex-shrink-0" />
+                              {mat.name}
+                            </span>
                             <span className="text-white font-medium">{formatNumber(mat.amount)}</span>
                           </div>
                           {value?.totalValue != null && (
@@ -1248,7 +1255,10 @@ export default function AdvancedRefiningClient({
                           }
                           return (
                             <div key={name} className="bg-gray-900/50 rounded-lg p-3">
-                              <div className="text-xs text-gray-400 mb-1">{displayName}</div>
+                              <div className="text-xs text-gray-400 mb-1 flex items-center gap-2">
+                                <ItemIcon name={displayName} size="sm" className="flex-shrink-0" />
+                                {displayName}
+                              </div>
                               <div className="text-lg font-bold text-white">{formatNumber(amount)}</div>
                             </div>
                           );
@@ -1267,7 +1277,10 @@ export default function AdvancedRefiningClient({
                     
                     {/* 야금술/재봉술 */}
                     <div className="mb-6">
-                      <div className="text-sm font-semibold text-orange-400 mb-3">{craftsmanshipAnalysis.craftsmanshipItemName}</div>
+                      <div className="text-sm font-semibold text-orange-400 mb-3 flex items-center gap-2">
+                        <ItemIcon name={craftsmanshipAnalysis.craftsmanshipItemName} size="sm" className="flex-shrink-0" />
+                        {craftsmanshipAnalysis.craftsmanshipItemName}
+                      </div>
                       <div className={`grid grid-cols-1 ${(activeSubTab === '상재3' || activeSubTab === '상재4') ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-4`}>
                         {/* 상재1, 2: 선조턴 기준 */}
                         {(activeSubTab === '상재1' || activeSubTab === '상재2') && craftsmanshipAnalysis.ancestorOnlyCraftAnalysis && (
@@ -1497,7 +1510,10 @@ export default function AdvancedRefiningClient({
 
                     {/* 숨결 */}
                     <div>
-                      <div className="text-sm font-semibold text-orange-400 mb-3">{craftsmanshipAnalysis.breathItemName}</div>
+                      <div className="text-sm font-semibold text-orange-400 mb-3 flex items-center gap-2">
+                        <ItemIcon name={craftsmanshipAnalysis.breathItemName} size="sm" className="flex-shrink-0" />
+                        {craftsmanshipAnalysis.breathItemName}
+                      </div>
                       <div className={`grid grid-cols-1 ${(activeSubTab === '상재3' || activeSubTab === '상재4') ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-4`}>
                         {/* 상재1, 2: 선조턴 기준 */}
                         {(activeSubTab === '상재1' || activeSubTab === '상재2') && craftsmanshipAnalysis.ancestorOnlyBreathAnalysis && (
