@@ -256,8 +256,9 @@ export default async function ExpeditionWeeklyPage() {
                   existing.totalPrice += qty;
                 } else {
                   const itemInfo = valueDbData.entryMap[itemName];
-                  if (itemInfo) {
-                    existing.totalPrice += qty * itemInfo.unitValue;
+                  const unitVal = itemInfo?.unitValue ?? 0;
+                  if (unitVal > 0) {
+                    existing.totalPrice += qty * unitVal;
                   }
                 }
                 rewardMap.set(itemName, existing);
