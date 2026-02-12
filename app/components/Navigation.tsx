@@ -91,6 +91,7 @@ export default function Navigation() {
     { name: '핵심 컨텐츠', href: '/content-rewards' },
     { name: '레이드 (더보기 효율)', href: '/content-rewards/raid-rewards' },
     { name: '필보 & 카게', href: '/content-rewards/boss-gate' },
+    { name: '원정대 주간 수익', href: '/content-rewards/expedition-weekly' },
     { name: '지옥 (시즌2)', href: '/hell' },
   ];
 

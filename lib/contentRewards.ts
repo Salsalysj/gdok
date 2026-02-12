@@ -599,7 +599,7 @@ async function processRewardForKurzan(
 
     return {
       itemName: finalItemName,
-      quantity: 0.1,
+      quantity: reward.quantity,
       price: cubePrice,
       cubeStageRewards: cubeStageRewards || undefined,
     };

@@ -1,0 +1,534 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import type { ContentEntry, ExpeditionWeeklyData, RewardDetail } from './page';
+
+const ARMORY_DELAY_MS = 350;
+const MIN_ITEM_LEVEL = 1640;
+const TOP_N = 6;
+const STORAGE_KEY = 'gcalc-expedition-weekly-search';
+
+type RosterChar = {
+  CharacterName: string;
+  ItemAvgLevel?: string;
+  ItemLevel?: string;
+  _parsedLevel?: number;
+};
+
+type CharacterResult = {
+  name: string;
+  itemLevel: number;
+  frontRift: { name: string; weeklyTradable: number; weeklyTotal: number; details: RewardDetail[]; weeklyCount: number } | null;
+  cubeHourglass: { name: string; weeklyTradable: number; weeklyTotal: number; details: RewardDetail[]; weeklyCount: number } | null;
+  guardian: { name: string; weeklyTradable: number; weeklyTotal: number; details: RewardDetail[]; weeklyCount: number } | null;
+  raids: { name: string; weeklyTradable: number; weeklyTotal: number; details: RewardDetail[]; weeklyCount: number }[];
+  totalWeeklyTradable: number;
+  totalWeeklyTotal: number;
+};
+
+function parseItemLevel(v: unknown): number {
+  if (v == null) return 0;
+  const s = String(v).replace(/,/g, '');
+  const n = parseFloat(s);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** 입장 가능 단계 중 가장 높은 것 1개만 반환 (주간 보상 포함) */
+function getHighestAccessible(ilvl: number, entries: ContentEntry[]): { name: string; weeklyTradable: number; weeklyTotal: number; details: RewardDetail[]; weeklyCount: number } | null {
+  const accessible = entries.filter((e) => e.minLevel <= ilvl);
+  if (accessible.length === 0) return null;
+  const highest = accessible.sort((a, b) => b.minLevel - a.minLevel)[0];
+  return {
+    name: highest.name,
+    weeklyTradable: highest.tradableValue * highest.weeklyCount,
+    weeklyTotal: highest.totalValue * highest.weeklyCount,
+    details: highest.rewardDetails || [],
+    weeklyCount: highest.weeklyCount,
+  };
+}
+
+/** 레이드명(마지막 공백 앞) 기준으로 동일 레이드는 최고 난이도 1개만 유지 후, 상위 3종 반환 */
+function getAccessibleRaidsTop3(ilvl: number, entries: ContentEntry[], limit = 3): { name: string; weeklyTradable: number; weeklyTotal: number; details: RewardDetail[]; weeklyCount: number }[] {
+  const accessible = entries.filter((e) => e.minLevel <= ilvl);
+  const byRaidName = new Map<string, ContentEntry>();
+  for (const e of accessible) {
+    const lastSpace = e.name.lastIndexOf(' ');
+    const raidKey = lastSpace > 0 ? e.name.slice(0, lastSpace) : e.name;
+    const existing = byRaidName.get(raidKey);
+    if (!existing || e.minLevel > existing.minLevel) byRaidName.set(raidKey, e);
+  }
+  return Array.from(byRaidName.values())
+    .sort((a, b) => b.minLevel - a.minLevel)
+    .slice(0, limit)
+    .map((e) => ({
+      name: e.name,
+      weeklyTradable: e.tradableValue * e.weeklyCount,
+      weeklyTotal: e.totalValue * e.weeklyCount,
+      details: e.rewardDetails || [],
+      weeklyCount: e.weeklyCount,
+    }));
+}
+
+export default function ExpeditionWeeklyClient({ entryData }: { entryData: ExpeditionWeeklyData }) {
+  const [searchName, setSearchName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [results, setResults] = useState<CharacterResult[] | null>(null);
+  const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved != null && typeof saved === 'string') setSearchName(saved);
+    } catch (_) {}
+  }, []);
+
+  const handleSearch = async () => {
+    const name = searchName.trim();
+    if (!name) {
+      setError('캐릭터명을 입력해주세요.');
+      return;
+    }
+    setError('');
+    setResults(null);
+    setLoading(true);
+    try {
+      const rosterRes = await fetch(`/api/character/roster?characterName=${encodeURIComponent(name)}`);
+      const rosterData = await rosterRes.json();
+      if (!rosterRes.ok) {
+        setError(rosterData?.error || '원정대를 찾을 수 없습니다.');
+        return;
+      }
+      if (!Array.isArray(rosterData)) {
+        setError('원정대 목록을 불러올 수 없습니다.');
+        return;
+      }
+      const parsed: RosterChar[] = rosterData.map((c: Record<string, unknown>) => {
+        const levelStr = String(c.ItemAvgLevel ?? c.ItemLevel ?? c.ItemMaxLevel ?? '0').replace(/,/g, '');
+        const level = parseFloat(levelStr) || 0;
+        return {
+          CharacterName: String(c.CharacterName ?? c.characterName ?? ''),
+          ItemAvgLevel: c.ItemAvgLevel as string | undefined,
+          ItemLevel: c.ItemLevel as string | undefined,
+          _parsedLevel: level,
+        };
+      });
+      const overMin = parsed.filter((c) => c._parsedLevel != null && c._parsedLevel >= MIN_ITEM_LEVEL);
+      const namesToFetch = new Set<string>(overMin.map((c) => c.CharacterName).filter(Boolean));
+      const armoryLevels: Record<string, number> = {};
+      const nameList = Array.from(namesToFetch);
+      for (let i = 0; i < nameList.length; i++) {
+        const charName = nameList[i];
+        try {
+          const armoryRes = await fetch('/api/character/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ characterName: charName }),
+          });
+          const armoryData = await armoryRes.json();
+          if (armoryRes.ok && armoryData) {
+            const profile = armoryData.ArmoryProfile || {};
+            const ilvl = profile.ItemAvgLevel ?? profile.ItemLevel ?? armoryData.ItemAvgLevel ?? armoryData.ItemLevel;
+            armoryLevels[charName] = parseItemLevel(ilvl);
+          } else {
+            const idx = parsed.findIndex((r) => r.CharacterName === charName);
+            if (idx >= 0) armoryLevels[charName] = parsed[idx]._parsedLevel ?? 0;
+          }
+        } catch {
+          const idx = parsed.findIndex((r) => r.CharacterName === charName);
+          if (idx >= 0) armoryLevels[charName] = parsed[idx]._parsedLevel ?? 0;
+        }
+        if (i < nameList.length - 1) await new Promise((r) => setTimeout(r, ARMORY_DELAY_MS));
+      }
+      const withLevel = overMin
+        .map((c) => ({
+          name: c.CharacterName,
+          itemLevel: armoryLevels[c.CharacterName] ?? c._parsedLevel ?? 0,
+        }))
+        .filter((x) => x.itemLevel >= MIN_ITEM_LEVEL)
+        .sort((a, b) => b.itemLevel - a.itemLevel)
+        .slice(0, TOP_N);
+      const characterResults: CharacterResult[] = withLevel.map(({ name, itemLevel }) => {
+        const fr = getHighestAccessible(itemLevel, entryData.frontRift);
+        const ch = getHighestAccessible(itemLevel, entryData.cubeHourglass);
+        const gd = getHighestAccessible(itemLevel, entryData.guardian);
+        const rd = getAccessibleRaidsTop3(itemLevel, entryData.raids);
+        const totalWeeklyTradable = (fr?.weeklyTradable ?? 0) + (ch?.weeklyTradable ?? 0) + (gd?.weeklyTradable ?? 0) + rd.reduce((s, r) => s + r.weeklyTradable, 0);
+        const totalWeeklyTotal = (fr?.weeklyTotal ?? 0) + (ch?.weeklyTotal ?? 0) + (gd?.weeklyTotal ?? 0) + rd.reduce((s, r) => s + r.weeklyTotal, 0);
+        return {
+          name,
+          itemLevel,
+          frontRift: fr,
+          cubeHourglass: ch,
+          guardian: gd,
+          raids: rd,
+          totalWeeklyTradable,
+          totalWeeklyTotal,
+        };
+      });
+      setResults(characterResults);
+      try {
+        localStorage.setItem(STORAGE_KEY, name);
+      } catch (_) {}
+      if (characterResults.length === 0) {
+        setError(`아이템 레벨 ${MIN_ITEM_LEVEL} 이상인 캐릭터가 없습니다.`);
+      }
+    } catch (err) {
+      console.error(err);
+      setError('원정대 조회 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 툴팁 외부 클릭 시 닫기
+  useEffect(() => {
+    const handleClickOutside = () => {
+      if (activeTooltip) setActiveTooltip(null);
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [activeTooltip]);
+
+  return (
+    <div className="min-h-screen bg-gray-950 p-4 md:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-white mb-1">원정대 주간 수익</h1>
+          <p className="text-sm text-gray-400">
+            캐릭터명으로 원정대를 검색하면, 아이템 레벨 상위 6캐릭터와 입장 가능한 콘텐츠를 볼 수 있습니다. (1640 미만 제외)
+          </p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3">
+          <input
+            type="text"
+            value={searchName}
+            onChange={(e) => setSearchName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            placeholder="캐릭터명 입력"
+            className="flex-1 px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+          />
+          <button
+            type="button"
+            onClick={handleSearch}
+            disabled={loading}
+            className="px-6 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium"
+          >
+            {loading ? '검색 중…' : '검색'}
+          </button>
+        </div>
+
+        {error && (
+          <div className="px-4 py-3 rounded-lg bg-red-900/30 border border-red-800 text-red-200 text-sm">
+            {error}
+          </div>
+        )}
+
+        {results && results.length > 0 && (() => {
+          const sumTradable = results.reduce((s, c) => s + c.totalWeeklyTradable, 0);
+          const sumTotal = results.reduce((s, c) => s + c.totalWeeklyTotal, 0);
+          let sumSilver = 0;
+          for (const c of results) {
+            const addSilver = (details: { itemName: string; quantity: number }[], mult: number) => {
+              for (const d of details) if (d.itemName === '실링') sumSilver += d.quantity * mult;
+            };
+            if (c.frontRift) addSilver(c.frontRift.details, c.frontRift.weeklyCount);
+            if (c.cubeHourglass) addSilver(c.cubeHourglass.details, c.cubeHourglass.weeklyCount);
+            if (c.guardian) addSilver(c.guardian.details, c.guardian.weeklyCount);
+            for (const r of c.raids) addSilver(r.details, r.weeklyCount);
+          }
+          return (
+            <>
+              <div className="rounded-lg border border-gray-700 bg-gray-800/60 p-4">
+                <h2 className="text-sm font-semibold text-gray-300 mb-3">6캐릭 핵심 컨텐츠 주간 수익 합계</h2>
+                <div className="flex flex-wrap gap-6 text-sm">
+                  <div>
+                    <span className="text-gray-400">거래가능</span>
+                    <span className="ml-2 font-semibold text-yellow-400">{Math.round(sumTradable).toLocaleString()}골드</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">실링</span>
+                    <span className="ml-2 font-semibold text-gray-200">{Math.round(sumSilver).toLocaleString()}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">전체(귀속포함)</span>
+                    <span className="ml-2 font-semibold text-gray-300">{Math.round(sumTotal).toLocaleString()}골드</span>
+                  </div>
+                </div>
+              </div>
+              <div className="overflow-x-auto bg-gray-900/70 rounded-lg border border-gray-700">
+            <table className="w-full text-sm table-fixed">
+              <colgroup>
+                <col className="w-32" />
+                <col className="w-24" />
+                <col className="w-40" />
+                <col className="w-40" />
+                <col className="w-40" />
+                <col className="w-auto" />
+                <col className="w-32" />
+              </colgroup>
+              <thead>
+                <tr className="border-b border-gray-700 bg-gray-800/50">
+                  <th className="px-3 py-3 text-left font-semibold text-gray-300 whitespace-nowrap">캐릭터명</th>
+                  <th className="px-3 py-3 text-center font-semibold text-gray-300 whitespace-nowrap">평균 레벨</th>
+                  <th className="px-3 py-3 text-left font-semibold text-gray-300 whitespace-nowrap">전선 & 균열</th>
+                  <th className="px-3 py-3 text-left font-semibold text-gray-300 whitespace-nowrap">큐브 & 모래시계</th>
+                  <th className="px-3 py-3 text-left font-semibold text-gray-300 whitespace-nowrap">가디언 토벌</th>
+                  <th className="px-3 py-3 text-left font-semibold text-gray-300 whitespace-nowrap">레이드 (상위 3종)</th>
+                  <th className="px-3 py-3 text-right font-semibold text-gray-300 whitespace-nowrap">
+                    <div>주간 합계</div>
+                    <div className="text-xs font-normal text-gray-400">(<span className="text-yellow-400">거래가능</span> / 전체)</div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {results.map((char, idx) => (
+                  <tr key={char.name} className={`border-b border-gray-800 ${idx % 2 === 0 ? 'bg-gray-900/30' : 'bg-gray-900/10'}`}>
+                    <td className="px-3 py-3 font-medium text-white whitespace-nowrap">
+                      {char.name}
+                      {idx === 0 && (
+                        <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-600/40 text-amber-200">1위</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-3 text-center text-gray-300">{Math.round(char.itemLevel)}</td>
+                    <td className="px-3 py-3">
+                      {char.frontRift ? (
+                        <div className="relative">
+                          <div className="flex items-center gap-1">
+                            <div className="flex-1">
+                              <div className="text-gray-200">{char.frontRift.name}</div>
+                              <div className="text-xs text-gray-400 whitespace-nowrap">
+                                <span className="text-yellow-400">{Math.round(char.frontRift.weeklyTradable).toLocaleString()}</span>
+                                {' / '}
+                                {Math.round(char.frontRift.weeklyTotal).toLocaleString()}
+                              </div>
+                            </div>
+                            {char.frontRift.details.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveTooltip(activeTooltip === `${idx}-front` ? null : `${idx}-front`);
+                                }}
+                                className="text-gray-400 hover:text-purple-400 text-xs font-bold w-4 h-4 flex items-center justify-center rounded-full border border-gray-600 hover:border-purple-400 flex-shrink-0"
+                              >
+                                ?
+                              </button>
+                            )}
+                          </div>
+                          {activeTooltip === `${idx}-front` && char.frontRift.details.length > 0 && (
+                            <div onClick={(e) => e.stopPropagation()} className="absolute z-10 top-full left-0 mt-1 bg-gray-800 border border-gray-600 rounded-lg shadow-xl p-3 min-w-[300px] max-w-[400px]">
+                              <div className="text-xs font-semibold text-purple-300 mb-2">상세 보상 내역 ({char.frontRift.weeklyCount}회)</div>
+                              <div className="space-y-1 max-h-60 overflow-y-auto">
+                                {char.frontRift.details.map((detail, di) => {
+                                  const mult = char.frontRift!.weeklyCount;
+                                  return (
+                                    <div key={di} className="flex items-center justify-between text-xs gap-2">
+                                      <div className="flex items-center gap-1 flex-1 min-w-0">
+                                        <span className={`${detail.isTradable ? 'text-green-300' : 'text-orange-400'} truncate`}>
+                                          {detail.itemName}
+                                        </span>
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded flex-shrink-0 ${detail.isTradable ? 'bg-green-900/30 text-green-300 border border-green-600' : 'bg-orange-900/30 text-orange-400 border border-orange-600'}`}>
+                                          {detail.isTradable ? '거래' : '귀속'}
+                                        </span>
+                                      </div>
+                                      <div className="text-gray-300 whitespace-nowrap">×{(detail.quantity * mult).toLocaleString()}</div>
+                                      <div className="text-yellow-300 whitespace-nowrap">{Math.round(detail.totalPrice * mult).toLocaleString()}G</div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-gray-500 text-xs">-</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-3">
+                      {char.cubeHourglass ? (
+                        <div className="relative">
+                          <div className="flex items-center gap-1">
+                            <div className="flex-1">
+                              <div className="text-gray-200">{char.cubeHourglass.name}</div>
+                              <div className="text-xs text-gray-400 whitespace-nowrap">
+                                <span className="text-yellow-400">{Math.round(char.cubeHourglass.weeklyTradable).toLocaleString()}</span>
+                                {' / '}
+                                {Math.round(char.cubeHourglass.weeklyTotal).toLocaleString()}
+                              </div>
+                            </div>
+                            {char.cubeHourglass.details.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveTooltip(activeTooltip === `${idx}-cube` ? null : `${idx}-cube`);
+                                }}
+                                className="text-gray-400 hover:text-purple-400 text-xs font-bold w-4 h-4 flex items-center justify-center rounded-full border border-gray-600 hover:border-purple-400 flex-shrink-0"
+                              >
+                                ?
+                              </button>
+                            )}
+                          </div>
+                          {activeTooltip === `${idx}-cube` && char.cubeHourglass.details.length > 0 && (
+                            <div onClick={(e) => e.stopPropagation()} className="absolute z-10 top-full left-0 mt-1 bg-gray-800 border border-gray-600 rounded-lg shadow-xl p-3 min-w-[300px] max-w-[400px]">
+                              <div className="text-xs font-semibold text-purple-300 mb-2">상세 보상 내역 ({char.cubeHourglass.weeklyCount}회)</div>
+                              <div className="space-y-1 max-h-60 overflow-y-auto">
+                                {char.cubeHourglass.details.map((detail, di) => {
+                                  const mult = char.cubeHourglass!.weeklyCount;
+                                  return (
+                                    <div key={di} className="flex items-center justify-between text-xs gap-2">
+                                      <div className="flex items-center gap-1 flex-1 min-w-0">
+                                        <span className={`${detail.isTradable ? 'text-green-300' : 'text-orange-400'} truncate`}>
+                                          {detail.itemName}
+                                        </span>
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded flex-shrink-0 ${detail.isTradable ? 'bg-green-900/30 text-green-300 border border-green-600' : 'bg-orange-900/30 text-orange-400 border border-orange-600'}`}>
+                                          {detail.isTradable ? '거래' : '귀속'}
+                                        </span>
+                                      </div>
+                                      <div className="text-gray-300 whitespace-nowrap">×{(detail.quantity * mult).toLocaleString()}</div>
+                                      <div className="text-yellow-300 whitespace-nowrap">{Math.round(detail.totalPrice * mult).toLocaleString()}G</div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-gray-500 text-xs">-</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-3">
+                      {char.guardian ? (
+                        <div className="relative">
+                          <div className="flex items-center gap-1">
+                            <div className="flex-1">
+                              <div className="text-gray-200">{char.guardian.name}</div>
+                              <div className="text-xs text-gray-400 whitespace-nowrap">
+                                <span className="text-yellow-400">{Math.round(char.guardian.weeklyTradable).toLocaleString()}</span>
+                                {' / '}
+                                {Math.round(char.guardian.weeklyTotal).toLocaleString()}
+                              </div>
+                            </div>
+                            {char.guardian.details.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveTooltip(activeTooltip === `${idx}-guardian` ? null : `${idx}-guardian`);
+                                }}
+                                className="text-gray-400 hover:text-purple-400 text-xs font-bold w-4 h-4 flex items-center justify-center rounded-full border border-gray-600 hover:border-purple-400 flex-shrink-0"
+                              >
+                                ?
+                              </button>
+                            )}
+                          </div>
+                          {activeTooltip === `${idx}-guardian` && char.guardian.details.length > 0 && (
+                            <div onClick={(e) => e.stopPropagation()} className="absolute z-10 top-full left-0 mt-1 bg-gray-800 border border-gray-600 rounded-lg shadow-xl p-3 min-w-[300px] max-w-[400px]">
+                              <div className="text-xs font-semibold text-purple-300 mb-2">상세 보상 내역 ({char.guardian.weeklyCount}회)</div>
+                              <div className="space-y-1 max-h-60 overflow-y-auto">
+                                {char.guardian.details.map((detail, di) => {
+                                  const mult = char.guardian!.weeklyCount;
+                                  return (
+                                    <div key={di} className="flex items-center justify-between text-xs gap-2">
+                                      <div className="flex items-center gap-1 flex-1 min-w-0">
+                                        <span className={`${detail.isTradable ? 'text-green-300' : 'text-orange-400'} truncate`}>
+                                          {detail.itemName}
+                                        </span>
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded flex-shrink-0 ${detail.isTradable ? 'bg-green-900/30 text-green-300 border border-green-600' : 'bg-orange-900/30 text-orange-400 border border-orange-600'}`}>
+                                          {detail.isTradable ? '거래' : '귀속'}
+                                        </span>
+                                      </div>
+                                      <div className="text-gray-300 whitespace-nowrap">×{(detail.quantity * mult).toLocaleString()}</div>
+                                      <div className="text-yellow-300 whitespace-nowrap">{Math.round(detail.totalPrice * mult).toLocaleString()}G</div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-gray-500 text-xs">-</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-3">
+                      {char.raids.length > 0 ? (
+                        <div className="space-y-1.5">
+                          {char.raids.map((raid, ri) => (
+                            <div key={raid.name} className="relative">
+                              <div className="flex items-center gap-1">
+                                <div className="flex-1">
+                                  <div className="text-gray-200">{raid.name}</div>
+                                  <div className="text-xs text-gray-400 whitespace-nowrap">
+                                    <span className="text-yellow-400">{Math.round(raid.weeklyTradable).toLocaleString()}</span>
+                                    {' / '}
+                                    {Math.round(raid.weeklyTotal).toLocaleString()}
+                                  </div>
+                                </div>
+                                {raid.details.length > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveTooltip(activeTooltip === `${idx}-raid-${ri}` ? null : `${idx}-raid-${ri}`);
+                                    }}
+                                    className="text-gray-400 hover:text-purple-400 text-xs font-bold w-4 h-4 flex items-center justify-center rounded-full border border-gray-600 hover:border-purple-400 flex-shrink-0"
+                                  >
+                                    ?
+                                  </button>
+                                )}
+                              </div>
+                              {activeTooltip === `${idx}-raid-${ri}` && raid.details.length > 0 && (
+                                <div onClick={(e) => e.stopPropagation()} className="absolute z-10 top-full left-0 mt-1 bg-gray-800 border border-gray-600 rounded-lg shadow-xl p-3 min-w-[300px] max-w-[400px]">
+                                  <div className="text-xs font-semibold text-purple-300 mb-2">상세 보상 내역 ({raid.weeklyCount}회, 클리어)</div>
+                                  <div className="space-y-1">
+                                    {raid.details.map((detail, di) => {
+                                      const mult = raid.weeklyCount;
+                                      return (
+                                        <div key={di} className="flex items-center justify-between text-xs gap-2">
+                                          <div className="flex items-center gap-1 flex-1 min-w-0">
+                                            <span className={`${detail.isTradable ? 'text-green-300' : 'text-orange-400'} truncate`}>
+                                              {detail.itemName}
+                                            </span>
+                                            <span className={`text-[10px] px-1.5 py-0.5 rounded flex-shrink-0 ${detail.isTradable ? 'bg-green-900/30 text-green-300 border border-green-600' : 'bg-orange-900/30 text-orange-400 border border-orange-600'}`}>
+                                              {detail.isTradable ? '거래' : '귀속'}
+                                            </span>
+                                          </div>
+                                          <div className="text-gray-300 whitespace-nowrap">×{(detail.quantity * mult).toLocaleString()}</div>
+                                          <div className="text-yellow-300 whitespace-nowrap">{Math.round(detail.totalPrice * mult).toLocaleString()}G</div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-gray-500 text-xs">-</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-3 text-right">
+                      <div className="text-yellow-400 font-semibold whitespace-nowrap">
+                        {Math.round(char.totalWeeklyTradable).toLocaleString()}
+                      </div>
+                      <div className="text-xs text-gray-400 whitespace-nowrap">
+                        / {Math.round(char.totalWeeklyTotal).toLocaleString()}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+            </>
+          );
+        })()}
+      </div>
+    </div>
+  );
+}

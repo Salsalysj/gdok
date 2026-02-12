@@ -20,6 +20,28 @@ export default function UpdatesPage() {
         </div>
 
         <div className="space-y-3 sm:space-y-4 md:space-y-6 lg:space-y-8">
+          {/* v0.4.3 */}
+          <div className="bg-gray-800 rounded-none sm:rounded-lg p-3 sm:p-4 md:p-6 border-x-0 sm:border-x border-gray-700">
+            <h2 className="text-sm sm:text-base md:text-lg lg:text-2xl font-bold text-white mb-2 sm:mb-3 md:mb-4">v0.4.3 (2026. 02. 12)</h2>
+            
+            <div className="space-y-2 sm:space-y-3 md:space-y-4">
+              <div>
+                <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold text-green-400 mb-1 sm:mb-2">신규 기능</h3>
+                <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-[10px] sm:text-xs md:text-sm text-gray-300 ml-3 sm:ml-4 whitespace-normal break-words">
+                  <li>원정대 주간 수익 시뮬레이션 기능 추가 (이제 내 원정대의 생산성을 종합적으로 볼 수 있습니다)</li>
+                </ul>
+              </div>
+              
+              <div>
+                <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold text-blue-400 mb-1 sm:mb-2">개선 사항</h3>
+                <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-[10px] sm:text-xs md:text-sm text-gray-300 ml-3 sm:ml-4 whitespace-normal break-words">
+                  <li>일반 재련에서 평균 재료 소모량도 보여주게끔 변경</li>
+                  <li>재련 요약표에서 평균 재료 소모량도 보여주게끔 변경</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
           {/* v0.4.2 */}
           <div className="bg-gray-800 rounded-none sm:rounded-lg p-3 sm:p-4 md:p-6 border-x-0 sm:border-x border-gray-700">
             <h2 className="text-sm sm:text-base md:text-lg lg:text-2xl font-bold text-white mb-2 sm:mb-3 md:mb-4">v0.4.2 (2026. 02. 05)</h2>

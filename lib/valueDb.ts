@@ -535,11 +535,12 @@ async function buildManualOverrides(
     };
   }
 
-  // 정련된 운명의 돌
+  // 정련된 운명의 돌: etc_list.csv 골드 값 사용, 없으면 1000
+  const refinedFateStone = etcListDataObj['정련된 운명의 돌'];
   base['정련된 운명의 돌'] = {
     itemName: '정련된 운명의 돌',
     unitType: '골드',
-    unitValue: 1000,
+    unitValue: refinedFateStone?.gold ?? 1000,
   };
 
   // 전설 카드 선택팩 (단위: 골드, 가치 입력 가능)

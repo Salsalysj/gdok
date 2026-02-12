@@ -609,6 +609,58 @@ export function calculateOptimalStrategy(
   return { optimalStrategy, baseStrategy, fullBreathStrategy, fullMetallurgyStrategy, fullEnhancedMetallurgyStrategy, fullBothStrategy, materialValueAnalysis };
 }
 
+/** 최적 전략 기준 평균 재련재료 소모량 (요약표·카드 툴팁 공용) */
+function getAverageConsumptionLines(
+  stage: RefiningStage,
+  optimalStrategy: StrategySummary,
+  marketInfo: Record<string, MarketItemInfo>
+): CostLine[] {
+  const hasEnhancedOption = !!(stage as RefiningStage & { enhancedMetallurgyMaterial?: { name: string; quantity: number } }).enhancedMetallurgyMaterial;
+  const enhancedUsed = hasEnhancedOption && /강화\s*(야금술|재봉술)/.test(optimalStrategy.description);
+  const stageEnhanced = (stage as RefiningStage & { enhancedMetallurgyMaterial?: { name: string; quantity: number } }).enhancedMetallurgyMaterial;
+  const lines: CostLine[] = [];
+  for (const m of stage.baseMaterials) {
+    if (m.name === GOLD_ITEM || m.name === SILVER_ITEM) continue;
+    const q = m.quantity * optimalStrategy.averageAttempts;
+    const up = marketInfo[m.name]?.unitPrice ?? 0;
+    lines.push({ name: m.name, quantity: q, unitPrice: up, totalPrice: q * up, icon: marketInfo[m.name]?.icon });
+  }
+  const goldQ = stage.goldCost * optimalStrategy.averageAttempts;
+  const goldUp = marketInfo[GOLD_ITEM]?.unitPrice ?? 1;
+  lines.push({ name: GOLD_ITEM, quantity: goldQ, unitPrice: goldUp, totalPrice: goldQ * goldUp, icon: marketInfo[GOLD_ITEM]?.icon });
+  if (stage.silverCost > 0) {
+    const silverQ = stage.silverCost * optimalStrategy.averageAttempts;
+    const silverUp = marketInfo[SILVER_ITEM]?.unitPrice ?? 0;
+    lines.push({ name: SILVER_ITEM, quantity: silverQ, unitPrice: silverUp, totalPrice: silverQ * silverUp, icon: marketInfo[SILVER_ITEM]?.icon });
+  }
+  if (stage.expMaterial) {
+    const info = marketInfo[stage.expMaterial.name];
+    lines.push({
+      name: stage.expMaterial.name,
+      quantity: stage.expMaterial.quantity,
+      unitPrice: info?.unitPrice ?? 0,
+      totalPrice: stage.expMaterial.quantity * (info?.unitPrice ?? 0),
+      icon: info?.icon,
+    });
+  }
+  if (stage.breathMaterial && optimalStrategy.breathAttempts > 0) {
+    const uses = Math.min(optimalStrategy.breathAttempts, optimalStrategy.averageAttempts);
+    const q = uses * stage.breathMaterial.quantity;
+    const up = marketInfo[stage.breathMaterial.name]?.unitPrice ?? 0;
+    lines.push({ name: stage.breathMaterial.name, quantity: q, unitPrice: up, totalPrice: q * up, icon: marketInfo[stage.breathMaterial.name]?.icon });
+  }
+  if (optimalStrategy.metallurgyAttempts > 0) {
+    const mat = enhancedUsed && stageEnhanced ? stageEnhanced : stage.metallurgyMaterial;
+    if (mat) {
+      const uses = Math.min(optimalStrategy.metallurgyAttempts, optimalStrategy.averageAttempts);
+      const q = uses * mat.quantity;
+      const up = marketInfo[mat.name]?.unitPrice ?? 0;
+      lines.push({ name: mat.name, quantity: q, unitPrice: up, totalPrice: q * up, icon: marketInfo[mat.name]?.icon });
+    }
+  }
+  return lines;
+}
+
 function calculateScenarioSummaries(
   stage: RefiningStage,
   marketInfo: Record<string, MarketItemInfo>
@@ -824,8 +876,58 @@ function StageCard({ stage, marketInfo, sillingUnitPrice, selectedTier, allStage
     [stage, adjustedMarketInfo]
   );
 
+  // 최적 전략 기준 평균 재련재료 소모량 (평균 시도 횟수·보조재료 사용 횟수 반영)
+  const averageConsumptionLines = useMemo(() => {
+    const hasEnhancedOption = !!stage.enhancedMetallurgyMaterial;
+    const enhancedUsed = hasEnhancedOption && /강화\s*(야금술|재봉술)/.test(optimalStrategy.description);
+    const lines: CostLine[] = [];
+    // 골드/실링은 baseMaterials에 포함될 수 있으므로 제외하고, 아래에서 stage.goldCost/silverCost로만 추가
+    for (const m of stage.baseMaterials) {
+      if (m.name === GOLD_ITEM || m.name === SILVER_ITEM) continue;
+      const q = m.quantity * optimalStrategy.averageAttempts;
+      const up = adjustedMarketInfo[m.name]?.unitPrice ?? 0;
+      lines.push({ name: m.name, quantity: q, unitPrice: up, totalPrice: q * up, icon: adjustedMarketInfo[m.name]?.icon });
+    }
+    const goldQ = stage.goldCost * optimalStrategy.averageAttempts;
+    const goldUp = adjustedMarketInfo[GOLD_ITEM]?.unitPrice ?? 1;
+    lines.push({ name: GOLD_ITEM, quantity: goldQ, unitPrice: goldUp, totalPrice: goldQ * goldUp, icon: adjustedMarketInfo[GOLD_ITEM]?.icon });
+    if (stage.silverCost > 0) {
+      const silverQ = stage.silverCost * optimalStrategy.averageAttempts;
+      const silverUp = adjustedMarketInfo[SILVER_ITEM]?.unitPrice ?? 0;
+      lines.push({ name: SILVER_ITEM, quantity: silverQ, unitPrice: silverUp, totalPrice: silverQ * silverUp, icon: adjustedMarketInfo[SILVER_ITEM]?.icon });
+    }
+    if (stage.expMaterial) {
+      const info = adjustedMarketInfo[stage.expMaterial.name];
+      lines.push({
+        name: stage.expMaterial.name,
+        quantity: stage.expMaterial.quantity,
+        unitPrice: info?.unitPrice ?? 0,
+        totalPrice: stage.expMaterial.quantity * (info?.unitPrice ?? 0),
+        icon: info?.icon,
+      });
+    }
+    // 보조재료: 사용 횟수와 평균 시도 횟수 중 더 적은 수 기준 (평균 시도 전에 성공하면 그만 쓰므로)
+    if (stage.breathMaterial && optimalStrategy.breathAttempts > 0) {
+      const uses = Math.min(optimalStrategy.breathAttempts, optimalStrategy.averageAttempts);
+      const q = uses * stage.breathMaterial.quantity;
+      const up = adjustedMarketInfo[stage.breathMaterial.name]?.unitPrice ?? 0;
+      lines.push({ name: stage.breathMaterial.name, quantity: q, unitPrice: up, totalPrice: q * up, icon: adjustedMarketInfo[stage.breathMaterial.name]?.icon });
+    }
+    if (optimalStrategy.metallurgyAttempts > 0) {
+      const mat = enhancedUsed && stage.enhancedMetallurgyMaterial ? stage.enhancedMetallurgyMaterial : stage.metallurgyMaterial;
+      if (mat) {
+        const uses = Math.min(optimalStrategy.metallurgyAttempts, optimalStrategy.averageAttempts);
+        const q = uses * mat.quantity;
+        const up = adjustedMarketInfo[mat.name]?.unitPrice ?? 0;
+        lines.push({ name: mat.name, quantity: q, unitPrice: up, totalPrice: q * up, icon: adjustedMarketInfo[mat.name]?.icon });
+      }
+    }
+    return lines;
+  }, [stage, optimalStrategy, adjustedMarketInfo]);
+
   const [showOptimization, setShowOptimization] = useState(false);
   const [showAllDetails, setShowAllDetails] = useState(false);
+  const [showAvgConsumptionTooltip, setShowAvgConsumptionTooltip] = useState(false);
 
   const goldLine: CostLine = {
     name: GOLD_ITEM,
@@ -892,8 +994,45 @@ function StageCard({ stage, marketInfo, sillingUnitPrice, selectedTier, allStage
             </h3>
             <p className="text-xs text-gray-300 mt-1">기본 성공률: {formatRate(stage.baseSuccessRate)}</p>
           </div>
-          {/* 최적 재련 전략 요약 */}
+          {/* 최적 재련 전략 요약: 숨결/야금/강화 + 예상 비용·평균 시도 */}
           <div className="flex flex-col items-end gap-2 md:min-w-[280px]">
+            <div className="relative flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-900/60 border border-emerald-500/50">
+              <span className="text-xs text-gray-400">예상 비용</span>
+              <span className="text-sm font-semibold text-green-300">{formatCost(optimalStrategy.expectedCost)}</span>
+              <span className="text-gray-600">·</span>
+              <span className="text-xs text-gray-400">평균</span>
+              <span className="text-sm font-semibold text-blue-300">{formatNumberWithSignificantDigits(optimalStrategy.averageAttempts)}회</span>
+              <button
+                type="button"
+                onClick={() => setShowAvgConsumptionTooltip((v) => !v)}
+                className="w-4 h-4 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-200 hover:bg-gray-700/80 text-xs font-medium"
+                aria-label="평균 재료 소모량 보기"
+              >
+                ?
+              </button>
+              {showAvgConsumptionTooltip && (
+                <>
+                  <div className="fixed inset-0 z-10" aria-hidden onClick={() => setShowAvgConsumptionTooltip(false)} />
+                  <div className="absolute right-0 top-full mt-1.5 z-20 min-w-[200px] max-w-[90vw] rounded-lg border border-gray-600 bg-gray-800 py-2.5 px-3 shadow-xl">
+                    <div className="text-xs font-semibold text-purple-200 mb-1.5">평균 재료 소모량</div>
+                    <div className="flex flex-wrap gap-x-2 gap-y-1.5 text-xs text-gray-300">
+                      {averageConsumptionLines.map((item) => {
+                        const nameMap: Record<string, string> = selectedTier === 'upper' ? { '운명의 파괴석': '운명의 파괴석 결정', '운명의 수호석': '운명의 수호석 결정', '운명의 돌파석': '위대한 운명의 돌파석', '아비도스 융화 재료': '상급 아비도스 융화 재료' } : {};
+                        const displayName = nameMap[item.name] || item.name;
+                        const q = formatNumberWithSignificantDigits(item.quantity);
+                        const unit = item.name === GOLD_ITEM ? ' 골드' : item.name === SILVER_ITEM ? ' 실링' : '개';
+                        return (
+                          <span key={item.name} className="inline-flex items-center gap-1 whitespace-nowrap" title={displayName}>
+                            <ItemIcon name={displayName} size="sm" className="flex-shrink-0" />
+                            <span>{q}{unit}</span>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
             <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-900/60 border ${optimalStrategy.breathAttempts > 0 ? 'border-blue-500/50' : 'border-gray-700/50'}`}>
               <span className="text-xs text-gray-400">{breathName}</span>
               <span className={`text-sm font-semibold ${optimalStrategy.breathAttempts > 0 ? 'text-blue-400' : 'text-gray-500'}`}>
@@ -1449,6 +1588,7 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
   const [selectedTier, setSelectedTier] = useState<'basic' | 'upper'>('basic');
   const [activeSpecialTab, setActiveSpecialTab] = useState<'circular' | 'transition'>('circular');
   const [summaryEquipmentType, setSummaryEquipmentType] = useState<'kazeros' | 'serka'>('kazeros');
+  const [summaryAvgTooltip, setSummaryAvgTooltip] = useState<{ type: 'weapon' | 'armor'; level: number } | null>(null);
   
   // selectedTier에 따라 적절한 stages 선택
   const currentStages = useMemo(() => {
@@ -1509,30 +1649,33 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
       // 이전 단계가 없으면 현재 단계에서 5를 빼서 추정 (일반적으로 5씩 증가)
       const estimatedPrevItemLevel = prevItemLevel ?? (itemLevel != null ? itemLevel - 5 : null);
       
+      let weaponAvgConsumption: CostLine[] = [];
+      let armorAvgConsumption: CostLine[] = [];
       if (weaponStage) {
         const { optimalStrategy } = calculateOptimalStrategy(weaponStage, adjustedMarketInfo);
         weaponCost = optimalStrategy.expectedCost;
         weaponStrategy = getDetailedStrategyLabel(optimalStrategy, weaponStage, 'weapon');
+        weaponAvgConsumption = getAverageConsumptionLines(weaponStage, optimalStrategy, adjustedMarketInfo);
       }
-      
       if (armorStage) {
         const { optimalStrategy } = calculateOptimalStrategy(armorStage, adjustedMarketInfo);
         armorCost = optimalStrategy.expectedCost;
         armorStrategy = getDetailedStrategyLabel(optimalStrategy, armorStage, 'armor');
+        armorAvgConsumption = getAverageConsumptionLines(armorStage, optimalStrategy, adjustedMarketInfo);
       }
-      
       const totalCost = weaponCost != null && armorCost != null 
         ? weaponCost + (armorCost * 5)
         : null;
-      
       return {
         level,
         itemLevel,
         prevItemLevel: estimatedPrevItemLevel,
         weaponCost,
         weaponStrategy,
+        weaponAvgConsumption,
         armorCost,
         armorStrategy,
+        armorAvgConsumption,
         totalCost,
       };
     });
@@ -1567,30 +1710,33 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
       // 이전 단계가 없으면 현재 단계에서 5를 빼서 추정 (일반적으로 5씩 증가)
       const estimatedPrevItemLevel = prevItemLevel ?? (itemLevel != null ? itemLevel - 5 : null);
       
+      let weaponAvgConsumption: CostLine[] = [];
+      let armorAvgConsumption: CostLine[] = [];
       if (weaponStage) {
         const { optimalStrategy } = calculateOptimalStrategy(weaponStage, adjustedMarketInfo);
         weaponCost = optimalStrategy.expectedCost;
         weaponStrategy = getDetailedStrategyLabel(optimalStrategy, weaponStage, 'weapon');
+        weaponAvgConsumption = getAverageConsumptionLines(weaponStage, optimalStrategy, adjustedMarketInfo);
       }
-      
       if (armorStage) {
         const { optimalStrategy } = calculateOptimalStrategy(armorStage, adjustedMarketInfo);
         armorCost = optimalStrategy.expectedCost;
         armorStrategy = getDetailedStrategyLabel(optimalStrategy, armorStage, 'armor');
+        armorAvgConsumption = getAverageConsumptionLines(armorStage, optimalStrategy, adjustedMarketInfo);
       }
-      
       const totalCost = weaponCost != null && armorCost != null 
         ? weaponCost + (armorCost * 5)
         : null;
-      
       return {
         level,
         itemLevel,
         prevItemLevel: estimatedPrevItemLevel,
         weaponCost,
         weaponStrategy,
+        weaponAvgConsumption,
         armorCost,
         armorStrategy,
+        armorAvgConsumption,
         totalCost,
       };
     });
@@ -2073,6 +2219,9 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
 
                 {/* 요약표 */}
                 <div className="bg-gray-900/70 rounded-lg border border-gray-700 overflow-hidden">
+                  <p className="px-4 pt-3 pb-1 text-xs text-gray-500">
+                    물음표 클릭 시 각 단계의 재련 재료 소모 갯수를 확인할 수 있습니다.
+                  </p>
                   <div className="overflow-x-auto">
                     <table className="min-w-full border border-gray-800 text-sm">
                       <thead>
@@ -2096,9 +2245,41 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
                             </td>
                             <td className="px-4 py-3 text-gray-300 border-b border-gray-800">
                               {row.weaponCost != null ? (
-                                <div>
-                                  <div>{formatCost(row.weaponCost)}</div>
-                                  <div className="text-xs text-gray-400">(최적 전략: {row.weaponStrategy})</div>
+                                <div className="relative inline-flex items-center gap-1.5">
+                                  <div>
+                                    <div>{formatCost(row.weaponCost)}</div>
+                                    <div className="text-xs text-gray-400">(최적 전략: {row.weaponStrategy})</div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => setSummaryAvgTooltip((prev) => prev?.type === 'weapon' && prev?.level === row.level ? null : { type: 'weapon', level: row.level })}
+                                    className="w-4 h-4 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-200 hover:bg-gray-700/80 text-xs font-medium flex-shrink-0"
+                                    aria-label="평균 재료 소모량 보기"
+                                  >
+                                    ?
+                                  </button>
+                                  {summaryAvgTooltip?.type === 'weapon' && summaryAvgTooltip?.level === row.level && (
+                                    <>
+                                      <div className="fixed inset-0 z-10" aria-hidden onClick={() => setSummaryAvgTooltip(null)} />
+                                      <div className="absolute left-0 top-full mt-1.5 z-20 min-w-[200px] max-w-[90vw] rounded-lg border border-gray-600 bg-gray-800 py-2.5 px-3 shadow-xl">
+                                        <div className="text-xs font-semibold text-purple-200 mb-1.5">평균 재료 소모량 (무기)</div>
+                                        <div className="flex flex-wrap gap-x-2 gap-y-1.5 text-xs text-gray-300">
+                                          {row.weaponAvgConsumption.map((item) => {
+                                            const nameMap: Record<string, string> = summaryEquipmentType === 'serka' ? { '운명의 파괴석': '운명의 파괴석 결정', '운명의 수호석': '운명의 수호석 결정', '운명의 돌파석': '위대한 운명의 돌파석', '아비도스 융화 재료': '상급 아비도스 융화 재료' } : {};
+                                            const displayName = nameMap[item.name] || item.name;
+                                            const q = formatNumberWithSignificantDigits(item.quantity);
+                                            const unit = item.name === GOLD_ITEM ? ' 골드' : item.name === SILVER_ITEM ? ' 실링' : '개';
+                                            return (
+                                              <span key={item.name} className="inline-flex items-center gap-1 whitespace-nowrap" title={displayName}>
+                                                <ItemIcon name={displayName} size="sm" className="flex-shrink-0" />
+                                                <span>{q}{unit}</span>
+                                              </span>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    </>
+                                  )}
                                 </div>
                               ) : (
                                 '-'
@@ -2106,9 +2287,41 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
                             </td>
                             <td className="px-4 py-3 text-gray-300 border-b border-gray-800">
                               {row.armorCost != null ? (
-                                <div>
-                                  <div>{formatCost(row.armorCost)}</div>
-                                  <div className="text-xs text-gray-400">(최적 전략: {row.armorStrategy})</div>
+                                <div className="relative inline-flex items-center gap-1.5">
+                                  <div>
+                                    <div>{formatCost(row.armorCost)}</div>
+                                    <div className="text-xs text-gray-400">(최적 전략: {row.armorStrategy})</div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => setSummaryAvgTooltip((prev) => prev?.type === 'armor' && prev?.level === row.level ? null : { type: 'armor', level: row.level })}
+                                    className="w-4 h-4 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-200 hover:bg-gray-700/80 text-xs font-medium flex-shrink-0"
+                                    aria-label="평균 재료 소모량 보기"
+                                  >
+                                    ?
+                                  </button>
+                                  {summaryAvgTooltip?.type === 'armor' && summaryAvgTooltip?.level === row.level && (
+                                    <>
+                                      <div className="fixed inset-0 z-10" aria-hidden onClick={() => setSummaryAvgTooltip(null)} />
+                                      <div className="absolute left-0 top-full mt-1.5 z-20 min-w-[200px] max-w-[90vw] rounded-lg border border-gray-600 bg-gray-800 py-2.5 px-3 shadow-xl">
+                                        <div className="text-xs font-semibold text-purple-200 mb-1.5">평균 재료 소모량 (방어구)</div>
+                                        <div className="flex flex-wrap gap-x-2 gap-y-1.5 text-xs text-gray-300">
+                                          {row.armorAvgConsumption.map((item) => {
+                                            const nameMap: Record<string, string> = summaryEquipmentType === 'serka' ? { '운명의 파괴석': '운명의 파괴석 결정', '운명의 수호석': '운명의 수호석 결정', '운명의 돌파석': '위대한 운명의 돌파석', '아비도스 융화 재료': '상급 아비도스 융화 재료' } : {};
+                                            const displayName = nameMap[item.name] || item.name;
+                                            const q = formatNumberWithSignificantDigits(item.quantity);
+                                            const unit = item.name === GOLD_ITEM ? ' 골드' : item.name === SILVER_ITEM ? ' 실링' : '개';
+                                            return (
+                                              <span key={item.name} className="inline-flex items-center gap-1 whitespace-nowrap" title={displayName}>
+                                                <ItemIcon name={displayName} size="sm" className="flex-shrink-0" />
+                                                <span>{q}{unit}</span>
+                                              </span>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    </>
+                                  )}
                                 </div>
                               ) : (
                                 '-'
