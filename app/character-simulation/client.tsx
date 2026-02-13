@@ -1121,7 +1121,7 @@ function CharacterSimulation({
       } else {
         currentLevel = eq.level ?? null;
         targetLevel = currentLevel != null ? currentLevel + 1 : null;
-        stage = targetLevel != null ? stages.find(s => s.level === targetLevel) : null;
+        stage = targetLevel != null ? (stages.find(s => s.level === targetLevel) ?? null) : null;
       }
       
       const isSerkaEquipment = effectiveSerka;
