@@ -188,7 +188,7 @@ export default function CraftMaterialsClient({
   }, [lightMode, discordRate, crystalGoldRate]);
 
   const emptyShopData = useMemo<CraftMaterialsData>(() => {
-    return Object.fromEntries(CRAFT_MATERIAL_SECTIONS.map((s) => [s, []])) as CraftMaterialsData;
+    return Object.fromEntries(CRAFT_MATERIAL_SECTIONS.map((s) => [s, []])) as unknown as CraftMaterialsData;
   }, []);
   const [shopData, setShopData] = useState<CraftMaterialsData>(emptyShopData);
 
