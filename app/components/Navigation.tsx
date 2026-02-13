@@ -13,6 +13,7 @@ export default function Navigation() {
   const [contentRewardsOpen, setContentRewardsOpen] = useState<boolean>(false);
   const [refiningOpen, setRefiningOpen] = useState<boolean>(false);
   const [eventEfficiencyOpen, setEventEfficiencyOpen] = useState<boolean>(false);
+  const [exchangeEfficiencyOpen, setExchangeEfficiencyOpen] = useState<boolean>(false);
   const [customCalcOpen, setCustomCalcOpen] = useState<boolean>(false);
 
   // 로컬 스토리지와 동기화 & 이벤트 브로드캐스트
@@ -45,6 +46,7 @@ export default function Navigation() {
     setContentRewardsOpen(false);
     setRefiningOpen(false);
     setEventEfficiencyOpen(false);
+    setExchangeEfficiencyOpen(false);
     setCustomCalcOpen(false);
   }, [pathname]);
 
@@ -65,22 +67,26 @@ export default function Navigation() {
       if (eventEfficiencyOpen && !target.closest('.event-efficiency-menu')) {
         setEventEfficiencyOpen(false);
       }
+      if (exchangeEfficiencyOpen && !target.closest('.exchange-efficiency-menu')) {
+        setExchangeEfficiencyOpen(false);
+      }
       if (customCalcOpen && !target.closest('.custom-calc-menu')) {
         setCustomCalcOpen(false);
       }
     };
 
-    if (contentRewardsOpen || refiningOpen || eventEfficiencyOpen || customCalcOpen) {
+    if (contentRewardsOpen || refiningOpen || eventEfficiencyOpen || exchangeEfficiencyOpen || customCalcOpen) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => {
         document.removeEventListener('mousedown', handleClickOutside);
       };
     }
-  }, [contentRewardsOpen, refiningOpen, eventEfficiencyOpen, customCalcOpen]);
+  }, [contentRewardsOpen, refiningOpen, eventEfficiencyOpen, exchangeEfficiencyOpen, customCalcOpen]);
 
   const tabs = [
     { name: '컨텐츠 보상', href: '/content-rewards', hasSubmenu: true },
     { name: '이벤트 효율', href: '/event-efficiency', hasSubmenu: true },
+    { name: '각종 교환효율', href: '/event-efficiency/bloodstone-shop', hasSubmenu: true },
     { name: '과금 효율', href: '/package-efficiency' },
     { name: '재련 효율', href: '/refining-simulation', hasSubmenu: true },
     { name: '커스텀 계산기', href: '/custom-calculator', hasSubmenu: true },
@@ -105,7 +111,11 @@ export default function Navigation() {
     { name: 'PC방 이벤트', href: '/event-efficiency/pc-room' },
     { name: '아크패스 선택 가이드', href: '/event-efficiency/arkpass' },
     { name: '이벤트 상점 교환', href: '/event-efficiency/event-shop' },
-    { name: '혈석 상점 교환', href: '/event-efficiency/bloodstone-shop' },
+  ];
+
+  const exchangeEfficiencySubTabs = [
+    { name: '혈석 상점 효율', href: '/event-efficiency/bloodstone-shop' },
+    { name: '제작 재료 교환', href: '/event-efficiency/craft-materials' },
   ];
 
   const customCalcSubTabs = [
@@ -169,18 +179,20 @@ export default function Navigation() {
                 const isActive = pathname === tab.href || 
                   (tab.href === '/content-rewards' && pathname.startsWith('/content-rewards')) ||
                   (tab.href === '/refining-simulation' && (pathname.startsWith('/refining-simulation') || pathname.startsWith('/advanced-refining') || pathname.startsWith('/character-simulation'))) ||
-                  (tab.href === '/event-efficiency' && pathname.startsWith('/event-efficiency')) ||
+                  (tab.href === '/event-efficiency' && pathname.startsWith('/event-efficiency') && !pathname.startsWith('/event-efficiency/bloodstone-shop')) ||
+                  (tab.name === '각종 교환효율' && (pathname.startsWith('/event-efficiency/bloodstone-shop') || pathname.startsWith('/event-efficiency/craft-materials'))) ||
                   (tab.href === '/custom-calculator' && pathname.startsWith('/custom-calculator'));
                 
                 if (tab.hasSubmenu) {
                   const isContentRewards = tab.name === '컨텐츠 보상';
                   const isRefining = tab.name === '재련 효율';
                   const isEventEfficiency = tab.name === '이벤트 효율';
+                  const isExchangeEfficiency = tab.name === '각종 교환효율';
                   const isCustomCalc = tab.name === '커스텀 계산기';
-                  const isOpen = isContentRewards ? contentRewardsOpen : (isRefining ? refiningOpen : (isEventEfficiency ? eventEfficiencyOpen : (isCustomCalc ? customCalcOpen : false)));
-                  const setIsOpen = isContentRewards ? setContentRewardsOpen : (isRefining ? setRefiningOpen : (isEventEfficiency ? setEventEfficiencyOpen : (isCustomCalc ? setCustomCalcOpen : () => {})));
-                  const subTabs = isContentRewards ? contentRewardsSubTabs : (isRefining ? refiningSubTabs : (isEventEfficiency ? eventEfficiencySubTabs : (isCustomCalc ? customCalcSubTabs : [])));
-                  const menuClass = isContentRewards ? 'content-rewards-menu' : (isRefining ? 'refining-menu' : (isEventEfficiency ? 'event-efficiency-menu' : (isCustomCalc ? 'custom-calc-menu' : '')));
+                  const isOpen = isContentRewards ? contentRewardsOpen : (isRefining ? refiningOpen : (isEventEfficiency ? eventEfficiencyOpen : (isExchangeEfficiency ? exchangeEfficiencyOpen : (isCustomCalc ? customCalcOpen : false))));
+                  const setIsOpen = isContentRewards ? setContentRewardsOpen : (isRefining ? setRefiningOpen : (isEventEfficiency ? setEventEfficiencyOpen : (isExchangeEfficiency ? setExchangeEfficiencyOpen : (isCustomCalc ? setCustomCalcOpen : () => {}))));
+                  const subTabs = isContentRewards ? contentRewardsSubTabs : (isRefining ? refiningSubTabs : (isEventEfficiency ? eventEfficiencySubTabs : (isExchangeEfficiency ? exchangeEfficiencySubTabs : (isCustomCalc ? customCalcSubTabs : []))));
+                  const menuClass = isContentRewards ? 'content-rewards-menu' : (isRefining ? 'refining-menu' : (isEventEfficiency ? 'event-efficiency-menu' : (isExchangeEfficiency ? 'exchange-efficiency-menu' : (isCustomCalc ? 'custom-calc-menu' : ''))));
                   
                   return (
                     <div key={tab.href} className={`relative ${menuClass}`}>
@@ -265,16 +277,19 @@ export default function Navigation() {
               const isActive = pathname === tab.href || 
                 (tab.href === '/content-rewards' && pathname.startsWith('/content-rewards')) ||
                 (tab.href === '/refining-simulation' && (pathname.startsWith('/refining-simulation') || pathname.startsWith('/advanced-refining') || pathname.startsWith('/character-simulation'))) ||
-                (tab.href === '/event-efficiency' && pathname.startsWith('/event-efficiency'));
+                (tab.href === '/event-efficiency' && pathname.startsWith('/event-efficiency') && !pathname.startsWith('/event-efficiency/bloodstone-shop')) ||
+                (tab.name === '각종 교환효율' && (pathname.startsWith('/event-efficiency/bloodstone-shop') || pathname.startsWith('/event-efficiency/craft-materials'))) ||
+                (tab.href === '/custom-calculator' && pathname.startsWith('/custom-calculator'));
               
               if (tab.hasSubmenu) {
                 const isContentRewards = tab.name === '컨텐츠 보상';
                 const isRefining = tab.name === '재련 효율';
                 const isEventEfficiency = tab.name === '이벤트 효율';
+                const isExchangeEfficiency = tab.name === '각종 교환효율';
                 const isCustomCalc = tab.name === '커스텀 계산기';
-                const isOpen = isContentRewards ? contentRewardsOpen : (isRefining ? refiningOpen : (isEventEfficiency ? eventEfficiencyOpen : (isCustomCalc ? customCalcOpen : false)));
-                const setIsOpen = isContentRewards ? setContentRewardsOpen : (isRefining ? setRefiningOpen : (isEventEfficiency ? setEventEfficiencyOpen : (isCustomCalc ? setCustomCalcOpen : () => {})));
-                const subTabs = isContentRewards ? contentRewardsSubTabs : (isRefining ? refiningSubTabs : (isEventEfficiency ? eventEfficiencySubTabs : (isCustomCalc ? customCalcSubTabs : [])));
+                const isOpen = isContentRewards ? contentRewardsOpen : (isRefining ? refiningOpen : (isEventEfficiency ? eventEfficiencyOpen : (isExchangeEfficiency ? exchangeEfficiencyOpen : (isCustomCalc ? customCalcOpen : false))));
+                const setIsOpen = isContentRewards ? setContentRewardsOpen : (isRefining ? setRefiningOpen : (isEventEfficiency ? setEventEfficiencyOpen : (isExchangeEfficiency ? setExchangeEfficiencyOpen : (isCustomCalc ? setCustomCalcOpen : () => {}))));
+                const subTabs = isContentRewards ? contentRewardsSubTabs : (isRefining ? refiningSubTabs : (isEventEfficiency ? eventEfficiencySubTabs : (isExchangeEfficiency ? exchangeEfficiencySubTabs : (isCustomCalc ? customCalcSubTabs : []))));
                 
                 return (
                   <div key={tab.href}>

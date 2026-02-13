@@ -570,6 +570,8 @@ function CharacterSimulation({
   const [rosterCharacters, setRosterCharacters] = useState<RosterCharacter[]>([]);
   const [loadingRoster, setLoadingRoster] = useState(false);
   const [rosterCache, setRosterCache] = useState<RosterCache | null>(null);
+  /** 카제로스 장비(운명의 업화) 1730+일 때 동일 레벨 세르카(운명의 전율)로 환산하여 계산 */
+  const [convertKazeros1730ToSerka, setConvertKazeros1730ToSerka] = useState(false);
 
   // 원정대 1640+ 전원 armory 조회 후 캐시 저장 (preloaded 있으면 해당 캐릭터는 스킵)
   const loadRoster = async (
@@ -964,6 +966,14 @@ function CharacterSimulation({
     return mapped;
   }, [characterData]);
 
+  /** 1730 이상 카제로스(운명의 업화) 장비가 하나라도 있으면 true → 세르카 환산 토글 활성화 */
+  const hasKazeros1730Equipment = useMemo(() => {
+    if (!sortedEquipment.length) return false;
+    return sortedEquipment.some(
+      eq => (eq.Name?.includes('운명의 업화') ?? false) && ((eq.itemLevel ?? 0) >= 1730)
+    );
+  }, [sortedEquipment]);
+
   const { adjustPrice } = usePriceAdjustment();
 
   const adjustedMarketInfo = useMemo(() => {
@@ -1081,13 +1091,40 @@ function CharacterSimulation({
     
     return sortedEquipment.map(eq => {
       const isWeapon = eq.type === '무기';
-      const isSerkaEquipment = eq.Name?.includes('운명의 전율') || false;
+      const isKazerosEquipment = eq.Name?.includes('운명의 업화') || false;
+      const isSerkaByName = eq.Name?.includes('운명의 전율') || false;
+      const useSerkaConversion = convertKazeros1730ToSerka && isKazerosEquipment && (eq.itemLevel ?? 0) >= 1730;
+      const effectiveSerka = isSerkaByName || useSerkaConversion;
+      
       const stages = isWeapon 
-        ? (isSerkaEquipment ? weaponStagesSerka : weaponStages)
-        : (isSerkaEquipment ? armorStagesSerka : armorStages);
-      const currentLevel = eq.level ?? null;  // 현재 재련 단계 (캐릭터 장비 기준)
-      const targetLevel = currentLevel != null ? currentLevel + 1 : null;  // 목표 재련 단계 = 현재 + 1
-      const stage = targetLevel != null ? stages.find(s => s.level === targetLevel) : null;
+        ? (effectiveSerka ? weaponStagesSerka : weaponStages)
+        : (effectiveSerka ? armorStagesSerka : armorStages);
+      
+      let currentLevel: number | null;
+      let targetLevel: number | null;
+      let stage: RefiningStage | null;
+      
+      if (useSerkaConversion) {
+        // 카제로스 1730+ → 세르카 동일 아이템 레벨로 환산: 목표 단계 = 현재 장비 아이템 레벨보다 큰 다음 세르카 단계
+        const ilvl = eq.itemLevel ?? 0;
+        const nextStages = stages.filter(s => s.itemLevel != null && s.itemLevel > ilvl);
+        const nextItemLevel = nextStages.length > 0 ? Math.min(...nextStages.map(s => s.itemLevel!)) : null;
+        stage = nextItemLevel != null ? stages.find(s => s.itemLevel === nextItemLevel) ?? null : null;
+        if (stage) {
+          targetLevel = stage.level;
+          const currentStage = stages.filter(s => s.itemLevel != null && s.itemLevel <= ilvl).sort((a, b) => (b.itemLevel ?? 0) - (a.itemLevel ?? 0))[0];
+          currentLevel = currentStage ? currentStage.level : stage.level - 1;
+        } else {
+          currentLevel = null;
+          targetLevel = null;
+        }
+      } else {
+        currentLevel = eq.level ?? null;
+        targetLevel = currentLevel != null ? currentLevel + 1 : null;
+        stage = targetLevel != null ? stages.find(s => s.level === targetLevel) : null;
+      }
+      
+      const isSerkaEquipment = effectiveSerka;
       
       if (!stage || currentLevel == null || targetLevel == null) {
         return {
@@ -1098,13 +1135,15 @@ function CharacterSimulation({
           currentLevel,
           targetLevel,
           advancedProgress: null,
+          convertedToSerka: false,
         };
       }
 
       const a = eq.itemLevel ?? null;  // 장비의 실제 아이템 레벨
       const b = stage.itemLevel ?? null;  // 목표 재련 단계에 매칭되는 베이스라인 아이템 레벨 (upgrade CSV)
+      // 상재 단계는 카제로스 장비에만 해당 (세르카는 상급재련 없음)
       let advancedProgress: string | null = null;
-      if (a != null && b != null) {
+      if (!isSerkaEquipment && a != null && b != null) {
         const diff = a - b + 5;
         if (diff === 0) advancedProgress = '미진행';
         else if (diff > 0 && diff < 10) advancedProgress = '1단계 진행중';
@@ -1119,14 +1158,14 @@ function CharacterSimulation({
       }
 
       const { materialValueAnalysis } = calculateOptimalStrategy(stage, adjustedMarketInfo);
-      
-      const craftValue = materialValueAnalysis?.metallurgy?.actualValuePerItem ?? null;
-      const craftItemName = stage.metallurgyMaterial?.name || null;
-      const craftMarketPrice = craftItemName ? (adjustedMarketInfo[craftItemName]?.unitPrice ?? null) : null;
-      
-      const enhancedCraftValue = materialValueAnalysis?.enhancedMetallurgy?.actualValuePerItem ?? null;
-      const enhancedCraftItemName = stage.enhancedMetallurgyMaterial?.name || null;
-      const enhancedCraftMarketPrice = enhancedCraftItemName ? (adjustedMarketInfo[enhancedCraftItemName]?.unitPrice ?? null) : null;
+      // 장인의 야금술/재봉술 가치는 카제로스 장비에만 해당 (세르카는 해당 없음)
+      let craftValue = isSerkaEquipment ? null : (materialValueAnalysis?.metallurgy?.actualValuePerItem ?? null);
+      let craftItemName = isSerkaEquipment ? null : (stage.metallurgyMaterial?.name || null);
+      let craftMarketPrice = craftItemName ? (adjustedMarketInfo[craftItemName]?.unitPrice ?? null) : null;
+
+      let enhancedCraftValue = isSerkaEquipment ? null : (materialValueAnalysis?.enhancedMetallurgy?.actualValuePerItem ?? null);
+      let enhancedCraftItemName = isSerkaEquipment ? null : (stage.enhancedMetallurgyMaterial?.name || null);
+      let enhancedCraftMarketPrice = enhancedCraftItemName ? (adjustedMarketInfo[enhancedCraftItemName]?.unitPrice ?? null) : null;
       
       const breathValue = materialValueAnalysis?.breath?.actualValuePerItem ?? null;
       const breathItemName = stage.breathMaterial?.name || null;
@@ -1196,9 +1235,10 @@ function CharacterSimulation({
         targetLevel,
         isSerkaEquipment,
         advancedProgress,
+        convertedToSerka: useSerkaConversion,
       };
     });
-  }, [sortedEquipment, weaponStages, armorStages, weaponStagesSerka, armorStagesSerka, adjustedMarketInfo, refreshKey]);
+  }, [sortedEquipment, weaponStages, armorStages, weaponStagesSerka, armorStagesSerka, adjustedMarketInfo, refreshKey, convertKazeros1730ToSerka]);
 
   const summaryValues = useMemo(() => {
     if (!equipmentWithValues.length) {
@@ -2067,6 +2107,18 @@ function CharacterSimulation({
 
                 {/* 장비 표 */}
                 <div className="bg-gray-900/70 rounded-lg border border-gray-700 overflow-hidden">
+                  <div className="px-3 py-2 bg-gray-800/50 border-b border-gray-700 flex flex-wrap items-center gap-3">
+                    <label className={`flex items-center gap-2 select-none ${hasKazeros1730Equipment ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}>
+                      <input
+                        type="checkbox"
+                        checked={convertKazeros1730ToSerka}
+                        onChange={(e) => setConvertKazeros1730ToSerka(e.target.checked)}
+                        disabled={!hasKazeros1730Equipment}
+                        className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-purple-500 focus:ring-purple-500 focus:ring-offset-gray-900 disabled:cursor-not-allowed"
+                      />
+                      <span className="text-sm text-gray-300">1730 이상의 카제로스 장비를 세르카 장비로의 계승 기준으로 계산</span>
+                    </label>
+                  </div>
                   <div className="overflow-x-auto">
                     <table className="w-full min-w-[880px] border border-gray-800 text-[13px] sm:text-sm">
                       <thead>
@@ -2102,6 +2154,9 @@ function CharacterSimulation({
                               <td className="px-2 sm:px-3 py-2 sm:py-3 text-center text-blue-300 font-medium border-b border-gray-800 align-top">
                                 <div className="flex flex-col items-center gap-0.5">
                                   <span className="whitespace-nowrap">{eq.targetLevel != null ? `+${eq.targetLevel}` : '-'}</span>
+                                  {eq.convertedToSerka && (
+                                    <span className="text-[10px] sm:text-[11px] text-amber-400/90">세르카 환산</span>
+                                  )}
                                   {(() => {
                                     const adv = getAdvancedTargetLabel(eq.advancedProgress);
                                     return adv ? <span className="text-[11px] sm:text-xs text-gray-400">{adv}</span> : null;

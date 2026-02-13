@@ -46,3 +46,12 @@ export function isBloodstoneShopSaveAllowed(): boolean {
   
   return !isMainProduction;
 }
+
+/**
+ * 제작 재료 교환 저장이 허용되는지 확인
+ * @returns true면 저장 허용, false면 차단
+ */
+/** 제작 재료 교환은 data/craft-material-exchanges.json 으로 관리하므로 저장 기능 비활성화 */
+export function isCraftMaterialSaveAllowed(): boolean {
+  return false;
+}

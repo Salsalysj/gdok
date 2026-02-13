@@ -13,7 +13,7 @@ export async function GET() {
   );
   
   // 환경 정보 반환 (클라이언트에서 저장 기능 활성화 여부 확인용)
-  const { isPackageSaveAllowed, isBloodstoneShopSaveAllowed } = await import('@/lib/environment');
+  const { isPackageSaveAllowed, isBloodstoneShopSaveAllowed, isCraftMaterialSaveAllowed } = await import('@/lib/environment');
   
   return NextResponse.json({
     hasKey,
@@ -28,6 +28,7 @@ export async function GET() {
     // 저장 기능 활성화 여부
     allowPackageSave: isPackageSaveAllowed(),
     allowBloodstoneShopSave: isBloodstoneShopSaveAllowed(),
+    allowCraftMaterialSave: isCraftMaterialSaveAllowed(),
   });
 }
 
