@@ -1,14 +1,14 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { formatNumberWithSignificantDigits } from '../../utils/formatNumber';
-import { usePriceAdjustment } from '../../hooks/usePriceAdjustment';
-import { useValueDb } from '../../contexts/ValueDbContext';
-import { usePriceOverride } from '../../contexts/PriceOverrideContext';
+import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
+import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
+import { useValueDb } from '../contexts/ValueDbContext';
+import { usePriceOverride } from '../contexts/PriceOverrideContext';
 import type { ValueDbEntry } from '@/lib/valueDb';
-import { calculateOptimalStrategy } from '../../refining-simulation/client';
-import type { RefiningStage, MarketItemInfo } from '../../refining-simulation/page';
-import FavoriteButton from '../../components/FavoriteButton';
+import { calculateOptimalStrategy } from '../refining-simulation/client';
+import type { RefiningStage, MarketItemInfo } from '../refining-simulation/page';
+import FavoriteButton from '../components/FavoriteButton';
 
 type ComponentItem = {
   itemName: string;

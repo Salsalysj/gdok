@@ -1,14 +1,14 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { formatNumberWithSignificantDigits } from '../../utils/formatNumber';
-import { usePriceAdjustment } from '../../hooks/usePriceAdjustment';
-import { useValueDb } from '../../contexts/ValueDbContext';
-import { usePriceOverride } from '../../contexts/PriceOverrideContext';
+import { useState, useEffect, useMemo, useCallback, useRef, Fragment } from 'react';
+import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
+import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
+import { useValueDb } from '../contexts/ValueDbContext';
+import { usePriceOverride } from '../contexts/PriceOverrideContext';
 import type { ValueDbEntry } from '@/lib/valueDb';
-import { calculateOptimalStrategy } from '../../refining-simulation/client';
-import type { RefiningStage, MarketItemInfo } from '../../refining-simulation/page';
-import FavoriteButton from '../../components/FavoriteButton';
+import { calculateOptimalStrategy } from '../refining-simulation/client';
+import type { RefiningStage, MarketItemInfo } from '../refining-simulation/page';
+import FavoriteButton from '../components/FavoriteButton';
 
 type ComponentItem = {
   itemName: string;
@@ -28,15 +28,19 @@ type BundleItem = {
   bloodstoneCost?: number; // 혈석 교환 비용
 };
 
-// 싱글 상점 교환 3개 카테고리
-export const SINGLE_SHOP_SECTIONS = [
-  '재련 재료',
-  '물물 교환',
-  '고유 보상',
+// 제작 재료 교환 8개 카테고리 (Supabase shop_data 키와 동일)
+export const CRAFT_MATERIAL_SECTIONS = [
+  '베히모스의 비늘',
+  '알키오네의 눈',
+  '업화의 쐐기돌',
+  '카르마의 잔영',
+  '낙뢰의 뿔',
+  '우뢰의 뇌옥',
+  '고통의 가시',
 ] as const;
-export type SectionKey = (typeof SINGLE_SHOP_SECTIONS)[number];
+export type SectionKey = (typeof CRAFT_MATERIAL_SECTIONS)[number];
 
-type SingleShopData = Record<SectionKey, BundleItem[]>;
+type CraftMaterialsData = Record<SectionKey, BundleItem[]>;
 
 type EtcListItem = {
   crystal: number | null;
@@ -64,7 +68,7 @@ type Stage = {
   rewards: RewardItem[];
 };
 
-export default function SingleShopClient({
+export default function CraftMaterialsClient({
   itemList,
   etcListData,
   crystalGoldRate,
@@ -132,7 +136,13 @@ export default function SingleShopClient({
   
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
   const [expandedNestedItems, setExpandedNestedItems] = useState<Record<string, boolean>>({});
+  const [summaryExpanded, setSummaryExpanded] = useState<Record<string, boolean>>({});
   const [manualPriceInputs, setManualPriceInputs] = useState<Record<string, string>>({});
+
+  const toggleSummaryExpanded = useCallback((sectionKey: string, index: number) => {
+    const key = `${sectionKey}-${index}`;
+    setSummaryExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
+  }, []);
 
   // 디코기준 스위치 동기화
   useEffect(() => {
@@ -183,10 +193,10 @@ export default function SingleShopClient({
     }
   }, [lightMode, discordRate, crystalGoldRate]);
 
-  const emptyShopData = useMemo<SingleShopData>(() => {
-    return Object.fromEntries(SINGLE_SHOP_SECTIONS.map((s) => [s, []])) as unknown as SingleShopData;
+  const emptyShopData = useMemo<CraftMaterialsData>(() => {
+    return Object.fromEntries(CRAFT_MATERIAL_SECTIONS.map((s) => [s, []])) as unknown as CraftMaterialsData;
   }, []);
-  const [shopData, setShopData] = useState<SingleShopData>(emptyShopData);
+  const [shopData, setShopData] = useState<CraftMaterialsData>(emptyShopData);
 
   // 환경 정보를 API에서 받아와서 저장 기능 활성화 여부 결정
   const [allowShopSave, setAllowShopSave] = useState<boolean>(
@@ -1175,14 +1185,14 @@ export default function SingleShopClient({
     };
 
     const bySection = Object.fromEntries(
-      SINGLE_SHOP_SECTIONS.map((section) => [
+      CRAFT_MATERIAL_SECTIONS.map((section) => [
         section,
         getSectionDetails(shopData[section] ?? [], section),
       ])
     ) as Record<SectionKey, Array<{ itemName: string; quantity: number; value: number; bloodstoneCost: number; valuePerBloodstone: number }>>;
 
     const result: Record<SectionKey, Array<{ itemName: string; quantity: number; value: number; bloodstoneCost: number; valuePerBloodstone: number; isRecommended: boolean }>> = {} as any;
-    for (const section of SINGLE_SHOP_SECTIONS) {
+    for (const section of CRAFT_MATERIAL_SECTIONS) {
       const list = bySection[section] ?? [];
       const maxInSection = list.length > 0 ? Math.max(...list.map((i) => i.valuePerBloodstone)) : 0;
       result[section] = list.map((item) => ({
@@ -1218,9 +1228,9 @@ export default function SingleShopClient({
     
     if (firstShop && firstShop.shop_data) {
       console.log('[자동 로드] 상점 데이터 로드 중');
-      const loaded = firstShop.shop_data as Partial<SingleShopData>;
-      const normalized: SingleShopData = { ...emptyShopData };
-      for (const key of SINGLE_SHOP_SECTIONS) {
+      const loaded = firstShop.shop_data as Partial<CraftMaterialsData>;
+      const normalized: CraftMaterialsData = { ...emptyShopData };
+      for (const key of CRAFT_MATERIAL_SECTIONS) {
         if (Array.isArray(loaded[key])) normalized[key] = loaded[key];
       }
       setShopData(normalized);
@@ -1354,9 +1364,9 @@ export default function SingleShopClient({
       }
       
       if (data.shop && data.shop.shop_data) {
-        const loaded = data.shop.shop_data as Partial<SingleShopData>;
-        const normalized: SingleShopData = { ...emptyShopData };
-        for (const key of SINGLE_SHOP_SECTIONS) {
+        const loaded = data.shop.shop_data as Partial<CraftMaterialsData>;
+        const normalized: CraftMaterialsData = { ...emptyShopData };
+        for (const key of CRAFT_MATERIAL_SECTIONS) {
           if (Array.isArray(loaded[key])) normalized[key] = loaded[key];
         }
         setShopData(normalized);
@@ -1416,7 +1426,7 @@ export default function SingleShopClient({
 
   // 새로 만들기
   const handleNewShop = () => {
-    const hasData = SINGLE_SHOP_SECTIONS.some((s) => (shopData[s]?.length ?? 0) > 0);
+    const hasData = CRAFT_MATERIAL_SECTIONS.some((s) => (shopData[s]?.length ?? 0) > 0);
     if (selectedShopId && hasData) {
       if (!confirm('현재 작업 중인 내용이 사라집니다. 새로 만들기를 진행하시겠습니까?')) {
         return;
@@ -1741,8 +1751,8 @@ export default function SingleShopClient({
       <div>
         <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-3xl font-semibold tracking-tight">싱글 상점 교환 효율</h1>
-            <FavoriteButton title="싱글 상점 교환" />
+            <h1 className="text-3xl font-semibold tracking-tight">제작 재료 교환 효율</h1>
+            <FavoriteButton title="제작 재료 교환" />
           </div>
           {allowShopSave && (
             <div className="flex gap-2">
@@ -1807,7 +1817,7 @@ export default function SingleShopClient({
         {/* 요약 카드 */}
         <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
           <div className="space-y-6">
-            {SINGLE_SHOP_SECTIONS.map((sectionKey) => {
+            {CRAFT_MATERIAL_SECTIONS.map((sectionKey) => {
               const items = sectionDetails[sectionKey] ?? [];
               return (
                 <div key={sectionKey}>
@@ -1824,29 +1834,100 @@ export default function SingleShopClient({
                           </tr>
                         </thead>
                         <tbody>
-                          {items.map((item, index) => (
-                              <tr key={index} className="border-b border-gray-700/50 hover:bg-gray-900/30">
-                                <td className="py-2 px-4 text-sm text-gray-300">
-                                  <div className="flex items-center gap-2">
-                                    <span>{item.itemName} × {item.quantity}</span>
-                                    {item.isRecommended && (
-                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-600/80 text-white">
-                                        추천
-                                      </span>
-                                    )}
-                                  </div>
-                                </td>
-                                <td className="py-2 px-4 text-sm text-right text-yellow-300">
-                                  {formatNumberWithSignificantDigits(item.value)} 골드
-                                </td>
-                                <td className="py-2 px-4 text-sm text-right text-blue-300">
-                                  {formatNumberWithSignificantDigits(item.bloodstoneCost)}
-                                </td>
-                                <td className="py-2 px-4 text-sm text-right text-green-300">
-                                  {item.bloodstoneCost > 0 ? formatNumberWithSignificantDigits(item.valuePerBloodstone) : '0'} 골드
-                                </td>
-                              </tr>
-                          ))}
+                          {items.map((item, index) => {
+                            const bundleItem = shopData[sectionKey]?.[index];
+                            const hasComponents = bundleItem?.components && bundleItem.components.length > 0;
+                            const summaryKey = `${sectionKey}-${index}`;
+                            const isExpanded = summaryExpanded[summaryKey];
+                            return (
+                              <Fragment key={index}>
+                                <tr className="border-b border-gray-700/50 hover:bg-gray-900/30">
+                                  <td className="py-2 px-4 text-sm text-gray-300">
+                                    <div className="flex items-center gap-2">
+                                      {hasComponents ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => toggleSummaryExpanded(sectionKey, index)}
+                                          className="p-0.5 rounded hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
+                                          aria-label={isExpanded ? '구성 접기' : '구성 펼치기'}
+                                        >
+                                          <svg className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                          </svg>
+                                        </button>
+                                      ) : null}
+                                      <span>{item.itemName} × {item.quantity}</span>
+                                      {item.isRecommended && (
+                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-600/80 text-white">
+                                          추천
+                                        </span>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="py-2 px-4 text-sm text-right text-yellow-300">
+                                    {formatNumberWithSignificantDigits(item.value)} 골드
+                                  </td>
+                                  <td className="py-2 px-4 text-sm text-right text-blue-300">
+                                    {formatNumberWithSignificantDigits(item.bloodstoneCost)}
+                                  </td>
+                                  <td className="py-2 px-4 text-sm text-right text-green-300">
+                                    {item.bloodstoneCost > 0 ? formatNumberWithSignificantDigits(item.valuePerBloodstone) : '0'} 골드
+                                  </td>
+                                </tr>
+                                {isExpanded && bundleItem?.components && bundleItem.components.length > 0 ? (
+                                  <tr className="border-b border-gray-700/50 bg-gray-900/40">
+                                    <td colSpan={4} className="py-3 px-4">
+                                      <div className="text-xs text-gray-400 space-y-1.5 pl-6">
+                                        <div className="font-medium text-gray-300 mb-1.5">구성요소</div>
+                                        {bundleItem.components.map((comp, compIdx) => {
+                                          const isManual = comp.itemName === '__manual__' || comp.itemName === '';
+                                          const resolved = !isManual && comp.itemName && comp.itemName !== '__nested__' ? resolveUnitPrice(comp.itemName) : null;
+                                          const finalUnitPrice = (comp.manualPrice !== null && comp.manualPrice !== undefined)
+                                            ? { unitType: (comp.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: comp.manualPrice }
+                                            : resolved;
+                                          let compValue = 0;
+                                          if (finalUnitPrice) {
+                                            if (finalUnitPrice.unitType === '골드') {
+                                              compValue = finalUnitPrice.unitPrice * (comp.quantity || 0);
+                                            } else if (finalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
+                                              compValue = ((finalUnitPrice.unitPrice * crystalGoldRate) / 100) * (comp.quantity || 0);
+                                            } else if (finalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
+                                              compValue = (finalUnitPrice.unitPrice / goldToCashPerGold) * (comp.quantity || 0);
+                                            }
+                                            const qty = bundleItem.quantity || 1;
+                                            if (bundleItem.itemType === '확정') compValue *= qty;
+                                            else if (bundleItem.itemType === '확률') compValue *= (comp.probability ?? 0) * qty;
+                                            else if (bundleItem.itemType === '선택') compValue *= (comp.selected ? 1 : 0) * qty;
+                                          }
+                                          const displayName = comp.itemName === '__nested__' && comp.nestedItem
+                                            ? `묶음: ${comp.nestedItem.itemName || '(미입력)'}`
+                                            : (comp.itemName === '__manual__' || comp.itemName === '' ? '(직접 입력)' : comp.itemName);
+                                          const hasValue = finalUnitPrice != null;
+                                          return (
+                                            <div key={compIdx} className="flex items-center gap-2 flex-wrap">
+                                              <span className="text-gray-300">{displayName}</span>
+                                              <span>× {formatNumberWithSignificantDigits(comp.quantity || 0)}</span>
+                                              {bundleItem.itemType === '확률' && comp.probability != null && (
+                                                <span className="text-purple-300">({(comp.probability * 100).toFixed(0)}%)</span>
+                                              )}
+                                              {bundleItem.itemType === '선택' && comp.selected && (
+                                                <span className="text-blue-300">(선택)</span>
+                                              )}
+                                              {hasValue && (
+                                                <span className={compValue >= 0 ? 'text-green-400' : 'text-red-400'}>
+                                                  → {compValue >= 0 ? '' : '-'}{formatNumberWithSignificantDigits(Math.abs(compValue))} 골드
+                                                </span>
+                                              )}
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ) : null}
+                              </Fragment>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -1860,7 +1941,7 @@ export default function SingleShopClient({
         </div>
 
         {/* 카테고리별 편집 */}
-        {SINGLE_SHOP_SECTIONS.map((sectionKey) => (
+        {CRAFT_MATERIAL_SECTIONS.map((sectionKey) => (
           <div key={sectionKey} className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
             <h2 className="text-2xl font-semibold mb-4">{sectionKey}</h2>
             <div className="space-y-4">
@@ -1878,3 +1959,4 @@ export default function SingleShopClient({
     </div>
   );
 }
+

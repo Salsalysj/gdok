@@ -1,14 +1,14 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { formatNumberWithSignificantDigits } from '../../utils/formatNumber';
-import { usePriceAdjustment } from '../../hooks/usePriceAdjustment';
-import { useValueDb } from '../../contexts/ValueDbContext';
-import { usePriceOverride } from '../../contexts/PriceOverrideContext';
+import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
+import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
+import { useValueDb } from '../contexts/ValueDbContext';
+import { usePriceOverride } from '../contexts/PriceOverrideContext';
 import type { ValueDbEntry } from '@/lib/valueDb';
-import { calculateOptimalStrategy } from '../../refining-simulation/client';
-import type { RefiningStage, MarketItemInfo } from '../../refining-simulation/page';
-import FavoriteButton from '../../components/FavoriteButton';
+import { calculateOptimalStrategy } from '../refining-simulation/client';
+import type { RefiningStage, MarketItemInfo } from '../refining-simulation/page';
+import FavoriteButton from '../components/FavoriteButton';
 
 type ComponentItem = {
   itemName: string;
@@ -28,19 +28,15 @@ type BundleItem = {
   bloodstoneCost?: number; // 혈석 교환 비용
 };
 
-// 제작 재료 교환 8개 카테고리 (Supabase shop_data 키와 동일)
-export const CRAFT_MATERIAL_SECTIONS = [
-  '베히모스의 비늘',
-  '알키오네의 눈',
-  '업화의 쐐기돌',
-  '카르마의 잔영',
-  '낙뢰의 뿔',
-  '우뢰의 뇌옥',
-  '고통의 가시',
+// 싱글 상점 교환 3개 카테고리
+export const SINGLE_SHOP_SECTIONS = [
+  '재련 재료',
+  '물물 교환',
+  '고유 보상',
 ] as const;
-export type SectionKey = (typeof CRAFT_MATERIAL_SECTIONS)[number];
+export type SectionKey = (typeof SINGLE_SHOP_SECTIONS)[number];
 
-type CraftMaterialsData = Record<SectionKey, BundleItem[]>;
+type SingleShopData = Record<SectionKey, BundleItem[]>;
 
 type EtcListItem = {
   crystal: number | null;
@@ -68,7 +64,7 @@ type Stage = {
   rewards: RewardItem[];
 };
 
-export default function CraftMaterialsClient({
+export default function SingleShopClient({
   itemList,
   etcListData,
   crystalGoldRate,
@@ -187,10 +183,10 @@ export default function CraftMaterialsClient({
     }
   }, [lightMode, discordRate, crystalGoldRate]);
 
-  const emptyShopData = useMemo<CraftMaterialsData>(() => {
-    return Object.fromEntries(CRAFT_MATERIAL_SECTIONS.map((s) => [s, []])) as unknown as CraftMaterialsData;
+  const emptyShopData = useMemo<SingleShopData>(() => {
+    return Object.fromEntries(SINGLE_SHOP_SECTIONS.map((s) => [s, []])) as unknown as SingleShopData;
   }, []);
-  const [shopData, setShopData] = useState<CraftMaterialsData>(emptyShopData);
+  const [shopData, setShopData] = useState<SingleShopData>(emptyShopData);
 
   // 환경 정보를 API에서 받아와서 저장 기능 활성화 여부 결정
   const [allowShopSave, setAllowShopSave] = useState<boolean>(
@@ -1161,7 +1157,7 @@ export default function CraftMaterialsClient({
     return total;
   }, [resolveUnitPrice, crystalGoldRate, goldToCashPerGold]);
 
-  // 각 섹션별 묶음 항목 상세 정보 (교환 단위당 가치 = 가치 / 교환 비용)
+  // 각 섹션별 묶음 항목 상세 정보 (교환 단위당 가치 = 가치 / 교환 비용). 10골드 이상이면 추천
   const sectionDetails = useMemo(() => {
     const getSectionDetails = (items: BundleItem[], section: SectionKey) => {
       return (items ?? []).map((item) => {
@@ -1174,26 +1170,17 @@ export default function CraftMaterialsClient({
           value,
           bloodstoneCost,
           valuePerBloodstone,
+          isRecommended: valuePerBloodstone >= 10,
         };
       });
     };
 
-    const bySection = Object.fromEntries(
-      CRAFT_MATERIAL_SECTIONS.map((section) => [
+    const result = Object.fromEntries(
+      SINGLE_SHOP_SECTIONS.map((section) => [
         section,
         getSectionDetails(shopData[section] ?? [], section),
       ])
-    ) as Record<SectionKey, Array<{ itemName: string; quantity: number; value: number; bloodstoneCost: number; valuePerBloodstone: number }>>;
-
-    const result: Record<SectionKey, Array<{ itemName: string; quantity: number; value: number; bloodstoneCost: number; valuePerBloodstone: number; isRecommended: boolean }>> = {} as any;
-    for (const section of CRAFT_MATERIAL_SECTIONS) {
-      const list = bySection[section] ?? [];
-      const maxInSection = list.length > 0 ? Math.max(...list.map((i) => i.valuePerBloodstone)) : 0;
-      result[section] = list.map((item) => ({
-        ...item,
-        isRecommended: item.valuePerBloodstone > 0 && item.valuePerBloodstone === maxInSection,
-      }));
-    }
+    ) as Record<SectionKey, Array<{ itemName: string; quantity: number; value: number; bloodstoneCost: number; valuePerBloodstone: number; isRecommended: boolean }>>;
     return result;
   }, [shopData, calculateBundleItemValue, goldToCashPerGold]);
 
@@ -1222,9 +1209,9 @@ export default function CraftMaterialsClient({
     
     if (firstShop && firstShop.shop_data) {
       console.log('[자동 로드] 상점 데이터 로드 중');
-      const loaded = firstShop.shop_data as Partial<CraftMaterialsData>;
-      const normalized: CraftMaterialsData = { ...emptyShopData };
-      for (const key of CRAFT_MATERIAL_SECTIONS) {
+      const loaded = firstShop.shop_data as Partial<SingleShopData>;
+      const normalized: SingleShopData = { ...emptyShopData };
+      for (const key of SINGLE_SHOP_SECTIONS) {
         if (Array.isArray(loaded[key])) normalized[key] = loaded[key];
       }
       setShopData(normalized);
@@ -1240,7 +1227,7 @@ export default function CraftMaterialsClient({
   const refreshSavedShops = useCallback(async () => {
     try {
       // 캐시 비활성화를 위해 타임스탬프를 쿼리 파라미터로 추가
-      const res = await fetch(`/api/craft-material-shops?t=${Date.now()}`, {
+      const res = await fetch(`/api/single-shop-shops?t=${Date.now()}`, {
         cache: 'no-store',
       });
       
@@ -1287,7 +1274,7 @@ export default function CraftMaterialsClient({
       let res;
       if (selectedShopId) {
         // 업데이트
-        res = await fetch(`/api/craft-material-shops/${selectedShopId}`, {
+        res = await fetch(`/api/single-shop-shops/${selectedShopId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1297,7 +1284,7 @@ export default function CraftMaterialsClient({
         });
       } else {
         // 새로 저장
-        res = await fetch('/api/craft-material-shops', {
+        res = await fetch('/api/single-shop-shops', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1341,7 +1328,7 @@ export default function CraftMaterialsClient({
   const handleLoadShop = async (shopId: string) => {
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/craft-material-shops/${shopId}`);
+      const res = await fetch(`/api/single-shop-shops/${shopId}`);
       
       // 응답이 JSON인지 확인
       const contentType = res.headers.get('content-type');
@@ -1358,9 +1345,9 @@ export default function CraftMaterialsClient({
       }
       
       if (data.shop && data.shop.shop_data) {
-        const loaded = data.shop.shop_data as Partial<CraftMaterialsData>;
-        const normalized: CraftMaterialsData = { ...emptyShopData };
-        for (const key of CRAFT_MATERIAL_SECTIONS) {
+        const loaded = data.shop.shop_data as Partial<SingleShopData>;
+        const normalized: SingleShopData = { ...emptyShopData };
+        for (const key of SINGLE_SHOP_SECTIONS) {
           if (Array.isArray(loaded[key])) normalized[key] = loaded[key];
         }
         setShopData(normalized);
@@ -1385,7 +1372,7 @@ export default function CraftMaterialsClient({
 
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/craft-material-shops/${shopId}`, {
+      const res = await fetch(`/api/single-shop-shops/${shopId}`, {
         method: 'DELETE',
       });
       
@@ -1420,7 +1407,7 @@ export default function CraftMaterialsClient({
 
   // 새로 만들기
   const handleNewShop = () => {
-    const hasData = CRAFT_MATERIAL_SECTIONS.some((s) => (shopData[s]?.length ?? 0) > 0);
+    const hasData = SINGLE_SHOP_SECTIONS.some((s) => (shopData[s]?.length ?? 0) > 0);
     if (selectedShopId && hasData) {
       if (!confirm('현재 작업 중인 내용이 사라집니다. 새로 만들기를 진행하시겠습니까?')) {
         return;
@@ -1745,8 +1732,8 @@ export default function CraftMaterialsClient({
       <div>
         <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-3xl font-semibold tracking-tight">제작 재료 교환 효율</h1>
-            <FavoriteButton title="제작 재료 교환" />
+            <h1 className="text-3xl font-semibold tracking-tight">싱글 상점 교환 효율</h1>
+            <FavoriteButton title="싱글 상점 교환" />
           </div>
           {allowShopSave && (
             <div className="flex gap-2">
@@ -1811,7 +1798,7 @@ export default function CraftMaterialsClient({
         {/* 요약 카드 */}
         <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
           <div className="space-y-6">
-            {CRAFT_MATERIAL_SECTIONS.map((sectionKey) => {
+            {SINGLE_SHOP_SECTIONS.map((sectionKey) => {
               const items = sectionDetails[sectionKey] ?? [];
               return (
                 <div key={sectionKey}>
@@ -1864,7 +1851,7 @@ export default function CraftMaterialsClient({
         </div>
 
         {/* 카테고리별 편집 */}
-        {CRAFT_MATERIAL_SECTIONS.map((sectionKey) => (
+        {SINGLE_SHOP_SECTIONS.map((sectionKey) => (
           <div key={sectionKey} className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
             <h2 className="text-2xl font-semibold mb-4">{sectionKey}</h2>
             <div className="space-y-4">
@@ -1882,4 +1869,3 @@ export default function CraftMaterialsClient({
     </div>
   );
 }
-

@@ -86,7 +86,7 @@ export default function Navigation() {
   const tabs = [
     { name: '컨텐츠 보상', href: '/content-rewards', hasSubmenu: true },
     { name: '이벤트 효율', href: '/event-efficiency', hasSubmenu: true },
-    { name: '각종 교환효율', href: '/event-efficiency/bloodstone-shop', hasSubmenu: true },
+    { name: '각종 교환효율', href: '/bloodstone-shop', hasSubmenu: true },
     { name: '과금 효율', href: '/package-efficiency' },
     { name: '재련 효율', href: '/refining-simulation', hasSubmenu: true },
     { name: '커스텀 계산기', href: '/custom-calculator', hasSubmenu: true },
@@ -114,8 +114,9 @@ export default function Navigation() {
   ];
 
   const exchangeEfficiencySubTabs = [
-    { name: '혈석 상점 효율', href: '/event-efficiency/bloodstone-shop' },
-    { name: '제작 재료 교환', href: '/event-efficiency/craft-materials' },
+    { name: '혈석 상점 효율', href: '/bloodstone-shop' },
+    { name: '제작 재료 교환', href: '/craft-materials' },
+    { name: '싱글 상점 교환', href: '/single-shop' },
   ];
 
   const customCalcSubTabs = [
@@ -179,8 +180,8 @@ export default function Navigation() {
                 const isActive = pathname === tab.href || 
                   (tab.href === '/content-rewards' && pathname.startsWith('/content-rewards')) ||
                   (tab.href === '/refining-simulation' && (pathname.startsWith('/refining-simulation') || pathname.startsWith('/advanced-refining') || pathname.startsWith('/character-simulation'))) ||
-                  (tab.href === '/event-efficiency' && pathname.startsWith('/event-efficiency') && !pathname.startsWith('/event-efficiency/bloodstone-shop')) ||
-                  (tab.name === '각종 교환효율' && (pathname.startsWith('/event-efficiency/bloodstone-shop') || pathname.startsWith('/event-efficiency/craft-materials'))) ||
+                  (tab.href === '/event-efficiency' && pathname.startsWith('/event-efficiency')) ||
+                  (tab.name === '각종 교환효율' && (pathname.startsWith('/bloodstone-shop') || pathname.startsWith('/craft-materials') || pathname.startsWith('/single-shop'))) ||
                   (tab.href === '/custom-calculator' && pathname.startsWith('/custom-calculator'));
                 
                 if (tab.hasSubmenu) {
@@ -277,8 +278,8 @@ export default function Navigation() {
               const isActive = pathname === tab.href || 
                 (tab.href === '/content-rewards' && pathname.startsWith('/content-rewards')) ||
                 (tab.href === '/refining-simulation' && (pathname.startsWith('/refining-simulation') || pathname.startsWith('/advanced-refining') || pathname.startsWith('/character-simulation'))) ||
-                (tab.href === '/event-efficiency' && pathname.startsWith('/event-efficiency') && !pathname.startsWith('/event-efficiency/bloodstone-shop')) ||
-                (tab.name === '각종 교환효율' && (pathname.startsWith('/event-efficiency/bloodstone-shop') || pathname.startsWith('/event-efficiency/craft-materials'))) ||
+                (tab.href === '/event-efficiency' && pathname.startsWith('/event-efficiency')) ||
+                (tab.name === '각종 교환효율' && (pathname.startsWith('/bloodstone-shop') || pathname.startsWith('/craft-materials') || pathname.startsWith('/single-shop'))) ||
                 (tab.href === '/custom-calculator' && pathname.startsWith('/custom-calculator'));
               
               if (tab.hasSubmenu) {

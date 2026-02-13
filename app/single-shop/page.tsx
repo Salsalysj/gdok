@@ -9,7 +9,7 @@ export const metadata = {
 import SingleShopClient from './client';
 import { getValueDbData } from '@/lib/valueDb';
 import { getContentRewardsData } from '@/lib/contentRewards';
-import { parseUpgradeCsv, getMarketInfoMap, createStages } from '../../value-db/page';
+import { parseUpgradeCsv, getMarketInfoMap, createStages } from '../value-db/page';
 import {
   UPGRADE_FILE_WEAPON,
   UPGRADE_FILE_ARMOR,
@@ -19,7 +19,7 @@ import {
   BREATH_ITEM_ARMOR,
   OPTIONAL_METALLURGY_ITEMS_WEAPON,
   OPTIONAL_METALLURGY_ITEMS_ARMOR,
-} from '../../value-db/page';
+} from '../value-db/page';
 import path from 'path';
 import { promises as fs } from 'fs';
 
