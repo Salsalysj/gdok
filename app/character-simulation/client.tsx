@@ -12,6 +12,8 @@ import simulationDataLevel4 from '@/lib/advancedRefiningData-level4.json';
 import type { GearType, RefiningLevel, SimulationResult, ScenarioWithCost } from '@/lib/advancedRefining';
 import { getMaterialsForLevel } from '@/lib/advancedRefining';
 import type { ValueDbEntry } from '@/lib/valueDb';
+import { getAverageConsumptionLines } from '../refining-simulation/client';
+import ItemIcon from '../components/ItemIcon';
 
 type CharacterEquipment = {
   Type?: string;
@@ -572,6 +574,8 @@ function CharacterSimulation({
   const [rosterCache, setRosterCache] = useState<RosterCache | null>(null);
   /** 카제로스 장비(운명의 업화) 1730+일 때 동일 레벨 세르카(운명의 전율)로 환산하여 계산 */
   const [convertKazeros1730ToSerka, setConvertKazeros1730ToSerka] = useState(false);
+  /** 목표 재련 '상세' 툴팁 표시 중인 행 인덱스 (null이면 미표시) */
+  const [detailTooltipIndex, setDetailTooltipIndex] = useState<number | null>(null);
 
   // 원정대 1640+ 전원 armory 조회 후 캐시 저장 (preloaded 있으면 해당 캐릭터는 스킵)
   const loadRoster = async (
@@ -1136,6 +1140,7 @@ function CharacterSimulation({
           targetLevel,
           advancedProgress: null,
           convertedToSerka: false,
+          avgConsumption: [] as Array<{ name: string; quantity: number; unitPrice?: number; totalPrice?: number; icon?: string | null }>,
         };
       }
 
@@ -1219,6 +1224,7 @@ function CharacterSimulation({
         : getBreakthroughStoneCount(targetLevel, isWeapon ? 'weapon' : 'armor');
       const breakthroughValue = stoneCount > 0 ? (refiningCost * baseSuccessRate) / stoneCount : null;
       
+      const avgConsumption = getAverageConsumptionLines(stage as Parameters<typeof getAverageConsumptionLines>[0], optimalStrategy as Parameters<typeof getAverageConsumptionLines>[1], adjustedMarketInfo);
       return {
         ...eq,
         craftValue,
@@ -1236,6 +1242,7 @@ function CharacterSimulation({
         isSerkaEquipment,
         advancedProgress,
         convertedToSerka: useSerkaConversion,
+        avgConsumption,
       };
     });
   }, [sortedEquipment, weaponStages, armorStages, weaponStagesSerka, armorStagesSerka, adjustedMarketInfo, refreshKey, convertKazeros1730ToSerka]);
@@ -2108,15 +2115,15 @@ function CharacterSimulation({
                 {/* 장비 표 */}
                 <div className="bg-gray-900/70 rounded-lg border border-gray-700 overflow-hidden">
                   <div className="px-3 py-2 bg-gray-800/50 border-b border-gray-700 flex flex-wrap items-center gap-3">
-                    <label className={`flex items-center gap-2 select-none ${hasKazeros1730Equipment ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}>
+                    <label className={`flex items-center gap-3 select-none rounded-lg px-3 py-2 ${hasKazeros1730Equipment ? 'cursor-pointer bg-gray-700/70 hover:bg-gray-700 border border-gray-600' : 'cursor-not-allowed opacity-60 bg-gray-800/50 border border-gray-700'}`}>
                       <input
                         type="checkbox"
                         checked={convertKazeros1730ToSerka}
                         onChange={(e) => setConvertKazeros1730ToSerka(e.target.checked)}
                         disabled={!hasKazeros1730Equipment}
-                        className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-purple-500 focus:ring-purple-500 focus:ring-offset-gray-900 disabled:cursor-not-allowed"
+                        className="w-5 h-5 rounded border-2 border-gray-500 bg-gray-800 text-purple-500 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:cursor-not-allowed accent-purple-500"
                       />
-                      <span className="text-sm text-gray-300">1730 이상의 카제로스 장비를 세르카 장비로의 계승 기준으로 계산</span>
+                      <span className="text-sm font-medium text-gray-200">1730 이상의 카제로스 장비를 세르카 장비로의 계승 기준으로 계산</span>
                     </label>
                   </div>
                   <div className="overflow-x-auto">
@@ -2161,6 +2168,41 @@ function CharacterSimulation({
                                     const adv = getAdvancedTargetLabel(eq.advancedProgress);
                                     return adv ? <span className="text-[11px] sm:text-xs text-gray-400">{adv}</span> : null;
                                   })()}
+                                  {eq.avgConsumption && eq.avgConsumption.length > 0 && (
+                                    <div className="relative inline-flex flex-col items-center mt-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => setDetailTooltipIndex((prev) => (prev === idx ? null : idx))}
+                                        className="text-[11px] px-2 py-0.5 rounded text-gray-400 hover:text-gray-200 hover:bg-gray-700/80 border border-gray-600"
+                                        aria-label="평균 재료 소모량 보기"
+                                      >
+                                        상세
+                                      </button>
+                                      {detailTooltipIndex === idx && (
+                                        <>
+                                          <div className="fixed inset-0 z-10" aria-hidden onClick={() => setDetailTooltipIndex(null)} />
+                                          <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 z-20 min-w-[200px] max-w-[90vw] rounded-lg border border-gray-600 bg-gray-800 py-2.5 px-3 shadow-xl">
+                                            <div className="text-xs font-semibold text-purple-200 mb-1.5">평균 재료 소모량</div>
+                                            <div className="flex flex-wrap gap-x-2 gap-y-1.5 text-xs text-gray-300">
+                                              {eq.avgConsumption.map((item: { name: string; quantity: number }) => {
+                                                const nameMap: Record<string, string> = eq.isSerkaEquipment ? { '운명의 파괴석': '운명의 파괴석 결정', '운명의 수호석': '운명의 수호석 결정', '운명의 돌파석': '위대한 운명의 돌파석', '아비도스 융화 재료': '상급 아비도스 융화 재료' } : {};
+                                                const displayName = nameMap[item.name] || item.name;
+                                                const q = formatNumberWithSignificantDigits(item.quantity);
+                                                const unit = item.name === '골드' ? ' 골드' : item.name === '실링' ? ' 실링' : '개';
+                                                const qDisplay = item.name === '운명의 파편 (경험치)' ? `${q}개 (경험치)` : `${q}${unit}`;
+                                                return (
+                                                  <span key={item.name} className="inline-flex items-center gap-1 whitespace-nowrap" title={displayName}>
+                                                    <ItemIcon name={displayName} size="sm" className="flex-shrink-0" />
+                                                    <span>{qDisplay}</span>
+                                                  </span>
+                                                );
+                                              })}
+                                            </div>
+                                          </div>
+                                        </>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
                               </td>
                               <td className="px-2 sm:px-3 py-2 sm:py-3 text-right border-b border-gray-800 align-top min-w-0">

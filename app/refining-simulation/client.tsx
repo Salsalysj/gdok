@@ -609,8 +609,8 @@ export function calculateOptimalStrategy(
   return { optimalStrategy, baseStrategy, fullBreathStrategy, fullMetallurgyStrategy, fullEnhancedMetallurgyStrategy, fullBothStrategy, materialValueAnalysis };
 }
 
-/** 최적 전략 기준 평균 재련재료 소모량 (요약표·카드 툴팁 공용) */
-function getAverageConsumptionLines(
+/** 최적 전략 기준 평균 재련재료 소모량 (요약표·카드 툴팁·캐릭터 시뮬레이션 공용) */
+export function getAverageConsumptionLines(
   stage: RefiningStage,
   optimalStrategy: StrategySummary,
   marketInfo: Record<string, MarketItemInfo>
@@ -1021,10 +1021,11 @@ function StageCard({ stage, marketInfo, sillingUnitPrice, selectedTier, allStage
                         const displayName = nameMap[item.name] || item.name;
                         const q = formatNumberWithSignificantDigits(item.quantity);
                         const unit = item.name === GOLD_ITEM ? ' 골드' : item.name === SILVER_ITEM ? ' 실링' : '개';
+                        const qDisplay = item.name === '운명의 파편 (경험치)' ? `${q}개 (경험치)` : `${q}${unit}`;
                         return (
                           <span key={item.name} className="inline-flex items-center gap-1 whitespace-nowrap" title={displayName}>
                             <ItemIcon name={displayName} size="sm" className="flex-shrink-0" />
-                            <span>{q}{unit}</span>
+                            <span>{qDisplay}</span>
                           </span>
                         );
                       })}
@@ -2269,10 +2270,11 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
                                             const displayName = nameMap[item.name] || item.name;
                                             const q = formatNumberWithSignificantDigits(item.quantity);
                                             const unit = item.name === GOLD_ITEM ? ' 골드' : item.name === SILVER_ITEM ? ' 실링' : '개';
+                                            const qDisplay = item.name === '운명의 파편 (경험치)' ? `${q}개 (경험치)` : `${q}${unit}`;
                                             return (
                                               <span key={item.name} className="inline-flex items-center gap-1 whitespace-nowrap" title={displayName}>
                                                 <ItemIcon name={displayName} size="sm" className="flex-shrink-0" />
-                                                <span>{q}{unit}</span>
+                                                <span>{qDisplay}</span>
                                               </span>
                                             );
                                           })}
@@ -2311,10 +2313,11 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
                                             const displayName = nameMap[item.name] || item.name;
                                             const q = formatNumberWithSignificantDigits(item.quantity);
                                             const unit = item.name === GOLD_ITEM ? ' 골드' : item.name === SILVER_ITEM ? ' 실링' : '개';
+                                            const qDisplay = item.name === '운명의 파편 (경험치)' ? `${q}개 (경험치)` : `${q}${unit}`;
                                             return (
                                               <span key={item.name} className="inline-flex items-center gap-1 whitespace-nowrap" title={displayName}>
                                                 <ItemIcon name={displayName} size="sm" className="flex-shrink-0" />
-                                                <span>{q}{unit}</span>
+                                                <span>{qDisplay}</span>
                                               </span>
                                             );
                                           })}

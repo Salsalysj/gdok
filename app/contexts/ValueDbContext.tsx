@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useMemo, useState, useEffect, ReactNode } from 'react';
-import type { ValueDbEntry } from '@/lib/valueDb';
+import type { ValueDbEntry, CraftMaterialShopData } from '@/lib/valueDb';
 import type { RefiningStage, MarketItemInfo } from '../refining-simulation/page';
 import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
 import { calculateAdjustedEntries } from '@/lib/calculateAdjustedEntries';
@@ -53,6 +53,8 @@ type ValueDbProviderProps = {
   explanationMap?: Record<string, string>;
   // 컨텐츠 보상에서 사용한 환율 스냅샷을 그대로 전달
   rates: { exchange: number | null; discord: number | null };
+  /** 제작 재료 교환 데이터 (가격 조정 스위치 반영용) */
+  craftMaterialShopData?: CraftMaterialShopData | null;
 };
 
 export function ValueDbProvider({
@@ -77,6 +79,7 @@ export function ValueDbProvider({
   cubeStageTotals,
   explanationMap,
   rates,
+  craftMaterialShopData,
 }: ValueDbProviderProps) {
   const { adjustPrice, adjustRelicEngravingAverage } = usePriceAdjustment();
   
@@ -115,6 +118,7 @@ export function ValueDbProvider({
       adjustRelicEngravingAverage,
       rates,
       lightMode,
+      craftMaterialShopData,
     });
   }, [
     entries,
@@ -138,6 +142,7 @@ export function ValueDbProvider({
     adjustRelicEngravingAverage,
     rates,
     lightMode,
+    craftMaterialShopData,
   ]);
 
   const valueDbMap = valueDbEntryMap || new Map<string, ValueDbEntry>();

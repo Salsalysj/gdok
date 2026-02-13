@@ -1,4 +1,4 @@
-import type { ValueDbEntry } from './valueDb';
+import type { ValueDbEntry, CraftMaterialShopData } from './valueDb';
 import type { RefiningStage, MarketItemInfo } from '../app/refining-simulation/page';
 import { calculateOptimalStrategy } from '../app/refining-simulation/client';
 import simulationDataLevel3 from './advancedRefiningData-level3.json';
@@ -38,6 +38,8 @@ type CalculateAdjustedEntriesParams = {
   adjustRelicEngravingAverage: (price: number | null) => number | null;
   rates?: { exchange: number | null; discord: number | null };
   lightMode?: boolean;
+  /** 제작 재료 교환 데이터 (가격 조정 스위치 반영용 재계산) */
+  craftMaterialShopData?: CraftMaterialShopData | null;
 };
 
 // 순환 돌파석 소모 개수 계산
@@ -451,6 +453,7 @@ export function calculateAdjustedEntries(params: CalculateAdjustedEntriesParams)
     adjustRelicEngravingAverage,
     rates,
     lightMode = false,
+    craftMaterialShopData,
   } = params;
 
   // 먼저 entries에 adjustPrice를 적용하여 기본 adjustedEntries 생성
@@ -1043,6 +1046,82 @@ export function calculateAdjustedEntries(params: CalculateAdjustedEntriesParams)
       recalculatedValues['휴식 게이지 회복 비약'] = sum;
     }
   });
+
+  // 제작 재료: craft-material-exchanges 기준으로 가격 조정 스위치 반영해 재계산
+  const CRAFT_MATERIAL_SECTIONS = [
+    '베히모스의 비늘',
+    '알키오네의 눈',
+    '업화의 쐐기돌',
+    '카르마의 잔영',
+    '낙뢰의 뿔',
+    '우뢰의 뇌옥',
+    '고통의 가시',
+  ];
+  if (craftMaterialShopData && rates?.exchange != null) {
+    const crystalGoldRate = rates.exchange;
+    const getComponentPriceGold = (itemName: string): number | null => {
+      const entry = baseAdjustedEntries.find((e) => e.itemName === itemName);
+      if (!entry || entry.unitValue == null) {
+        const etc = etcListData[itemName];
+        if (etc?.gold != null) return adjustPrice(itemName, etc.gold);
+        if (etc?.crystal != null && crystalGoldRate > 0) {
+          return adjustPrice(itemName, (etc.crystal * crystalGoldRate) / 100);
+        }
+        if (marketPriceMap[itemName] != null) return adjustPrice(itemName, marketPriceMap[itemName]);
+        return null;
+      }
+      if (entry.unitType === '골드') return entry.unitValue;
+      if (entry.unitType === '크리스탈' && crystalGoldRate > 0) {
+        return (entry.unitValue * crystalGoldRate) / 100;
+      }
+      return null;
+    };
+    for (const materialName of CRAFT_MATERIAL_SECTIONS) {
+      const bundles = craftMaterialShopData[materialName];
+      if (!Array.isArray(bundles) || bundles.length === 0) continue;
+      let bestValuePerCost = 0;
+      for (const bundle of bundles) {
+        const bloodstoneCost = bundle.bloodstoneCost || 0;
+        if (bloodstoneCost <= 0) continue;
+        const components = bundle.components || [];
+        let bundleValue = 0;
+        let allOk = true;
+        if (bundle.itemType === '선택') {
+          let maxComp = 0;
+          for (const comp of components) {
+            const price = getComponentPriceGold(comp.itemName);
+            if (price == null) {
+              allOk = false;
+              break;
+            }
+            maxComp = Math.max(maxComp, price * (comp.quantity || 0));
+          }
+          bundleValue = maxComp;
+        } else {
+          for (const comp of components) {
+            const price = getComponentPriceGold(comp.itemName);
+            if (price == null) {
+              allOk = false;
+              break;
+            }
+            const qty = comp.quantity || 0;
+            if (bundle.itemType === '확정') {
+              bundleValue += price * qty;
+            } else if (bundle.itemType === '확률') {
+              const prob = comp.probability || 0;
+              bundleValue += price * qty * prob;
+            }
+          }
+        }
+        if (!allOk) continue;
+        const valuePerCost = bundleValue / bloodstoneCost;
+        if (valuePerCost > bestValuePerCost) bestValuePerCost = valuePerCost;
+      }
+      if (bestValuePerCost > 0) {
+        recalculatedValues[materialName] = bestValuePerCost;
+      }
+    }
+  }
 
   const resultEntries = baseAdjustedEntries.map(entry => {
     let adjustedValue = entry.unitValue;

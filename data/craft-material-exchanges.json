@@ -1,0 +1,616 @@
+[
+  {
+    "id": "b25c4609-f96b-425e-bcbc-0d9e76bb054c",
+    "shop_name": "레이드 제작 재료 효율",
+    "shop_data": {
+      "베히모스의 비늘": [
+        {
+          "itemName": "폭풍의 재련 재료 상자",
+          "itemType": "확률",
+          "quantity": 1,
+          "components": [
+            {
+              "itemName": "운명의 돌파석",
+              "quantity": 3,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.25
+            },
+            {
+              "itemName": "운명의 파편 주머니(소)",
+              "quantity": 1,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.25
+            },
+            {
+              "itemName": "운명의 파괴석",
+              "quantity": 120,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.25
+            },
+            {
+              "itemName": "운명의 수호석",
+              "quantity": 360,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.25
+            }
+          ],
+          "bloodstoneCost": 15
+        },
+        {
+          "itemName": "폭풍의 재련 보조 재료 주머니",
+          "itemType": "확률",
+          "quantity": 1,
+          "components": [
+            {
+              "itemName": "용암의 숨결",
+              "quantity": 1,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.5
+            },
+            {
+              "itemName": "빙하의 숨결",
+              "quantity": 1,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.5
+            }
+          ],
+          "bloodstoneCost": 15
+        }
+      ],
+      "알키오네의 눈": [
+        {
+          "itemName": "T4 욕망의 성장 재료 상자",
+          "itemType": "확률",
+          "quantity": 1,
+          "components": [
+            {
+              "itemName": "용암의 숨결",
+              "quantity": 1,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.166
+            },
+            {
+              "itemName": "빙하의 숨결",
+              "quantity": 3,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.166
+            },
+            {
+              "itemName": "운명의 돌파석",
+              "quantity": 3,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.16699999999999998
+            },
+            {
+              "itemName": "운명의 파편 주머니(소)",
+              "quantity": 1,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.16699999999999998
+            },
+            {
+              "itemName": "운명의 파괴석",
+              "quantity": 100,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.16699999999999998
+            },
+            {
+              "itemName": "운명의 수호석",
+              "quantity": 300,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.16699999999999998
+            }
+          ],
+          "bloodstoneCost": 5
+        }
+      ],
+      "업화의 쐐기돌": [
+        {
+          "itemName": "심연의 재련 재료 상자",
+          "itemType": "확률",
+          "quantity": 1,
+          "components": [
+            {
+              "itemName": "운명의 돌파석",
+              "quantity": 5,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.25
+            },
+            {
+              "itemName": "운명의 파편 주머니(소)",
+              "quantity": 2,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.25
+            },
+            {
+              "itemName": "운명의 파괴석",
+              "quantity": 160,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.25
+            },
+            {
+              "itemName": "운명의 수호석",
+              "quantity": 480,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.25
+            }
+          ],
+          "bloodstoneCost": 5
+        },
+        {
+          "itemName": "심연의 재련 보조 재료 주머니",
+          "itemType": "확률",
+          "quantity": 1,
+          "components": [
+            {
+              "itemName": "용암의 숨결",
+              "quantity": 2,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.5
+            },
+            {
+              "itemName": "빙하의 숨결",
+              "quantity": 5,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.5
+            }
+          ],
+          "bloodstoneCost": 5
+        }
+      ],
+      "카르마의 잔영": [
+        {
+          "itemName": "팔찌 효과 재변환권 상자",
+          "itemType": "확정",
+          "quantity": 1,
+          "components": [
+            {
+              "itemName": "팔찌 효과 재변환권",
+              "quantity": 3,
+              "manualPrice": 50,
+              "manualUnitType": null,
+              "probability": 0
+            }
+          ],
+          "bloodstoneCost": 50
+        },
+        {
+          "itemName": "업화의 쐐기돌",
+          "itemType": "확정",
+          "quantity": 1,
+          "components": [
+            {
+              "itemName": "업화의 쐐기돌",
+              "quantity": 1,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0
+            }
+          ],
+          "bloodstoneCost": 1
+        }
+      ],
+      "낙뢰의 뿔": [
+        {
+          "itemName": "카르마의 잔영",
+          "itemType": "확정",
+          "quantity": 1,
+          "components": [
+            {
+              "itemName": "카르마의 잔영",
+              "quantity": 2,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0
+            }
+          ],
+          "bloodstoneCost": 6
+        },
+        {
+          "itemName": "징벌의 재련 재료 상자",
+          "itemType": "확률",
+          "quantity": 1,
+          "components": [
+            {
+              "itemName": "운명의 파편 주머니(대)",
+              "quantity": 1,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.25
+            },
+            {
+              "itemName": "운명의 돌파석",
+              "quantity": 12,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.25
+            },
+            {
+              "itemName": "운명의 파괴석",
+              "quantity": 300,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.25
+            },
+            {
+              "itemName": "운명의 수호석",
+              "quantity": 600,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.25
+            }
+          ],
+          "bloodstoneCost": 20
+        },
+        {
+          "itemName": "징벌의 재련 보조 재료 주머니",
+          "itemType": "확률",
+          "quantity": 1,
+          "components": [
+            {
+              "itemName": "용암의 숨결",
+              "quantity": 3,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.5
+            },
+            {
+              "itemName": "빙하의 숨결",
+              "quantity": 9,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.5
+            }
+          ],
+          "bloodstoneCost": 20
+        },
+        {
+          "itemName": "장인의 야금술 : 1단계 상자",
+          "itemType": "확정",
+          "quantity": 1,
+          "components": [
+            {
+              "itemName": "장인의 야금술 : 1단계",
+              "quantity": 1,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0
+            }
+          ],
+          "bloodstoneCost": 30
+        },
+        {
+          "itemName": "장인의 재봉술 : 1단계 상자",
+          "itemType": "확정",
+          "quantity": 1,
+          "components": [
+            {
+              "itemName": "장인의 재봉술 : 1단계",
+              "quantity": 1,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0
+            }
+          ],
+          "bloodstoneCost": 10
+        }
+      ],
+      "우뢰의 뇌옥": [
+        {
+          "itemName": "징벌의 재련 재료 상자",
+          "itemType": "확률",
+          "quantity": 1,
+          "components": [
+            {
+              "itemName": "운명의 파편 주머니(대)",
+              "quantity": 1,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.25
+            },
+            {
+              "itemName": "운명의 돌파석",
+              "quantity": 12,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.25
+            },
+            {
+              "itemName": "운명의 파괴석",
+              "quantity": 300,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.25
+            },
+            {
+              "itemName": "운명의 수호석",
+              "quantity": 600,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.25
+            }
+          ],
+          "bloodstoneCost": 10
+        },
+        {
+          "itemName": "징벌의 재련 보조 재료 주머니",
+          "itemType": "확률",
+          "quantity": 1,
+          "components": [
+            {
+              "itemName": "용암의 숨결",
+              "quantity": 3,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.5
+            },
+            {
+              "itemName": "빙하의 숨결",
+              "quantity": 9,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.5
+            }
+          ],
+          "bloodstoneCost": 10
+        },
+        {
+          "itemName": "장인의 야금술 : 1단계 상자",
+          "itemType": "확정",
+          "quantity": 1,
+          "components": [
+            {
+              "itemName": "장인의 야금술 : 1단계",
+              "quantity": 1,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0
+            }
+          ],
+          "bloodstoneCost": 15
+        },
+        {
+          "itemName": "장인의 재봉술 : 1단계 상자",
+          "itemType": "확정",
+          "quantity": 1,
+          "components": [
+            {
+              "itemName": "장인의 재봉술 : 1단계",
+              "quantity": 1,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0
+            }
+          ],
+          "bloodstoneCost": 5
+        },
+        {
+          "itemName": "장인의 야금술 : 2단계 상자",
+          "itemType": "확정",
+          "quantity": 1,
+          "components": [
+            {
+              "itemName": "장인의 야금술 : 2단계",
+              "quantity": 1,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0
+            }
+          ],
+          "bloodstoneCost": 30
+        },
+        {
+          "itemName": "장인의 재봉술 : 2단계 상자",
+          "itemType": "확정",
+          "quantity": 1,
+          "components": [
+            {
+              "itemName": "장인의 재봉술 : 2단계",
+              "quantity": 1,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0
+            }
+          ],
+          "bloodstoneCost": 10
+        }
+      ],
+      "고통의 가시": [
+        {
+          "itemName": "야금술 : 업화 [19-20] (제작 비용 3000골드)",
+          "itemType": "확정",
+          "quantity": 1,
+          "components": [
+            {
+              "itemName": "야금술 : 업화 [19-20]",
+              "quantity": 0.9,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0
+            },
+            {
+              "itemName": "강화 야금술 : 업화 [19-20]",
+              "quantity": 0.1,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0
+            },
+            {
+              "itemName": "제작 비용 (골드)",
+              "quantity": 1,
+              "manualPrice": -3000,
+              "manualUnitType": null,
+              "probability": 0
+            }
+          ],
+          "bloodstoneCost": 20
+        },
+        {
+          "itemName": "재봉술 : 업화 [19-20] (제작 비용 1500골드)",
+          "itemType": "확정",
+          "quantity": 1,
+          "components": [
+            {
+              "itemName": "재봉술 : 업화 [19-20]",
+              "quantity": 0.9,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0
+            },
+            {
+              "itemName": "강화 재봉술 : 업화 [19-20]",
+              "quantity": 0.1,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0
+            },
+            {
+              "itemName": "제작 비용 (골드)",
+              "quantity": 1,
+              "manualPrice": -1500,
+              "manualUnitType": null,
+              "probability": 0
+            }
+          ],
+          "bloodstoneCost": 10
+        },
+        {
+          "itemName": "야금술 : 업화 [19-20] 상자",
+          "itemType": "확정",
+          "quantity": 1,
+          "components": [
+            {
+              "itemName": "야금술 : 업화 [19-20]",
+              "quantity": 1,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0
+            }
+          ],
+          "bloodstoneCost": 20
+        },
+        {
+          "itemName": "재봉술 : 업화 [19-20] 상자",
+          "itemType": "확정",
+          "quantity": 1,
+          "components": [
+            {
+              "itemName": "재봉술 : 업화 [19-20]",
+              "quantity": 1,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0
+            }
+          ],
+          "bloodstoneCost": 10
+        },
+        {
+          "itemName": "고통의 재련 재료 상자",
+          "itemType": "확률",
+          "quantity": 1,
+          "components": [
+            {
+              "itemName": "운명의 파편 주머니(대)",
+              "quantity": 2,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.25
+            },
+            {
+              "itemName": "위대한 운명의 돌파석",
+              "quantity": 3,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.25
+            },
+            {
+              "itemName": "운명의 파괴석 결정",
+              "quantity": 100,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.25
+            },
+            {
+              "itemName": "운명의 수호석 결정",
+              "quantity": 300,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.25
+            }
+          ],
+          "bloodstoneCost": 5
+        },
+        {
+          "itemName": "고통의 재련 보조 재료 주머니",
+          "itemType": "확률",
+          "quantity": 1,
+          "components": [
+            {
+              "itemName": "용암의 숨결",
+              "quantity": 4,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.5
+            },
+            {
+              "itemName": "빙하의 숨결",
+              "quantity": 12,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.5
+            }
+          ],
+          "bloodstoneCost": 5
+        },
+        {
+          "itemName": "젬 랜덤 상자",
+          "itemType": "확률",
+          "quantity": 1,
+          "components": [
+            {
+              "itemName": "고급 젬",
+              "quantity": 1,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.8
+            },
+            {
+              "itemName": "희귀 젬",
+              "quantity": 1,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.15
+            },
+            {
+              "itemName": "영웅 젬",
+              "quantity": 1,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.05
+            }
+          ],
+          "bloodstoneCost": 5
+        }
+      ]
+    },
+    "created_at": "2026-02-13T12:18:02.950Z",
+    "updated_at": "2026-02-13T13:12:55.918Z"
+  }
+]

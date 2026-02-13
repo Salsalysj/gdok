@@ -1210,7 +1210,7 @@ export default function PackageEfficiencyClient({
         
         const isManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
         const resolved = !isManual && nestedComp.itemName ? resolveUnitPrice(nestedComp.itemName) : null;
-        const finalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined && nestedComp.manualPrice > 0)
+        const finalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined)
           ? { unitType: (nestedComp.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: nestedComp.manualPrice }
           : resolved;
         
@@ -1287,7 +1287,7 @@ export default function PackageEfficiencyClient({
         
         const isManual = component.itemName === '__manual__' || component.itemName === '';
         const resolved = !isManual && component.itemName ? resolveUnitPrice(component.itemName) : null;
-        const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined && component.manualPrice > 0)
+        const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined)
           ? { unitType: (component.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: component.manualPrice }
           : resolved;
         
@@ -1373,7 +1373,7 @@ export default function PackageEfficiencyClient({
           
           const isManual = component.itemName === '__manual__' || component.itemName === '';
           const resolved = !isManual && component.itemName ? resolveUnitPrice(component.itemName) : null;
-          const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined && component.manualPrice > 0)
+          const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined)
             ? { unitType: (component.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: component.manualPrice }
             : resolved;
           
@@ -1467,7 +1467,7 @@ export default function PackageEfficiencyClient({
         
         const isManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
         const resolved = !isManual && nestedComp.itemName ? resolveUnitPrice(nestedComp.itemName) : null;
-        const finalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined && nestedComp.manualPrice > 0)
+        const finalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined)
           ? { unitType: (nestedComp.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: nestedComp.manualPrice }
           : resolved;
         
@@ -1541,7 +1541,7 @@ export default function PackageEfficiencyClient({
       
       const isManual = component.itemName === '__manual__' || component.itemName === '';
       const resolved = !isManual && component.itemName ? resolveUnitPrice(component.itemName) : null;
-      const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined && component.manualPrice > 0)
+      const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined)
         ? { unitType: (component.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: component.manualPrice }
         : resolved;
       
@@ -1634,7 +1634,7 @@ export default function PackageEfficiencyClient({
         const componentDetails = item.components.map((component) => {
           const isManual = component.itemName === '__manual__' || component.itemName === '';
           const resolved = !isManual && component.itemName ? resolveUnitPrice(component.itemName) : null;
-          const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined && component.manualPrice > 0)
+          const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined)
             ? { unitType: (component.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: component.manualPrice }
             : resolved;
           
@@ -3215,7 +3215,7 @@ export default function PackageEfficiencyClient({
                             nestedItem.components.forEach((nestedComp) => {
                               const isNestedManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
                               const nestedResolved = !isNestedManual && nestedComp.itemName ? resolveUnitPrice(nestedComp.itemName) : null;
-                              const nestedFinalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined && nestedComp.manualPrice > 0)
+                              const nestedFinalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined)
                                 ? { unitType: (nestedComp.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: nestedComp.manualPrice }
                                 : nestedResolved;
                               
@@ -3276,7 +3276,7 @@ export default function PackageEfficiencyClient({
                             // 일반 구성요소 처리
                             const isCompManual = comp.itemName === '__manual__' || comp.itemName === '';
                             const compResolved = !isCompManual && comp.itemName ? resolveUnitPrice(comp.itemName) : null;
-                            const compFinalUnitPrice = (comp.manualPrice !== null && comp.manualPrice !== undefined && comp.manualPrice > 0)
+                            const compFinalUnitPrice = (comp.manualPrice !== null && comp.manualPrice !== undefined)
                               ? { unitType: (comp.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: comp.manualPrice }
                               : compResolved;
                             
@@ -3357,7 +3357,7 @@ export default function PackageEfficiencyClient({
                         {packageItem.components.map((component, compIndex) => {
                         const isManual = component.itemName === '__manual__' || component.itemName === '';
                         const resolved = !isManual && component.itemName ? resolveUnitPrice(component.itemName) : null;
-                        const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined && component.manualPrice > 0)
+                        const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined)
                           ? { unitType: (component.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: component.manualPrice }
                           : resolved;
 
@@ -3511,7 +3511,7 @@ export default function PackageEfficiencyClient({
                                       nestedItem.components.forEach((nestedComp) => {
                                         const isNestedManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
                                         const nestedResolved = !isNestedManual && nestedComp.itemName ? resolveUnitPrice(nestedComp.itemName) : null;
-                                        const nestedFinalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined && nestedComp.manualPrice > 0)
+                                        const nestedFinalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined)
                                           ? { unitType: (nestedComp.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: nestedComp.manualPrice }
                                           : nestedResolved;
                                         
@@ -3622,7 +3622,7 @@ export default function PackageEfficiencyClient({
                                           {nestedItem.components.map((nestedComp, nestedCompIndex) => {
                                             const isNestedManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
                                             const nestedResolved = !isNestedManual && nestedComp.itemName ? resolveUnitPrice(nestedComp.itemName) : null;
-                                            const nestedFinalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined && nestedComp.manualPrice > 0)
+                                            const nestedFinalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined)
                                               ? { unitType: (nestedComp.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: nestedComp.manualPrice }
                                               : nestedResolved;
                                             
@@ -3939,7 +3939,7 @@ export default function PackageEfficiencyClient({
                             nestedItem.components.forEach((nestedComp) => {
                               const isNestedManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
                               const nestedResolved = !isNestedManual && nestedComp.itemName ? resolveUnitPrice(nestedComp.itemName) : null;
-                              const nestedFinalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined && nestedComp.manualPrice > 0)
+                              const nestedFinalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined)
                                 ? { unitType: (nestedComp.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: nestedComp.manualPrice }
                                 : nestedResolved;
                               
@@ -4000,7 +4000,7 @@ export default function PackageEfficiencyClient({
                             // 일반 구성요소 처리
                             const isCompManual = comp.itemName === '__manual__' || comp.itemName === '';
                             const compResolved = !isCompManual && comp.itemName ? resolveUnitPrice(comp.itemName) : null;
-                            const compFinalUnitPrice = (comp.manualPrice !== null && comp.manualPrice !== undefined && comp.manualPrice > 0)
+                            const compFinalUnitPrice = (comp.manualPrice !== null && comp.manualPrice !== undefined)
                               ? { unitType: (comp.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: comp.manualPrice }
                               : compResolved;
                             
@@ -4081,7 +4081,7 @@ export default function PackageEfficiencyClient({
                         {packageItem.components.map((component, compIndex) => {
                           const isManual = component.itemName === '__manual__' || component.itemName === '';
                           const resolved = !isManual && component.itemName ? resolveUnitPrice(component.itemName) : null;
-                          const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined && component.manualPrice > 0)
+                          const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined)
                             ? { unitType: (component.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: component.manualPrice }
                             : resolved;
 
@@ -5344,10 +5344,10 @@ export default function PackageEfficiencyClient({
                       {component.itemName !== '__nested__' && (() => {
                         const isManual = component.itemName === '__manual__' || component.itemName === '';
                         const resolved = !isManual && component.itemName ? resolveUnitPrice(component.itemName) : null;
-                        const hasPrice = resolved !== null || (component.manualPrice !== null && component.manualPrice !== undefined && component.manualPrice > 0);
+                        const hasPrice = resolved !== null || (component.manualPrice !== null && component.manualPrice !== undefined);
 
                         // 단가 결정: 수동 입력 > resolved
-                        const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined && component.manualPrice > 0)
+                        const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined)
                           ? { unitType: (component.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: component.manualPrice }
                           : resolved;
 
@@ -5802,10 +5802,13 @@ export default function PackageEfficiencyClient({
                                     <input
                                       type="number"
                                       value={component.manualPrice !== null && component.manualPrice !== undefined ? component.manualPrice : ''}
-                                      onChange={(e) => updateBonus3Component(itemIndex, componentIndex, 'manualPrice', parseFloat(e.target.value) || null)}
+                                      onChange={(e) => {
+                                        const v = e.target.value;
+                                        const num = v === '' ? null : parseFloat(v);
+                                        updateBonus3Component(itemIndex, componentIndex, 'manualPrice', num !== null && Number.isNaN(num) ? null : num);
+                                      }}
                                       className="flex-1 px-3 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
-                                      placeholder="직접 입력 가격"
-                                      min="0"
+                                      placeholder="직접 입력 가격 (음수 가능)"
                                       step="0.01"
                                     />
                                     <select
@@ -5824,7 +5827,7 @@ export default function PackageEfficiencyClient({
                                 {(() => {
                                   const isManual = component.itemName === '__manual__' || component.itemName === '';
                                   const resolved = !isManual && component.itemName ? resolveUnitPrice(component.itemName) : null;
-                                  const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined && component.manualPrice > 0)
+                                  const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined)
                                     ? { unitType: (component.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: component.manualPrice }
                                     : resolved;
 

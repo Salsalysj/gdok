@@ -648,6 +648,17 @@ export default function EventShopClient({
       return null;
     }
 
+    // 가치계산DB Context 우선 (가격 조정·제작 재료 재계산 등이 반영된 값)
+    if (adjustedEntries && adjustedEntries.length > 0) {
+      const valueDbEntry = adjustedEntries.find((entry) => entry.itemName === itemName);
+      if (valueDbEntry && valueDbEntry.unitType && valueDbEntry.unitValue != null) {
+        return {
+          unitType: valueDbEntry.unitType as '골드' | '크리스탈' | '현금',
+          unitPrice: valueDbEntry.unitValue,
+        };
+      }
+    }
+
     // 에브니 큐브 입장권 처리
     if (itemName.startsWith('에브니 큐브 입장권')) {
       const hellExchangeMatch = itemName.match(/에브니 큐브 입장권 \(([^)]+)\) \(지옥교환\)/);
@@ -917,7 +928,7 @@ export default function EventShopClient({
         
         const isManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
         const resolved = !isManual && nestedComp.itemName ? resolveUnitPrice(nestedComp.itemName) : null;
-        const finalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined && nestedComp.manualPrice > 0)
+        const finalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined)
           ? { unitType: (nestedComp.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: nestedComp.manualPrice }
           : resolved;
         
@@ -971,7 +982,7 @@ export default function EventShopClient({
         
         const isManual = component.itemName === '__manual__' || component.itemName === '';
         const resolved = !isManual && component.itemName ? resolveUnitPrice(component.itemName) : null;
-        const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined && component.manualPrice > 0)
+        const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined)
           ? { unitType: (component.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: component.manualPrice }
           : resolved;
         
@@ -1026,7 +1037,7 @@ export default function EventShopClient({
         
         const isManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
         const resolved = !isManual && nestedComp.itemName ? resolveUnitPrice(nestedComp.itemName) : null;
-        const finalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined && nestedComp.manualPrice > 0)
+        const finalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined)
           ? { unitType: (nestedComp.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: nestedComp.manualPrice }
           : resolved;
         
@@ -1079,7 +1090,7 @@ export default function EventShopClient({
       
       const isManual = component.itemName === '__manual__' || component.itemName === '';
       const resolved = !isManual && component.itemName ? resolveUnitPrice(component.itemName) : null;
-      const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined && component.manualPrice > 0)
+      const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined)
         ? { unitType: (component.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: component.manualPrice }
         : resolved;
       
@@ -1196,7 +1207,7 @@ export default function EventShopClient({
     } else {
       const isManual = component.itemName === '__manual__' || component.itemName === '';
       const resolved = !isManual && component.itemName ? resolveUnitPrice(component.itemName) : null;
-      const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined && component.manualPrice > 0)
+      const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined)
         ? { unitType: (component.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: component.manualPrice }
         : resolved;
 
@@ -1865,7 +1876,7 @@ export default function EventShopClient({
                     {component.itemName !== '__nested__' && (() => {
                       const isManual = component.itemName === '__manual__' || component.itemName === '';
                       const resolved = !isManual && component.itemName ? resolveUnitPrice(component.itemName) : null;
-                      const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined && component.manualPrice > 0)
+                      const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined)
                         ? { unitType: (component.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: component.manualPrice }
                         : resolved;
                       
@@ -2235,7 +2246,7 @@ export default function EventShopClient({
                                         {bundleItem.components.map((component, compIndex) => {
                                           const isManual = component.itemName === '__manual__' || component.itemName === '';
                                           const resolved = !isManual && component.itemName ? resolveUnitPrice(component.itemName) : null;
-                                          const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined && component.manualPrice > 0)
+                                          const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined)
                                             ? { unitType: (component.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: component.manualPrice }
                                             : resolved;
                                           

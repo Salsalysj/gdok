@@ -501,7 +501,7 @@ export default function ArkpassGuideClient({
       // 직접 입력인 경우
       const isManual = nestedComp.itemName === '__manual__' || (nestedComp.itemName && nestedComp.itemName !== '__nested__' && !getItemUnitPrice(nestedComp.itemName));
       let nestedCompValue = 0;
-      if (isManual && nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined && nestedComp.manualPrice > 0) {
+      if (isManual && nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined) {
         nestedCompValue = nestedComp.manualPrice * (nestedComp.quantity || 1);
       } else {
         // 일반 아이템인 경우
@@ -542,14 +542,14 @@ export default function ArkpassGuideClient({
         // 직접 입력인 경우 판단
         const isManualFlag = comp.itemName === '__manual__' || comp.itemName === '';
         let compValue = 0;
-        if (isManualFlag && comp.manualPrice !== null && comp.manualPrice !== undefined && comp.manualPrice > 0) {
+        if (isManualFlag && comp.manualPrice !== null && comp.manualPrice !== undefined) {
           compValue = comp.manualPrice * (comp.quantity || 1);
         } else {
           // 일반 아이템인 경우
           const unitPrice = getItemUnitPrice(comp.itemName);
           if (unitPrice !== null && unitPrice > 0) {
             compValue = unitPrice * (comp.quantity || 1);
-          } else if (comp.manualPrice !== null && comp.manualPrice !== undefined && comp.manualPrice > 0) {
+          } else if (comp.manualPrice !== null && comp.manualPrice !== undefined) {
             // 가격을 찾지 못했는데 manualPrice가 있으면 manualPrice 사용 (직접 입력 모드)
             compValue = comp.manualPrice * (comp.quantity || 1);
           }
@@ -585,7 +585,7 @@ export default function ArkpassGuideClient({
     
     // 직접 입력인 경우
     const isManual = component.itemName === '__manual__' || component.itemName === '';
-    if (isManual && component.manualPrice !== null && component.manualPrice !== undefined && component.manualPrice > 0) {
+    if (isManual && component.manualPrice !== null && component.manualPrice !== undefined) {
       return component.manualPrice * (component.quantity || 1);
     }
     

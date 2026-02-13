@@ -2363,7 +2363,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
           
           const isManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
           const resolved = !isManual && nestedComp.itemName ? getItemUnitPrice(nestedComp.itemName, nestedComp) : null;
-          const finalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined && nestedComp.manualPrice > 0)
+          const finalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined)
             ? nestedComp.manualPrice
             : resolved;
           

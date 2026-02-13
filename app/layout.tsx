@@ -154,6 +154,7 @@ export default async function RootLayout({
               valueDbEntryMap={new Map(Object.entries(valueDbData.entryMap))}
               cubeStageTotals={valueDbData.cubeStageTotals}
               explanationMap={valueDbData.explanationMap}
+              craftMaterialShopData={valueDbData.craftMaterialShopData ?? null}
             >
               {/* Header */}
               <Navigation />

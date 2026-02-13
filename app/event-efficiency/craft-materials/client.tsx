@@ -603,6 +603,17 @@ export default function CraftMaterialsClient({
       return null;
     }
 
+    // 가치계산DB Context 우선 (가격 조정·제작 재료 재계산 등이 반영된 값)
+    if (adjustedEntries && adjustedEntries.length > 0) {
+      const valueDbEntry = adjustedEntries.find((entry) => entry.itemName === itemName);
+      if (valueDbEntry && valueDbEntry.unitType && valueDbEntry.unitValue != null) {
+        return {
+          unitType: valueDbEntry.unitType as '골드' | '크리스탈' | '현금',
+          unitPrice: valueDbEntry.unitValue,
+        };
+      }
+    }
+
     // 에브니 큐브 입장권 처리
     if (itemName.startsWith('에브니 큐브 입장권')) {
       const hellExchangeMatch = itemName.match(/에브니 큐브 입장권 \(([^)]+)\) \(지옥교환\)/);
@@ -954,7 +965,7 @@ export default function CraftMaterialsClient({
         
         const isManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
         const resolved = !isManual && nestedComp.itemName ? resolveUnitPrice(nestedComp.itemName) : null;
-        const finalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined && nestedComp.manualPrice > 0)
+        const finalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined)
           ? { unitType: (nestedComp.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: nestedComp.manualPrice }
           : resolved;
         
@@ -1008,7 +1019,7 @@ export default function CraftMaterialsClient({
         
         const isManual = component.itemName === '__manual__' || component.itemName === '';
         const resolved = !isManual && component.itemName ? resolveUnitPrice(component.itemName) : null;
-        const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined && component.manualPrice > 0)
+        const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined)
           ? { unitType: (component.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: component.manualPrice }
           : resolved;
         
@@ -1064,7 +1075,7 @@ export default function CraftMaterialsClient({
         
         const isManual = nestedComp.itemName === '__manual__' || nestedComp.itemName === '';
         const resolved = !isManual && nestedComp.itemName ? resolveUnitPrice(nestedComp.itemName) : null;
-        const finalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined && nestedComp.manualPrice > 0)
+        const finalUnitPrice = (nestedComp.manualPrice !== null && nestedComp.manualPrice !== undefined)
           ? { unitType: (nestedComp.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: nestedComp.manualPrice }
           : resolved;
         
@@ -1117,7 +1128,7 @@ export default function CraftMaterialsClient({
       
       const isManual = component.itemName === '__manual__' || component.itemName === '';
       const resolved = !isManual && component.itemName ? resolveUnitPrice(component.itemName) : null;
-      const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined && component.manualPrice > 0)
+      const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined)
         ? { unitType: (component.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: component.manualPrice }
         : resolved;
       
@@ -1612,7 +1623,7 @@ export default function CraftMaterialsClient({
                     {component.itemName !== '__nested__' && (() => {
                       const isManual = component.itemName === '__manual__' || component.itemName === '';
                       const resolved = !isManual && component.itemName ? resolveUnitPrice(component.itemName) : null;
-                      const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined && component.manualPrice > 0)
+                      const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined)
                         ? { unitType: (component.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: component.manualPrice }
                         : resolved;
                       
@@ -1740,14 +1751,13 @@ export default function CraftMaterialsClient({
           {allowShopSave && (
             <div className="flex gap-2">
               <button
-                onClick={handleNewShop}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
-                disabled={isLoading}
-              >
-                새로 만들기
-              </button>
-              <button
-                onClick={() => setShowSaveModal(true)}
+                onClick={() => {
+                  const name = selectedShopId
+                    ? savedShops.find((s) => s.id === selectedShopId)?.shop_name ?? ''
+                    : (savedShops[0]?.shop_name ?? '');
+                  setSaveShopName(name);
+                  setShowSaveModal(true);
+                }}
                 className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
                 disabled={isLoading}
               >
@@ -1798,64 +1808,6 @@ export default function CraftMaterialsClient({
           </div>
         )}
 
-        {/* 저장된 상점 목록 */}
-        {allowShopSave && savedShops.length > 0 && (
-          <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">저장된 상점</h2>
-              <button
-                onClick={refreshSavedShops}
-                className="px-3 py-1 text-sm bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors disabled:opacity-50"
-                disabled={isLoading}
-              >
-                새로고침
-              </button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {savedShops.map((shop) => {
-                const isSelected = selectedShopId === shop.id;
-                return (
-                  <div 
-                    key={shop.id} 
-                    className={`bg-gray-700/50 rounded-lg p-4 border transition-colors ${
-                      isSelected 
-                        ? 'border-blue-500 bg-blue-900/20 ring-2 ring-blue-500/50' 
-                        : 'border-gray-600 hover:border-gray-500'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div 
-                        onClick={() => handleLoadShop(shop.id)}
-                        className="flex-1 cursor-pointer"
-                      >
-                        <div className={`font-medium ${isSelected ? 'text-blue-300' : 'text-white'}`}>
-                          {shop.shop_name}
-                          {isSelected && (
-                            <span className="ml-2 text-xs text-blue-400">✓ 선택됨</span>
-                          )}
-                        </div>
-                        <div className="text-xs text-gray-400 mt-1">
-                          {new Date(shop.created_at).toLocaleDateString('ko-KR')}
-                        </div>
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteShop(shop.id);
-                        }}
-                        className="ml-2 px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors disabled:opacity-50"
-                        disabled={isLoading}
-                      >
-                        삭제
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-        
         {/* 요약 카드 */}
         <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
           <div className="space-y-6">

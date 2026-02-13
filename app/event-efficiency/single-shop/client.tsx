@@ -28,11 +28,15 @@ type BundleItem = {
   bloodstoneCost?: number; // 혈석 교환 비용
 };
 
-type BloodstoneShopData = {
-  ticketItems: BundleItem[]; // 입장권 및 보조 재료
-  refiningItems: BundleItem[]; // 재련 재료
-  silverItems: BundleItem[]; // 실링
-};
+// 싱글 상점 교환 3개 카테고리
+export const SINGLE_SHOP_SECTIONS = [
+  '재련 재료',
+  '물물 교환',
+  '고유 보상',
+] as const;
+export type SectionKey = (typeof SINGLE_SHOP_SECTIONS)[number];
+
+type SingleShopData = Record<SectionKey, BundleItem[]>;
 
 type EtcListItem = {
   crystal: number | null;
@@ -60,7 +64,7 @@ type Stage = {
   rewards: RewardItem[];
 };
 
-export default function BloodstoneShopClient({
+export default function SingleShopClient({
   itemList,
   etcListData,
   crystalGoldRate,
@@ -179,15 +183,14 @@ export default function BloodstoneShopClient({
     }
   }, [lightMode, discordRate, crystalGoldRate]);
 
-  const [shopData, setShopData] = useState<BloodstoneShopData>({
-    ticketItems: [],
-    refiningItems: [],
-    silverItems: [],
-  });
+  const emptyShopData = useMemo<SingleShopData>(() => {
+    return Object.fromEntries(SINGLE_SHOP_SECTIONS.map((s) => [s, []])) as unknown as SingleShopData;
+  }, []);
+  const [shopData, setShopData] = useState<SingleShopData>(emptyShopData);
 
   // 환경 정보를 API에서 받아와서 저장 기능 활성화 여부 결정
   const [allowShopSave, setAllowShopSave] = useState<boolean>(
-    process.env.NEXT_PUBLIC_ALLOW_BLOODSTONE_SHOP_SAVE === 'true' || process.env.NODE_ENV === 'development'
+    process.env.NEXT_PUBLIC_ALLOW_CRAFT_MATERIAL_SAVE === 'true' || process.env.NODE_ENV === 'development'
   );
   
   useEffect(() => {
@@ -196,7 +199,7 @@ export default function BloodstoneShopClient({
       fetch('/api/env/check')
         .then(res => res.json())
         .then(data => {
-          setAllowShopSave(data.allowBloodstoneShopSave ?? false);
+          setAllowShopSave(data.allowCraftMaterialSave ?? false);
         })
         .catch(() => {
           // API 호출 실패 시 기본값 유지
@@ -826,12 +829,12 @@ export default function BloodstoneShopClient({
   }, [itemList, adjustedEntries]);
 
   // 섹션별 items 배열 가져오기
-  const getItems = (section: 'ticketItems' | 'refiningItems' | 'silverItems'): BundleItem[] => {
-    return shopData[section];
+  const getItems = (section: SectionKey): BundleItem[] => {
+    return shopData[section] ?? [];
   };
 
   // 섹션별 items 배열 업데이트
-  const setItems = (section: 'ticketItems' | 'refiningItems' | 'silverItems', items: BundleItem[]) => {
+  const setItems = (section: SectionKey, items: BundleItem[]) => {
     setShopData(prev => ({
       ...prev,
       [section]: items
@@ -839,7 +842,7 @@ export default function BloodstoneShopClient({
   };
 
   // 묶음 항목 추가
-  const addBundleItem = (section: 'ticketItems' | 'refiningItems' | 'silverItems') => {
+  const addBundleItem = (section: SectionKey) => {
     setItems(section, [
       ...getItems(section),
       { itemName: '', itemType: '확정', quantity: 1, components: [], bloodstoneCost: 0 }
@@ -847,19 +850,19 @@ export default function BloodstoneShopClient({
   };
 
   // 묶음 항목 업데이트
-  const updateBundleItem = (section: 'ticketItems' | 'refiningItems' | 'silverItems', index: number, field: keyof BundleItem, value: any) => {
+  const updateBundleItem = (section: SectionKey, index: number, field: keyof BundleItem, value: any) => {
     const items = [...getItems(section)];
     items[index] = { ...items[index], [field]: value };
     setItems(section, items);
   };
 
   // 묶음 항목 삭제
-  const removeBundleItem = (section: 'ticketItems' | 'refiningItems' | 'silverItems', index: number) => {
+  const removeBundleItem = (section: SectionKey, index: number) => {
     setItems(section, getItems(section).filter((_, i) => i !== index));
   };
 
   // 구성 요소 추가
-  const addComponent = (section: 'ticketItems' | 'refiningItems' | 'silverItems', itemIndex: number) => {
+  const addComponent = (section: SectionKey, itemIndex: number) => {
     const items = [...getItems(section)];
     const bundleItem = items[itemIndex];
     const isSelectionType = bundleItem.itemType === '선택';
@@ -893,7 +896,7 @@ export default function BloodstoneShopClient({
   };
 
   // 구성 요소 업데이트
-  const updateComponent = (section: 'ticketItems' | 'refiningItems' | 'silverItems', itemIndex: number, componentIndex: number, field: keyof ComponentItem, value: any) => {
+  const updateComponent = (section: SectionKey, itemIndex: number, componentIndex: number, field: keyof ComponentItem, value: any) => {
     setShopData(prev => {
       const newShopData = { ...prev };
       const items = [...newShopData[section]];
@@ -932,7 +935,7 @@ export default function BloodstoneShopClient({
   };
 
   // 구성 요소 삭제
-  const removeComponent = (section: 'ticketItems' | 'refiningItems' | 'silverItems', itemIndex: number, componentIndex: number) => {
+  const removeComponent = (section: SectionKey, itemIndex: number, componentIndex: number) => {
     const items = [...getItems(section)];
     items[itemIndex] = {
       ...items[itemIndex],
@@ -1154,23 +1157,14 @@ export default function BloodstoneShopClient({
     return total;
   }, [resolveUnitPrice, crystalGoldRate, goldToCashPerGold]);
 
-  // 각 섹션별 묶음 항목 상세 정보
+  // 각 섹션별 묶음 항목 상세 정보 (교환 단위당 가치 = 가치 / 교환 비용)
   const sectionDetails = useMemo(() => {
-    // 먼저 모든 섹션의 항목을 합쳐서 전체 기준으로 등수 계산
-    const allItems: Array<{ section: 'ticketItems' | 'refiningItems' | 'silverItems'; valuePerBloodstone: number; id: number }> = [];
-    let itemIdCounter = 0;
-    
-    const getSectionDetails = (items: BundleItem[], section: 'ticketItems' | 'refiningItems' | 'silverItems') => {
-      return items.map((item) => {
+    const getSectionDetails = (items: BundleItem[], section: SectionKey) => {
+      return (items ?? []).map((item) => {
         const value = calculateBundleItemValue(item);
         const bloodstoneCost = item.bloodstoneCost || 0;
-        const valuePerBloodstone = bloodstoneCost > 0 ? (value / bloodstoneCost) * 100 : 0;
-        const id = itemIdCounter++;
-        
-        allItems.push({ section, valuePerBloodstone, id });
-        
+        const valuePerBloodstone = bloodstoneCost > 0 ? value / bloodstoneCost : 0;
         return {
-          id,
           itemName: item.itemName || '(미입력)',
           quantity: item.quantity || 1,
           value,
@@ -1179,37 +1173,24 @@ export default function BloodstoneShopClient({
         };
       });
     };
-    
-    const ticketItems = getSectionDetails(shopData.ticketItems, 'ticketItems');
-    const refiningItems = getSectionDetails(shopData.refiningItems, 'refiningItems');
-    const silverItems = getSectionDetails(shopData.silverItems, 'silverItems');
-    
-    // 전체 기준으로 등수 계산
-    const sortedAllItems = [...allItems].sort((a, b) => b.valuePerBloodstone - a.valuePerBloodstone);
-    
-    // 각 항목 ID에 대한 등수 맵 생성 (상위 5개만)
-    const rankMap = new Map<number, number>();
-    sortedAllItems.forEach((item, index) => {
-      if (index < 5) {
-        rankMap.set(item.id, index + 1);
-      }
-    });
-    
-    // 각 섹션의 항목에 등수 정보 추가
-    return {
-      ticketItems: ticketItems.map((item) => ({
+
+    const bySection = Object.fromEntries(
+      SINGLE_SHOP_SECTIONS.map((section) => [
+        section,
+        getSectionDetails(shopData[section] ?? [], section),
+      ])
+    ) as Record<SectionKey, Array<{ itemName: string; quantity: number; value: number; bloodstoneCost: number; valuePerBloodstone: number }>>;
+
+    const result: Record<SectionKey, Array<{ itemName: string; quantity: number; value: number; bloodstoneCost: number; valuePerBloodstone: number; isRecommended: boolean }>> = {} as any;
+    for (const section of SINGLE_SHOP_SECTIONS) {
+      const list = bySection[section] ?? [];
+      const maxInSection = list.length > 0 ? Math.max(...list.map((i) => i.valuePerBloodstone)) : 0;
+      result[section] = list.map((item) => ({
         ...item,
-        rank: rankMap.get(item.id) || null,
-      })),
-      refiningItems: refiningItems.map((item) => ({
-        ...item,
-        rank: rankMap.get(item.id) || null,
-      })),
-      silverItems: silverItems.map((item) => ({
-        ...item,
-        rank: rankMap.get(item.id) || null,
-      })),
-    };
+        isRecommended: item.valuePerBloodstone > 0 && item.valuePerBloodstone === maxInSection,
+      }));
+    }
+    return result;
   }, [shopData, calculateBundleItemValue, goldToCashPerGold]);
 
   // 페이지 로드 시 저장된 상점 자동 불러오기
@@ -1237,20 +1218,25 @@ export default function BloodstoneShopClient({
     
     if (firstShop && firstShop.shop_data) {
       console.log('[자동 로드] 상점 데이터 로드 중');
-      setShopData(firstShop.shop_data);
+      const loaded = firstShop.shop_data as Partial<SingleShopData>;
+      const normalized: SingleShopData = { ...emptyShopData };
+      for (const key of SINGLE_SHOP_SECTIONS) {
+        if (Array.isArray(loaded[key])) normalized[key] = loaded[key];
+      }
+      setShopData(normalized);
       setSelectedShopId(firstShop.id);
       hasAutoLoaded.current = true;
     } else {
       console.log('[자동 로드] 상점 데이터가 없습니다.');
       hasAutoLoaded.current = true;
     }
-  }, [initialSavedShops]);
+  }, [initialSavedShops, emptyShopData]);
 
   // 저장된 상점 목록 새로고침
   const refreshSavedShops = useCallback(async () => {
     try {
       // 캐시 비활성화를 위해 타임스탬프를 쿼리 파라미터로 추가
-      const res = await fetch(`/api/bloodstone-shops?t=${Date.now()}`, {
+      const res = await fetch(`/api/craft-material-shops?t=${Date.now()}`, {
         cache: 'no-store',
       });
       
@@ -1297,7 +1283,7 @@ export default function BloodstoneShopClient({
       let res;
       if (selectedShopId) {
         // 업데이트
-        res = await fetch(`/api/bloodstone-shops/${selectedShopId}`, {
+        res = await fetch(`/api/craft-material-shops/${selectedShopId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1307,7 +1293,7 @@ export default function BloodstoneShopClient({
         });
       } else {
         // 새로 저장
-        res = await fetch('/api/bloodstone-shops', {
+        res = await fetch('/api/craft-material-shops', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1351,7 +1337,7 @@ export default function BloodstoneShopClient({
   const handleLoadShop = async (shopId: string) => {
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/bloodstone-shops/${shopId}`);
+      const res = await fetch(`/api/craft-material-shops/${shopId}`);
       
       // 응답이 JSON인지 확인
       const contentType = res.headers.get('content-type');
@@ -1368,7 +1354,12 @@ export default function BloodstoneShopClient({
       }
       
       if (data.shop && data.shop.shop_data) {
-        setShopData(data.shop.shop_data);
+        const loaded = data.shop.shop_data as Partial<SingleShopData>;
+        const normalized: SingleShopData = { ...emptyShopData };
+        for (const key of SINGLE_SHOP_SECTIONS) {
+          if (Array.isArray(loaded[key])) normalized[key] = loaded[key];
+        }
+        setShopData(normalized);
         setSelectedShopId(shopId);
         alert('상점이 불러와졌습니다.');
       } else {
@@ -1390,7 +1381,7 @@ export default function BloodstoneShopClient({
 
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/bloodstone-shops/${shopId}`, {
+      const res = await fetch(`/api/craft-material-shops/${shopId}`, {
         method: 'DELETE',
       });
       
@@ -1410,11 +1401,7 @@ export default function BloodstoneShopClient({
 
       if (selectedShopId === shopId) {
         setSelectedShopId(null);
-        setShopData({
-          ticketItems: [],
-          refiningItems: [],
-          silverItems: [],
-        });
+        setShopData(emptyShopData);
       }
 
       await refreshSavedShops();
@@ -1429,22 +1416,19 @@ export default function BloodstoneShopClient({
 
   // 새로 만들기
   const handleNewShop = () => {
-    if (selectedShopId && (shopData.ticketItems.length > 0 || shopData.refiningItems.length > 0 || shopData.silverItems.length > 0)) {
+    const hasData = SINGLE_SHOP_SECTIONS.some((s) => (shopData[s]?.length ?? 0) > 0);
+    if (selectedShopId && hasData) {
       if (!confirm('현재 작업 중인 내용이 사라집니다. 새로 만들기를 진행하시겠습니까?')) {
         return;
       }
     }
     setSelectedShopId(null);
-    setShopData({
-      ticketItems: [],
-      refiningItems: [],
-      silverItems: [],
-    });
+    setShopData(emptyShopData);
   };
 
   // 묶음 항목 렌더링 함수 (과금 효율과 동일한 UI 구조)
   const renderBundleItem = (
-    section: 'ticketItems' | 'refiningItems' | 'silverItems',
+    section: SectionKey,
     bundleItem: BundleItem,
     itemIndex: number
   ) => {
@@ -1485,7 +1469,7 @@ export default function BloodstoneShopClient({
             value={bundleItem.bloodstoneCost || ''}
             onChange={(e) => updateBundleItem(section, itemIndex, 'bloodstoneCost', parseFloat(e.target.value) || 0)}
             className="w-32 px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
-            placeholder="혈석 비용"
+            placeholder="교환 비용"
             min="0"
             step="1"
           />
@@ -1757,20 +1741,19 @@ export default function BloodstoneShopClient({
       <div>
         <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-3xl font-semibold tracking-tight">길드 혈석 상점 교환 효율</h1>
-            <FavoriteButton title="혈석 상점 교환" />
+            <h1 className="text-3xl font-semibold tracking-tight">싱글 상점 교환 효율</h1>
+            <FavoriteButton title="싱글 상점 교환" />
           </div>
           {allowShopSave && (
             <div className="flex gap-2">
               <button
-                onClick={handleNewShop}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
-                disabled={isLoading}
-              >
-                새로 만들기
-              </button>
-              <button
-                onClick={() => setShowSaveModal(true)}
+                onClick={() => {
+                  const name = selectedShopId
+                    ? savedShops.find((s) => s.id === selectedShopId)?.shop_name ?? ''
+                    : (savedShops[0]?.shop_name ?? '');
+                  setSaveShopName(name);
+                  setShowSaveModal(true);
+                }}
                 className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
                 disabled={isLoading}
               >
@@ -1821,269 +1804,77 @@ export default function BloodstoneShopClient({
           </div>
         )}
 
-        {/* 저장된 상점 목록 */}
-        {allowShopSave && savedShops.length > 0 && (
-          <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">저장된 상점</h2>
-              <button
-                onClick={refreshSavedShops}
-                className="px-3 py-1 text-sm bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors disabled:opacity-50"
-                disabled={isLoading}
-              >
-                새로고침
-              </button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {savedShops.map((shop) => {
-                const isSelected = selectedShopId === shop.id;
-                return (
-                  <div 
-                    key={shop.id} 
-                    className={`bg-gray-700/50 rounded-lg p-4 border transition-colors ${
-                      isSelected 
-                        ? 'border-blue-500 bg-blue-900/20 ring-2 ring-blue-500/50' 
-                        : 'border-gray-600 hover:border-gray-500'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div 
-                        onClick={() => handleLoadShop(shop.id)}
-                        className="flex-1 cursor-pointer"
-                      >
-                        <div className={`font-medium ${isSelected ? 'text-blue-300' : 'text-white'}`}>
-                          {shop.shop_name}
-                          {isSelected && (
-                            <span className="ml-2 text-xs text-blue-400">✓ 선택됨</span>
-                          )}
-                        </div>
-                        <div className="text-xs text-gray-400 mt-1">
-                          {new Date(shop.created_at).toLocaleDateString('ko-KR')}
-                        </div>
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteShop(shop.id);
-                        }}
-                        className="ml-2 px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors disabled:opacity-50"
-                        disabled={isLoading}
-                      >
-                        삭제
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-        
         {/* 요약 카드 */}
         <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-10">※ 혈석 100개당 50골드 미만 항목들은 교환 비추</h2>
           <div className="space-y-6">
-            {/* 입장권 및 보조 재료 */}
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-3">입장권 및 보조 재료</h3>
-              {sectionDetails.ticketItems.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="border-b border-gray-700">
-                        <th className="text-left py-2 px-4 text-sm font-semibold text-gray-300">묶음 항목명 × 수량</th>
-                        <th className="text-right py-2 px-4 text-sm font-semibold text-gray-300">가치</th>
-                        <th className="text-right py-2 px-4 text-sm font-semibold text-gray-300">혈석 비용</th>
-                        <th className="text-right py-2 px-4 text-sm font-semibold text-gray-300">혈석 100개당 가치</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sectionDetails.ticketItems.map((item, index) => {
-                        const isLowValue = item.valuePerBloodstone < 50;
-                        return (
-                          <tr key={index} className={`border-b border-gray-700/50 hover:bg-gray-900/30 ${isLowValue ? 'opacity-60' : ''}`}>
-                            <td className="py-2 px-4 text-sm text-gray-300">
-                              <div className="flex items-center gap-2">
-                                <span>{item.itemName} × {item.quantity}</span>
-                                {item.rank && (
-                                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-yellow-500 text-yellow-900 text-xs font-bold">
-                                    {item.rank}
-                                  </span>
-                                )}
-                                {isLowValue && (
-                                  <span className="text-red-400 font-bold text-lg">✕</span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="py-2 px-4 text-sm text-right text-yellow-300">
-                              {formatNumberWithSignificantDigits(item.value)} 골드
-                            </td>
-                            <td className="py-2 px-4 text-sm text-right text-blue-300">
-                              {formatNumberWithSignificantDigits(item.bloodstoneCost)}
-                            </td>
-                            <td className="py-2 px-4 text-sm text-right text-green-300">
-                              {item.bloodstoneCost > 0 ? formatNumberWithSignificantDigits(item.valuePerBloodstone) : '0'} 골드
-                            </td>
+            {SINGLE_SHOP_SECTIONS.map((sectionKey) => {
+              const items = sectionDetails[sectionKey] ?? [];
+              return (
+                <div key={sectionKey}>
+                  <h3 className="text-lg font-semibold text-white mb-3">{sectionKey}</h3>
+                  {items.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="border-b border-gray-700">
+                            <th className="text-left py-2 px-4 text-sm font-semibold text-gray-300">묶음 항목명 × 수량</th>
+                            <th className="text-right py-2 px-4 text-sm font-semibold text-gray-300">가치</th>
+                            <th className="text-right py-2 px-4 text-sm font-semibold text-gray-300">교환 비용</th>
+                            <th className="text-right py-2 px-4 text-sm font-semibold text-gray-300">교환 단위당 가치</th>
                           </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                        </thead>
+                        <tbody>
+                          {items.map((item, index) => (
+                              <tr key={index} className="border-b border-gray-700/50 hover:bg-gray-900/30">
+                                <td className="py-2 px-4 text-sm text-gray-300">
+                                  <div className="flex items-center gap-2">
+                                    <span>{item.itemName} × {item.quantity}</span>
+                                    {item.isRecommended && (
+                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-600/80 text-white">
+                                        추천
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="py-2 px-4 text-sm text-right text-yellow-300">
+                                  {formatNumberWithSignificantDigits(item.value)} 골드
+                                </td>
+                                <td className="py-2 px-4 text-sm text-right text-blue-300">
+                                  {formatNumberWithSignificantDigits(item.bloodstoneCost)}
+                                </td>
+                                <td className="py-2 px-4 text-sm text-right text-green-300">
+                                  {item.bloodstoneCost > 0 ? formatNumberWithSignificantDigits(item.valuePerBloodstone) : '0'} 골드
+                                </td>
+                              </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-500">묶음 항목이 없습니다.</div>
+                  )}
                 </div>
-              ) : (
-                <div className="text-sm text-gray-500">묶음 항목이 없습니다.</div>
-              )}
-            </div>
+              );
+            })}
+          </div>
+        </div>
 
-            {/* 재련 재료 */}
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-3">재련 재료</h3>
-              {sectionDetails.refiningItems.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="border-b border-gray-700">
-                        <th className="text-left py-2 px-4 text-sm font-semibold text-gray-300">묶음 항목명 × 수량</th>
-                        <th className="text-right py-2 px-4 text-sm font-semibold text-gray-300">가치</th>
-                        <th className="text-right py-2 px-4 text-sm font-semibold text-gray-300">혈석 비용</th>
-                        <th className="text-right py-2 px-4 text-sm font-semibold text-gray-300">혈석 100개당 가치</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sectionDetails.refiningItems.map((item, index) => {
-                        const isLowValue = item.valuePerBloodstone < 50;
-                        return (
-                          <tr key={index} className={`border-b border-gray-700/50 hover:bg-gray-900/30 ${isLowValue ? 'opacity-60' : ''}`}>
-                            <td className="py-2 px-4 text-sm text-gray-300">
-                              <div className="flex items-center gap-2">
-                                <span>{item.itemName} × {item.quantity}</span>
-                                {item.rank && (
-                                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-yellow-500 text-yellow-900 text-xs font-bold">
-                                    {item.rank}
-                                  </span>
-                                )}
-                                {isLowValue && (
-                                  <span className="text-red-400 font-bold text-lg">✕</span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="py-2 px-4 text-sm text-right text-yellow-300">
-                              {formatNumberWithSignificantDigits(item.value)} 골드
-                            </td>
-                            <td className="py-2 px-4 text-sm text-right text-blue-300">
-                              {formatNumberWithSignificantDigits(item.bloodstoneCost)}
-                            </td>
-                            <td className="py-2 px-4 text-sm text-right text-green-300">
-                              {item.bloodstoneCost > 0 ? formatNumberWithSignificantDigits(item.valuePerBloodstone) : '0'} 골드
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="text-sm text-gray-500">묶음 항목이 없습니다.</div>
-              )}
-            </div>
-
-            {/* 실링 */}
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-3">실링</h3>
-              {sectionDetails.silverItems.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="border-b border-gray-700">
-                        <th className="text-left py-2 px-4 text-sm font-semibold text-gray-300">묶음 항목명 × 수량</th>
-                        <th className="text-right py-2 px-4 text-sm font-semibold text-gray-300">가치</th>
-                        <th className="text-right py-2 px-4 text-sm font-semibold text-gray-300">혈석 비용</th>
-                        <th className="text-right py-2 px-4 text-sm font-semibold text-gray-300">혈석 100개당 가치</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sectionDetails.silverItems.map((item, index) => {
-                        const isLowValue = item.valuePerBloodstone < 50;
-                        return (
-                          <tr key={index} className={`border-b border-gray-700/50 hover:bg-gray-900/30 ${isLowValue ? 'opacity-60' : ''}`}>
-                            <td className="py-2 px-4 text-sm text-gray-300">
-                              <div className="flex items-center gap-2">
-                                <span>{item.itemName} × {item.quantity}</span>
-                                {item.rank && (
-                                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-yellow-500 text-yellow-900 text-xs font-bold">
-                                    {item.rank}
-                                  </span>
-                                )}
-                                {isLowValue && (
-                                  <span className="text-red-400 font-bold text-lg">✕</span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="py-2 px-4 text-sm text-right text-yellow-300">
-                              {formatNumberWithSignificantDigits(item.value)} 골드
-                            </td>
-                            <td className="py-2 px-4 text-sm text-right text-blue-300">
-                              {formatNumberWithSignificantDigits(item.bloodstoneCost)}
-                            </td>
-                            <td className="py-2 px-4 text-sm text-right text-green-300">
-                              {item.bloodstoneCost > 0 ? formatNumberWithSignificantDigits(item.valuePerBloodstone) : '0'} 골드
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="text-sm text-gray-500">묶음 항목이 없습니다.</div>
-              )}
+        {/* 카테고리별 편집 */}
+        {SINGLE_SHOP_SECTIONS.map((sectionKey) => (
+          <div key={sectionKey} className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
+            <h2 className="text-2xl font-semibold mb-4">{sectionKey}</h2>
+            <div className="space-y-4">
+              {(shopData[sectionKey] ?? []).map((item, index) => renderBundleItem(sectionKey, item, index))}
+              <button
+                onClick={() => addBundleItem(sectionKey)}
+                className="w-full mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                묶음 항목 추가
+              </button>
             </div>
           </div>
-        </div>
-
-        {/* 입장권 및 보조 재료 */}
-        <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
-          <h2 className="text-2xl font-semibold mb-4">입장권 및 보조 재료</h2>
-          <div className="space-y-4">
-            {shopData.ticketItems.map((item, index) => renderBundleItem('ticketItems', item, index))}
-            <button
-              onClick={() => addBundleItem('ticketItems')}
-              className="w-full mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-            >
-              묶음 항목 추가
-            </button>
-          </div>
-        </div>
-
-        {/* 재련 재료 */}
-        <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
-          <h2 className="text-2xl font-semibold mb-4">재련 재료</h2>
-          <div className="space-y-4">
-            {shopData.refiningItems.map((item, index) => renderBundleItem('refiningItems', item, index))}
-            <button
-              onClick={() => addBundleItem('refiningItems')}
-              className="w-full mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-            >
-              묶음 항목 추가
-            </button>
-          </div>
-        </div>
-
-        {/* 실링 */}
-        <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
-          <h2 className="text-2xl font-semibold mb-4">실링</h2>
-          <div className="space-y-4">
-            {shopData.silverItems.map((item, index) => renderBundleItem('silverItems', item, index))}
-            <button
-              onClick={() => addBundleItem('silverItems')}
-              className="w-full mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-            >
-              묶음 항목 추가
-            </button>
-          </div>
-        </div>
+        ))}
       </div>
     </div>
   );
 }
-

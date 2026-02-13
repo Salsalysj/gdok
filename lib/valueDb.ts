@@ -10,6 +10,7 @@ const ETC_LIST_FILE = path.join(process.cwd(), 'etc_list.csv');
 const RATES_FILE = path.join(process.cwd(), 'data', 'crystal-gold-rates.json');
 const CSV_REWARDS_FILE = path.join(process.cwd(), 'data', 'csv-rewards.json');
 const VALUE_DB_EXPLANATION_FILE = path.join(process.cwd(), 'value-db-explanation.csv');
+const CRAFT_MATERIAL_EXCHANGES_JSON = path.join(process.cwd(), 'data', 'craft-material-exchanges.json');
 
 type EtcListItem = {
   crystal: number | null;
@@ -97,6 +98,142 @@ async function getLatestCrystalGoldRate(): Promise<number | null> {
   } catch {
     return null;
   }
+}
+
+/**
+ * craft-material-exchanges.json을 읽어 각 제작 재료의 단가를 계산
+ * 각 재료의 교환 효율(가치/교환비용)이 가장 높은 항목 기준으로 계산
+ */
+async function calculateCraftMaterialPrices(
+  etcListDataObj: Record<string, EtcListItem>,
+  marketPriceMap: Record<string, number>,
+  crystalGoldRate: number | null
+): Promise<Record<string, ValueDbEntry>> {
+  const result: Record<string, ValueDbEntry> = {};
+  
+  try {
+    const raw = await fs.readFile(CRAFT_MATERIAL_EXCHANGES_JSON, 'utf-8');
+    const list = JSON.parse(raw);
+    
+    if (!Array.isArray(list) || list.length === 0) {
+      return result;
+    }
+    
+    // 가장 최근 저장된 데이터 사용
+    const latestData = list[0];
+    const shopData = latestData.shop_data;
+    
+    if (!shopData) {
+      return result;
+    }
+    
+    const CRAFT_MATERIAL_SECTIONS = [
+      '베히모스의 비늘',
+      '알키오네의 눈',
+      '업화의 쐐기돌',
+      '카르마의 잔영',
+      '낙뢰의 뿔',
+      '우뢰의 뇌옥',
+      '고통의 가시',
+    ];
+    
+    // 컴포넌트 가격 계산 헬퍼 (간단한 버전 - etcList와 market만 사용)
+    const getComponentPrice = (itemName: string): number | null => {
+      // etc_list.csv에서 찾기
+      const etc = etcListDataObj[itemName];
+      if (etc) {
+        if (etc.crystal != null && crystalGoldRate != null && crystalGoldRate > 0) {
+          return (etc.crystal * crystalGoldRate) / 100;
+        }
+        if (etc.gold != null) return etc.gold;
+      }
+      
+      // 시장 가격에서 찾기
+      const market = marketPriceMap[itemName];
+      if (market != null && market > 0) return market;
+      
+      return null;
+    };
+    
+    for (const materialName of CRAFT_MATERIAL_SECTIONS) {
+      const bundles = shopData[materialName];
+      
+      if (!Array.isArray(bundles) || bundles.length === 0) {
+        // 데이터가 없으면 null 값으로 추가
+        result[materialName] = {
+          itemName: materialName,
+          unitType: '골드',
+          unitValue: null,
+          note: '교환 데이터 없음',
+        };
+        continue;
+      }
+      
+      let bestValuePerCost = 0;
+      
+      for (const bundle of bundles) {
+        const components = bundle.components || [];
+        const bloodstoneCost = bundle.bloodstoneCost || 0;
+        
+        if (bloodstoneCost <= 0) continue;
+        
+        // 번들 가치 계산
+        let bundleValue = 0;
+        let allPricesAvailable = true;
+        
+        for (const comp of components) {
+          const price = getComponentPrice(comp.itemName);
+          if (price == null) {
+            allPricesAvailable = false;
+            break;
+          }
+          
+          const quantity = comp.quantity || 0;
+          
+          // 타입에 따라 계산
+          if (bundle.itemType === '확정') {
+            bundleValue += price * quantity;
+          } else if (bundle.itemType === '확률') {
+            const probability = comp.probability || 0;
+            bundleValue += price * quantity * probability;
+          } else if (bundle.itemType === '선택') {
+            // 선택형은 가장 비싼 것을 선택한다고 가정
+            bundleValue = Math.max(bundleValue, price * quantity);
+          }
+        }
+        
+        if (!allPricesAvailable) continue;
+        
+        // 교환 비용당 가치 계산
+        const valuePerCost = bundleValue / bloodstoneCost;
+        
+        if (valuePerCost > bestValuePerCost) {
+          bestValuePerCost = valuePerCost;
+        }
+      }
+      
+      if (bestValuePerCost > 0) {
+        result[materialName] = {
+          itemName: materialName,
+          unitType: '골드',
+          unitValue: bestValuePerCost,
+          note: '제작 재료 교환 최고 효율 기준',
+        };
+      } else {
+        result[materialName] = {
+          itemName: materialName,
+          unitType: '골드',
+          unitValue: null,
+          note: '가격 정보 부족',
+        };
+      }
+    }
+  } catch (e) {
+    // 파일이 없거나 읽기 실패 시 빈 객체 반환
+    console.log('[valueDb] craft-material-exchanges.json 읽기 실패 또는 파일 없음');
+  }
+  
+  return result;
 }
 
 type MarketItem = { displayName?: string; Name?: string; CurrentMinPrice?: number; RecentPrice?: number; Grade?: string; BundleCount?: number };
@@ -416,6 +553,14 @@ async function buildManualOverrides(
     '고결한 혼돈의 돌(방어구) (품질 90기준)': { itemName: '고결한 혼돈의 돌(방어구) (품질 90기준)', unitType: '골드', unitValue: 44118 },
     '고결한 혼돈의 돌(방어구) (품질 95기준)': { itemName: '고결한 혼돈의 돌(방어구) (품질 95기준)', unitType: '골드', unitValue: 100000 },
   };
+  
+  // 제작 재료 교환 가격 계산 및 추가
+  const craftMaterialPrices = await calculateCraftMaterialPrices(
+    etcListDataObj,
+    marketPriceMap,
+    crystalGoldRate
+  );
+  Object.assign(base, craftMaterialPrices);
 
   // 크리스탈: 골드 환율을 사용하여 골드 단위로 변환
   // crystalGoldRate는 100크리스탈당 골드이므로, 1크리스탈당 골드는 crystalGoldRate / 100
@@ -984,6 +1129,8 @@ export type ValueDbData = {
   kurzanStageRewards: Record<string, { itemName: string; quantity: number; price?: number | null; cubeStageRewards?: { itemName: string; quantity: number; price?: number | null }[] }[]>; // 쿠르잔 단계별 원본 보상 데이터
   entries: ValueDbEntry[];
   entryMap: Record<string, ValueDbEntry>;
+  /** 제작 재료 교환 최고 효율 재계산용 (가격 조정 스위치 반영) */
+  craftMaterialShopData: CraftMaterialShopData | null;
   hellStages: Stage[]; // 지옥3 stages (기존 호환성 유지)
   hell1Stages: Stage[];
   hell2Stages: Stage[];
@@ -994,6 +1141,18 @@ export type ValueDbData = {
   // 컨텐츠 보상에서 사용하는 환율 스냅샷과 동일하게 맞추기 위한 필드
   rates: { exchange: number | null; discord: number | null };
 };
+
+/** 제작 재료 교환 JSON의 shop_data 형식 (클라이언트 가격 조정 반영용) */
+export type CraftMaterialShopData = Record<
+  string,
+  Array<{
+    itemName?: string;
+    itemType?: '확정' | '확률' | '선택';
+    quantity?: number;
+    components?: Array<{ itemName: string; quantity?: number; probability?: number; selected?: boolean }>;
+    bloodstoneCost?: number;
+  }>
+>;
 
 async function getExplanationMap(): Promise<Record<string, string>> {
   try {
@@ -1172,7 +1331,7 @@ export async function getValueDbData(): Promise<ValueDbData> {
     .sort((a, b) => {
       // 카테고리 정의
       const currencyItems = ['크리스탈', '실링', '페온', '1레벨 보석 (4T)', '8레벨 보석 (4T)'];
-      const growthItems = ['운명의 파괴석', '운명의 수호석', '운명의 돌파석', '운명의 파편 주머니(소)', '운명의 파편 주머니(중)', '운명의 파편 주머니(대)', '운명의 파편 1개당', '아비도스 융화 재료', '용암의 숨결', '빙하의 숨결', '유물 각인서 선택', '유물 각인서 랜덤', '젬 가공 초기화권'];
+      const growthItems = ['운명의 파괴석', '운명의 수호석', '운명의 돌파석', '운명의 파편 주머니(소)', '운명의 파편 주머니(중)', '운명의 파편 주머니(대)', '운명의 파편 1개당', '아비도스 융화 재료', '용암의 숨결', '빙하의 숨결', '베히모스의 비늘', '알키오네의 눈', '업화의 쐐기돌', '카르마의 잔영', '낙뢰의 뿔', '우뢰의 뇌옥', '고통의 가시', '유물 각인서 선택', '유물 각인서 랜덤', '젬 가공 초기화권'];
       const cardItems = ['전설 카드팩 (확률)', '전설~고급 카드팩', '전설~영웅 카드팩', '전설~희귀 카드팩', '전체 카드팩', '전설 카드 선택팩', '메넬리크의 서', '영겁의 정수', '영혼의 잎사귀', '태초의 조각', '카드경험치 1당'];
 
       // 카테고리 인덱스 (화폐: 0, 성장재료: 1, 카드: 2, 기타: 3)
@@ -1251,6 +1410,18 @@ export async function getValueDbData(): Promise<ValueDbData> {
     entriesWithIcons.map((e) => [e.itemName, e])
   );
 
+  // 제작 재료 교환 JSON (가격 조정 스위치 반영용 클라이언트 재계산에 사용)
+  let craftMaterialShopData: CraftMaterialShopData | null = null;
+  try {
+    const raw = await fs.readFile(CRAFT_MATERIAL_EXCHANGES_JSON, 'utf-8');
+    const list = JSON.parse(raw);
+    if (Array.isArray(list) && list.length > 0 && list[0].shop_data) {
+      craftMaterialShopData = list[0].shop_data as CraftMaterialShopData;
+    }
+  } catch {
+    // 파일 없거나 파싱 실패 시 null
+  }
+
   return {
     itemList: combinedItemList,
     etcListDataObj,
@@ -1264,6 +1435,7 @@ export async function getValueDbData(): Promise<ValueDbData> {
     kurzanStageRewards,
     entries: entriesWithIcons,
     entryMap: entryMapWithIcons,
+    craftMaterialShopData,
     hellStages: hell3Stages, // 기존 호환성을 위해 지옥3 stages 유지
     hell1Stages,
     hell2Stages,
