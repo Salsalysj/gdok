@@ -202,7 +202,7 @@ export default function ValueDBSidebar() {
           </div>
           <button
             onClick={closeSidebar}
-            className="text-gray-400 hover:text-white p-1 rounded hover:bg-gray-800 flex-shrink-0"
+            className="lg:hidden text-gray-400 hover:text-white p-1 rounded hover:bg-gray-800 flex-shrink-0"
             aria-label="닫기"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -436,20 +436,21 @@ export default function ValueDBSidebar() {
       {/* 가치 계산 DB 섹션 */}
       <div className="p-3 border-b border-gray-800 relative">
         <h2 className="text-lg font-bold text-white mb-2">가치 계산 DB</h2>
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          onFocus={() => setIsSearchFocused(true)}
-          onBlur={() => {
-            // 약간의 지연을 두어 드롭다운 클릭 가능하게 함
-            setTimeout(() => setIsSearchFocused(false), 200);
-          }}
-          placeholder="아이템명 검색..."
-          className="w-full px-3 py-2 text-sm bg-gray-800 border border-gray-700 rounded text-white placeholder-gray-400 focus:outline-none focus:border-gray-600"
-        />
-        {/* 검색 결과 오버레이 드롭다운 (검색어가 있거나 포커스 상태일 때 표시) */}
-        {(searchQuery.trim() || isSearchFocused) && (
+        <div className="hidden lg:block">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onFocus={() => setIsSearchFocused(true)}
+            onBlur={() => {
+              // 약간의 지연을 두어 드롭다운 클릭 가능하게 함
+              setTimeout(() => setIsSearchFocused(false), 200);
+            }}
+            placeholder="아이템명 검색..."
+            className="w-full px-3 py-2 text-sm bg-gray-800 border border-gray-700 rounded text-white placeholder-gray-400 focus:outline-none focus:border-gray-600"
+          />
+          {/* 검색 결과 오버레이 드롭다운 (검색어가 있거나 포커스 상태일 때 표시) */}
+          {(searchQuery.trim() || isSearchFocused) && (
           <div 
             className="absolute top-full left-0 right-0 mt-1 bg-gray-900 border border-gray-700 rounded shadow-xl z-50 max-h-[400px] overflow-y-auto"
             onMouseDown={(e) => {
@@ -635,7 +636,8 @@ export default function ValueDBSidebar() {
           </table>
         </div>
       </div>
-        )}
+          )}
+        </div>
       </div>
       
       {/* 검색어가 없고 포커스되지 않았을 때 표시할 영역 */}

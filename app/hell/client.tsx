@@ -10,6 +10,7 @@ import type { RefiningStage } from '../value-db/page';
 import type { MarketItemInfo } from '../refining-simulation/page';
 import { calculateOptimalStrategy } from '../refining-simulation/client';
 import FavoriteButton from '../components/FavoriteButton';
+import GoldUnit from '../components/GoldUnit';
 
 type RewardItem = {
   itemName: string;
@@ -54,6 +55,25 @@ export default function HellClient({
   const [activeHellType, setActiveHellType] = useState<string>('지옥1');
   const [activeHellStage, setActiveHellStage] = useState<string>('0단계');
   const [activeTab, setActiveTab] = useState<'보상' | '교환효율'>('보상');
+  /** 모바일 전용 툴팁: 터치 시 즉시 표시 */
+  const [mobileTooltipItemName, setMobileTooltipItemName] = useState<string | null>(null);
+  
+  const showMobileTooltip = (itemName: string) => {
+    setMobileTooltipItemName(itemName);
+  };
+  
+  useEffect(() => {
+    if (!mobileTooltipItemName) return;
+    const t = setTimeout(() => setMobileTooltipItemName(null), 2000);
+    const onPointer = () => setMobileTooltipItemName(null);
+    window.addEventListener('click', onPointer);
+    window.addEventListener('touchstart', onPointer, { passive: true });
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('click', onPointer);
+      window.removeEventListener('touchstart', onPointer);
+    };
+  }, [mobileTooltipItemName]);
   
   // 지옥3 카테고리 펼치기 상태
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
@@ -418,13 +438,20 @@ export default function HellClient({
   
   return (
     <div className="min-h-screen bg-gray-950 p-4 md:p-6 lg:p-8">
+      {mobileTooltipItemName && (
+        <div className="md:hidden fixed bottom-20 left-4 right-4 z-50 px-3 py-2 rounded-lg bg-gray-800 border border-gray-600 text-white text-sm text-center shadow-lg">
+          {mobileTooltipItemName}
+        </div>
+      )}
       <div>
         <div className="mb-6 md:mb-10">
           <div className="flex items-center gap-3 flex-wrap mb-2">
-            <h1 className="text-3xl font-semibold tracking-tight text-white">지옥 보상 계산기 (낙원 시즌2 반영)</h1>
-            <FavoriteButton title="지옥 보상" />
+            <h1 className="hidden md:block text-3xl font-semibold tracking-tight text-white">지옥 보상 계산기 (낙원 시즌2 반영)</h1>
+            <div className="hidden md:block">
+              <FavoriteButton title="지옥 보상" />
+            </div>
           </div>
-          <p className="text-base text-gray-400">지옥 보상과 골드 가치를 확인하세요.</p>
+          <p className="hidden md:block text-base text-gray-400">지옥 보상과 골드 가치를 확인하세요.</p>
         </div>
         
         {/* 탭 선택 UI */}
@@ -546,18 +573,25 @@ export default function HellClient({
             hellKeyValues['희귀 지옥 열쇠 I'] = calculateHellKeyValue('지옥1', '5단계');
           }
           
+          const getKeyStageLabel = (keyName: string) => {
+            if (keyName.includes(' III')) return 'III단계';
+            if (keyName.includes(' II')) return 'II단계';
+            if (keyName.includes(' I')) return 'I단계';
+            return '';
+          };
+          
           return (
             <div className="mb-6">
-              <h2 className="text-2xl font-semibold text-white mb-4">지옥 열쇠 교환 (낙원 상점) 효율표</h2>
+              <h2 className="hidden md:block text-2xl font-semibold text-white mb-4">지옥 열쇠 교환 (낙원 상점) 효율표</h2>
               <div className="bg-gray-900/50 rounded-lg border border-gray-700 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
+                <div className="overflow-x-hidden md:overflow-x-auto">
+                  <table className="w-full text-xs md:text-sm table-fixed">
                     <thead>
                       <tr className="bg-gray-800/50 border-b border-gray-700">
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-300">교환</th>
-                        <th className="px-4 py-3 text-right text-sm font-semibold text-gray-300">열쇠 가치</th>
-                        <th className="px-4 py-3 text-right text-sm font-semibold text-gray-300">입장권 총 가치</th>
-                        <th className="px-4 py-3 text-right text-sm font-semibold text-gray-300">효율</th>
+                        <th className="px-1 py-2 md:px-4 md:py-3 text-left font-semibold text-gray-300 w-1/2 md:w-auto">교환</th>
+                        <th className="px-1 py-2 md:px-4 md:py-3 text-right font-semibold text-gray-300">열쇠</th>
+                        <th className="px-1 py-2 md:px-4 md:py-3 text-right font-semibold text-gray-300">입장권</th>
+                        <th className="px-1 py-2 md:px-4 md:py-3 text-right font-semibold text-gray-300">효율</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -631,10 +665,10 @@ export default function HellClient({
                           
                           if (item.efficiency != null) {
                             if (item.efficiency > 0) {
-                              efficiencyText = `+${formatNumberWithSignificantDigits(item.efficiency)}% 이득`;
+                              efficiencyText = `+${formatNumberWithSignificantDigits(item.efficiency)}%`;
                               efficiencyClass = 'text-green-400';
                             } else if (item.efficiency < 0) {
-                              efficiencyText = `${formatNumberWithSignificantDigits(item.efficiency)}% 손해`;
+                              efficiencyText = `${formatNumberWithSignificantDigits(item.efficiency)}%`;
                               efficiencyClass = 'text-red-400';
                             } else {
                               efficiencyText = '0%';
@@ -652,35 +686,41 @@ export default function HellClient({
                                 </tr>
                               )}
                               <tr key={item.idx} className={`border-b border-gray-700/50 hover:bg-gray-800/30 ${getStageBgColor(item.cubeStage)}`}>
-                                <td className="px-4 py-3 text-sm text-gray-300">
-                                  <div className="flex items-center gap-2">
-                                    <ItemIcon name={item.keyName} size="sm" className="flex-shrink-0" />
-                                    <span>{item.keyName}</span>
-                                    <span className="text-gray-500">↔</span>
-                                    <ItemIcon name={`에브니 큐브 입장권 (${item.cubeStage})`} size="sm" className="flex-shrink-0" />
-                                    <span>에브니 큐브 입장권 ({item.cubeStage}) × {item.cubeCount}개</span>
+                                <td className="px-1 py-2 md:px-4 md:py-3 text-gray-300 min-w-0">
+                                  <div className="flex items-center gap-1 md:gap-2 flex-wrap">
+                                    <div className="flex flex-col items-center md:flex-row md:items-center">
+                                      <ItemIcon name={item.keyName} size="sm" className="flex-shrink-0" />
+                                      <span className="text-[10px] md:hidden mt-0.5">{getKeyStageLabel(item.keyName)}</span>
+                                      <span className="hidden md:inline">{item.keyName}</span>
+                                    </div>
+                                    <span className="text-gray-500 hidden md:inline">↔</span>
+                                    <div className="flex flex-col items-center md:flex-row md:items-center md:gap-2">
+                                      <ItemIcon name={`에브니 큐브 입장권 (${item.cubeStage})`} size="sm" className="flex-shrink-0" />
+                                      <span className="hidden md:inline">에브니 큐브 입장권 ({item.cubeStage}) × {item.cubeCount}개</span>
+                                      <span className="md:hidden text-[10px]">{item.cubeStage}×{item.cubeCount}</span>
+                                    </div>
                                     {isRecommended && (
-                                      <span className="ml-2 px-2 py-0.5 text-xs font-semibold bg-green-600/20 text-green-400 border border-green-600/40 rounded">
-                                        교환 추천
+                                      <span className="ml-1 md:ml-2 px-1.5 md:px-2 py-0.5 text-[10px] md:text-xs font-semibold bg-green-600/20 text-green-400 border border-green-600/40 rounded whitespace-nowrap">
+                                        추천
                                       </span>
                                     )}
                                   </div>
                                 </td>
-                                <td className="px-4 py-3 text-right text-sm text-gray-300">
+                                <td className="px-1 py-2 md:px-4 md:py-3 text-right text-gray-300">
                                   {item.keyValue != null && item.keyValue > 0 ? (
-                                    <span>{formatNumberWithSignificantDigits(item.keyValue)}골드</span>
+                                    <span className="whitespace-nowrap">{formatNumberWithSignificantDigits(item.keyValue)}<GoldUnit /></span>
                                   ) : (
                                     <span className="text-gray-500">-</span>
                                   )}
                                 </td>
-                                <td className="px-4 py-3 text-right text-sm text-gray-300">
+                                <td className="px-1 py-2 md:px-4 md:py-3 text-right text-gray-300">
                                   {item.cubeTotalValue != null && item.cubeTotalValue > 0 ? (
-                                    <span>{formatNumberWithSignificantDigits(item.cubeTotalValue)}골드</span>
+                                    <span className="whitespace-nowrap">{formatNumberWithSignificantDigits(item.cubeTotalValue)}<GoldUnit /></span>
                                   ) : (
                                     <span className="text-gray-500">-</span>
                                   )}
                                 </td>
-                                <td className={`px-4 py-3 text-right text-sm font-semibold ${efficiencyClass}`}>
+                                <td className={`px-1 py-2 md:px-4 md:py-3 text-right font-semibold ${efficiencyClass}`}>
                                   {efficiencyText}
                                 </td>
                               </tr>
@@ -702,7 +742,29 @@ export default function HellClient({
         {/* 지옥 선택 UI */}
         <div className="mb-6 space-y-4">
           {/* 지옥1, 지옥2, 지옥3 선택 */}
-          <div className="flex gap-2">
+          <select
+            className="md:hidden w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white text-sm"
+            value={activeHellType}
+            onChange={(e) => {
+              const hellType = e.target.value;
+              setActiveHellType(hellType);
+              if (data) {
+                const stages = data[hellType];
+                if (stages && stages.length > 0) {
+                  setActiveHellStage(stages[0].stage);
+                } else {
+                  setActiveHellStage('0단계');
+                }
+              } else {
+                setActiveHellStage('0단계');
+              }
+            }}
+          >
+            {hellTypes.map(hellType => (
+              <option key={hellType} value={hellType}>{hellType}</option>
+            ))}
+          </select>
+          <div className="hidden md:flex gap-2">
             {hellTypes.map(hellType => (
               <button
                 key={hellType}
@@ -734,7 +796,22 @@ export default function HellClient({
           {/* 단계 선택 (0단계 ~ 10단계) */}
           <div>
             <label className="block text-sm text-gray-400 mb-2">단계 선택</label>
-            <div className="flex flex-wrap gap-2">
+            <select
+              className="md:hidden w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white text-sm"
+              value={activeHellStage}
+              onChange={(e) => setActiveHellStage(e.target.value)}
+            >
+              {Array.from({ length: 11 }, (_, i) => {
+                const stageName = `${i}단계`;
+                const hasData = data && data[activeHellType]?.some(s => s.stage === stageName);
+                return (
+                  <option key={stageName} value={stageName} disabled={!hasData}>
+                    {stageName}{!hasData ? ' (데이터 없음)' : ''}
+                  </option>
+                );
+              })}
+            </select>
+            <div className="hidden md:flex flex-wrap gap-2">
               {Array.from({ length: 11 }, (_, i) => {
                 const stageName = `${i}단계`;
                 const isActive = activeHellStage === stageName;
@@ -879,11 +956,11 @@ export default function HellClient({
             
             return (
               <div key={idx} className="bg-gray-800/50 rounded-lg p-6 border border-gray-700">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-2xl font-bold text-white">단계 {stage.stage}</h3>
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+                  <h3 className="text-lg md:text-2xl font-bold text-white">단계 {stage.stage}</h3>
                   {isSpecialStage && hellExpectedValue !== null ? (
-                    <div className="text-right">
-                      <div className="text-sm text-gray-400 mb-2">
+                    <div className="text-left md:text-right">
+                      <div className="text-sm text-gray-400 mb-2 hidden md:block">
                         {isNarak ? (
                           <div className="text-xs text-gray-500">
                             모든 카테고리 중 3개 랜덤 선택 → 최고값 선택
@@ -900,8 +977,8 @@ export default function HellClient({
                         )}
                       </div>
                       <div className="text-sm text-gray-400">기대값 {isNarak ? '' : '(기본 + 선택)'}</div>
-                      <div className="text-3xl font-bold text-yellow-400">
-                        {formatNumberWithSignificantDigits(hellExpectedValue)}골드
+                      <div className="text-xl md:text-3xl font-bold text-yellow-400">
+                        <span className="whitespace-nowrap">{formatNumberWithSignificantDigits(hellExpectedValue)}<GoldUnit /></span>
                       </div>
                     </div>
                   ) : null}
@@ -980,10 +1057,10 @@ export default function HellClient({
                             <div className="text-right">
                               <div className="text-sm text-gray-400">카테고리 합계</div>
                               <div className="text-base font-semibold text-yellow-400">
-                                일반: {formatNumberWithSignificantDigits(normalTotal)}골드
+                                <span className="whitespace-nowrap">일반: {formatNumberWithSignificantDigits(normalTotal)}<GoldUnit /></span>
                               </div>
                               <div className="text-xs text-purple-300 mt-0.5">
-                                풍요: {formatNumberWithSignificantDigits(abundanceTotal)}골드
+                                <span className="whitespace-nowrap">풍요: {formatNumberWithSignificantDigits(abundanceTotal)}<GoldUnit /></span>
                               </div>
                             </div>
                           </button>
@@ -1028,18 +1105,23 @@ export default function HellClient({
                                               className="flex items-center justify-between gap-2 py-1.5 pl-3 border-b border-gray-700/50 last:border-0"
                                             >
                                               <span className="text-gray-300 text-sm flex items-center gap-2 min-w-0">
-                                                <ItemIcon name={reward.itemName} size="sm" className="flex-shrink-0" />
-                                                {reward.itemName} {quantityStr}개
+                                                <button
+                                                  type="button"
+                                                  className="touch-manipulation flex-shrink-0"
+                                                  onClick={(e) => { e.stopPropagation(); showMobileTooltip(reward.itemName); }}
+                                                  onTouchEnd={(e) => { e.preventDefault(); showMobileTooltip(reward.itemName); }}
+                                                >
+                                                  <ItemIcon name={reward.itemName} size="sm" />
+                                                </button>
+                                                <span className="hidden md:inline">{reward.itemName} {quantityStr}개</span>
+                                                <span className="md:hidden">{quantityStr}</span>
                                                 <span className={`ml-1 px-1.5 py-0.5 rounded text-[10px] ${tradeInfo.badgeClass}`}>{tradeInfo.badgeText}</span>
-                                                <span className="ml-1 px-1.5 py-0.5 rounded text-[10px] bg-blue-900/30 text-blue-300 border border-blue-600">
-                                                  기본 보상
-                                                </span>
                                               </span>
                                               <span className="text-gray-400 text-sm flex-shrink-0">
                                                 {adjustedPrice !== null && adjustedPrice > 0 ? (
-                                                  `(${itemTotalStr}골드)`
+                                                  <span className="whitespace-nowrap">({itemTotalStr}<GoldUnit />)</span>
                                                 ) : adjustedPrice === 0 ? (
-                                                  <span className="text-gray-500 text-xs">0골드</span>
+                                                  <span className="text-gray-500 text-xs whitespace-nowrap">0<GoldUnit /></span>
                                                 ) : (
                                                   <span className="text-gray-500 text-xs">가격 없음</span>
                                                 )}
@@ -1072,38 +1154,51 @@ export default function HellClient({
                                       key={rewardIdx}
                                       className={`rounded-lg border p-3 ${isChosen ? 'bg-amber-900/20 border-amber-600/60' : 'bg-gray-900/50 border-gray-700'}`}
                                     >
-                                      <div className="flex items-center gap-2 mb-1">
-                                        <ItemIcon name={reward.itemName} size="sm" />
-                                        <span className={`font-medium ${tradeInfo.nameClass}`}>{reward.itemName}</span>
-                                        <span className={`px-1.5 py-0.5 rounded text-[10px] ${tradeInfo.badgeClass}`}>{tradeInfo.badgeText}</span>
-                                        {isChosen && (
-                                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-900/50 text-amber-300 border border-amber-600">
-                                            선택
-                                          </span>
-                                        )}
+                                      <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-2 mb-1">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                          <button
+                                            type="button"
+                                            className="touch-manipulation flex-shrink-0"
+                                            onClick={(e) => { e.stopPropagation(); showMobileTooltip(reward.itemName); }}
+                                            onTouchEnd={(e) => { e.preventDefault(); showMobileTooltip(reward.itemName); }}
+                                          >
+                                            <ItemIcon name={reward.itemName} size="sm" />
+                                          </button>
+                                          <span className={`font-medium ${tradeInfo.nameClass} hidden md:inline`}>{reward.itemName}</span>
+                                          <span className="md:hidden text-gray-400 text-sm">{quantityStr}</span>
+                                          <span className={`px-1.5 py-0.5 rounded text-[10px] ${tradeInfo.badgeClass}`}>{tradeInfo.badgeText}</span>
+                                          {isChosen && (
+                                            <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-900/50 text-amber-300 border border-amber-600">
+                                              선택
+                                            </span>
+                                          )}
+                                        </div>
+                                        <span className="md:hidden text-yellow-400 text-sm">
+                                          {adjustedPrice !== null && adjustedPrice > 0 ? <span className="whitespace-nowrap">{itemTotalStr}<GoldUnit /></span> : adjustedPrice === 0 ? <span className="whitespace-nowrap">0<GoldUnit /></span> : '가격 없음'}
+                                        </span>
                                       </div>
-                                      <div className="text-gray-400 text-sm mb-1">수량: {quantityStr}</div>
+                                      <div className="text-gray-400 text-sm mb-1 hidden md:block">수량: {quantityStr}</div>
                                       {reward.itemName === '어빌리티 스톤 키트' || reward.itemName.includes('어빌리티 스톤 키트') ? (
-                                        <div>
-                                          <div className="text-blue-400 text-xs mb-1">페온 9개 + 100골드</div>
+                                        <div className="hidden md:block">
+                                          <div className="text-blue-400 text-xs mb-1">페온 9개 + <span className="hidden md:inline">100골드</span><span className="md:hidden">100G</span></div>
                                           {adjustedPrice !== null && adjustedPrice > 0 ? (
-                                            <div className="text-yellow-400 text-sm">
-                                              {priceStr}골드 × {quantityStr} = {itemTotalStr}골드
+                                            <div className="text-yellow-400 text-sm whitespace-nowrap">
+                                              {priceStr}<GoldUnit /> × {quantityStr} = {itemTotalStr}<GoldUnit />
                                             </div>
                                           ) : adjustedPrice === 0 ? (
-                                            <div className="text-gray-500 text-xs">스위치로 인해 0골드로 처리됨</div>
+                                            <div className="text-gray-500 text-xs">스위치로 인해 <span className="hidden md:inline">0골드</span><span className="md:hidden">0G</span>로 처리됨</div>
                                           ) : (
                                             <div className="text-gray-500 text-xs">크리스탈 환율 정보 없음</div>
                                           )}
                                         </div>
                                       ) : adjustedPrice !== null && adjustedPrice > 0 ? (
-                                        <div className="text-yellow-400 text-sm">
+                                        <div className="text-yellow-400 text-sm hidden md:block">
                                           {priceStr}골드 × {quantityStr} = {itemTotalStr}골드
                                         </div>
                                       ) : adjustedPrice === 0 ? (
-                                        <div className="text-gray-500 text-xs">스위치로 인해 0골드로 처리됨</div>
+                                        <div className="text-gray-500 text-xs hidden md:block">스위치로 인해 0골드로 처리됨</div>
                                       ) : (
-                                        <div className="text-gray-500 text-xs">가격 정보 없음</div>
+                                        <div className="text-gray-500 text-xs hidden md:block">가격 정보 없음</div>
                                       )}
                                       
                                       {/* 상급재련 보조 선택 상자 구성품 표시 */}
@@ -1127,20 +1222,28 @@ export default function HellClient({
                                                       : 'bg-gray-800/50 border border-gray-600'
                                                   }`}
                                                 >
-                                                  <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-1.5">
-                                                      <ItemIcon name={component.itemName} size="sm" />
-                                                      <span className={isSelected ? 'text-yellow-400 font-semibold' : 'text-gray-300'}>
+                                                  <div className="flex items-center justify-between gap-1">
+                                                    <div className="flex items-center gap-1.5 min-w-0">
+                                                      <button
+                                                        type="button"
+                                                        className="touch-manipulation flex-shrink-0"
+                                                        onClick={(e) => { e.stopPropagation(); showMobileTooltip(component.itemName); }}
+                                                        onTouchEnd={(e) => { e.preventDefault(); showMobileTooltip(component.itemName); }}
+                                                      >
+                                                        <ItemIcon name={component.itemName} size="sm" />
+                                                      </button>
+                                                      <span className={`${isSelected ? 'text-yellow-400 font-semibold' : 'text-gray-300'} hidden md:inline`}>
                                                         {component.itemName}
                                                       </span>
+                                                      <span className="md:hidden">{component.quantity}</span>
                                                       {isSelected && (
                                                         <span className="px-1 py-0.5 rounded text-[9px] bg-yellow-900/50 text-yellow-300 border border-yellow-600">
                                                           선택
                                                         </span>
                                                       )}
                                                     </div>
-                                                    <div className={`text-right ${isSelected ? 'text-yellow-400' : 'text-gray-400'}`}>
-                                                      {componentPriceStr}골드 × {component.quantity} = {componentTotalStr}골드
+                                                    <div className={`text-right flex-shrink-0 ${isSelected ? 'text-yellow-400' : 'text-gray-400'}`}>
+                                                      <span className="hidden md:inline whitespace-nowrap">{componentPriceStr}골드 × {component.quantity} = </span><span className="whitespace-nowrap">{componentTotalStr}<GoldUnit /></span>
                                                     </div>
                                                   </div>
                                                 </div>
@@ -1182,20 +1285,31 @@ export default function HellClient({
                           key={rewardIdx}
                           className="bg-gray-900/50 rounded-lg border border-gray-700 p-4"
                         >
-                          <div className="flex items-center gap-3 mb-3">
-                            <ItemIcon name={reward.itemName} />
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <span className={`font-medium ${tradeInfo.nameClass}`}>{reward.itemName}</span>
-                                <span className={`px-1.5 py-0.5 rounded text-[10px] ${tradeInfo.badgeClass}`}>{tradeInfo.badgeText}</span>
-                              </div>
+                          <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 mb-3">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <button
+                                type="button"
+                                className="touch-manipulation flex-shrink-0"
+                                onClick={(e) => { e.stopPropagation(); showMobileTooltip(reward.itemName); }}
+                                onTouchEnd={(e) => { e.preventDefault(); showMobileTooltip(reward.itemName); }}
+                              >
+                                <ItemIcon name={reward.itemName} />
+                              </button>
+                              <span className={`font-medium ${tradeInfo.nameClass} hidden md:inline`}>{reward.itemName}</span>
+                              <span className="md:hidden text-gray-400 text-sm">{quantityStr}</span>
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] ${tradeInfo.badgeClass}`}>{tradeInfo.badgeText}</span>
+                              <span className="md:hidden text-yellow-400 text-sm ml-auto">
+                                {adjustedPrice !== null && adjustedPrice > 0 ? <span className="whitespace-nowrap">{itemTotalStr}<GoldUnit /></span> : adjustedPrice === 0 ? <span className="whitespace-nowrap">0<GoldUnit /></span> : '가격 없음'}
+                              </span>
+                            </div>
+                            <div className="flex-1 hidden md:block">
                               <div className="text-gray-400 text-sm">수량: {quantityStr}</div>
                               {adjustedPrice !== null && adjustedPrice > 0 ? (
-                                <div className="text-yellow-400 text-sm">
-                                  {priceStr}골드 × {quantityStr} = {itemTotalStr}골드
+                                <div className="text-yellow-400 text-sm whitespace-nowrap">
+                                  {priceStr}<GoldUnit /> × {quantityStr} = {itemTotalStr}<GoldUnit />
                                 </div>
                               ) : adjustedPrice === 0 ? (
-                                <div className="text-gray-500 text-xs">스위치로 인해 0골드로 처리됨</div>
+                                <div className="text-gray-500 text-xs">스위치로 인해 <span className="hidden md:inline">0골드</span><span className="md:hidden">0G</span>로 처리됨</div>
                               ) : (
                                 <div className="text-gray-500 text-xs">가격 정보 없음</div>
                               )}
@@ -1223,20 +1337,28 @@ export default function HellClient({
                                           : 'bg-gray-800/50 border border-gray-700'
                                       }`}
                                     >
-                                      <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                          <ItemIcon name={component.itemName} size="sm" />
-                                          <span className={isSelected ? 'text-yellow-400 font-semibold' : 'text-gray-300'}>
+                                      <div className="flex items-center justify-between gap-1">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                          <button
+                                            type="button"
+                                            className="touch-manipulation flex-shrink-0"
+                                            onClick={(e) => { e.stopPropagation(); showMobileTooltip(component.itemName); }}
+                                            onTouchEnd={(e) => { e.preventDefault(); showMobileTooltip(component.itemName); }}
+                                          >
+                                            <ItemIcon name={component.itemName} size="sm" />
+                                          </button>
+                                          <span className={`${isSelected ? 'text-yellow-400 font-semibold' : 'text-gray-300'} hidden md:inline`}>
                                             {component.itemName}
                                           </span>
+                                          <span className="md:hidden text-gray-400">{component.quantity}</span>
                                           {isSelected && (
                                             <span className="px-1.5 py-0.5 rounded text-[10px] bg-yellow-900/50 text-yellow-300 border border-yellow-600">
                                               선택됨
                                             </span>
                                           )}
                                         </div>
-                                        <div className={`text-right ${isSelected ? 'text-yellow-400' : 'text-gray-400'}`}>
-                                          {componentPriceStr}골드 × {component.quantity} = {componentTotalStr}골드
+                                        <div className={`text-right flex-shrink-0 ${isSelected ? 'text-yellow-400' : 'text-gray-400'}`}>
+                                          <span className="hidden md:inline whitespace-nowrap">{componentPriceStr}골드 × {component.quantity} = </span><span className="whitespace-nowrap">{componentTotalStr}<GoldUnit /></span>
                                         </div>
                                       </div>
                                     </div>

@@ -2,12 +2,18 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSidebar } from '../contexts/SidebarContext';
+import { usePriceOverride } from '../contexts/PriceOverrideContext';
 
 export default function Navigation() {
   const pathname = usePathname();
   const { isOpen: sidebarOpen, toggle: toggleSidebar } = useSidebar();
+  const { state: priceOverrideState } = usePriceOverride();
+  const filterLabel = useMemo(() => {
+    const hasAnyOverride = priceOverrideState && Object.values(priceOverrideState).some(Boolean);
+    return hasAnyOverride ? '필터 : 조정됨' : '필터 : Default';
+  }, [priceOverrideState]);
   const [lightMode, setLightMode] = useState<boolean>(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [contentRewardsOpen, setContentRewardsOpen] = useState<boolean>(false);
@@ -141,14 +147,35 @@ export default function Navigation() {
             <button
               type="button"
               onClick={toggleSidebar}
-              className="text-white px-3 py-1.5 text-sm font-medium hover:bg-gray-800 rounded border border-gray-700"
-              aria-label="DB/필터"
+              className={`text-white px-3 py-1.5 text-sm font-medium hover:bg-gray-800 rounded border ${filterLabel === '필터 : 조정됨' ? 'border-amber-500 bg-amber-500/10' : 'border-gray-700'}`}
+              aria-label={filterLabel}
             >
-              DB/필터
+              {filterLabel}
             </button>
             <button
               type="button"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              onClick={() => {
+                const nextOpen = !mobileMenuOpen;
+                setMobileMenuOpen(nextOpen);
+                if (nextOpen) {
+                  setContentRewardsOpen(false);
+                  setRefiningOpen(false);
+                  setEventEfficiencyOpen(false);
+                  setExchangeEfficiencyOpen(false);
+                  setCustomCalcOpen(false);
+                  if (pathname.startsWith('/content-rewards') || pathname === '/hell') {
+                    setContentRewardsOpen(true);
+                  } else if (pathname.startsWith('/refining-simulation') || pathname.startsWith('/advanced-refining') || pathname.startsWith('/character-simulation')) {
+                    setRefiningOpen(true);
+                  } else if (pathname.startsWith('/event-efficiency')) {
+                    setEventEfficiencyOpen(true);
+                  } else if (pathname.startsWith('/bloodstone-shop') || pathname.startsWith('/craft-materials') || pathname.startsWith('/single-shop')) {
+                    setExchangeEfficiencyOpen(true);
+                  } else if (pathname.startsWith('/custom-calculator')) {
+                    setCustomCalcOpen(true);
+                  }
+                }
+              }}
               className="text-white p-2 hover:bg-gray-800 rounded"
               aria-label="메뉴"
             >
@@ -218,7 +245,7 @@ export default function Navigation() {
                       {isOpen && (
                         <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-700 rounded min-w-[160px] z-50">
                           {subTabs.map((subTab) => {
-                            const isSubActive = pathname === subTab.href || pathname.startsWith(subTab.href + '/');
+                            const isSubActive = pathname === subTab.href || (subTab.href !== '/content-rewards' && pathname.startsWith(subTab.href + '/'));
                             return (
                               <Link
                                 key={subTab.href}
@@ -315,7 +342,7 @@ export default function Navigation() {
                     {isOpen && (
                       <div className="pl-4 mt-1 space-y-1">
                         {subTabs.map((subTab) => {
-                          const isSubActive = pathname === subTab.href || pathname.startsWith(subTab.href + '/');
+                          const isSubActive = pathname === subTab.href || (subTab.href !== '/content-rewards' && pathname.startsWith(subTab.href + '/'));
                           return (
                             <Link
                               key={subTab.href}

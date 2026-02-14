@@ -7,6 +7,7 @@ import { usePriceAdjustment } from '../../../hooks/usePriceAdjustment';
 import { usePriceOverride } from '../../../contexts/PriceOverrideContext';
 import { useValueDb } from '../../../contexts/ValueDbContext';
 import FavoriteButton from '../../../components/FavoriteButton';
+import GoldUnit from '../../../components/GoldUnit';
 
 type RewardData = {
   [itemName: string]: number;
@@ -376,10 +377,12 @@ export default function RecommendedClient({
           <div className="flex items-start justify-between gap-4 mb-3 flex-wrap">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 flex-wrap mb-2">
-                <h1 className="text-4xl font-bold tracking-tight text-white bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
+                <h1 className="hidden md:block text-4xl font-bold tracking-tight text-white bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
                   더보기 추천
                 </h1>
-                <FavoriteButton title="더보기 추천" />
+                <div className="hidden md:block">
+                  <FavoriteButton title="더보기 추천" />
+                </div>
               </div>
               <p className="text-lg text-gray-400">더보기 이득률이 20% 이상인 레이드 관문들만 자동 필터링하여 추천드립니다.</p>
             </div>
@@ -425,41 +428,77 @@ export default function RecommendedClient({
               <table className="w-full">
                 <thead className="bg-gray-800 border-b border-gray-700">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-300">레이드 이름</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-300">난이도</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-300">레벨</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-300">관문</th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-gray-300">골드 이득</th>
+                    <th className="px-3 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-semibold text-gray-300">레이드 이름</th>
+                    <th className="px-3 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-semibold text-gray-300">난이도</th>
+                    <th className="hidden md:table-cell px-4 py-3 text-left text-sm font-semibold text-gray-300">레벨</th>
+                    <th className="px-3 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-semibold text-gray-300">관문</th>
+                    <th className="px-3 md:px-4 py-2 md:py-3 text-right text-xs md:text-sm font-semibold text-gray-300"><span className="hidden md:inline">골드 </span><span className="md:hidden">G </span>이득</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-800">
                   {groupedGates.map((group) =>
-                    group.gates.map((gate, index) => (
-                      <tr 
-                        key={`${gate.category}-${gate.raidName}-${gate.difficulty}-${gate.gateNumber}`}
-                        className="hover:bg-gray-800/50 transition-colors"
-                      >
-                        {index === 0 && (
-                          <td 
-                            rowSpan={group.gates.length}
-                            className="px-4 py-3 text-white font-medium align-top"
-                          >
-                            {gate.raidName}
-                          </td>
-                        )}
-                        <td className="px-4 py-3 text-gray-300">{gate.difficulty}</td>
-                        <td className="px-4 py-3 text-blue-400">{gate.level || '-'}</td>
-                        <td className="px-4 py-3 text-gray-300">{gate.gateNumber}관문</td>
-                        <td className="px-4 py-3 text-right text-green-400 font-semibold">
-                          +{formatNumberWithSignificantDigits(gate.efficiency)}골드
-                          {gate.moreCost > 0 && (
-                            <span className="text-green-300 ml-1">
-                              (+{((gate.efficiency / gate.moreCost) * 100).toFixed(1)}%)
-                            </span>
+                    group.gates.map((gate, index) => {
+                      const isFirstInDifficultyRun = index === 0 || group.gates[index - 1].difficulty !== gate.difficulty;
+                      let difficultyRunLength = 1;
+                      if (isFirstInDifficultyRun) {
+                        for (let i = index + 1; i < group.gates.length && group.gates[i].difficulty === gate.difficulty; i++) {
+                          difficultyRunLength++;
+                        }
+                      }
+                      const raidNameMatch = gate.raidName.match(/^(.+?)\s*\((.+)\)\s*$/);
+                      const raidNameMain = raidNameMatch ? raidNameMatch[1] : gate.raidName;
+                      const raidNameParen = raidNameMatch ? `(${raidNameMatch[2]})` : null;
+                      return (
+                        <tr 
+                          key={`${gate.category}-${gate.raidName}-${gate.difficulty}-${gate.gateNumber}`}
+                          className="hover:bg-gray-800/50 transition-colors"
+                        >
+                          {index === 0 && (
+                            <td 
+                              rowSpan={group.gates.length}
+                              className="px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm text-white font-medium align-top"
+                            >
+                              <span className="hidden md:inline">{gate.raidName}</span>
+                              <span className="md:hidden">
+                                {raidNameMain}
+                                {raidNameParen != null && (
+                                  <>
+                                    <br />
+                                    <span className="text-gray-400">{raidNameParen}</span>
+                                  </>
+                                )}
+                              </span>
+                            </td>
                           )}
-                        </td>
-                      </tr>
-                    ))
+                          <td className="hidden md:table-cell px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm text-gray-300">
+                            {gate.difficulty}
+                          </td>
+                          {isFirstInDifficultyRun && (
+                            <td
+                              rowSpan={difficultyRunLength}
+                              className="md:hidden px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm text-gray-300 align-top"
+                            >
+                              {gate.difficulty}
+                            </td>
+                          )}
+                          <td className="hidden md:table-cell px-4 py-3 text-blue-400">{gate.level || '-'}</td>
+                          <td className="px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm text-gray-300">
+                            <span className="md:hidden">{gate.gateNumber}</span>
+                            <span className="hidden md:inline">{gate.gateNumber}관문</span>
+                          </td>
+                          <td className="px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm text-right">
+                            <span className="text-green-400 font-semibold block md:inline">
+                              +{formatNumberWithSignificantDigits(gate.efficiency)}<GoldUnit />
+                            </span>
+                            {gate.moreCost > 0 && (
+                              <span className="block md:inline md:ml-1 text-[10px] md:text-sm text-gray-400 md:text-green-300">
+                                (+{((gate.efficiency / gate.moreCost) * 100).toFixed(1)}%)
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>

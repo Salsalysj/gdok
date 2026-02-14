@@ -8,6 +8,7 @@ import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
 import { usePriceOverride } from '../contexts/PriceOverrideContext';
 import { useValueDb } from '../contexts/ValueDbContext';
 import FavoriteButton from '../components/FavoriteButton';
+import GoldUnit from '../components/GoldUnit';
 
 type RewardItem = {
   itemName: string;
@@ -99,7 +100,15 @@ export default function ContentRewardsClient({
   const [refreshKey, setRefreshKey] = useState(0);
   /** 펼친 큐브/모래시계 보상: key = `${stageIdx}-${rewardIdx}` */
   const [expandedCubeKeys, setExpandedCubeKeys] = useState<Set<string>>(new Set());
+  /** 모바일 전용 툴팁: 터치 시 즉시 표시 */
+  const [mobileTooltipItemName, setMobileTooltipItemName] = useState<string | null>(null);
   const contentTypes: ContentType[] = ['쿠르잔 전선', '에브니 큐브', '가디언 토벌'];
+
+  const showMobileTooltip = (itemName: string) => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setMobileTooltipItemName(itemName);
+    }
+  };
 
   const toggleCubeExpand = (key: string) => {
     setExpandedCubeKeys((prev) => {
@@ -122,6 +131,24 @@ export default function ContentRewardsClient({
       window.removeEventListener('price-override-change', handlePriceOverrideChange);
     };
   }, []);
+
+  // 모바일 툴팁: 외부 터치/클릭 시 닫기, 2초 후 자동 닫기
+  useEffect(() => {
+    if (!mobileTooltipItemName) return;
+    const close = () => setMobileTooltipItemName(null);
+    const timer = setTimeout(close, 2000);
+    const handleClose = () => {
+      close();
+      clearTimeout(timer);
+    };
+    document.addEventListener('touchstart', handleClose, { once: true });
+    document.addEventListener('click', handleClose, { once: true });
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('touchstart', handleClose);
+      document.removeEventListener('click', handleClose);
+    };
+  }, [mobileTooltipItemName]);
   
   // 사용 가능한 컨텐츠만 필터링 (useMemo로 감싸기)
   const availableContents = useMemo(() => {
@@ -380,15 +407,25 @@ export default function ContentRewardsClient({
   
   return (
     <div className="min-h-screen bg-gray-950 p-4 md:p-6 lg:p-8">
+      {/* 모바일 전용 툴팁: 터치 시 즉시 표시 */}
+      {mobileTooltipItemName && (
+        <div className="fixed inset-x-4 bottom-8 z-50 md:hidden">
+          <div className="mx-auto max-w-sm rounded-lg bg-gray-800 px-4 py-3 text-center text-sm text-white shadow-lg border border-gray-600">
+            {mobileTooltipItemName}
+          </div>
+        </div>
+      )}
       <div>
         <div className="mb-6 md:mb-10">
           <div className="flex items-center gap-3 flex-wrap mb-2">
-            <h1 className="text-3xl font-semibold tracking-tight text-white">
+            <h1 className="hidden md:block text-3xl font-semibold tracking-tight text-white">
               컨텐츠 보상 계산기
             </h1>
-            <FavoriteButton title="핵심 컨텐츠" />
+            <div className="hidden md:block">
+              <FavoriteButton title="핵심 컨텐츠" />
+            </div>
           </div>
-          <p className="text-base text-gray-400">컨텐츠별 보상과 골드 가치를 확인하세요. (악세, 유각, 편린 등 일부 보상 제외)</p>
+          <p className="hidden md:block text-base text-gray-400">컨텐츠별 보상과 골드 가치를 확인하세요. (악세, 유각, 편린 등 일부 보상 제외)</p>
         </div>
 
         {/* 컨텐츠 타입 선택 탭 */}
@@ -420,38 +457,58 @@ export default function ContentRewardsClient({
         {levels.length > 0 && (
           <div className="mb-6">
             {activeContent === '쿠르잔 전선' || activeContent === '에브니 큐브' || activeContent === '가디언 토벌' ? (
-              // 전선&균열, 큐브&모래시계, 가디언 토벌: 버튼형 선택
-              <div className="flex flex-wrap gap-2">
-                {levels.map(level => {
-                  // 가디언 토벌의 경우 스테이지 이름 표시
-                  let displayText = level;
-                  if (activeContent === '가디언 토벌' && data[activeContent]?.[level]) {
-                    const stage = data[activeContent]![level][0];
-                    if (stage) {
-                      displayText = `${stage.stage} (${level})`;
+              <>
+                {/* 모바일: 드롭다운 */}
+                <select
+                  value={activeLevel}
+                  onChange={(e) => setActiveLevel(e.target.value)}
+                  className="md:hidden w-full px-4 py-3 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium"
+                >
+                  {levels.map(level => {
+                    let displayText = level;
+                    if (activeContent === '가디언 토벌' && data[activeContent]?.[level]) {
+                      const stage = data[activeContent]![level][0];
+                      if (stage) displayText = `${stage.stage} (${level})`;
                     }
-                  }
-                  return (
-                    <button
-                      key={level}
-                      onClick={() => setActiveLevel(level)}
-                      className={`px-4 py-2 rounded font-semibold ${
-                        activeLevel === level
-                          ? 'bg-gray-700 text-white'
-                          : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
-                      }`}
-                    >
-                      {displayText}
-                    </button>
-                  );
-                })}
-              </div>
+                    return (
+                      <option key={level} value={level}>
+                        {displayText}
+                      </option>
+                    );
+                  })}
+                </select>
+                {/* 데스크탑: 버튼형 선택 */}
+                <div className="hidden md:flex flex-wrap gap-2">
+                  {levels.map(level => {
+                    let displayText = level;
+                    if (activeContent === '가디언 토벌' && data[activeContent]?.[level]) {
+                      const stage = data[activeContent]![level][0];
+                      if (stage) {
+                        displayText = `${stage.stage} (${level})`;
+                      }
+                    }
+                    return (
+                      <button
+                        key={level}
+                        onClick={() => setActiveLevel(level)}
+                        className={`px-4 py-2 rounded font-semibold ${
+                          activeLevel === level
+                            ? 'bg-gray-700 text-white'
+                            : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
+                        }`}
+                      >
+                        {displayText}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
             ) : (
-              // 기타: 드롭다운
+              // 기타: 드롭다운 (모바일/데스크탑 동일)
               <select
                 value={activeLevel}
                 onChange={(e) => setActiveLevel(e.target.value)}
-                className="px-4 py-2 bg-gray-800 text-white rounded border border-gray-700 focus:outline-none focus:border-gray-600"
+                className="w-full md:w-auto px-4 py-2 md:py-2 bg-gray-800 text-white rounded border border-gray-700 focus:outline-none focus:border-gray-600 md:focus:ring-2 md:focus:ring-blue-500"
               >
                 {levels.map(level => (
                   <option key={level} value={level}>
@@ -482,13 +539,13 @@ export default function ContentRewardsClient({
             
             return (
               <div key={idx} className="bg-gray-800 rounded p-6 border border-gray-700">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-2xl font-bold text-white">{stage.stage}</h3>
-                  <div className="flex flex-wrap items-end gap-4 justify-end text-right">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+                  <h3 className="text-lg md:text-2xl font-bold text-white">{stage.stage}</h3>
+                  <div className="flex flex-wrap items-end gap-3 md:gap-4 justify-start md:justify-end text-left md:text-right">
                     <div>
                       <div className="text-xs text-green-300 mb-1">거래가능 합계</div>
-                      <div className="text-2xl font-bold text-green-300">
-                        {formatNumberWithSignificantDigits(totals.tradable)}골드
+                      <div className="text-base md:text-2xl font-bold text-green-300">
+                        {formatNumberWithSignificantDigits(totals.tradable)}<GoldUnit />
                       </div>
                       {cashValueTradable != null && (
                         <div className="text-xs text-green-300/80 mt-1">
@@ -498,8 +555,8 @@ export default function ContentRewardsClient({
                     </div>
                     <div>
                       <div className="text-xs text-yellow-300 mb-1">전체 합계(귀속 포함)</div>
-                      <div className="text-2xl font-bold text-yellow-400">
-                        {formatNumberWithSignificantDigits(totals.total)}골드
+                      <div className="text-base md:text-2xl font-bold text-yellow-400">
+                        {formatNumberWithSignificantDigits(totals.total)}<GoldUnit />
                       </div>
                       {cashValueTotal != null && (
                         <div className="text-xs text-yellow-300/80 mt-1">
@@ -548,8 +605,17 @@ export default function ContentRewardsClient({
                               className={`flex items-center justify-between gap-2 py-1.5 pl-3 ${strike}`}
                             >
                               <span className="text-gray-300 text-sm flex items-center gap-2 min-w-0">
-                                <ItemIcon name={reward.itemName} size="sm" className="flex-shrink-0" />
-                                {reward.itemName} {quantityStr}개
+                                <span
+                                  role="button"
+                                  tabIndex={0}
+                                  onClick={(e) => { e.stopPropagation(); showMobileTooltip(reward.itemName); }}
+                                  onTouchEnd={(e) => { e.preventDefault(); showMobileTooltip(reward.itemName); }}
+                                  className="flex-shrink-0 cursor-default touch-manipulation md:cursor-default"
+                                >
+                                  <ItemIcon name={reward.itemName} size="sm" className="flex-shrink-0" />
+                                </span>
+                                <span className="hidden md:inline">{reward.itemName} </span>
+                                {(reward.itemName === '카드 경험치' || reward.itemName === '실링') ? quantityStr : `${quantityStr}개`}
                                 <span className={`ml-1 px-1.5 py-0.5 rounded text-[10px] ${tradeInfo.badgeClass}`}>{tradeInfo.badgeText}</span>
                                 <button
                                   type="button"
@@ -561,7 +627,7 @@ export default function ContentRewardsClient({
                                 </button>
                               </span>
                               <span className="text-gray-400 text-sm flex-shrink-0">
-                                ({formatNumberWithSignificantDigits(displayTotal)}골드)
+                                ({formatNumberWithSignificantDigits(displayTotal)}<GoldUnit />)
                               </span>
                             </div>
                             {isExpanded && list.length > 0 && (
@@ -574,12 +640,21 @@ export default function ContentRewardsClient({
                                     return (
                                       <div key={i} className={`flex items-center justify-between gap-2 py-1 pl-2 text-sm ${strikeCube}`}>
                                         <span className="text-gray-400 flex items-center gap-2 min-w-0">
-                                          <ItemIcon name={r.itemName} size="sm" className="flex-shrink-0" />
-                                          {r.itemName} {formatNumberWithSignificantDigits(r.quantity)}개
+                                          <span
+                                            role="button"
+                                            tabIndex={0}
+                                            onClick={(e) => { e.stopPropagation(); showMobileTooltip(r.itemName); }}
+                                            onTouchEnd={(e) => { e.preventDefault(); showMobileTooltip(r.itemName); }}
+                                            className="flex-shrink-0 cursor-default touch-manipulation md:cursor-default"
+                                          >
+                                            <ItemIcon name={r.itemName} size="sm" className="flex-shrink-0" />
+                                          </span>
+                                          <span className="hidden md:inline">{r.itemName} </span>
+                                          {(r.itemName === '카드 경험치' || r.itemName === '실링') ? formatNumberWithSignificantDigits(r.quantity) : `${formatNumberWithSignificantDigits(r.quantity)}개`}
                                           <span className={`ml-1 px-1.5 py-0.5 rounded text-[10px] ${info.badgeClass}`}>{info.badgeText}</span>
                                         </span>
                                         <span className="text-gray-500 text-xs flex-shrink-0">
-                                          ({formatNumberWithSignificantDigits(rTotal)}골드)
+                                          ({formatNumberWithSignificantDigits(rTotal)}<GoldUnit />)
                                         </span>
                                       </div>
                                     );
@@ -594,12 +669,21 @@ export default function ContentRewardsClient({
                       return (
                         <div key={rewardIdx} className={`flex items-center justify-between gap-2 py-1.5 pl-3 border-b border-gray-700/50 last:border-0 ${strike}`}>
                           <span className="text-gray-300 text-sm flex items-center gap-2 min-w-0">
-                            <ItemIcon name={reward.itemName} size="sm" className="flex-shrink-0" />
-                            {reward.itemName} {quantityStr}개
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              onClick={(e) => { e.stopPropagation(); showMobileTooltip(reward.itemName); }}
+                              onTouchEnd={(e) => { e.preventDefault(); showMobileTooltip(reward.itemName); }}
+                              className="flex-shrink-0 cursor-default touch-manipulation md:cursor-default"
+                            >
+                              <ItemIcon name={reward.itemName} size="sm" className="flex-shrink-0" />
+                            </span>
+                            <span className="hidden md:inline">{reward.itemName} </span>
+                            {(reward.itemName === '카드 경험치' || reward.itemName === '실링') ? quantityStr : `${quantityStr}개`}
                             <span className={`ml-1 px-1.5 py-0.5 rounded text-[10px] ${tradeInfo.badgeClass}`}>{tradeInfo.badgeText}</span>
                           </span>
                           <span className="text-gray-400 text-sm flex-shrink-0">
-                            ({itemTotalStr}골드)
+                            ({itemTotalStr}<GoldUnit />)
                           </span>
                         </div>
                       );

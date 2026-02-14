@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import FavoriteButton from '../../components/FavoriteButton';
+import GoldUnit from '../../components/GoldUnit';
 import type { ContentEntry, ExpeditionWeeklyData, RewardDetail } from './page';
 
 const ARMORY_DELAY_MS = 350;
@@ -194,8 +196,13 @@ export default function ExpeditionWeeklyClient({ entryData }: { entryData: Exped
     <div className="min-h-screen bg-gray-950 p-4 md:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-white mb-1">원정대 주간 수익</h1>
-          <p className="text-sm text-gray-400">
+          <div className="flex items-center gap-3 flex-wrap mb-1">
+            <h1 className="hidden md:block text-2xl font-bold text-white">원정대 주간 수익</h1>
+            <div className="hidden md:block">
+              <FavoriteButton title="원정대 주간 수익" />
+            </div>
+          </div>
+          <p className="hidden md:block text-sm text-gray-400">
             캐릭터명으로 원정대를 검색하면, 아이템 레벨 상위 6캐릭터와 입장 가능한 콘텐츠를 볼 수 있습니다. (1640 미만 제외)
           </p>
         </div>
@@ -245,7 +252,7 @@ export default function ExpeditionWeeklyClient({ entryData }: { entryData: Exped
                 <div className="flex flex-wrap gap-6 text-sm">
                   <div>
                     <span className="text-gray-400">거래가능</span>
-                    <span className="ml-2 font-semibold text-yellow-400">{Math.round(sumTradable).toLocaleString()}골드</span>
+                    <span className="ml-2 font-semibold text-yellow-400">{Math.round(sumTradable).toLocaleString()}<GoldUnit /></span>
                   </div>
                   <div>
                     <span className="text-gray-400">실링</span>
@@ -253,216 +260,119 @@ export default function ExpeditionWeeklyClient({ entryData }: { entryData: Exped
                   </div>
                   <div>
                     <span className="text-gray-400">전체(귀속포함)</span>
-                    <span className="ml-2 font-semibold text-gray-300">{Math.round(sumTotal).toLocaleString()}골드</span>
+                    <span className="ml-2 font-semibold text-gray-300">{Math.round(sumTotal).toLocaleString()}<GoldUnit /></span>
                   </div>
                 </div>
               </div>
-              <div className="overflow-x-auto bg-gray-900/70 rounded-lg border border-gray-700">
-            <table className="w-full text-sm table-fixed">
+              <div className="overflow-x-hidden md:overflow-x-auto bg-gray-900/70 rounded-lg border border-gray-700">
+            <table className="w-full text-xs md:text-sm table-fixed">
               <colgroup>
-                <col className="w-32" />
-                <col className="w-24" />
-                <col className="w-40" />
-                <col className="w-40" />
-                <col className="w-40" />
-                <col className="w-auto" />
-                <col className="w-32" />
+                <col className="w-1/4" />
+                <col className="w-1/4" />
+                <col className="w-1/4" />
+                <col className="w-1/4" />
               </colgroup>
               <thead>
                 <tr className="border-b border-gray-700 bg-gray-800/50">
-                  <th className="px-3 py-3 text-left font-semibold text-gray-300 whitespace-nowrap">캐릭터명</th>
-                  <th className="px-3 py-3 text-center font-semibold text-gray-300 whitespace-nowrap">평균 레벨</th>
-                  <th className="px-3 py-3 text-left font-semibold text-gray-300 whitespace-nowrap">전선 & 균열</th>
-                  <th className="px-3 py-3 text-left font-semibold text-gray-300 whitespace-nowrap">큐브 & 모래시계</th>
-                  <th className="px-3 py-3 text-left font-semibold text-gray-300 whitespace-nowrap">가디언 토벌</th>
-                  <th className="px-3 py-3 text-left font-semibold text-gray-300 whitespace-nowrap">레이드 (상위 3종)</th>
-                  <th className="px-3 py-3 text-right font-semibold text-gray-300 whitespace-nowrap">
+                  <th className="px-2 py-2 md:px-3 md:py-3 text-left font-semibold text-gray-300 whitespace-nowrap text-[11px] md:text-base">캐릭터명</th>
+                  <th className="px-2 py-2 md:px-3 md:py-3 text-left font-semibold text-gray-300 whitespace-nowrap text-[11px] md:text-base">핵심 컨텐츠</th>
+                  <th className="px-2 py-2 md:px-3 md:py-3 text-left font-semibold text-gray-300 whitespace-nowrap text-[11px] md:text-base"><span className="md:hidden">레이드</span><span className="hidden md:inline">레이드 (상위 3종)</span></th>
+                  <th className="px-2 py-2 md:px-3 md:py-3 text-right font-semibold text-gray-300 whitespace-nowrap text-[11px] md:text-base">
                     <div>주간 합계</div>
-                    <div className="text-xs font-normal text-gray-400">(<span className="text-yellow-400">거래가능</span> / 전체)</div>
+                    <div className="text-[10px] md:text-xs font-normal text-gray-400">(<span className="text-yellow-400">거래가능</span> / 전체)</div>
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {results.map((char, idx) => (
                   <tr key={char.name} className={`border-b border-gray-800 ${idx % 2 === 0 ? 'bg-gray-900/30' : 'bg-gray-900/10'}`}>
-                    <td className="px-3 py-3 font-medium text-white whitespace-nowrap">
-                      {char.name}
+                    <td className="px-2 py-2 md:px-3 md:py-3 font-medium text-white whitespace-nowrap text-[11px] md:text-base">
+                      <div>{char.name}</div>
+                      <div className="text-[10px] md:text-xs text-gray-400">레벨 {Math.round(char.itemLevel)}</div>
                       {idx === 0 && (
                         <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-600/40 text-amber-200">1위</span>
                       )}
                     </td>
-                    <td className="px-3 py-3 text-center text-gray-300">{Math.round(char.itemLevel)}</td>
-                    <td className="px-3 py-3">
-                      {char.frontRift ? (
-                        <div className="relative">
-                          <div className="flex items-center gap-1">
-                            <div className="flex-1">
-                              <div className="text-gray-200">{char.frontRift.name}</div>
-                              <div className="text-xs text-gray-400 whitespace-nowrap">
-                                <span className="text-yellow-400">{Math.round(char.frontRift.weeklyTradable).toLocaleString()}</span>
-                                {' / '}
-                                {Math.round(char.frontRift.weeklyTotal).toLocaleString()}
-                              </div>
-                            </div>
-                            {char.frontRift.details.length > 0 && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveTooltip(activeTooltip === `${idx}-front` ? null : `${idx}-front`);
-                                }}
-                                className="text-gray-400 hover:text-purple-400 text-xs font-bold w-4 h-4 flex items-center justify-center rounded-full border border-gray-600 hover:border-purple-400 flex-shrink-0"
-                              >
-                                ?
-                              </button>
-                            )}
-                          </div>
-                          {activeTooltip === `${idx}-front` && char.frontRift.details.length > 0 && (
-                            <div onClick={(e) => e.stopPropagation()} className="absolute z-10 top-full left-0 mt-1 bg-gray-800 border border-gray-600 rounded-lg shadow-xl p-3 min-w-[300px] max-w-[400px]">
-                              <div className="text-xs font-semibold text-purple-300 mb-2">상세 보상 내역 ({char.frontRift.weeklyCount}회)</div>
-                              <div className="space-y-1 max-h-60 overflow-y-auto">
-                                {char.frontRift.details.map((detail, di) => {
-                                  const mult = char.frontRift!.weeklyCount;
-                                  return (
-                                    <div key={di} className="flex items-center justify-between text-xs gap-2">
-                                      <div className="flex items-center gap-1 flex-1 min-w-0">
-                                        <span className={`${detail.isTradable ? 'text-green-300' : 'text-orange-400'} truncate`}>
-                                          {detail.itemName}
-                                        </span>
-                                        <span className={`text-[10px] px-1.5 py-0.5 rounded flex-shrink-0 ${detail.isTradable ? 'bg-green-900/30 text-green-300 border border-green-600' : 'bg-orange-900/30 text-orange-400 border border-orange-600'}`}>
-                                          {detail.isTradable ? '거래' : '귀속'}
-                                        </span>
+                    <td className="px-2 py-2 md:px-3 md:py-3 align-top">
+                      <div className="flex flex-col gap-1.5 md:gap-2">
+                        {(() => {
+                          type BlockData = { name: string; weeklyTradable: number; weeklyTotal: number; details: RewardDetail[]; weeklyCount: number } | null;
+                          const renderBlock = (label: string, data: BlockData, tooltipKey: string) => (
+                            <div key={label} className="relative text-xs md:text-sm">
+                              <div className="flex items-start gap-1">
+                                <div>
+                                  <div className="text-gray-500 text-[10px] md:text-xs">{label}</div>
+                                  {data ? (
+                                    <>
+                                      <div className="text-gray-200">{data.name}</div>
+                                      <div className="text-[10px] md:text-xs text-gray-400">
+                                        <span className="text-yellow-400">{Math.round(data.weeklyTradable).toLocaleString()}</span>
+                                        {' / '}
+                                        {Math.round(data.weeklyTotal).toLocaleString()}
                                       </div>
-                                      <div className="text-gray-300 whitespace-nowrap">×{(detail.quantity * mult).toLocaleString()}</div>
-                                      <div className="text-yellow-300 whitespace-nowrap">{Math.round(detail.totalPrice * mult).toLocaleString()}G</div>
-                                    </div>
-                                  );
-                                })}
+                                    </>
+                                  ) : (
+                                    <span className="text-gray-500">-</span>
+                                  )}
+                                </div>
+                                {data?.details && data.details.length > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveTooltip(activeTooltip === tooltipKey ? null : tooltipKey);
+                                    }}
+                                    className="hidden md:flex text-gray-400 hover:text-purple-400 text-xs font-bold w-4 h-4 items-center justify-center rounded-full border border-gray-600 hover:border-purple-400 flex-shrink-0 mt-0.5"
+                                  >
+                                    ?
+                                  </button>
+                                )}
                               </div>
+                              {data?.details && data.details.length > 0 && activeTooltip === tooltipKey && (
+                                <div onClick={(e) => e.stopPropagation()} className="absolute z-10 top-full left-0 mt-1 bg-gray-800 border border-gray-600 rounded-lg shadow-xl p-3 min-w-[300px] max-w-[400px]">
+                                  <div className="text-xs font-semibold text-purple-300 mb-2">상세 보상 내역 ({data.weeklyCount}회)</div>
+                                  <div className="space-y-1 max-h-60 overflow-y-auto">
+                                    {data.details.map((detail, di) => {
+                                      const mult = data.weeklyCount;
+                                      return (
+                                        <div key={di} className="flex items-center justify-between text-xs gap-2">
+                                          <div className="flex items-center gap-1 flex-1 min-w-0">
+                                            <span className={`${detail.isTradable ? 'text-green-300' : 'text-orange-400'} truncate`}>
+                                              {detail.itemName}
+                                            </span>
+                                            <span className={`text-[10px] px-1.5 py-0.5 rounded flex-shrink-0 ${detail.isTradable ? 'bg-green-900/30 text-green-300 border border-green-600' : 'bg-orange-900/30 text-orange-400 border border-orange-600'}`}>
+                                              {detail.isTradable ? '거래' : '귀속'}
+                                            </span>
+                                          </div>
+                                          <div className="text-gray-300 whitespace-nowrap">×{(detail.quantity * mult).toLocaleString()}</div>
+                                          <div className="text-yellow-300 whitespace-nowrap">{Math.round(detail.totalPrice * mult).toLocaleString()}G</div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-gray-500 text-xs">-</span>
-                      )}
+                          );
+                          return (
+                            <>
+                              {renderBlock('전선&균열', char.frontRift, `${idx}-front`)}
+                              {renderBlock('큐브&모래시계', char.cubeHourglass, `${idx}-cube`)}
+                              {renderBlock('가디언 토벌', char.guardian, `${idx}-guardian`)}
+                            </>
+                          );
+                        })()}
+                      </div>
                     </td>
-                    <td className="px-3 py-3">
-                      {char.cubeHourglass ? (
-                        <div className="relative">
-                          <div className="flex items-center gap-1">
-                            <div className="flex-1">
-                              <div className="text-gray-200">{char.cubeHourglass.name}</div>
-                              <div className="text-xs text-gray-400 whitespace-nowrap">
-                                <span className="text-yellow-400">{Math.round(char.cubeHourglass.weeklyTradable).toLocaleString()}</span>
-                                {' / '}
-                                {Math.round(char.cubeHourglass.weeklyTotal).toLocaleString()}
-                              </div>
-                            </div>
-                            {char.cubeHourglass.details.length > 0 && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveTooltip(activeTooltip === `${idx}-cube` ? null : `${idx}-cube`);
-                                }}
-                                className="text-gray-400 hover:text-purple-400 text-xs font-bold w-4 h-4 flex items-center justify-center rounded-full border border-gray-600 hover:border-purple-400 flex-shrink-0"
-                              >
-                                ?
-                              </button>
-                            )}
-                          </div>
-                          {activeTooltip === `${idx}-cube` && char.cubeHourglass.details.length > 0 && (
-                            <div onClick={(e) => e.stopPropagation()} className="absolute z-10 top-full left-0 mt-1 bg-gray-800 border border-gray-600 rounded-lg shadow-xl p-3 min-w-[300px] max-w-[400px]">
-                              <div className="text-xs font-semibold text-purple-300 mb-2">상세 보상 내역 ({char.cubeHourglass.weeklyCount}회)</div>
-                              <div className="space-y-1 max-h-60 overflow-y-auto">
-                                {char.cubeHourglass.details.map((detail, di) => {
-                                  const mult = char.cubeHourglass!.weeklyCount;
-                                  return (
-                                    <div key={di} className="flex items-center justify-between text-xs gap-2">
-                                      <div className="flex items-center gap-1 flex-1 min-w-0">
-                                        <span className={`${detail.isTradable ? 'text-green-300' : 'text-orange-400'} truncate`}>
-                                          {detail.itemName}
-                                        </span>
-                                        <span className={`text-[10px] px-1.5 py-0.5 rounded flex-shrink-0 ${detail.isTradable ? 'bg-green-900/30 text-green-300 border border-green-600' : 'bg-orange-900/30 text-orange-400 border border-orange-600'}`}>
-                                          {detail.isTradable ? '거래' : '귀속'}
-                                        </span>
-                                      </div>
-                                      <div className="text-gray-300 whitespace-nowrap">×{(detail.quantity * mult).toLocaleString()}</div>
-                                      <div className="text-yellow-300 whitespace-nowrap">{Math.round(detail.totalPrice * mult).toLocaleString()}G</div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-gray-500 text-xs">-</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3">
-                      {char.guardian ? (
-                        <div className="relative">
-                          <div className="flex items-center gap-1">
-                            <div className="flex-1">
-                              <div className="text-gray-200">{char.guardian.name}</div>
-                              <div className="text-xs text-gray-400 whitespace-nowrap">
-                                <span className="text-yellow-400">{Math.round(char.guardian.weeklyTradable).toLocaleString()}</span>
-                                {' / '}
-                                {Math.round(char.guardian.weeklyTotal).toLocaleString()}
-                              </div>
-                            </div>
-                            {char.guardian.details.length > 0 && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveTooltip(activeTooltip === `${idx}-guardian` ? null : `${idx}-guardian`);
-                                }}
-                                className="text-gray-400 hover:text-purple-400 text-xs font-bold w-4 h-4 flex items-center justify-center rounded-full border border-gray-600 hover:border-purple-400 flex-shrink-0"
-                              >
-                                ?
-                              </button>
-                            )}
-                          </div>
-                          {activeTooltip === `${idx}-guardian` && char.guardian.details.length > 0 && (
-                            <div onClick={(e) => e.stopPropagation()} className="absolute z-10 top-full left-0 mt-1 bg-gray-800 border border-gray-600 rounded-lg shadow-xl p-3 min-w-[300px] max-w-[400px]">
-                              <div className="text-xs font-semibold text-purple-300 mb-2">상세 보상 내역 ({char.guardian.weeklyCount}회)</div>
-                              <div className="space-y-1 max-h-60 overflow-y-auto">
-                                {char.guardian.details.map((detail, di) => {
-                                  const mult = char.guardian!.weeklyCount;
-                                  return (
-                                    <div key={di} className="flex items-center justify-between text-xs gap-2">
-                                      <div className="flex items-center gap-1 flex-1 min-w-0">
-                                        <span className={`${detail.isTradable ? 'text-green-300' : 'text-orange-400'} truncate`}>
-                                          {detail.itemName}
-                                        </span>
-                                        <span className={`text-[10px] px-1.5 py-0.5 rounded flex-shrink-0 ${detail.isTradable ? 'bg-green-900/30 text-green-300 border border-green-600' : 'bg-orange-900/30 text-orange-400 border border-orange-600'}`}>
-                                          {detail.isTradable ? '거래' : '귀속'}
-                                        </span>
-                                      </div>
-                                      <div className="text-gray-300 whitespace-nowrap">×{(detail.quantity * mult).toLocaleString()}</div>
-                                      <div className="text-yellow-300 whitespace-nowrap">{Math.round(detail.totalPrice * mult).toLocaleString()}G</div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-gray-500 text-xs">-</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3">
+                    <td className="px-2 py-2 md:px-3 md:py-3">
                       {char.raids.length > 0 ? (
-                        <div className="space-y-1.5">
+                        <div className="space-y-1 md:space-y-1.5">
                           {char.raids.map((raid, ri) => (
                             <div key={raid.name} className="relative">
                               <div className="flex items-center gap-1">
                                 <div className="flex-1">
-                                  <div className="text-gray-200">{raid.name}</div>
-                                  <div className="text-xs text-gray-400 whitespace-nowrap">
+                                  <div className="text-gray-200 text-xs md:text-sm"><span className="md:hidden">{raid.name.replace(/\s*\([^)]*\)\s*$/, '').trim()}</span><span className="hidden md:inline">{raid.name}</span></div>
+                                  <div className="text-[10px] md:text-xs text-gray-400 whitespace-nowrap">
                                     <span className="text-yellow-400">{Math.round(raid.weeklyTradable).toLocaleString()}</span>
                                     {' / '}
                                     {Math.round(raid.weeklyTotal).toLocaleString()}
@@ -475,7 +385,7 @@ export default function ExpeditionWeeklyClient({ entryData }: { entryData: Exped
                                       e.stopPropagation();
                                       setActiveTooltip(activeTooltip === `${idx}-raid-${ri}` ? null : `${idx}-raid-${ri}`);
                                     }}
-                                    className="text-gray-400 hover:text-purple-400 text-xs font-bold w-4 h-4 flex items-center justify-center rounded-full border border-gray-600 hover:border-purple-400 flex-shrink-0"
+                                    className="hidden md:flex text-gray-400 hover:text-purple-400 text-xs font-bold w-4 h-4 items-center justify-center rounded-full border border-gray-600 hover:border-purple-400 flex-shrink-0"
                                   >
                                     ?
                                   </button>
@@ -512,12 +422,12 @@ export default function ExpeditionWeeklyClient({ entryData }: { entryData: Exped
                         <span className="text-gray-500 text-xs">-</span>
                       )}
                     </td>
-                    <td className="px-3 py-3 text-right">
-                      <div className="text-yellow-400 font-semibold whitespace-nowrap">
-                        {Math.round(char.totalWeeklyTradable).toLocaleString()}
+                    <td className="px-2 py-2 md:px-3 md:py-3 text-right">
+                      <div className="text-yellow-400 font-semibold whitespace-nowrap text-[11px] md:text-base">
+                        {Math.round(char.totalWeeklyTradable).toLocaleString()}<GoldUnit />
                       </div>
-                      <div className="text-xs text-gray-400 whitespace-nowrap">
-                        / {Math.round(char.totalWeeklyTotal).toLocaleString()}
+                      <div className="text-[10px] md:text-xs text-gray-400 whitespace-nowrap">
+                        / {Math.round(char.totalWeeklyTotal).toLocaleString()}<GoldUnit />
                       </div>
                     </td>
                   </tr>
