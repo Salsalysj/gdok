@@ -2382,7 +2382,7 @@ export default function PackageEfficiencyClient({
                   today.setHours(0, 0, 0, 0);
                   end.setHours(0, 0, 0, 0);
                   return end >= today && p.id === selectedPackageId;
-                }) ? selectedPackageId : ''}
+                }) ? (selectedPackageId ?? '') : ''}
                 onChange={(e) => e.target.value && handleLoadPackage(e.target.value)}
                 className="w-full px-3 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 text-sm"
                 disabled={isLoading}
