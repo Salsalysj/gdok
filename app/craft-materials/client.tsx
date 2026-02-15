@@ -1978,8 +1978,8 @@ export default function CraftMaterialsClient({
           </div>
         </div>
 
-        {/* 카테고리별 편집 */}
-        {CRAFT_MATERIAL_SECTIONS.map((sectionKey) => (
+        {/* 카테고리별 편집 (배포 버전에서는 숨김) */}
+        {allowShopSave && CRAFT_MATERIAL_SECTIONS.map((sectionKey) => (
           <div key={sectionKey} className="hidden md:block bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
             <h2 className="text-2xl font-semibold mb-4">{sectionKey}</h2>
             <div className="space-y-4">

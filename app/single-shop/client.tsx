@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, Fragment } from 'react';
 import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
 import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
 import { useValueDb } from '../contexts/ValueDbContext';
@@ -132,6 +132,8 @@ export default function SingleShopClient({
   
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
   const [expandedNestedItems, setExpandedNestedItems] = useState<Record<string, boolean>>({});
+  const [summaryExpanded, setSummaryExpanded] = useState<Record<string, boolean>>({});
+  const [summaryComponentTooltipKey, setSummaryComponentTooltipKey] = useState<string | null>(null);
   const [manualPriceInputs, setManualPriceInputs] = useState<Record<string, string>>({});
 
   // 디코기준 스위치 동기화
@@ -235,6 +237,11 @@ export default function SingleShopClient({
       ...prev,
       [key]: !prev[key]
     }));
+  }, []);
+
+  const toggleSummaryExpanded = useCallback((sectionKey: string, index: number) => {
+    const key = `${sectionKey}-${index}`;
+    setSummaryExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
   }, []);
 
   // SearchableSelect 컴포넌트 (과금 효율과 동일)
@@ -1806,16 +1813,36 @@ export default function SingleShopClient({
                   {items.length > 0 ? (
                     <>
                       <div className="md:hidden space-y-2">
-                        {items.map((item, index) => (
-                          <div key={index} className="border-b border-gray-600/50 pb-2">
-                            <div className="text-gray-300 font-medium">{item.itemName} × {item.quantity}{item.isRecommended && <span className="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-600/80 text-white">추천</span>}</div>
-                            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-gray-400">
-                              <span className="text-yellow-300">가치 {formatNumberWithSignificantDigits(item.value)}골드</span>
-                              <span className="text-blue-300">교환비용 {formatNumberWithSignificantDigits(item.bloodstoneCost)}</span>
-                              <span className="text-green-300">단위당 {item.bloodstoneCost > 0 ? formatNumberWithSignificantDigits(item.valuePerBloodstone) : '0'}골드</span>
+                        {items.map((item, index) => {
+                          const summaryKey = `${sectionKey}-${index}`;
+                          const bundleItem = shopData[sectionKey]?.[index];
+                          const hasComponents = bundleItem?.components && bundleItem.components.length > 0;
+                          const showTooltip = summaryComponentTooltipKey === summaryKey;
+                          return (
+                            <div
+                              key={index}
+                              className={`border-b border-gray-600/50 pb-2 ${hasComponents ? 'cursor-pointer' : ''}`}
+                              onClick={() => hasComponents && setSummaryComponentTooltipKey(showTooltip ? null : summaryKey)}
+                            >
+                              <div className="text-gray-300 font-medium">{item.itemName} × {item.quantity}{item.isRecommended && <span className="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-600/80 text-white">추천</span>}</div>
+                              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-gray-400">
+                                <span className="text-yellow-300">가치 {formatNumberWithSignificantDigits(item.value)}골드</span>
+                                <span className="text-blue-300">교환비용 {formatNumberWithSignificantDigits(item.bloodstoneCost)}</span>
+                                <span className="text-green-300">단위당 {item.bloodstoneCost > 0 ? formatNumberWithSignificantDigits(item.valuePerBloodstone) : '0'}골드</span>
+                              </div>
+                              {showTooltip && hasComponents && bundleItem && (
+                                <div className="mt-2 p-2 bg-gray-800 rounded border border-gray-600 text-[11px] text-gray-300 space-y-1" onClick={(e) => e.stopPropagation()}>
+                                  <div className="font-semibold text-gray-400">구성 요소</div>
+                                  {bundleItem.components.map((c, i) => (
+                                    <div key={i}>
+                                      {c.itemName === '__nested__' && c.nestedItem ? `묶음: ${c.nestedItem.itemName || '(미입력)'}` : (c.itemName === '__manual__' || c.itemName === '' ? '(직접 입력)' : c.itemName)} × {formatNumberWithSignificantDigits(c.quantity || 0)}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                       <div className="overflow-x-auto hidden md:block">
                       <table className="w-full border-collapse">
@@ -1828,29 +1855,100 @@ export default function SingleShopClient({
                           </tr>
                         </thead>
                         <tbody>
-                          {items.map((item, index) => (
-                              <tr key={index} className="border-b border-gray-700/50 hover:bg-gray-900/30">
-                                <td className="py-2 px-4 text-sm text-gray-300">
-                                  <div className="flex items-center gap-2">
-                                    <span>{item.itemName} × {item.quantity}</span>
-                                    {item.isRecommended && (
-                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-600/80 text-white">
-                                        추천
-                                      </span>
-                                    )}
-                                  </div>
-                                </td>
-                                <td className="py-2 px-4 text-sm text-right text-yellow-300">
-                                  {formatNumberWithSignificantDigits(item.value)} 골드
-                                </td>
-                                <td className="py-2 px-4 text-sm text-right text-blue-300">
-                                  {formatNumberWithSignificantDigits(item.bloodstoneCost)}
-                                </td>
-                                <td className="py-2 px-4 text-sm text-right text-green-300">
-                                  {item.bloodstoneCost > 0 ? formatNumberWithSignificantDigits(item.valuePerBloodstone) : '0'} 골드
-                                </td>
-                              </tr>
-                          ))}
+                          {items.map((item, index) => {
+                            const bundleItem = shopData[sectionKey]?.[index];
+                            const hasComponents = bundleItem?.components && bundleItem.components.length > 0;
+                            const summaryKey = `${sectionKey}-${index}`;
+                            const isExpanded = summaryExpanded[summaryKey];
+                            return (
+                              <Fragment key={index}>
+                                <tr className="border-b border-gray-700/50 hover:bg-gray-900/30">
+                                  <td className="py-2 px-4 text-sm text-gray-300">
+                                    <div className="flex items-center gap-2">
+                                      {hasComponents ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => toggleSummaryExpanded(sectionKey, index)}
+                                          className="p-0.5 rounded hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
+                                          aria-label={isExpanded ? '구성 접기' : '구성 펼치기'}
+                                        >
+                                          <svg className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                          </svg>
+                                        </button>
+                                      ) : null}
+                                      <span>{item.itemName} × {item.quantity}</span>
+                                      {item.isRecommended && (
+                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-600/80 text-white">
+                                          추천
+                                        </span>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="py-2 px-4 text-sm text-right text-yellow-300">
+                                    {formatNumberWithSignificantDigits(item.value)} 골드
+                                  </td>
+                                  <td className="py-2 px-4 text-sm text-right text-blue-300">
+                                    {formatNumberWithSignificantDigits(item.bloodstoneCost)}
+                                  </td>
+                                  <td className="py-2 px-4 text-sm text-right text-green-300">
+                                    {item.bloodstoneCost > 0 ? formatNumberWithSignificantDigits(item.valuePerBloodstone) : '0'} 골드
+                                  </td>
+                                </tr>
+                                {isExpanded && bundleItem?.components && bundleItem.components.length > 0 ? (
+                                  <tr className="border-b border-gray-700/50 bg-gray-900/40">
+                                    <td colSpan={4} className="py-3 px-4">
+                                      <div className="text-xs text-gray-400 space-y-1.5 pl-6">
+                                        <div className="font-medium text-gray-300 mb-1.5">구성요소</div>
+                                        {bundleItem.components.map((comp, compIdx) => {
+                                          const isManual = comp.itemName === '__manual__' || comp.itemName === '';
+                                          const resolved = !isManual && comp.itemName && comp.itemName !== '__nested__' ? resolveUnitPrice(comp.itemName) : null;
+                                          const finalUnitPrice = (comp.manualPrice !== null && comp.manualPrice !== undefined)
+                                            ? { unitType: (comp.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: comp.manualPrice }
+                                            : resolved;
+                                          let compValue = 0;
+                                          if (finalUnitPrice) {
+                                            if (finalUnitPrice.unitType === '골드') {
+                                              compValue = finalUnitPrice.unitPrice * (comp.quantity || 0);
+                                            } else if (finalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
+                                              compValue = ((finalUnitPrice.unitPrice * crystalGoldRate) / 100) * (comp.quantity || 0);
+                                            } else if (finalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
+                                              compValue = (finalUnitPrice.unitPrice / goldToCashPerGold) * (comp.quantity || 0);
+                                            }
+                                            const qty = bundleItem.quantity || 1;
+                                            if (bundleItem.itemType === '확정') compValue *= qty;
+                                            else if (bundleItem.itemType === '확률') compValue *= (comp.probability ?? 0) * qty;
+                                            else if (bundleItem.itemType === '선택') compValue *= (comp.selected ? 1 : 0) * qty;
+                                          }
+                                          const displayName = comp.itemName === '__nested__' && comp.nestedItem
+                                            ? `묶음: ${comp.nestedItem.itemName || '(미입력)'}`
+                                            : (comp.itemName === '__manual__' || comp.itemName === '' ? '(직접 입력)' : comp.itemName);
+                                          const hasValue = finalUnitPrice != null;
+                                          return (
+                                            <div key={compIdx} className="flex items-center gap-2 flex-wrap">
+                                              <span className="text-gray-300">{displayName}</span>
+                                              <span>× {formatNumberWithSignificantDigits(comp.quantity || 0)}</span>
+                                              {bundleItem.itemType === '확률' && comp.probability != null && (
+                                                <span className="text-purple-300">({(comp.probability * 100).toFixed(0)}%)</span>
+                                              )}
+                                              {bundleItem.itemType === '선택' && comp.selected && (
+                                                <span className="text-blue-300">(선택)</span>
+                                              )}
+                                              {hasValue && (
+                                                <span className={compValue >= 0 ? 'text-green-400' : 'text-red-400'}>
+                                                  → {compValue >= 0 ? '' : '-'}{formatNumberWithSignificantDigits(Math.abs(compValue))} 골드
+                                                </span>
+                                              )}
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ) : null}
+                              </Fragment>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -1864,8 +1962,8 @@ export default function SingleShopClient({
           </div>
         </div>
 
-        {/* 카테고리별 편집 */}
-        {SINGLE_SHOP_SECTIONS.map((sectionKey) => (
+        {/* 카테고리별 편집 (배포 버전에서는 숨김) */}
+        {allowShopSave && SINGLE_SHOP_SECTIONS.map((sectionKey) => (
           <div key={sectionKey} className="hidden md:block bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
             <h2 className="text-2xl font-semibold mb-4">{sectionKey}</h2>
             <div className="space-y-4">
