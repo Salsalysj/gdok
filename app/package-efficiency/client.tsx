@@ -2285,7 +2285,7 @@ export default function PackageEfficiencyClient({
   return (
     <div className="min-h-screen bg-gray-950 p-8">
       <div>
-        <div className="mb-10">
+        <div className="mb-10 hidden md:block">
           <div className="flex items-center gap-3 flex-wrap mb-2">
             <h1 className="text-3xl font-semibold tracking-tight text-white">과금 효율 계산기</h1>
             <FavoriteButton title="과금 효율" />
@@ -2337,7 +2337,7 @@ export default function PackageEfficiencyClient({
         {/* 패키지 선택 버튼들 */}
         <div className="mb-6">
           {/* 새로 만들기 버튼 (왼쪽 상단) */}
-          <div className="mb-3">
+          <div className="mb-3 hidden md:block">
             <button
               onClick={handleNewPackage}
               className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 font-semibold border border-green-500/50"
@@ -2352,7 +2352,80 @@ export default function PackageEfficiencyClient({
             </button>
           </div>
           
-          {/* 판매중인 패키지 버튼들 (기간제한, 상시, 패스로 구분) */}
+          {/* 모바일: 판매중인 패키지 단일 드롭다운 (카테고리별 구분) */}
+          {savedPackages.filter((pkg) => {
+            const pkgData = (pkg as any).package_data;
+            const endDate = (pkg as any).end_date || pkgData?.endDate;
+            if (!endDate) return true;
+            const end = new Date(endDate);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            end.setHours(0, 0, 0, 0);
+            return end >= today;
+          }).length > 0 && (
+            <div className="md:hidden mb-4">
+              <select
+                value={savedPackages.some((p) => {
+                  const pkgData = (p as any).package_data;
+                  const endDate = (p as any).end_date || pkgData?.endDate;
+                  if (!endDate) return p.id === selectedPackageId;
+                  const category = pkgData?.category;
+                  if (category === '패스') {
+                    const end = new Date(endDate);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    end.setHours(0, 0, 0, 0);
+                    return end >= today && p.id === selectedPackageId;
+                  }
+                  const end = new Date(endDate);
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  end.setHours(0, 0, 0, 0);
+                  return end >= today && p.id === selectedPackageId;
+                }) ? selectedPackageId : ''}
+                onChange={(e) => e.target.value && handleLoadPackage(e.target.value)}
+                className="w-full px-3 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 text-sm"
+                disabled={isLoading}
+              >
+                <option value="">판매중인 패키지 선택...</option>
+                <optgroup label="기간제한">
+                  {savedPackages.filter((pkg) => {
+                    const pkgData = (pkg as any).package_data;
+                    const endDate = (pkg as any).end_date || pkgData?.endDate;
+                    if (!endDate || pkgData?.category === '패스') return false;
+                    const end = new Date(endDate);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    end.setHours(0, 0, 0, 0);
+                    return end >= today;
+                  }).map((pkg) => (
+                    <option key={pkg.id} value={pkg.id}>{pkg.package_name}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="상시">
+                  {savedPackages.filter((pkg) => !((pkg as any).end_date || (pkg as any).package_data?.endDate)).map((pkg) => (
+                    <option key={pkg.id} value={pkg.id}>{pkg.package_name}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="패스">
+                  {savedPackages.filter((pkg) => {
+                    const pkgData = (pkg as any).package_data;
+                    const endDate = (pkg as any).end_date || pkgData?.endDate;
+                    if (!endDate || pkgData?.category !== '패스') return false;
+                    const end = new Date(endDate);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    end.setHours(0, 0, 0, 0);
+                    return end >= today;
+                  }).map((pkg) => (
+                    <option key={pkg.id} value={pkg.id}>{pkg.package_name}</option>
+                  ))}
+                </optgroup>
+              </select>
+            </div>
+          )}
+
+          {/* 판매중인 패키지 버튼들 (기간제한, 상시, 패스로 구분) - 데스크톱 */}
           {savedPackages.filter((pkg) => {
             const pkgData = (pkg as any).package_data;
             // Supabase의 end_date 컬럼이 있으면 우선 사용, 없으면 package_data.endDate 사용
@@ -2364,7 +2437,7 @@ export default function PackageEfficiencyClient({
             end.setHours(0, 0, 0, 0);
             return end >= today;
           }).length > 0 && (
-            <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-4">
+            <div className="hidden md:block bg-gray-800/50 rounded-lg border border-gray-700 p-4">
               <div className="mb-3">
                 <h3 className="text-base font-semibold text-white">현재 판매중</h3>
                 <p className="text-xs text-gray-400 mt-1">버튼 클릭 시 확인 가능</p>
@@ -2547,7 +2620,7 @@ export default function PackageEfficiencyClient({
             end.setHours(0, 0, 0, 0);
             return end < today;
           }).length > 0 && (
-            <div className="mt-4 pt-4 border-t border-gray-700">
+            <div className="hidden md:block mt-4 pt-4 border-t border-gray-700">
               <div className="flex items-center gap-2">
                 <label className="text-sm text-gray-400 whitespace-nowrap">이전 과금 상품:</label>
                 <select
@@ -2592,25 +2665,51 @@ export default function PackageEfficiencyClient({
         {/* 계산 결과 */}
         <div className="space-y-6">             
           {/* 패키지 개요 카드 */}
-          <div className="relative bg-gray-800/90 rounded-lg border border-gray-700 p-8">
+          <div className="relative bg-gray-800/90 rounded-lg border border-gray-700 p-4 md:p-8 text-xs md:text-base">
             <div className="relative z-10">
-              <div className="flex items-center gap-2 mb-6">
-                <div className="p-2 bg-purple-500/10 rounded-lg">
-                  <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="hidden flex items-center gap-2 mb-3 md:mb-6">
+                <div className="p-1.5 md:p-2 bg-purple-500/10 rounded-lg">
+                  <svg className="w-4 h-4 md:w-5 md:h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                   </svg>
                 </div>
-                <h3 className="text-xl font-bold text-white">상품 정보</h3>
+                <h3 className="text-base md:text-xl font-bold text-white">상품 정보</h3>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700/50">
+              {/* 모바일: 상품 정보 2줄만 */}
+              <div className="md:hidden space-y-1 text-sm">
+                <div className="font-bold text-white flex items-center gap-2 flex-wrap">
+                  {packageData.packageName || '(미입력)'}
+                  {packageData.endDate && (() => {
+                    const endDate = new Date(packageData.endDate);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    endDate.setHours(0, 0, 0, 0);
+                    if (endDate < today) {
+                      return (
+                        <span className="text-xs bg-red-600 text-white px-2.5 py-1 rounded-full">판매종료</span>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+                <div className="text-gray-400">
+                  {formatNumberWithSignificantDigits(packageData.price)} {packageData.priceType}
+                  <span className="text-gray-500 mx-1.5">/</span>
+                  {packageData.purchaseCount}회
+                  <span className="text-gray-500 mx-1.5">/</span>
+                  {packageData.endDate || <span className="text-gray-500">미정</span>}
+                </div>
+              </div>
+              {/* 데스크톱: 상품 정보 5칸 그리드 */}
+              <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
+              <div className="bg-gray-900/50 rounded-lg p-2 md:p-4 border border-gray-700/50">
                   <div className="flex items-center gap-2 mb-2">
                     <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                     </svg>
                     <div className="text-xs font-medium text-purple-400/80 uppercase tracking-wider">상품명</div>
                   </div>
-                  <div className="text-lg font-bold text-white flex items-center gap-2 flex-wrap">
+                  <div className="text-sm md:text-lg font-bold text-white flex items-center gap-2 flex-wrap">
                     {packageData.packageName || '(미입력)'}
                     {packageData.endDate && (() => {
                       const endDate = new Date(packageData.endDate);
@@ -2628,14 +2727,14 @@ export default function PackageEfficiencyClient({
                     })()}
                   </div>
                 </div>
-                <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700/50">
+                <div className="bg-gray-900/50 rounded-lg p-3 md:p-6 border border-gray-700/50">
                   <div className="flex items-center gap-2 mb-2">
                     <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <div className="text-xs font-medium text-blue-400/80 uppercase tracking-wider">패키지 가격</div>
                   </div>
-                  <div className="text-lg font-bold text-white">
+                  <div className="text-sm md:text-lg font-bold text-white">
                     {formatNumberWithSignificantDigits(packageData.price)} {packageData.priceType}
                   </div>
                   {packageData.packageType === '3+1' && packageData.is3Plus1 && (
@@ -2647,38 +2746,38 @@ export default function PackageEfficiencyClient({
                     {packageData.packageType}
                   </div>
                 </div>
-                <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700/50">
+                <div className="bg-gray-900/50 rounded-lg p-2 md:p-4 border border-gray-700/50">
                   <div className="flex items-center gap-2 mb-2">
                     <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
                     <div className="text-xs font-medium text-green-400/80 uppercase tracking-wider">구매 가능</div>
                   </div>
-                  <div className="text-2xl font-bold text-white">
-                    {packageData.purchaseCount}<span className="text-base text-gray-400 ml-1">회</span>
+                  <div className="text-base md:text-2xl font-bold text-white">
+                    {packageData.purchaseCount}<span className="text-xs md:text-base text-gray-400 ml-1">회</span>
                   </div>
                 </div>
-                <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700/50">
+                <div className="bg-gray-900/50 rounded-lg p-2 md:p-4 border border-gray-700/50">
                   <div className="flex items-center gap-2 mb-2">
                     <svg className="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                     <div className="text-xs font-medium text-yellow-400/80 uppercase tracking-wider">종료 예정일</div>
                   </div>
-                  <div className="text-base font-medium text-white">
+                  <div className="text-sm md:text-base font-medium text-white">
                     {packageData.endDate || (
                       <span className="text-gray-500">미정</span>
                     )}
                   </div>
                 </div>
-                <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700/50">
+                <div className="bg-gray-900/50 rounded-lg p-2 md:p-4 border border-gray-700/50">
                   <div className="flex items-center gap-2 mb-2">
                     <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
                     </svg>
                     <div className="text-xs font-medium text-cyan-400/80 uppercase tracking-wider">구분</div>
                   </div>
-                  <div className="text-base font-medium text-white">
+                  <div className="text-sm md:text-base font-medium text-white">
                     {packageData.category}
                   </div>
                 </div>
@@ -2688,7 +2787,7 @@ export default function PackageEfficiencyClient({
 
           {/* 합산 효율 카드 */}
           {packageData.packageType === '보너스룸' ? (
-            <div className="relative bg-gray-800/90 rounded-lg border border-gray-700 p-8">
+            <div className="relative bg-gray-800/90 rounded-lg border border-gray-700 p-4 md:p-8 text-xs md:text-base">
               <div className="relative z-10">
                 <div className="flex items-center gap-2 mb-6">
                   <div className="p-2 bg-orange-500/10 rounded-lg">
@@ -2939,7 +3038,7 @@ export default function PackageEfficiencyClient({
               
               {/* 저장 버튼 */}
               {allowPackageSave && (
-                <div className="flex justify-center gap-3 mt-6">
+                <div className="hidden md:flex justify-center gap-3 mt-6">
                   <button
                     onClick={() => {
                       setSavePackageName(packageData.packageName);
@@ -2963,122 +3062,133 @@ export default function PackageEfficiencyClient({
               )}
             </div>
           ) : (
-            <div className="relative bg-gray-800/90 rounded-lg border border-gray-700 p-8">
+            <div className="relative bg-gray-800/90 rounded-lg border border-gray-700 p-4 md:p-8 text-xs md:text-base">
               <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-6">
-                  <div className="p-2 bg-green-500/10 rounded-lg">
-                    <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="hidden flex items-center gap-2 mb-3 md:mb-6">
+                  <div className="p-1.5 md:p-2 bg-green-500/10 rounded-lg">
+                    <svg className="w-4 h-4 md:w-5 md:h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
                   </div>
-                  <h3 className="text-xl font-bold text-white">합산 효율</h3>
+                  <h3 className="text-base md:text-xl font-bold text-white">합산 효율</h3>
                 </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-gray-900/50 rounded-lg p-6 border border-gray-700/50">
-                  <div className="flex items-center gap-2 mb-3">
-                    <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <div className="text-xs font-medium text-blue-400/80 uppercase tracking-wider">패키지 가격</div>
-                  </div>
-                  {(() => {
-                    let effectivePrice = packageData.price;
-                    if (packageData.packageType === '3+1' && packageData.is3Plus1) {
-                      effectivePrice = (packageData.price * 3) / 4;
-                    } else if (packageData.packageType === '3+보너스' && packageData.is3PlusBonus) {
-                      effectivePrice = packageData.price * 3;
-                    }
-                    
-                    let priceInGold = 0;
-                    let priceInCash = 0;
-                    let conversionFormula = '';
-                    
-                    if (packageData.priceType === '현금') {
-                      priceInCash = effectivePrice;
-                      if (goldToCashPerGold && goldToCashPerGold > 0) {
-                        priceInGold = effectivePrice / goldToCashPerGold;
-                        conversionFormula = `${formatNumberWithSignificantDigits(effectivePrice)} 현금 ÷ ${formatNumberWithSignificantDigits(goldToCashPerGold)} = ${formatNumberWithSignificantDigits(priceInGold)} 골드`;
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-6">
+                {(packageData.packageType === '3+1' || packageData.packageType === '3+보너스') && (
+                <div className="bg-gray-900/50 rounded-lg p-3 md:p-6 border border-gray-700/50">
+                  {/* 패키지 가격: 모바일에서 숨김 */}
+                  <div className="hidden md:block">
+                    <div className="flex items-center gap-2 mb-3">
+                      <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <div className="text-xs font-medium text-blue-400/80 uppercase tracking-wider">패키지 가격</div>
+                    </div>
+                    {(() => {
+                      let effectivePrice = packageData.price;
+                      if (packageData.packageType === '3+1' && packageData.is3Plus1) {
+                        effectivePrice = (packageData.price * 3) / 4;
+                      } else if (packageData.packageType === '3+보너스' && packageData.is3PlusBonus) {
+                        effectivePrice = packageData.price * 3;
                       }
-                    } else if (packageData.priceType === '골드') {
-                      priceInGold = effectivePrice;
-                      if (goldToCashPerGold && goldToCashPerGold > 0) {
-                        priceInCash = effectivePrice * goldToCashPerGold;
-                        conversionFormula = `${formatNumberWithSignificantDigits(effectivePrice)} 골드 × ${formatNumberWithSignificantDigits(goldToCashPerGold)} = ${formatNumberWithSignificantDigits(priceInCash)} 현금`;
-                      }
-                    } else if (packageData.priceType === '크리스탈') {
-                      if (crystalGoldRate && crystalGoldRate > 0) {
-                        priceInGold = (effectivePrice * crystalGoldRate) / 100;
-                        conversionFormula = `${formatNumberWithSignificantDigits(effectivePrice)} 크리스탈 × ${formatNumberWithSignificantDigits(crystalGoldRate)} ÷ 100 = ${formatNumberWithSignificantDigits(priceInGold)} 골드`;
+                      let priceInGold = 0;
+                      let priceInCash = 0;
+                      let conversionFormula = '';
+                      if (packageData.priceType === '현금') {
+                        priceInCash = effectivePrice;
                         if (goldToCashPerGold && goldToCashPerGold > 0) {
-                          priceInCash = priceInGold * goldToCashPerGold;
-                          conversionFormula += `\n${formatNumberWithSignificantDigits(priceInGold)} 골드 × ${formatNumberWithSignificantDigits(goldToCashPerGold)} = ${formatNumberWithSignificantDigits(priceInCash)} 현금`;
+                          priceInGold = effectivePrice / goldToCashPerGold;
+                          conversionFormula = `${formatNumberWithSignificantDigits(effectivePrice)} 현금 ÷ ${formatNumberWithSignificantDigits(goldToCashPerGold)} = ${formatNumberWithSignificantDigits(priceInGold)} 골드`;
+                        }
+                      } else if (packageData.priceType === '골드') {
+                        priceInGold = effectivePrice;
+                        if (goldToCashPerGold && goldToCashPerGold > 0) {
+                          priceInCash = effectivePrice * goldToCashPerGold;
+                          conversionFormula = `${formatNumberWithSignificantDigits(effectivePrice)} 골드 × ${formatNumberWithSignificantDigits(goldToCashPerGold)} = ${formatNumberWithSignificantDigits(priceInCash)} 현금`;
+                        }
+                      } else if (packageData.priceType === '크리스탈') {
+                        if (crystalGoldRate && crystalGoldRate > 0) {
+                          priceInGold = (effectivePrice * crystalGoldRate) / 100;
+                          conversionFormula = `${formatNumberWithSignificantDigits(effectivePrice)} 크리스탈 × ${formatNumberWithSignificantDigits(crystalGoldRate)} ÷ 100 = ${formatNumberWithSignificantDigits(priceInGold)} 골드`;
+                          if (goldToCashPerGold && goldToCashPerGold > 0) {
+                            priceInCash = priceInGold * goldToCashPerGold;
+                            conversionFormula += `\n${formatNumberWithSignificantDigits(priceInGold)} 골드 × ${formatNumberWithSignificantDigits(goldToCashPerGold)} = ${formatNumberWithSignificantDigits(priceInCash)} 현금`;
+                          }
                         }
                       }
-                    }
-                    
-                    return (
-                      <>
-                        <div className="text-2xl font-bold text-white mb-2">
-                          {formatNumberWithSignificantDigits(effectivePrice)} {packageData.priceType}
-                        </div>
-                        {priceInGold > 0 && (
-                          <div className="text-sm text-gray-300 mb-1">
-                            = {formatNumberWithSignificantDigits(priceInGold)} 골드
+                      return (
+                        <>
+                          <div className="text-base md:text-2xl font-bold text-white mb-2">
+                            {formatNumberWithSignificantDigits(effectivePrice)} {packageData.priceType}
                           </div>
-                        )}
-                        {priceInCash > 0 && (
-                          <div className="text-sm text-gray-300 mb-2">
-                            = {formatNumberWithSignificantDigits(priceInCash)} 현금
-                          </div>
-                        )}
-                        {conversionFormula && (
-                          <div className="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-700 whitespace-pre-line">
-                            {conversionFormula}
-                          </div>
-                        )}
-                        {packageData.packageType === '3+1' && (
-                          <label className="flex items-center gap-2 mt-3 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={packageData.is3Plus1}
-                              onChange={(e) => setPackageData((prev) => ({ ...prev, is3Plus1: e.target.checked }))}
-                              className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
-                            />
-                            <span className="text-sm text-gray-300">3+1 적용</span>
-                          </label>
-                        )}
-                        {packageData.packageType === '3+보너스' && (
-                          <label className="flex items-center gap-2 mt-3 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={packageData.is3PlusBonus}
-                              onChange={(e) => setPackageData((prev) => ({ ...prev, is3PlusBonus: e.target.checked }))}
-                              className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
-                            />
-                            <span className="text-sm text-gray-300">3+보너스 적용</span>
-                          </label>
-                        )}
-                        {packageData.packageType !== '3+1' && packageData.packageType !== '3+보너스' && (
-                          <div className="text-xs text-gray-500 mt-3">
-                            유형: {packageData.packageType}
-                          </div>
-                        )}
-                      </>
-                    );
-                  })()}
+                          {priceInGold > 0 && (
+                            <div className="text-sm text-gray-300 mb-1">
+                              = {formatNumberWithSignificantDigits(priceInGold)} 골드
+                            </div>
+                          )}
+                          {priceInCash > 0 && (
+                            <div className="text-sm text-gray-300 mb-2">
+                              = {formatNumberWithSignificantDigits(priceInCash)} 현금
+                            </div>
+                          )}
+                          {conversionFormula && (
+                            <div className="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-700 whitespace-pre-line">
+                              {conversionFormula}
+                            </div>
+                          )}
+                          {packageData.packageType !== '3+1' && packageData.packageType !== '3+보너스' && (
+                            <div className="text-xs text-gray-500 mt-3">
+                              유형: {packageData.packageType}
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
+                  {/* 3+1 / 3+보너스: 토글 스위치로 항상 표시 */}
+                  {packageData.packageType === '3+1' && (
+                    <label className="flex items-center gap-3 mt-2 md:mt-3 cursor-pointer select-none">
+                      <span className="relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent focus-within:ring-2 focus-within:ring-purple-500 focus-within:ring-offset-2 focus-within:ring-offset-gray-900">
+                        <input
+                          type="checkbox"
+                          checked={packageData.is3Plus1}
+                          onChange={(e) => setPackageData((prev) => ({ ...prev, is3Plus1: e.target.checked }))}
+                          className="sr-only peer"
+                        />
+                        <span className="absolute inset-0 rounded-full bg-gray-600 transition-colors peer-checked:bg-purple-600" />
+                        <span className="pointer-events-none absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition translate-x-0 peer-checked:translate-x-5" />
+                      </span>
+                      <span className="text-sm text-gray-300">3+1 적용</span>
+                    </label>
+                  )}
+                  {packageData.packageType === '3+보너스' && (
+                    <label className="flex items-center gap-3 mt-2 md:mt-3 cursor-pointer select-none">
+                      <span className="relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent focus-within:ring-2 focus-within:ring-purple-500 focus-within:ring-offset-2 focus-within:ring-offset-gray-900">
+                        <input
+                          type="checkbox"
+                          checked={packageData.is3PlusBonus}
+                          onChange={(e) => setPackageData((prev) => ({ ...prev, is3PlusBonus: e.target.checked }))}
+                          className="sr-only peer"
+                        />
+                        <span className="absolute inset-0 rounded-full bg-gray-600 transition-colors peer-checked:bg-purple-600" />
+                        <span className="pointer-events-none absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition translate-x-0 peer-checked:translate-x-5" />
+                      </span>
+                      <span className="text-sm text-gray-300">3+보너스 적용</span>
+                    </label>
+                  )}
                 </div>
-                <div className="bg-gray-900/50 rounded-lg p-6 border border-gray-700/50">
+                )}
+                <div className="bg-gray-900/50 rounded-lg p-3 md:p-6 border border-gray-700/50">
                   <div className="flex items-center gap-2 mb-3">
                     <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                     </svg>
                     <div className="text-xs font-medium text-purple-400/80 uppercase tracking-wider">구성품 합계</div>
                   </div>
-                  <div className="text-2xl font-bold text-white">
+                  <div className="text-base md:text-2xl font-bold text-white">
                     {formatNumberWithSignificantDigits(totalValue)} {packageData.priceType}
                   </div>
                 </div>
-                <div className={`bg-gray-900/50 rounded-lg p-6 border ${efficiency !== null && efficiency >= 1 ? 'border-green-500/50' : efficiency !== null ? 'border-red-500/50' : 'border-gray-700/50'}`}>
+                <div className={`bg-gray-900/50 rounded-lg p-3 md:p-6 border ${efficiency !== null && efficiency >= 1 ? 'border-green-500/50' : efficiency !== null ? 'border-red-500/50' : 'border-gray-700/50'}`}>
                   <div className="flex items-center gap-2 mb-3">
                     <svg className={`w-4 h-4 ${efficiency !== null && efficiency >= 1 ? 'text-green-400' : 'text-red-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -3087,22 +3197,22 @@ export default function PackageEfficiencyClient({
                   </div>
                   {efficiency !== null ? (
                     <>
-                      <div className={`text-3xl font-bold ${efficiency >= 1 ? 'text-green-400' : 'text-red-400'}`}>
+                      <div className={`text-xl md:text-3xl font-bold ${efficiency >= 1 ? 'text-green-400' : 'text-red-400'}`}>
                         {formatNumberWithSignificantDigits(efficiency)}배
                       </div>
-                      <div className={`text-sm font-medium mt-1 ${efficiency >= 1 ? 'text-green-400' : 'text-red-400'}`}>
+                      <div className={`text-xs md:text-sm font-medium mt-1 ${efficiency >= 1 ? 'text-green-400' : 'text-red-400'}`}>
                         {efficiency >= 1 ? '✓ 이득' : '✗ 손해'}
                       </div>
                     </>
                   ) : (
-                    <div className="text-lg text-gray-500">계산 불가</div>
+                    <div className="text-sm md:text-lg text-gray-500">계산 불가</div>
                   )}
                 </div>
               </div>
               
               {/* 저장 버튼 */}
               {allowPackageSave && (
-                <div className="flex justify-center gap-3 mt-8">
+                <div className="hidden md:flex justify-center gap-3 mt-8">
                   <button
                     onClick={() => {
                       setSavePackageName(packageData.packageName);
@@ -3153,7 +3263,7 @@ export default function PackageEfficiencyClient({
           {packageData.packageType !== '보너스룸' && (packageData.items.length > 0 || (packageData.packageType === '3+보너스' && packageData.bonus3Items.length > 0)) && (
             <div className="relative bg-gray-800/90 rounded-lg border border-gray-700 p-8">
               <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-6">
+                <div className="hidden flex items-center gap-2 mb-6">
                   <div className="p-2 bg-blue-500/10 rounded-lg">
                     <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
@@ -3179,28 +3289,20 @@ export default function PackageEfficiencyClient({
                       </span>
                     </div>
                     
-                    <div className="mb-3 pr-16">
+                    <div className="mb-3 pr-16 text-sm">
                       <div className="flex items-center gap-2 mb-1">
                         {packageData.category === '패스' && (
-                          <span className="text-sm font-semibold text-purple-400 whitespace-nowrap">
+                          <span className="text-xs font-semibold text-purple-400 whitespace-nowrap">
                             패스 레벨 {itemIndex + 1}
                           </span>
                         )}
-                        <svg className={`w-4 h-4 ${colors.icon}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className={`w-3.5 h-3.5 ${colors.icon}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                         </svg>
-                        <div className="font-bold text-white text-base">
+                        <div className="font-bold text-white text-sm">
                           {packageItem.itemName || `항목 ${itemIndex + 1}`}
                         </div>
                       </div>
-                      {packageItem.quantity && packageItem.quantity > 1 && (
-                        <div className="flex items-center gap-1 text-xs text-blue-400">
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                          </svg>
-                          묶음 ×{packageItem.quantity}
-                        </div>
-                      )}
                       {/* 묶음 항목 전체 가치 표시 (수량 1 이상) */}
                       {packageItem.quantity && packageItem.quantity >= 1 && (() => {
                         // 묶음 항목의 전체 가치 계산
@@ -3319,14 +3421,14 @@ export default function PackageEfficiencyClient({
                         });
                         
                         const totalValue = totalPackageItemValue * packageItem.quantity;
-                        
+                        const unitDisplay = packageData.priceType === '현금' ? '원' : packageData.priceType;
                         return totalValue > 0 ? (
                           <div className="mt-1 text-xs text-green-400 font-medium">
-                            단가 {formatNumberWithSignificantDigits(totalPackageItemValue)} {packageData.priceType}
-                            <span className="text-gray-500 mx-1">×</span>
-                            수량 {packageItem.quantity || 1}
-                            <span className="text-gray-500 mx-1">=</span>
-                            가치 {formatNumberWithSignificantDigits(totalValue)} {packageData.priceType}
+                            <span className="block md:inline">단가 {formatNumberWithSignificantDigits(totalPackageItemValue)}{unitDisplay}
+                              <span className="text-gray-500 mx-1">×</span>
+                              묶음수량 {packageItem.quantity || 1}
+                            </span>
+                            <span className="block md:inline"><span className="text-gray-500 md:ml-1">=</span> 총 {formatNumberWithSignificantDigits(totalValue)}{unitDisplay}</span>
                             {packageItem.itemType === '확률' && <span className="text-gray-400 ml-1">(기대값)</span>}
                           </div>
                         ) : null;
@@ -3577,18 +3679,19 @@ export default function PackageEfficiencyClient({
                                         nestedUnitPriceInPackageType = nestedItemUnitPrice;
                                       }
                                       
+                                      const unitDisplay = packageData.priceType === '현금' ? '원' : packageData.priceType;
                                       return nestedItemTotalValue > 0 && nestedIsIncluded ? (
                                         <div className="mt-1 space-y-1 text-xs">
                                           <div className={`${isIncluded ? 'text-gray-300' : 'text-gray-600'}`}>
-                                            단가 <span className="font-semibold">{formatNumberWithSignificantDigits(nestedUnitPriceInPackageType)}</span> {packageData.priceType}
+                                            단가 <span className="font-semibold">{formatNumberWithSignificantDigits(nestedUnitPriceInPackageType)}</span>{unitDisplay}
                                             {packageItem.itemType === '확률' && component.probability !== undefined && (
                                               <span className="text-purple-400 ml-1">× {component.probability}</span>
                                             )}
                                             <span className="text-gray-500 mx-1">×</span>
                                             수량 <span className="font-semibold">{formatNumberWithSignificantDigits(nestedItemQuantity)}</span>
                                             <span className="text-gray-500 mx-1">=</span>
-                                            가치 <span className={`font-semibold ${isIncluded ? 'text-green-400' : 'text-gray-600'}`}>
-                                              {isIncluded ? formatNumberWithSignificantDigits(nestedItemTotalValue) : '0'} {packageData.priceType}
+                                            총 <span className={`font-semibold ${isIncluded ? 'text-green-400' : 'text-gray-600'}`}>
+                                              {isIncluded ? formatNumberWithSignificantDigits(nestedItemTotalValue) : '0'}{unitDisplay}
                                             </span>
                                           </div>
                                         </div>
@@ -3790,17 +3893,18 @@ export default function PackageEfficiencyClient({
                                                       nestedCompValue = 0;
                                                     }
                                                     
+                                                    const nestedUnitDisplay = packageData.priceType === '현금' ? '원' : packageData.priceType;
                                                     return (
                                                       <>
-                                                        단가 {formatNumberWithSignificantDigits(nestedUnitPriceInPackageType)} {packageData.priceType}
+                                                        단가 {formatNumberWithSignificantDigits(nestedUnitPriceInPackageType)}{nestedUnitDisplay}
                                                         {nestedItem.itemType === '확률' && nestedComp.probability !== undefined && (
                                                           <span className="text-purple-400 ml-0.5">× {nestedComp.probability}</span>
                                                         )}
                                                         <span className="text-gray-600 mx-0.5">×</span>
                                                         수량 {formatNumberWithSignificantDigits(nestedComp.quantity || 0)}
                                                         <span className="text-gray-600 mx-0.5">=</span>
-                                                        가치 <span className={`${nestedIsIncluded ? 'text-green-400' : 'text-gray-600'}`}>
-                                                          {nestedIsIncluded ? formatNumberWithSignificantDigits(nestedCompValue) : '0'} {packageData.priceType}
+                                                        총 <span className={`${nestedIsIncluded ? 'text-green-400' : 'text-gray-600'}`}>
+                                                          {nestedIsIncluded ? formatNumberWithSignificantDigits(nestedCompValue) : '0'}{nestedUnitDisplay}
                                                         </span>
                                                       </>
                                                     );
@@ -3842,20 +3946,17 @@ export default function PackageEfficiencyClient({
                                 <div className="mt-1 space-y-1 text-xs">
                                   {finalUnitPrice && unitPriceInPackageType > 0 ? (
                                     <div className={`${isIncluded ? 'text-gray-300' : 'text-gray-600'}`}>
-                                      단가 <span className="font-semibold">{formatNumberWithSignificantDigits(unitPriceInPackageType)}</span> {unitPriceUnit}
+                                      단가 <span className="font-semibold">{formatNumberWithSignificantDigits(unitPriceInPackageType)}</span>{unitPriceUnit === '현금' ? '원' : unitPriceUnit}
                                       {packageItem.itemType === '확률' && component.probability !== undefined && (
                                         <span className="text-purple-400 ml-1">× {component.probability}</span>
                                       )}
                                       <span className="text-gray-500 mx-1">×</span>
                                       수량 <span className="font-semibold">{formatNumberWithSignificantDigits(component.quantity || 0)}</span>
                                       <span className="text-gray-500 mx-1">=</span>
-                                      가치 <span className={`font-semibold ${isIncluded ? 'text-green-400' : 'text-gray-600'}`}>
-                                        {isIncluded ? formatNumberWithSignificantDigits(itemValue) : '0'} {packageData.priceType}
+                                      총 <span className={`font-semibold ${isIncluded ? 'text-green-400' : 'text-gray-600'}`}>
+                                        {isIncluded ? formatNumberWithSignificantDigits(itemValue) : '0'}{packageData.priceType === '현금' ? '원' : packageData.priceType}
                                       </span>
                                       {packageItem.itemType === '확률' && isIncluded && <span className="text-gray-500 ml-1">(기대값)</span>}
-                                      {packageItem.quantity && packageItem.quantity > 1 && isIncluded && (
-                                        <span className="text-gray-500 ml-1">(1개 기준)</span>
-                                      )}
                                     </div>
                                   ) : (
                                     <div className="flex items-center gap-3">
@@ -3864,11 +3965,8 @@ export default function PackageEfficiencyClient({
                                       </span>
                                       {finalUnitPrice && (
                                         <span className={`${isIncluded ? 'text-blue-400' : 'text-gray-600'}`}>
-                                          가치: <span className="font-semibold">{isIncluded ? formatNumberWithSignificantDigits(itemValue) : '0'}</span> {packageData.priceType}
+                                          총: <span className="font-semibold">{isIncluded ? formatNumberWithSignificantDigits(itemValue) : '0'}</span>{packageData.priceType === '현금' ? '원' : packageData.priceType}
                                           {packageItem.itemType === '확률' && isIncluded && <span className="text-gray-500 ml-1">(기대값)</span>}
-                                          {packageItem.quantity && packageItem.quantity > 1 && isIncluded && (
-                                            <span className="text-gray-500 ml-1">(1개 기준)</span>
-                                          )}
                                         </span>
                                       )}
                                     </div>
@@ -3908,23 +4006,15 @@ export default function PackageEfficiencyClient({
                       </span>
                     </div>
                     
-                    <div className="mb-3 pr-16">
+                    <div className="mb-3 pr-16 text-sm">
                       <div className="flex items-center gap-2 mb-1">
-                        <svg className={`w-4 h-4 ${colors.icon}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className={`w-3.5 h-3.5 ${colors.icon}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                         </svg>
-                        <div className="font-bold text-white text-base">
+                        <div className="font-bold text-white text-sm">
                           {packageItem.itemName || `3+보너스 항목 ${itemIndex + 1}`}
                         </div>
                       </div>
-                      {packageItem.quantity && packageItem.quantity > 1 && (
-                        <div className="flex items-center gap-1 text-xs text-blue-400">
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                          </svg>
-                          묶음 ×{packageItem.quantity}
-                        </div>
-                      )}
                       {/* 묶음 항목 전체 가치 표시 (수량 1 이상) */}
                       {packageItem.quantity && packageItem.quantity >= 1 && (() => {
                         // 묶음 항목의 전체 가치 계산
@@ -4043,14 +4133,14 @@ export default function PackageEfficiencyClient({
                         });
                         
                         const totalValue = totalPackageItemValue * packageItem.quantity;
-                        
+                        const unitDisplay = packageData.priceType === '현금' ? '원' : packageData.priceType;
                         return totalValue > 0 ? (
                           <div className="mt-1 text-xs text-green-400 font-medium">
-                            단가 {formatNumberWithSignificantDigits(totalPackageItemValue)} {packageData.priceType}
-                            <span className="text-gray-500 mx-1">×</span>
-                            수량 {packageItem.quantity || 1}
-                            <span className="text-gray-500 mx-1">=</span>
-                            가치 {formatNumberWithSignificantDigits(totalValue)} {packageData.priceType}
+                            <span className="block md:inline">단가 {formatNumberWithSignificantDigits(totalPackageItemValue)}{unitDisplay}
+                              <span className="text-gray-500 mx-1">×</span>
+                              묶음수량 {packageItem.quantity || 1}
+                            </span>
+                            <span className="block md:inline"><span className="text-gray-500 md:ml-1">=</span> 총 {formatNumberWithSignificantDigits(totalValue)}{unitDisplay}</span>
                             {packageItem.itemType === '확률' && <span className="text-gray-400 ml-1">(기대값)</span>}
                           </div>
                         ) : null;
@@ -4197,31 +4287,25 @@ export default function PackageEfficiencyClient({
                                   
                                   {finalUnitPrice && unitPriceInPackageType > 0 ? (
                                     <div className="mt-1 text-xs text-gray-300">
-                                      단가 <span className="font-semibold">{formatNumberWithSignificantDigits(unitPriceInPackageType)}</span> {unitPriceUnit}
+                                      단가 <span className="font-semibold">{formatNumberWithSignificantDigits(unitPriceInPackageType)}</span>{unitPriceUnit === '현금' ? '원' : unitPriceUnit}
                                       {packageItem.itemType === '확률' && component.probability !== undefined && (
                                         <span className="text-purple-400 ml-1">× {component.probability}</span>
                                       )}
                                       <span className="text-gray-500 mx-1">×</span>
                                       수량 <span className="font-semibold">{formatNumberWithSignificantDigits(component.quantity || 0)}</span>
                                       <span className="text-gray-500 mx-1">=</span>
-                                      가치 <span className={`font-semibold ${isIncluded ? 'text-green-400' : 'text-gray-600'}`}>
-                                        {isIncluded ? formatNumberWithSignificantDigits(itemValue) : '0'} {packageData.priceType}
+                                      총 <span className={`font-semibold ${isIncluded ? 'text-green-400' : 'text-gray-600'}`}>
+                                        {isIncluded ? formatNumberWithSignificantDigits(itemValue) : '0'}{packageData.priceType === '현금' ? '원' : packageData.priceType}
                                       </span>
                                       {packageItem.itemType === '확률' && isIncluded && <span className="text-gray-500 ml-1">(기대값)</span>}
-                                      {packageItem.quantity && packageItem.quantity > 1 && isIncluded && (
-                                        <span className="text-gray-500 ml-1">(1개 기준)</span>
-                                      )}
                                     </div>
                                   ) : (
                                     <div className="mt-1 text-xs text-gray-300">
                                       수량: <span className="font-semibold">{formatNumberWithSignificantDigits(component.quantity || 0)}</span>
                                       {isIncluded && finalUnitPrice && (
                                         <span className="text-blue-400 ml-2">
-                                          가치: <span className="font-semibold">{formatNumberWithSignificantDigits(itemValue)}</span> {packageData.priceType}
+                                          총: <span className="font-semibold">{formatNumberWithSignificantDigits(itemValue)}</span>{packageData.priceType === '현금' ? '원' : packageData.priceType}
                                           {packageItem.itemType === '확률' && <span className="text-gray-500 ml-1">(기대값)</span>}
-                                          {packageItem.quantity && packageItem.quantity > 1 && (
-                                            <span className="text-gray-500 ml-1">(1개 기준)</span>
-                                          )}
                                         </span>
                                       )}
                                     </div>
@@ -4247,7 +4331,7 @@ export default function PackageEfficiencyClient({
           )}
         </div>
         {/* 입력 폼 */}
-        <div ref={inputFormRef} className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
+        <div ref={inputFormRef} className="hidden md:block bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
           <h2 className="text-xl font-semibold text-white mb-4">상품 정보</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -4397,7 +4481,7 @@ export default function PackageEfficiencyClient({
 
         {/* 구성품 / 보너스룸 */}
         {packageData.packageType === '보너스룸' ? (
-          <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
+          <div className="hidden md:block bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
             <h2 className="text-xl font-semibold text-white mb-4">보너스룸</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {(packageData.bonusRooms || []).map((room, roomIndex) => (
@@ -4849,7 +4933,7 @@ export default function PackageEfficiencyClient({
             </div>
           </div>
         ) : (
-          <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
+          <div className="hidden md:block bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-white">구성품</h2>
             </div>
@@ -5604,7 +5688,7 @@ export default function PackageEfficiencyClient({
 
         {/* 3+보너스 구성품 섹션 */}
         {packageData.packageType === '3+보너스' && (
-          <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
+          <div className="hidden md:block bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-white">3+보너스 구성품</h2>
               <button
@@ -5940,11 +6024,8 @@ export default function PackageEfficiencyClient({
                                           수량: <span className="font-semibold">{formatNumberWithSignificantDigits(component.quantity || 0)}</span>
                                           {isIncluded && (
                                             <span className="text-blue-400 ml-2">
-                                              가치: <span className="font-semibold">{formatNumberWithSignificantDigits(itemValue)}</span> {packageData.priceType}
+                                              총: <span className="font-semibold">{formatNumberWithSignificantDigits(itemValue)}</span>{packageData.priceType === '현금' ? '원' : packageData.priceType}
                                               {packageItem.itemType === '확률' && <span className="text-gray-500 ml-1">(기대값)</span>}
-                                              {packageItem.quantity && packageItem.quantity > 1 && (
-                                                <span className="text-gray-500 ml-1">(1개 기준)</span>
-                                              )}
                                             </span>
                                           )}
                                         </div>

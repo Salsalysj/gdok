@@ -1101,11 +1101,11 @@ export default function ArkpassGuideClient({
     <div className="min-h-screen bg-gray-950 py-8">
       <div className="px-4 space-y-6">
         <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="hidden md:flex items-center gap-3 flex-wrap">
             <h1 className="text-3xl font-semibold tracking-tight text-white">아크패스 선택 가이드</h1>
             <FavoriteButton title="아크패스 선택 가이드" />
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="hidden md:flex flex-wrap gap-2">
             {/* 저장 버튼 (로컬에서만 표시) */}
             {allowSave && (
               <button
@@ -1342,7 +1342,7 @@ export default function ArkpassGuideClient({
         )}
         
         {/* 기본 정보 카드 */}
-        <div className="bg-gray-900/70 border border-gray-700 rounded-2xl p-8">
+        <div className="hidden md:block bg-gray-900/70 border border-gray-700 rounded-2xl p-8">
           <h2 className="text-xl font-bold text-white mb-4">기본 정보</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -1379,7 +1379,7 @@ export default function ArkpassGuideClient({
         {/* 요약 카드 */}
         {levels.length > 0 && (
           <div className="bg-gray-900/70 border border-gray-700 rounded-2xl p-8">
-            <h2 className="text-xl font-bold text-white mb-4">요약</h2>
+            <h2 className="hidden md:block text-xl font-bold text-white mb-4">요약</h2>
             <div className="space-y-4">
               {levels.map((level, levelIndex) => (
                 <div key={levelIndex} className="bg-gray-800/50 rounded-lg border border-gray-700 p-4">
@@ -1568,7 +1568,7 @@ export default function ArkpassGuideClient({
         
         {/* 선택 아이템 카드 */}
         {allowSave && (
-        <div className="bg-gray-900/70 border border-gray-700 rounded-2xl p-8">
+        <div className="hidden md:block bg-gray-900/70 border border-gray-700 rounded-2xl p-8">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold text-white">선택 아이템</h2>
             <button

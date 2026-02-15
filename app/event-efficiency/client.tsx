@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
 import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
 import { usePriceOverride } from '../contexts/PriceOverrideContext';
@@ -113,6 +113,12 @@ type PriceInfo = {
 };
 
 const PC_BANG_LUCKY_SUMMARY_NAME = 'PC방 행운의 상자 (기대값)';
+
+function getSummaryItemDisplayName(name: string): string {
+  if (name === '심연의 역류 I 보상 (휴식게이지 2배)') return '심연의 역류 I 보상';
+  if (name === PC_BANG_LUCKY_SUMMARY_NAME) return 'PC방 행운의 상자';
+  return name;
+}
 
 const eventTabs: EventTab[] = [];
 
@@ -433,6 +439,8 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
   const [enabledRewards, setEnabledRewards] = useState<Record<string, boolean>>({});
   // 요약 탭의 묶음 항목 활성화 상태 (type-groupIdx-itemIdx 형식)
   const [summaryItemEnabled, setSummaryItemEnabled] = useState<Record<string, boolean>>({});
+  // 모바일: 항목명 터치 시 구성요소 툴팁 (title + lines)
+  const [compositionTooltip, setCompositionTooltip] = useState<{ title: string; lines: string[] } | null>(null);
   const [braceletPriceInput, setBraceletPriceInput] = useState('100');
   const [totalDaysInput, setTotalDaysInput] = useState('20');
   const [totalWeeksInput, setTotalWeeksInput] = useState(getInitialTotalWeeks());
@@ -1229,9 +1237,8 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
         return { perUnit, total: null };
       }
       case PC_BANG_LUCKY_SUMMARY_NAME: {
-        const perUnit = '상세 구성 기대값';
         const total = `총 진행 일수 × 3 = ${formatCount(quantity)}개`;
-        return { perUnit, total };
+        return { perUnit: null, total };
       }
       default:
         return { perUnit: null, total: null };
@@ -2050,7 +2057,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                               unitAmount: pcBangLuckyBoxExpectedGold,
                               goldEquivalent: pcBangLuckyBoxExpectedGold,
                               cashEquivalent: null,
-                              note: pcBangLuckyBoxExpectedGold != null ? '상세 구성 기대값' : null,
+                              note: null,
                             }
                           : getItemPriceInfo(getItemName(item));
                     const unitDisplay = isKurzanItem
@@ -2107,11 +2114,6 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                             onChange={(e) => {/* 레거시 함수 - 사용되지 않음 */}}
                             className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-right focus:outline-none focus:border-gray-600 w-24"
                           />
-                          {isKurzanItem && selectedKurzanStage && (
-                            <div className="text-xs text-gray-500 mt-1">
-                              ({selectedKurzanStage.level} / {selectedKurzanStage.stage})
-                            </div>
-                          )}
                           {composition.total && !isKurzanItem && !isPcBangLuckyBox && (
                             <div className="text-xs text-gray-500 mt-1">({composition.total})</div>
                           )}
@@ -3495,7 +3497,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                               unitAmount: pcBangLuckyBoxExpectedGold,
                               goldEquivalent: pcBangLuckyBoxExpectedGold,
                               cashEquivalent: null,
-                              note: pcBangLuckyBoxExpectedGold != null ? '상세 구성 기대값' : null,
+                              note: null,
                             }
                           : getItemPriceInfo(getItemName(item));
                     const unitDisplay = isKurzanItem
@@ -3733,17 +3735,17 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
   return (
     <div className="px-4 py-8 space-y-6">
       <div className="mb-6">
-        <div className="flex items-center gap-3 flex-wrap mb-2">
+        <div className="hidden md:flex items-center gap-3 flex-wrap mb-2">
           <h1 className="text-3xl font-semibold tracking-tight text-white">PC방 이벤트</h1>
           <FavoriteButton title="PC방 이벤트" />
         </div>
       </div>
-      <div className="bg-gray-800 border border-gray-700 rounded p-8">
+      <div className="bg-gray-800 border border-gray-700 rounded p-4 md:p-8 text-xs md:text-base">
         <div className="flex flex-col gap-4">
           
           {/* 새로 만들기 / 저장 버튼 (로컬에서만 표시, 카드 영역 안) */}
           {allowEventEfficiencySave && (
-            <div className="mb-3 flex flex-wrap gap-2">
+            <div className="hidden md:flex mb-3 flex-wrap gap-2">
               <button
                 onClick={handleNewEventEfficiency}
                 className="px-5 py-2.5 bg-gray-700 text-white rounded hover:bg-gray-600 disabled:opacity-50 font-semibold border border-gray-700"
@@ -3769,9 +3771,9 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
           {/* 저장된 이벤트 효율 드롭다운 */}
           {savedEventEfficiency.length > 0 && (
             <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-4">
-              <div className="mb-3">
-                <h3 className="text-base font-semibold text-white mb-2">저장된 이벤트 효율</h3>
-                <div className="flex gap-2">
+              <div className="mb-3 w-full md:w-auto">
+                <h3 className="text-sm md:text-base font-semibold text-white mb-2">저장된 이벤트 효율</h3>
+                <div className="flex flex-col md:flex-row gap-2 w-full">
                   <select
                     value={selectedEventEfficiencyId || ''}
                     onChange={(e) => {
@@ -3791,7 +3793,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                         setShowBasicInfo(hasActiveEvent);
                       }
                     }}
-                    className="flex-1 px-4 py-2 bg-gray-900 text-white rounded border border-gray-700 focus:outline-none focus:border-gray-600"
+                    className="w-full md:flex-1 min-w-0 px-4 py-2 bg-gray-900 text-white rounded border border-gray-700 focus:outline-none focus:border-gray-600 text-sm md:text-base"
                     disabled={isLoading}
                   >
                     <option value="">이벤트 선택...</option>
@@ -3809,7 +3811,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                           handleDeleteEventEfficiency(selectedEventEfficiencyId);
                         }
                       }}
-                      className="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm"
+                      className="hidden md:inline-flex px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm"
                       disabled={isLoading}
                     >
                       삭제
@@ -3834,7 +3836,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
 
           {/* 기본정보 입력 카드 */}
           {showBasicInfo && !isEventExpired && (
-          <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-4">
+          <div className="hidden md:block bg-gray-800/50 rounded-lg border border-gray-700 p-4">
             <h3 className="text-base font-semibold text-white mb-4">기본정보</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -3884,14 +3886,14 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
           </div>
           )}
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-nowrap gap-1 md:gap-2 overflow-x-auto pb-1">
             {eventSubTabs.map((subTab) => {
               const isActive = subTab.key === activeSubTab.key;
               return (
                 <button
                   key={subTab.key}
                   onClick={() => setActiveSubTab(subTab)}
-                  className={`px-4 py-2 rounded border text-sm font-semibold ${
+                  className={`flex-shrink-0 px-2 py-1.5 md:px-4 md:py-2 rounded border text-xs md:text-sm font-semibold whitespace-nowrap ${
                     isActive
                       ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white border-transparent shadow-lg'
                       : 'text-gray-300 border-gray-700 hover:border-gray-500 hover:text-white'
@@ -3908,28 +3910,58 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
               <div className="bg-gradient-to-br from-gray-900/90 to-gray-800/90 border-2 border-purple-500/40 rounded-2xl p-6 space-y-6 shadow-2xl">
               <div className="flex flex-col gap-4">
                 <div className="flex flex-wrap items-center gap-4 text-sm text-gray-200 bg-gray-800/50 rounded-lg p-4 border border-gray-700">
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-300">총 진행 일수:</span>
-                  <input
-                    type="number"
-                    min="1"
-                    step="0.5"
-                      className="px-3 py-1 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500 w-24"
-                    value={totalDaysInput}
-                    onChange={(e) => setTotalDaysInput(e.target.value)}
-                  />
-                    <span className="text-gray-400">일</span>
+                  <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-300">총 진행 일수:</span>
+                      <input
+                        type="number"
+                        min="1"
+                        step="0.5"
+                        className="px-3 py-1 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500 w-24"
+                        value={totalDaysInput}
+                        onChange={(e) => setTotalDaysInput(e.target.value)}
+                      />
+                      <span className="text-gray-400">일</span>
+                    </div>
                     {totalDaysNumber && daysPerWeek && (
-                  <span className="text-gray-400">
+                      <span className="text-gray-400 md:ml-0">
                         (주당 {formatNumberWithSignificantDigits(daysPerWeek)}일)
-                  </span>
+                      </span>
                     )}
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-gradient-to-br from-gray-800/70 to-gray-900/70 border border-yellow-500/30 rounded-xl p-5 shadow-lg hover:shadow-yellow-500/20 transition-shadow duration-300">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:grid-cols-4">
+                {/* 모바일: 전체 합계 + 시간당 (각각 ~~G (~~~원)) */}
+                <div className="bg-gradient-to-br from-gray-800/70 to-gray-900/70 border border-yellow-500/30 rounded-xl p-4 md:p-5 shadow-lg hover:shadow-yellow-500/20 transition-shadow duration-300 lg:hidden">
+                  <div className="text-xs md:text-sm text-gray-400">전체 합계</div>
+                  <div className="text-lg md:text-2xl font-bold text-yellow-300 mt-1">
+                    {aggregateTotals.totalGold > 0
+                      ? `${formatNumberWithSignificantDigits(aggregateTotals.totalGold)}G`
+                      : '-'}
+                    {aggregateTotals.totalCash && aggregateTotals.totalGold > 0 && (
+                      <span className="text-green-300 font-normal text-base md:text-xl ml-1">
+                        ({formatNumberWithSignificantDigits(aggregateTotals.totalCash)}원)
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="bg-gradient-to-br from-gray-800/70 to-gray-900/70 border border-green-500/30 rounded-xl p-4 md:p-5 shadow-lg hover:shadow-green-500/20 transition-shadow duration-300 lg:hidden">
+                  <div className="text-xs md:text-sm text-gray-400">시간당</div>
+                  <div className="text-lg md:text-2xl font-bold text-yellow-300 mt-1">
+                    {aggregateTotals.hourlyGold
+                      ? `${formatNumberWithSignificantDigits(aggregateTotals.hourlyGold)}G`
+                      : '-'}
+                    {aggregateTotals.hourlyCash && aggregateTotals.hourlyGold && (
+                      <span className="text-green-300 font-normal text-base md:text-xl ml-1">
+                        ({formatNumberWithSignificantDigits(aggregateTotals.hourlyCash)}원)
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {/* 데스크톱: 4개 카드 */}
+                <div className="hidden lg:block bg-gradient-to-br from-gray-800/70 to-gray-900/70 border border-yellow-500/30 rounded-xl p-5 shadow-lg hover:shadow-yellow-500/20 transition-shadow duration-300">
                   <div className="text-sm text-gray-400">총 골드 가치</div>
                   <div className="text-2xl font-bold text-yellow-300 mt-1">
                     {aggregateTotals.totalGold > 0
@@ -3937,7 +3969,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                       : '-'}
                   </div>
                 </div>
-                <div className="bg-gradient-to-br from-gray-800/70 to-gray-900/70 border border-green-500/30 rounded-xl p-5 shadow-lg hover:shadow-green-500/20 transition-shadow duration-300">
+                <div className="hidden lg:block bg-gradient-to-br from-gray-800/70 to-gray-900/70 border border-green-500/30 rounded-xl p-5 shadow-lg hover:shadow-green-500/20 transition-shadow duration-300">
                   <div className="text-sm text-gray-400">총 현금 환산</div>
                   <div className="text-2xl font-bold text-green-300 mt-1">
                     {aggregateTotals.totalCash
@@ -3945,7 +3977,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                       : '-'}
                   </div>
                 </div>
-                <div className="bg-gradient-to-br from-gray-800/70 to-gray-900/70 border border-yellow-500/30 rounded-xl p-5 shadow-lg hover:shadow-yellow-500/20 transition-shadow duration-300">
+                <div className="hidden lg:block bg-gradient-to-br from-gray-800/70 to-gray-900/70 border border-yellow-500/30 rounded-xl p-5 shadow-lg hover:shadow-yellow-500/20 transition-shadow duration-300">
                   <div className="text-sm text-gray-400">시간당 골드</div>
                   <div className="text-2xl font-bold text-yellow-300 mt-1">
                     {aggregateTotals.hourlyGold
@@ -3953,7 +3985,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                       : '-'}
                   </div>
                 </div>
-                <div className="bg-gradient-to-br from-gray-800/70 to-gray-900/70 border border-green-500/30 rounded-xl p-5 shadow-lg hover:shadow-green-500/20 transition-shadow duration-300">
+                <div className="hidden lg:block bg-gradient-to-br from-gray-800/70 to-gray-900/70 border border-green-500/30 rounded-xl p-5 shadow-lg hover:shadow-green-500/20 transition-shadow duration-300">
                   <div className="text-sm text-gray-400">시간당 현금 환산</div>
                   <div className="text-2xl font-bold text-green-300 mt-1">
                     {aggregateTotals.hourlyCash
@@ -3979,25 +4011,25 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                     </h3>
                     
                     {/* 총합 정보 */}
-                    <div className="bg-gradient-to-r from-blue-900/40 to-purple-900/40 rounded-xl p-4 border border-blue-500/30">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                          <div className="text-sm text-gray-400 mb-1">1회 총합</div>
-                          <div className="text-xl font-bold text-blue-300">
-                            {weeklyTotal > 0 ? `${formatNumberWithSignificantDigits(weeklyTotal)}골드` : '-'}
+                    <div className="bg-gradient-to-r from-blue-900/40 to-purple-900/40 rounded-xl p-3 md:p-4 border border-blue-500/30">
+                      <div className="grid grid-cols-3 gap-2 md:gap-4">
+                        <div className="text-center md:text-left">
+                          <div className="text-[10px] md:text-sm text-gray-400 mb-0.5 md:mb-1">1회 총합</div>
+                          <div className="text-sm md:text-xl font-bold text-blue-300">
+                            {weeklyTotal > 0 ? `${formatNumberWithSignificantDigits(weeklyTotal)}G` : '-'}
                           </div>
                         </div>
-                        <div>
-                          <div className="text-sm text-gray-400 mb-1">총 주수</div>
-                          <div className="text-xl font-bold text-blue-300">
+                        <div className="text-center md:text-left">
+                          <div className="text-[10px] md:text-sm text-gray-400 mb-0.5 md:mb-1">총 주수</div>
+                          <div className="text-sm md:text-xl font-bold text-blue-300">
                             {totalWeeksNumber}주
                           </div>
                         </div>
-                        <div>
-                          <div className="text-sm text-gray-400 mb-1">전체 가치</div>
-                          <div className="text-xl font-bold text-yellow-300">
+                        <div className="text-center md:text-left">
+                          <div className="text-[10px] md:text-sm text-gray-400 mb-0.5 md:mb-1">전체 가치</div>
+                          <div className="text-sm md:text-xl font-bold text-yellow-300">
                             {weeklyTotalWithWeeks > 0
-                              ? `${formatNumberWithSignificantDigits(weeklyTotalWithWeeks)}골드`
+                              ? `${formatNumberWithSignificantDigits(weeklyTotalWithWeeks)}G`
                               : '-'}
                           </div>
                         </div>
@@ -4007,16 +4039,16 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                     {/* 그룹별 상세 테이블 */}
                     {weeklyGroupDetails.map((group, groupIdx) => (
                       <div key={groupIdx} className="space-y-2">
-                        <h4 className="text-base font-semibold text-blue-300">{group.groupTitle}</h4>
+                        <h4 className="text-[10px] md:text-base font-semibold text-blue-300">{group.groupTitle}</h4>
                         <div className="overflow-x-auto rounded-xl border border-blue-500/30 shadow-lg">
-                          <table className="w-full text-sm">
+                          <table className="w-full text-[10px] md:text-sm">
                             <thead>
                               <tr className="bg-gradient-to-r from-blue-900/40 to-purple-900/40 text-gray-200 border-b-2 border-blue-500/50">
-                                <th className="px-4 py-3 text-left font-bold w-16">활성</th>
-                                <th className="px-4 py-3 text-left font-bold">묶음 항목</th>
-                                <th className="px-4 py-3 text-right font-bold">묶음 단가</th>
-                                <th className="px-4 py-3 text-right font-bold">묶음 수량</th>
-                                <th className="px-4 py-3 text-right font-bold">묶음 가치</th>
+                                <th className="px-1.5 md:px-4 py-1.5 md:py-3 text-left font-bold w-12 md:w-16 text-[9px] md:text-sm">활성</th>
+                                <th className="px-1.5 md:px-4 py-1.5 md:py-3 text-left font-bold text-[9px] md:text-sm min-w-0"><span className="md:hidden">항목 (터치 시 상세)</span><span className="hidden md:inline">묶음 항목</span></th>
+                                <th className="hidden md:table-cell px-4 py-3 text-right font-bold">묶음 단가</th>
+                                <th className="px-1.5 md:px-4 py-1.5 md:py-3 text-right font-bold text-[9px] md:text-sm whitespace-nowrap min-w-[2.5rem]">수량</th>
+                                <th className="px-1.5 md:px-4 py-1.5 md:py-3 text-right font-bold text-[9px] md:text-sm">가치</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -4024,8 +4056,9 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                 const itemKey = `weekly-${groupIdx}-${itemIdx}`;
                                 const isEnabled = summaryItemEnabled[itemKey] !== false;
                                 return (
-                                <tr key={itemIdx} className={`border-b border-gray-800/70 hover:bg-gray-700/30 transition-colors ${!isEnabled ? 'opacity-50' : ''}`}>
-                                  <td className="px-4 py-3 text-center">
+                                <React.Fragment key={itemIdx}>
+                                <tr className={`border-b border-gray-800/70 hover:bg-gray-700/30 transition-colors ${!isEnabled ? 'opacity-50' : ''}`}>
+                                  <td className="px-1.5 md:px-4 py-1.5 md:py-3 text-center align-middle">
                                     <label className="relative inline-flex items-center cursor-pointer">
                                       <input
                                         type="checkbox"
@@ -4038,37 +4071,46 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                         }}
                                         className="sr-only peer"
                                       />
-                                      <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                                      <div className="w-9 h-5 md:w-11 md:h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-500 rounded-full peer peer-checked:after:translate-x-4 md:peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 md:after:h-5 md:after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
                                     </label>
                                   </td>
-                                  <td className="px-4 py-3 text-white font-medium">
-                                    <span>
+                                  <td className="px-1.5 md:px-4 py-1.5 md:py-3 text-white font-medium text-[10px] md:text-sm min-w-0 break-keep">
+                                    <button
+                                      type="button"
+                                      className="md:hidden w-full text-left focus:outline-none"
+                                      onClick={() => setCompositionTooltip({
+                                        title: item.itemName,
+                                        lines: item.details.map(d => `${d.itemName}: ${formatNumberWithSignificantDigits(d.componentQuantity)}개${d.probability != null ? ` (${formatNumberWithSignificantDigits(d.probability * 100)}%)` : ''}`),
+                                      })}
+                                    >
+                                      {item.itemName}
+                                    </button>
+                                    <span className="hidden md:inline">
                                       {item.itemName}
                                       <span className="ml-2 text-xs text-gray-400">({item.itemType})</span>
                                     </span>
                                   </td>
-                                  <td className="px-4 py-3 text-right text-gray-300">
-                                    {item.bundleUnitPrice > 0 ? `${formatNumberWithSignificantDigits(item.bundleUnitPrice)}골드` : '-'}
+                                  <td className="hidden md:table-cell px-4 py-3 text-right text-gray-300 text-sm">
+                                    {item.bundleUnitPrice > 0 ? `${formatNumberWithSignificantDigits(item.bundleUnitPrice)}G` : '-'}
                                   </td>
-                                  <td className="px-4 py-3 text-right text-gray-300">
-                                    {item.bundleQuantity}
+                                  <td className="px-1.5 md:px-4 py-1.5 md:py-3 text-right text-gray-300 text-[10px] md:text-sm whitespace-nowrap min-w-[2.5rem]">
+                                    <span className="md:hidden">{item.bundleQuantity}</span>
+                                    <span className="hidden md:inline">{item.bundleQuantity}</span>
                                   </td>
-                                  <td className="px-4 py-3 text-right text-yellow-300 font-semibold">
+                                  <td className="px-1.5 md:px-4 py-1.5 md:py-3 text-right text-yellow-300 font-semibold text-[10px] md:text-sm">
                                     {item.bundleUnitPrice > 0
-                                      ? `${formatNumberWithSignificantDigits(item.bundleUnitPrice * item.bundleQuantity)}골드`
+                                      ? `${formatNumberWithSignificantDigits(item.bundleUnitPrice * item.bundleQuantity)}G`
                                       : '-'}
                                   </td>
                                 </tr>
+                                </React.Fragment>
                               );
                               })}
                             </tbody>
                             <tfoot>
                               <tr className="bg-gradient-to-r from-blue-900/60 to-purple-900/60 border-t-2 border-blue-500/60">
-                                <td colSpan={4} className="px-4 py-2 text-right text-gray-200 font-bold">
-                                  그룹 합계
-                                </td>
-                                <td className="px-4 py-2 text-right text-yellow-300 font-bold">
-                                  {group.groupTotal > 0 ? `${formatNumberWithSignificantDigits(group.groupTotal)}골드` : '-'}
+                                <td colSpan={5} className="px-1.5 md:px-4 py-1.5 text-right text-gray-200 font-bold text-[10px] md:text-sm">
+                                  합계 {group.groupTotal > 0 ? `${formatNumberWithSignificantDigits(group.groupTotal)}G` : '-'}
                                 </td>
                               </tr>
                             </tfoot>
@@ -4095,11 +4137,11 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                     </h3>
                     
                     {/* 총합 정보 */}
-                    <div className="bg-gradient-to-r from-purple-900/40 to-pink-900/40 rounded-xl p-4 border border-purple-500/30">
+                    <div className="bg-gradient-to-r from-purple-900/40 to-pink-900/40 rounded-xl p-3 md:p-4 border border-purple-500/30">
                       <div>
-                        <div className="text-sm text-gray-400 mb-1">총합</div>
-                        <div className="text-xl font-bold text-purple-300">
-                          {cumulativeTotal > 0 ? `${formatNumberWithSignificantDigits(cumulativeTotal)}골드` : '-'}
+                        <div className="text-xs md:text-sm text-gray-400 mb-0.5 md:mb-1">총합</div>
+                        <div className="text-base md:text-xl font-bold text-purple-300">
+                          {cumulativeTotal > 0 ? `${formatNumberWithSignificantDigits(cumulativeTotal)}G` : '-'}
                         </div>
                       </div>
                     </div>
@@ -4107,16 +4149,16 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                     {/* 그룹별 상세 테이블 */}
                     {cumulativeGroupDetails.map((group, groupIdx) => (
                       <div key={groupIdx} className="space-y-2">
-                        <h4 className="text-base font-semibold text-purple-300">{group.groupTitle}</h4>
+                        <h4 className="text-[10px] md:text-base font-semibold text-purple-300">{group.groupTitle}</h4>
                         <div className="overflow-x-auto rounded-xl border border-purple-500/30 shadow-lg">
-                          <table className="w-full text-sm">
+                          <table className="w-full text-[10px] md:text-sm">
                             <thead>
                               <tr className="bg-gradient-to-r from-purple-900/40 to-pink-900/40 text-gray-200 border-b-2 border-purple-500/50">
-                                <th className="px-4 py-3 text-left font-bold w-16">활성</th>
-                                <th className="px-4 py-3 text-left font-bold">묶음 항목</th>
-                                <th className="px-4 py-3 text-right font-bold">묶음 단가</th>
-                                <th className="px-4 py-3 text-right font-bold">묶음 수량</th>
-                                <th className="px-4 py-3 text-right font-bold">묶음 가치</th>
+                                <th className="px-1.5 md:px-4 py-1.5 md:py-3 text-left font-bold w-12 md:w-16 text-[9px] md:text-sm">활성</th>
+                                <th className="px-1.5 md:px-4 py-1.5 md:py-3 text-left font-bold text-[9px] md:text-sm min-w-0"><span className="md:hidden">항목 (터치 시 상세)</span><span className="hidden md:inline">묶음 항목</span></th>
+                                <th className="hidden md:table-cell px-4 py-3 text-right font-bold">묶음 단가</th>
+                                <th className="px-1.5 md:px-4 py-1.5 md:py-3 text-right font-bold text-[9px] md:text-sm whitespace-nowrap min-w-[2.5rem]">수량</th>
+                                <th className="px-1.5 md:px-4 py-1.5 md:py-3 text-right font-bold text-[9px] md:text-sm">가치</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -4124,8 +4166,9 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                 const itemKey = `cumulative-${groupIdx}-${itemIdx}`;
                                 const isEnabled = summaryItemEnabled[itemKey] !== false;
                                 return (
-                                <tr key={itemIdx} className={`border-b border-gray-800/70 hover:bg-gray-700/30 transition-colors ${!isEnabled ? 'opacity-50' : ''}`}>
-                                  <td className="px-4 py-3 text-center">
+                                <React.Fragment key={itemIdx}>
+                                <tr className={`border-b border-gray-800/70 hover:bg-gray-700/30 transition-colors ${!isEnabled ? 'opacity-50' : ''}`}>
+                                  <td className="px-1.5 md:px-4 py-1.5 md:py-3 text-center align-middle">
                                     <label className="relative inline-flex items-center cursor-pointer">
                                       <input
                                         type="checkbox"
@@ -4138,37 +4181,46 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                         }}
                                         className="sr-only peer"
                                       />
-                                      <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                                      <div className="w-9 h-5 md:w-11 md:h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-500 rounded-full peer peer-checked:after:translate-x-4 md:peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 md:after:h-5 md:after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
                                     </label>
                                   </td>
-                                  <td className="px-4 py-3 text-white font-medium">
-                                    <span>
+                                  <td className="px-1.5 md:px-4 py-1.5 md:py-3 text-white font-medium text-[10px] md:text-sm min-w-0 break-keep">
+                                    <button
+                                      type="button"
+                                      className="md:hidden w-full text-left focus:outline-none"
+                                      onClick={() => setCompositionTooltip({
+                                        title: item.itemName,
+                                        lines: item.details.map(d => `${d.itemName}: ${formatNumberWithSignificantDigits(d.componentQuantity)}개${d.probability != null ? ` (${formatNumberWithSignificantDigits(d.probability * 100)}%)` : ''}`),
+                                      })}
+                                    >
+                                      {item.itemName}
+                                    </button>
+                                    <span className="hidden md:inline">
                                       {item.itemName}
                                       <span className="ml-2 text-xs text-gray-400">({item.itemType})</span>
                                     </span>
                                   </td>
-                                  <td className="px-4 py-3 text-right text-gray-300">
-                                    {item.bundleUnitPrice > 0 ? `${formatNumberWithSignificantDigits(item.bundleUnitPrice)}골드` : '-'}
+                                  <td className="hidden md:table-cell px-4 py-3 text-right text-gray-300 text-sm">
+                                    {item.bundleUnitPrice > 0 ? `${formatNumberWithSignificantDigits(item.bundleUnitPrice)}G` : '-'}
                                   </td>
-                                  <td className="px-4 py-3 text-right text-gray-300">
-                                    {item.bundleQuantity}
+                                  <td className="px-1.5 md:px-4 py-1.5 md:py-3 text-right text-gray-300 text-[10px] md:text-sm whitespace-nowrap min-w-[2.5rem]">
+                                    <span className="md:hidden">{item.bundleQuantity}</span>
+                                    <span className="hidden md:inline">{item.bundleQuantity}</span>
                                   </td>
-                                  <td className="px-4 py-3 text-right text-yellow-300 font-semibold">
+                                  <td className="px-1.5 md:px-4 py-1.5 md:py-3 text-right text-yellow-300 font-semibold text-[10px] md:text-sm">
                                     {item.bundleUnitPrice > 0
-                                      ? `${formatNumberWithSignificantDigits(item.bundleUnitPrice * item.bundleQuantity)}골드`
+                                      ? `${formatNumberWithSignificantDigits(item.bundleUnitPrice * item.bundleQuantity)}G`
                                       : '-'}
                                   </td>
                                 </tr>
+                                </React.Fragment>
                               );
                               })}
                             </tbody>
                             <tfoot>
                               <tr className="bg-gradient-to-r from-purple-900/60 to-pink-900/60 border-t-2 border-purple-500/60">
-                                <td colSpan={4} className="px-4 py-2 text-right text-gray-200 font-bold">
-                                  그룹 합계
-                                </td>
-                                <td className="px-4 py-2 text-right text-yellow-300 font-bold">
-                                  {group.groupTotal > 0 ? `${formatNumberWithSignificantDigits(group.groupTotal)}골드` : '-'}
+                                <td colSpan={5} className="px-1.5 md:px-4 py-1.5 text-right text-gray-200 font-bold text-[10px] md:text-sm">
+                                  합계 {group.groupTotal > 0 ? `${formatNumberWithSignificantDigits(group.groupTotal)}G` : '-'}
                                 </td>
                               </tr>
                             </tfoot>
@@ -4188,13 +4240,14 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                     상시 혜택 (일일) ({totalDaysNumber ?? 0}일)
                   </h3>
                   <div className="overflow-x-auto rounded-xl border border-green-500/30 shadow-lg">
-                    <table className="w-full text-sm">
+                    <table className="w-full text-[10px] md:text-sm">
                       <thead>
                         <tr className="bg-gradient-to-r from-green-900/40 to-emerald-900/40 text-gray-200 border-b-2 border-green-500/50">
-                          <th className="px-4 py-4 text-left font-bold">아이템명</th>
-                          <th className="px-4 py-4 text-right font-bold">총 수량</th>
-                          <th className="px-4 py-4 text-right font-bold">단가</th>
-                          <th className="px-4 py-4 text-right font-bold">총합</th>
+                          <th className="px-1.5 md:px-4 py-1.5 md:py-4 text-left font-bold w-12 md:w-auto text-[9px] md:text-sm">활성</th>
+                          <th className="px-1.5 md:px-4 py-1.5 md:py-4 text-left font-bold text-[9px] md:text-sm min-w-0"><span className="md:hidden">항목 (터치 시 상세)</span><span className="hidden md:inline">아이템명</span></th>
+                          <th className="hidden md:table-cell px-4 py-4 text-right font-bold">단가</th>
+                          <th className="px-1.5 md:px-4 py-1.5 md:py-4 text-right font-bold text-[9px] md:text-sm whitespace-nowrap min-w-[2.5rem]"><span className="md:hidden">수량</span><span className="hidden md:inline">총 수량</span></th>
+                          <th className="px-1.5 md:px-4 py-1.5 md:py-4 text-right font-bold text-[9px] md:text-sm"><span className="md:hidden">가치</span><span className="hidden md:inline">총합</span></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -4217,7 +4270,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                   unitAmount: pcBangLuckyBoxExpectedGold,
                                   goldEquivalent: pcBangLuckyBoxExpectedGold,
                                   cashEquivalent: null,
-                                  note: pcBangLuckyBoxExpectedGold != null ? '상세 구성 기대값' : null,
+                                  note: null,
                                 }
                               : getItemPriceInfo(getItemName(item));
                           // 단가를 골드로 통일
@@ -4237,94 +4290,99 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                             }
                           }
                           const unitDisplay = unitPriceInGold != null
-                            ? `${formatNumberWithSignificantDigits(unitPriceInGold)}골드`
+                            ? `${formatNumberWithSignificantDigits(unitPriceInGold)}G`
                             : '-';
                           const totalDisplay = unitPriceInGold != null && item.quantity > 0
-                            ? `${formatNumberWithSignificantDigits(unitPriceInGold * item.quantity)}골드`
+                            ? `${formatNumberWithSignificantDigits(unitPriceInGold * item.quantity)}G`
                             : '-';
                           const composition = getCompositionInfo(getItemName(item), item.quantity);
 
                           return (
-                          <tr
-                            key={`daily-${item.name}-${idx}`}
-                            className={`border-b border-gray-800/70 hover:bg-gray-700/30 transition-colors duration-200 ${!enabled ? 'opacity-40' : ''}`}
-                          >
-                            <td className="px-4 py-3 text-white">
-                              <div className="flex items-center gap-3">
+                          <React.Fragment key={`daily-${item.name}-${idx}`}>
+                            <tr
+                              className={`border-b border-gray-800/70 hover:bg-gray-700/30 transition-colors duration-200 ${!enabled ? 'opacity-40' : ''}`}
+                            >
+                              <td className="px-1.5 md:px-4 py-1.5 md:py-3 text-center align-middle">
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={enabled}
+                                    onChange={() => toggleReward(item.name)}
+                                    className="sr-only peer"
+                                    aria-label={`${item.name} 포함 여부`}
+                                  />
+                                  <div className="w-9 h-5 md:w-11 md:h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-500 rounded-full peer peer-checked:after:translate-x-4 md:peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 md:after:h-5 md:after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                                </label>
+                              </td>
+                              <td className="px-1.5 md:px-4 py-1.5 md:py-3 text-white font-medium text-[10px] md:text-sm min-w-0 break-keep">
                                 <button
                                   type="button"
-                                  onClick={() => toggleReward(item.name)}
-                                  className={`w-10 h-5 rounded-full border transition-colors ${
-                                    enabled
-                                      ? 'bg-purple-600 border-purple-500'
-                                      : 'bg-gray-600 border-gray-500'
-                                  }`}
-                                  aria-label={`${item.name} 포함 여부`}
+                                  className="md:hidden w-full text-left focus:outline-none"
+                                  onClick={() => setCompositionTooltip({
+                                    title: isKurzanSummaryItem
+                                      ? '심연의 역류 I 보상 (휴식게이지 2배 기준)'
+                                      : isPcBangLuckyBoxSummaryItem
+                                        ? getSummaryItemDisplayName(item.name)
+                                        : item.name,
+                                    lines: isPcBangLuckyBoxSummaryItem
+                                      ? ['상세 항목은 웹사이트에서 확인 가능합니다']
+                                      : [composition.perUnit && `1개당 ${composition.perUnit}`, composition.total && composition.total].filter(Boolean) as string[],
+                                  })}
                                 >
-                                  <span
-                                    className={`inline-block w-4 h-4 rounded-full bg-white transform transition-transform ${
-                                      enabled ? 'translate-x-5' : 'translate-x-1'
-                                    }`}
-                                  />
+                                  {getSummaryItemDisplayName(item.name)}
                                 </button>
-                                <span>
-                                  {item.name}
-                                  {isKurzanSummaryItem && selectedKurzanStage && (
-                                    <span className="ml-2 text-xs text-gray-400">
-                                      ({selectedKurzanStage.level} / {selectedKurzanStage.stage})
-                                    </span>
+                                <span className="hidden md:inline">
+                                  <div className="flex items-center gap-2 md:gap-3">
+                                    <span>{getSummaryItemDisplayName(item.name)}</span>
+                                    {getItemName(item) === '고결한 혼돈의 돌 선택 상자' && (
+                                      <select
+                                        value={chaosStoneQuality}
+                                        onChange={(e) => setChaosStoneQuality(Number(e.target.value) as 90 | 95)}
+                                        className="bg-gray-700 text-white border border-gray-600 rounded px-2 py-1 text-xs"
+                                      >
+                                        <option value={90}>품질 90</option>
+                                        <option value={95}>품질 95</option>
+                                      </select>
+                                    )}
+                                    {getItemName(item) === '팔찌 효과 재변환권' && (
+                                      <input
+                                        type="number"
+                                        min="1"
+                                        value={braceletPriceInput}
+                                        onChange={(e) => setBraceletPriceInput(e.target.value)}
+                                        className="w-24 bg-gray-700 text-white border border-gray-600 rounded px-2 py-1 text-xs"
+                                      />
+                                    )}
+                                  </div>
+                                  {composition.perUnit && (
+                                    <div className="text-xs text-gray-400 mt-1">1개당 {composition.perUnit}</div>
                                   )}
                                 </span>
-                                {getItemName(item) === '고결한 혼돈의 돌 선택 상자' && (
-                                  <select
-                                    value={chaosStoneQuality}
-                                    onChange={(e) => setChaosStoneQuality(Number(e.target.value) as 90 | 95)}
-                                    className="bg-gray-700 text-white border border-gray-600 rounded px-2 py-1 text-xs"
-                                  >
-                                    <option value={90}>품질 90</option>
-                                    <option value={95}>품질 95</option>
-                                  </select>
+                              </td>
+                              <td className="hidden md:table-cell px-4 py-3 text-right text-gray-300 text-sm break-keep">
+                                {unitDisplay}
+                                {priceInfo.note && (
+                                  <div className="text-xs text-gray-500 mt-1">{priceInfo.note}</div>
                                 )}
-                                {getItemName(item) === '팔찌 효과 재변환권' && (
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    value={braceletPriceInput}
-                                    onChange={(e) => setBraceletPriceInput(e.target.value)}
-                                    className="w-24 bg-gray-700 text-white border border-gray-600 rounded px-2 py-1 text-xs"
-                                  />
+                              </td>
+                              <td className="px-1.5 md:px-4 py-1.5 md:py-3 text-right text-gray-300 text-[10px] md:text-sm whitespace-nowrap min-w-[2.5rem]">
+                                <div>{formatNumberWithSignificantDigits(item.quantity)}</div>
+                                {composition.total && (
+                                  <div className={`text-[10px] md:text-xs text-gray-500 mt-1 ${isPcBangLuckyBoxSummaryItem ? 'hidden md:block' : ''}`}>({composition.total})</div>
                                 )}
-                              </div>
-                              {composition.perUnit && (
-                                <div className="text-xs text-gray-400 mt-1">1개당 {composition.perUnit}</div>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-right text-gray-300">
-                              <div>{formatNumberWithSignificantDigits(item.quantity)}</div>
-                              {composition.total && (
-                                <div className="text-xs text-gray-500 mt-1">({composition.total})</div>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-right text-gray-300">
-                              {unitDisplay}
-                              {priceInfo.note && (
-                                <div className="text-xs text-gray-500 mt-1">{priceInfo.note}</div>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-right text-yellow-300 font-semibold">
-                              {totalDisplay}
-                            </td>
-                          </tr>
+                              </td>
+                              <td className="px-1.5 md:px-4 py-1.5 md:py-3 text-right text-yellow-300 font-semibold text-[10px] md:text-sm">
+                                {totalDisplay}
+                              </td>
+                            </tr>
+                          </React.Fragment>
                         );
                         })}
                       </tbody>
                       <tfoot>
                         <tr className="bg-gradient-to-r from-green-900/60 to-emerald-900/60 border-t-2 border-green-500/60">
-                          <td colSpan={3} className="px-4 py-3 text-right text-gray-200 font-bold">
-                            상시 혜택 총합
-                          </td>
-                          <td className="px-4 py-3 text-right text-yellow-300 font-bold text-lg">
-                            {(() => {
+                          <td colSpan={5} className="px-1.5 md:px-4 py-1.5 md:py-3 text-right text-gray-200 font-bold text-[10px] md:text-sm">
+                            합계 {(() => {
                               const dailyTotal = aggregateRewards
                                 .filter(item => item.category === 'daily')
                                 .reduce((sum, item) => {
@@ -4353,7 +4411,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                                   }
                                   return sum;
                                 }, 0);
-                              return dailyTotal > 0 ? `${formatNumberWithSignificantDigits(dailyTotal)}골드` : '-';
+                              return dailyTotal > 0 ? `${formatNumberWithSignificantDigits(dailyTotal)}G` : '-';
                             })()}
                           </td>
                         </tr>
@@ -4365,26 +4423,37 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
             </div>
             )}
 
-            {activeSubTab.key === 'summary' && (
-              <div className="text-sm text-gray-400 flex flex-wrap gap-2">
-                <span>현금 환산 기준:</span>
-                {cashMode === 'discord'
-                  ? discordRate
-                    ? `디스코드 (100골드 = ${discordRate}원 · 1골드 ≈ ${
-                        goldToCashPerGold ? formatNumberWithSignificantDigits(goldToCashPerGold) : '-'
-                      }원)`
-                    : '디스코드 환율 정보를 불러올 수 없습니다.'
-                  : crystalGoldRate
-                    ? `화폐거래소 (100크리 = ${formatNumberWithSignificantDigits(crystalGoldRate)}골드 · 1골드 ≈ ${
-                        goldToCashPerGold ? formatNumberWithSignificantDigits(goldToCashPerGold) : '-'
-                      }원)`
-                    : '화폐거래소 환율 정보를 불러올 수 없습니다.'}
-              </div>
-            )}
-
             {activeSubTab.key === 'weekly' && renderEditableRewardTableNew(weeklyRewards, 'weekly', '주간 보상')}
             {activeSubTab.key === 'cumulative' && renderEditableRewardTableNew(cumulativeRewards, 'cumulative', '누적 보상')}
             {activeSubTab.key === 'daily' && renderReadOnlyRewardTable(dailyBenefits, '상시 혜택 (일일)', '상시 혜택 총합')}
+
+            {/* 모바일: 구성요소 툴팁 오버레이 */}
+            {compositionTooltip && (
+              <div className="fixed inset-0 z-50 md:hidden" aria-modal="true" role="dialog" aria-label="구성요소">
+                <button
+                  type="button"
+                  className="absolute inset-0 bg-black/50 focus:outline-none"
+                  onClick={() => setCompositionTooltip(null)}
+                  aria-label="툴팁 닫기"
+                />
+                <div className="absolute bottom-0 left-0 right-0 rounded-t-xl bg-gray-800 border border-gray-700 border-b-0 shadow-2xl p-4 max-h-[60vh] overflow-y-auto">
+                  <h4 className="text-sm font-semibold text-white mb-2 break-keep">{compositionTooltip.title}</h4>
+                  <p className="text-xs text-gray-400 mb-2">구성요소</p>
+                  <ul className="space-y-1 text-xs text-gray-300">
+                    {compositionTooltip.lines.length > 0 ? compositionTooltip.lines.map((line, i) => (
+                      <li key={i} className="break-keep">{line}</li>
+                    )) : <li className="text-gray-500">구성 정보 없음</li>}
+                  </ul>
+                  <button
+                    type="button"
+                    className="mt-4 w-full py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium rounded-lg"
+                    onClick={() => setCompositionTooltip(null)}
+                  >
+                    닫기
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

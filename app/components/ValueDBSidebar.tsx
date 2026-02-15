@@ -257,7 +257,33 @@ export default function ValueDBSidebar() {
       
       {/* 가격 조정 섹션 */}
       <div className="p-3 border-b border-gray-800">
-        <h2 className="text-sm font-semibold text-gray-300 mb-3">가격 조정 (클릭 시 0골드로 반영)</h2>
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <h2 className="text-sm font-semibold text-gray-300">가격 조정 (클릭 시 0골드로 반영)</h2>
+          <button
+            type="button"
+            onClick={() => {
+              const initial = {
+                ignoreSilver: false,
+                ignoreDestructionGuardStone: false,
+                ignoreBreakthroughStone: false,
+                ignoreFragment: false,
+                cardSetGraduated: false,
+                ignoreCardExp: false,
+                has97Stone: false,
+                hasFullRelicEngraving: false,
+                ignoreFusionMaterial: false,
+                ignoreBreath: false,
+                ignoreLowTierCrafting: false,
+                ignoreGem: false,
+              };
+              setLocalOverrides(initial);
+              setState(initial);
+            }}
+            className="text-[11px] px-2 py-1 rounded border border-gray-600 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:border-gray-500 transition-colors shrink-0"
+          >
+            초기화
+          </button>
+        </div>
         <div className="grid grid-cols-3 gap-1.5">
           {/* 1단 */}
           <button

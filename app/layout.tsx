@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 import Navigation from './components/Navigation'
 import Footer from '../components/Footer'
+import ScrollToTopButton from './components/ScrollToTopButton'
 import SidebarWrapper from './components/SidebarWrapper'
 import LeftSidebarPlaceholder from './components/LeftSidebarPlaceholder'
 import ValueDBSidebar from './components/ValueDBSidebar'
@@ -187,6 +188,9 @@ export default async function RootLayout({
               
               {/* Mobile Sidebar Wrapper (for toggle functionality) */}
               <SidebarWrapper />
+
+              {/* 모바일: 스크롤 시 맨 위로 가기 버튼 */}
+              <ScrollToTopButton />
               
               {/* Footer */}
               <div className="w-full">

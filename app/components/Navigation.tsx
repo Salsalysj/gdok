@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSidebar } from '../contexts/SidebarContext';
 import { usePriceOverride } from '../contexts/PriceOverrideContext';
 
@@ -21,6 +21,9 @@ export default function Navigation() {
   const [eventEfficiencyOpen, setEventEfficiencyOpen] = useState<boolean>(false);
   const [exchangeEfficiencyOpen, setExchangeEfficiencyOpen] = useState<boolean>(false);
   const [customCalcOpen, setCustomCalcOpen] = useState<boolean>(false);
+  const mobileAccordionTouchHandled = useRef(false);
+  type MobileSubmenuTab = 'content-rewards' | 'refining' | 'event-efficiency' | 'exchange-efficiency' | 'custom-calc' | null;
+  const [mobileSubmenuTab, setMobileSubmenuTab] = useState<MobileSubmenuTab>(null);
 
   // 로컬 스토리지와 동기화 & 이벤트 브로드캐스트
   useEffect(() => {
@@ -163,17 +166,7 @@ export default function Navigation() {
                   setEventEfficiencyOpen(false);
                   setExchangeEfficiencyOpen(false);
                   setCustomCalcOpen(false);
-                  if (pathname.startsWith('/content-rewards') || pathname === '/hell') {
-                    setContentRewardsOpen(true);
-                  } else if (pathname.startsWith('/refining-simulation') || pathname.startsWith('/advanced-refining') || pathname.startsWith('/character-simulation')) {
-                    setRefiningOpen(true);
-                  } else if (pathname.startsWith('/event-efficiency')) {
-                    setEventEfficiencyOpen(true);
-                  } else if (pathname.startsWith('/bloodstone-shop') || pathname.startsWith('/craft-materials') || pathname.startsWith('/single-shop')) {
-                    setExchangeEfficiencyOpen(true);
-                  } else if (pathname.startsWith('/custom-calculator')) {
-                    setCustomCalcOpen(true);
-                  }
+                  setMobileSubmenuTab(null);
                 }
               }}
               className="text-white p-2 hover:bg-gray-800 rounded"
@@ -300,6 +293,7 @@ export default function Navigation() {
 
         {/* 모바일 드롭다운 메뉴 */}
         {mobileMenuOpen && (
+          <>
           <div className="lg:hidden py-4 space-y-2 border-t border-gray-700">
             {tabs.map((tab) => {
               const isActive = pathname === tab.href || 
@@ -315,15 +309,33 @@ export default function Navigation() {
                 const isEventEfficiency = tab.name === '이벤트 효율';
                 const isExchangeEfficiency = tab.name === '각종 교환효율';
                 const isCustomCalc = tab.name === '커스텀 계산기';
+                const tabKey: MobileSubmenuTab = isContentRewards ? 'content-rewards' : (isRefining ? 'refining' : (isEventEfficiency ? 'event-efficiency' : (isExchangeEfficiency ? 'exchange-efficiency' : (isCustomCalc ? 'custom-calc' : null))));
                 const isOpen = isContentRewards ? contentRewardsOpen : (isRefining ? refiningOpen : (isEventEfficiency ? eventEfficiencyOpen : (isExchangeEfficiency ? exchangeEfficiencyOpen : (isCustomCalc ? customCalcOpen : false))));
                 const setIsOpen = isContentRewards ? setContentRewardsOpen : (isRefining ? setRefiningOpen : (isEventEfficiency ? setEventEfficiencyOpen : (isExchangeEfficiency ? setExchangeEfficiencyOpen : (isCustomCalc ? setCustomCalcOpen : () => {}))));
-                const subTabs = isContentRewards ? contentRewardsSubTabs : (isRefining ? refiningSubTabs : (isEventEfficiency ? eventEfficiencySubTabs : (isExchangeEfficiency ? exchangeEfficiencySubTabs : (isCustomCalc ? customCalcSubTabs : []))));
                 
                 return (
-                  <div key={tab.href}>
+                  <div key={tab.href} className="relative">
                     <button
-                      onClick={() => setIsOpen(!isOpen)}
-                      className={`w-full flex items-center justify-between px-4 py-3 rounded font-medium ${
+                      type="button"
+                      onClick={() => {
+                        if (mobileAccordionTouchHandled.current) {
+                          mobileAccordionTouchHandled.current = false;
+                          return;
+                        }
+                        const nextOpen = !isOpen;
+                        setIsOpen(nextOpen);
+                        if (nextOpen) setMobileSubmenuTab(tabKey);
+                        else if (mobileSubmenuTab === tabKey) setMobileSubmenuTab(null);
+                      }}
+                      onPointerDown={(e) => {
+                        if (e.pointerType === 'touch' && isOpen) {
+                          mobileAccordionTouchHandled.current = true;
+                          e.preventDefault();
+                          setIsOpen(prev => !prev);
+                          if (mobileSubmenuTab === tabKey) setMobileSubmenuTab(null);
+                        }
+                      }}
+                      className={`relative z-10 w-full flex items-center justify-between px-4 py-3 rounded font-medium ${
                         isActive
                           ? 'bg-gray-700 text-white'
                           : 'text-gray-400 hover:text-white hover:bg-gray-800'
@@ -339,31 +351,6 @@ export default function Navigation() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
                     </button>
-                    {isOpen && (
-                      <div className="pl-4 mt-1 space-y-1">
-                        {subTabs.map((subTab) => {
-                          const isSubActive = pathname === subTab.href || (subTab.href !== '/content-rewards' && pathname.startsWith(subTab.href + '/'));
-                          return (
-                            <Link
-                              key={subTab.href}
-                              href={subTab.href}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setIsOpen(false);
-                                setMobileMenuOpen(false);
-                              }}
-                              className={`block px-4 py-2 rounded text-sm ${
-                                isSubActive
-                                  ? 'text-white bg-gray-800'
-                                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
-                              }`}
-                            >
-                              {subTab.name}
-                            </Link>
-                          );
-                        })}
-                      </div>
-                    )}
                   </div>
                 );
               }
@@ -396,6 +383,87 @@ export default function Navigation() {
               );
             })}
           </div>
+
+          {/* 모바일: 서브메뉴 옆쪽 오버레이 */}
+          {mobileSubmenuTab && (
+            <>
+              <div
+                className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+                aria-hidden
+                onClick={() => {
+                  if (mobileSubmenuTab === 'content-rewards') setContentRewardsOpen(false);
+                  if (mobileSubmenuTab === 'refining') setRefiningOpen(false);
+                  if (mobileSubmenuTab === 'event-efficiency') setEventEfficiencyOpen(false);
+                  if (mobileSubmenuTab === 'exchange-efficiency') setExchangeEfficiencyOpen(false);
+                  if (mobileSubmenuTab === 'custom-calc') setCustomCalcOpen(false);
+                  setMobileSubmenuTab(null);
+                }}
+              />
+              <div className="fixed top-14 right-0 bottom-0 w-[min(280px,85%)] bg-gray-900 border-l border-gray-700 z-50 lg:hidden flex flex-col shadow-xl">
+                <div className="flex items-center justify-between gap-2 p-4 border-b border-gray-700 flex-shrink-0">
+                  <span className="font-semibold text-white truncate">
+                    {mobileSubmenuTab === 'content-rewards' && '컨텐츠 보상'}
+                    {mobileSubmenuTab === 'refining' && '재련 효율'}
+                    {mobileSubmenuTab === 'event-efficiency' && '이벤트 효율'}
+                    {mobileSubmenuTab === 'exchange-efficiency' && '각종 교환효율'}
+                    {mobileSubmenuTab === 'custom-calc' && '커스텀 계산기'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (mobileSubmenuTab === 'content-rewards') setContentRewardsOpen(false);
+                      if (mobileSubmenuTab === 'refining') setRefiningOpen(false);
+                      if (mobileSubmenuTab === 'event-efficiency') setEventEfficiencyOpen(false);
+                      if (mobileSubmenuTab === 'exchange-efficiency') setExchangeEfficiencyOpen(false);
+                      if (mobileSubmenuTab === 'custom-calc') setCustomCalcOpen(false);
+                      setMobileSubmenuTab(null);
+                    }}
+                    className="text-gray-400 hover:text-white p-1 rounded"
+                    aria-label="닫기"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                </div>
+                <div className="p-4 space-y-1 overflow-y-auto">
+                  {mobileSubmenuTab === 'content-rewards' && contentRewardsSubTabs.map((subTab) => {
+                    const isSubActive = pathname === subTab.href || (subTab.href !== '/content-rewards' && pathname.startsWith(subTab.href + '/'));
+                    return (
+                      <Link
+                        key={subTab.href}
+                        href={subTab.href}
+                        onClick={() => { setContentRewardsOpen(false); setMobileMenuOpen(false); setMobileSubmenuTab(null); }}
+                        className={`block px-4 py-2 rounded text-sm ${isSubActive ? 'text-white bg-gray-800' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}
+                      >
+                        {subTab.name}
+                      </Link>
+                    );
+                  })}
+                  {mobileSubmenuTab === 'refining' && refiningSubTabs.map((subTab) => {
+                    const isSubActive = pathname === subTab.href || pathname.startsWith(subTab.href + '/');
+                    return (
+                      <Link key={subTab.href} href={subTab.href} onClick={() => { setRefiningOpen(false); setMobileMenuOpen(false); setMobileSubmenuTab(null); }} className={`block px-4 py-2 rounded text-sm ${pathname === subTab.href || pathname.startsWith(subTab.href + '/') ? 'text-white bg-gray-800' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}>{subTab.name}</Link>
+                    );
+                  })}
+                  {mobileSubmenuTab === 'event-efficiency' && eventEfficiencySubTabs.map((subTab) => {
+                    return (
+                      <Link key={subTab.href} href={subTab.href} onClick={() => { setEventEfficiencyOpen(false); setMobileMenuOpen(false); setMobileSubmenuTab(null); }} className={`block px-4 py-2 rounded text-sm ${pathname === subTab.href || pathname.startsWith(subTab.href + '/') ? 'text-white bg-gray-800' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}>{subTab.name}</Link>
+                    );
+                  })}
+                  {mobileSubmenuTab === 'exchange-efficiency' && exchangeEfficiencySubTabs.map((subTab) => {
+                    return (
+                      <Link key={subTab.href} href={subTab.href} onClick={() => { setExchangeEfficiencyOpen(false); setMobileMenuOpen(false); setMobileSubmenuTab(null); }} className={`block px-4 py-2 rounded text-sm ${pathname === subTab.href || pathname.startsWith(subTab.href + '/') ? 'text-white bg-gray-800' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}>{subTab.name}</Link>
+                    );
+                  })}
+                  {mobileSubmenuTab === 'custom-calc' && customCalcSubTabs.map((subTab) => {
+                    return (
+                      <Link key={subTab.href} href={subTab.href} onClick={() => { setCustomCalcOpen(false); setMobileMenuOpen(false); setMobileSubmenuTab(null); }} className={`block px-4 py-2 rounded text-sm ${pathname === subTab.href || pathname.startsWith(subTab.href + '/') ? 'text-white bg-gray-800' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}>{subTab.name}</Link>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
+          </>
         )}
       </div>
     </nav>

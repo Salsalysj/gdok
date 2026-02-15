@@ -305,6 +305,7 @@ export default function EventShopClient({
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
   const [expandedNestedItems, setExpandedNestedItems] = useState<Record<string, boolean>>({});
   const [expandedSummaryItems, setExpandedSummaryItems] = useState<Record<string, boolean>>({});
+  const [summaryComponentTooltipKey, setSummaryComponentTooltipKey] = useState<string | null>(null);
   const [manualPriceInputs, setManualPriceInputs] = useState<Record<string, string>>({});
   const [showTooltip, setShowTooltip] = useState<string | null>(null);
 
@@ -1997,12 +1998,12 @@ export default function EventShopClient({
     <div className="min-h-screen bg-gray-950 text-white p-6">
       <div>
         <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="hidden md:flex items-center gap-3 flex-wrap">
             <h1 className="text-3xl font-semibold tracking-tight">이벤트 상점 교환 효율</h1>
             <FavoriteButton title="이벤트 상점 교환" />
           </div>
           {allowShopSave && (
-          <div className="flex gap-2">
+          <div className="hidden md:flex gap-2">
             <button
               onClick={handleNewShop}
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
@@ -2106,8 +2107,8 @@ export default function EventShopClient({
 
         {/* 요약 카드 */}
         {tabs.length > 0 && tabs.some(tab => tab.items.length > 0) && (
-          <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
-            <h2 className="text-2xl font-semibold mb-6">요약</h2>
+          <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6 text-xs md:text-base">
+            <h2 className="hidden md:block text-2xl font-semibold mb-6">요약</h2>
             {(() => {
               // 총 주수 계산 (종료일 - 시작일 / 7, 소수점 반올림)
               let totalWeeks = 0;
@@ -2152,7 +2153,9 @@ export default function EventShopClient({
                   )}
                   {totalRequired > 0 && (
                     <div>
-                      모든 항목 교환에 필요한 최대 수량 = {formatNumberWithSignificantDigits(weeklyTotal)}개 × {totalWeeks}주 + {formatNumberWithSignificantDigits(expeditionTotal)}개 = {formatNumberWithSignificantDigits(totalRequired)}개
+                      <span className="md:inline">모든 항목 교환에 필요한 최대 수량</span>
+                      <br className="md:hidden" />
+                      <span className="md:inline"> = {formatNumberWithSignificantDigits(weeklyTotal)}개 × {totalWeeks}주 + {formatNumberWithSignificantDigits(expeditionTotal)}개 = {formatNumberWithSignificantDigits(totalRequired)}개</span>
                     </div>
                   )}
                 </div>
@@ -2177,7 +2180,51 @@ export default function EventShopClient({
                       </div>
                     </div>
                     <div className="overflow-x-auto">
-                      <table className="w-full border-collapse">
+                      {/* 모바일: 카드형 리스트 (묶음명×수량 단일행, 아래에 가치/비용/100당가치, 클릭 시 구성요소 툴팁) */}
+                      <div className="md:hidden space-y-2 text-xs">
+                        {tabItems.map((item, index) => {
+                          const summaryKey = `${tab.id}-${item.itemIndex}`;
+                          const bundleItem = tab.items[item.itemIndex];
+                          const hasComponents = bundleItem && bundleItem.components && bundleItem.components.length > 0;
+                          const showTooltip = summaryComponentTooltipKey === summaryKey;
+                          return (
+                            <div
+                              key={index}
+                              className={`border-b border-gray-600/50 pb-2 ${hasComponents ? 'cursor-pointer' : ''}`}
+                              onClick={() => hasComponents && setSummaryComponentTooltipKey(showTooltip ? null : summaryKey)}
+                            >
+                              <div className="text-gray-300 font-medium">
+                                {item.itemName} × {item.quantity}
+                                {item.rank && (
+                                  <span className="ml-1 inline-flex items-center justify-center w-5 h-5 rounded-full bg-yellow-500 text-yellow-900 text-[10px] font-bold">
+                                    {item.rank}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-gray-400">
+                                <span className="text-yellow-300">가치 {formatNumberWithSignificantDigits(item.value)}골드</span>
+                                <span className="text-blue-300">교환비용 {item.multiplier !== 1 ? `${formatNumberWithSignificantDigits(item.baseExchangeCost)}×${item.multiplier}=${formatNumberWithSignificantDigits(item.exchangeCost)}` : formatNumberWithSignificantDigits(item.exchangeCost)}</span>
+                                <span className="text-green-300">100당 {item.exchangeCost > 0 ? formatNumberWithSignificantDigits(item.valuePerExchange) : '0'}골드</span>
+                              </div>
+                              {showTooltip && hasComponents && bundleItem && (
+                                <div
+                                  className="mt-2 p-2 bg-gray-800 rounded border border-gray-600 text-[11px] text-gray-300 space-y-1"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <div className="font-semibold text-gray-400">구성 요소</div>
+                                  {bundleItem.components.map((c, i) => (
+                                    <div key={i}>
+                                      {c.itemName === '__manual__' ? '(직접 입력)' : c.itemName === '__nested__' ? '(묶음 항목)' : c.itemName} × {c.quantity ?? 0}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {/* 데스크톱: 기존 테이블 */}
+                      <table className="w-full border-collapse hidden md:table text-sm">
                         <thead>
                           <tr className="border-b border-gray-600">
                             <th className="text-left py-2 px-4 text-sm font-semibold text-gray-300">묶음 항목명 × 수량</th>
@@ -2275,7 +2322,6 @@ export default function EventShopClient({
                                             if (isSelected) {
                                               componentValue *= itemQuantity;
                                             } else {
-                                              // 선택되지 않은 구성요소도 가치 계산
                                               const baseComponentValue = componentValue;
                                               componentValue = baseComponentValue * itemQuantity;
                                             }
@@ -2341,7 +2387,7 @@ export default function EventShopClient({
 
         {/* 기본정보 카드 */}
         {allowShopSave && (
-        <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
+        <div className="hidden md:block bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
           <h2 className="text-2xl font-semibold mb-4">기본정보</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -2379,7 +2425,7 @@ export default function EventShopClient({
         {/* 탭 카드들 */}
         {allowShopSave && (
           <>
-        <div className="space-y-6 mb-6">
+        <div className="hidden md:block space-y-6 mb-6">
           {tabs.map((tab) => (
             <div key={tab.id} className="bg-gray-800/50 rounded-lg border border-gray-700 p-6">
               <div className="flex items-center justify-between mb-4 gap-4">
@@ -2459,7 +2505,7 @@ export default function EventShopClient({
         {/* 탭 추가 버튼 */}
         <button
           onClick={addTab}
-          className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold"
+          className="hidden md:block w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold"
         >
           탭 추가
         </button>

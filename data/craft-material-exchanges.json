@@ -454,8 +454,8 @@
             },
             {
               "itemName": "제작 비용 (골드)",
-              "quantity": 1,
-              "manualPrice": -3000,
+              "quantity": 3000,
+              "manualPrice": -1,
               "manualUnitType": null,
               "probability": 0
             }
@@ -483,8 +483,8 @@
             },
             {
               "itemName": "제작 비용 (골드)",
-              "quantity": 1,
-              "manualPrice": -1500,
+              "quantity": 1500,
+              "manualPrice": -1,
               "manualUnitType": null,
               "probability": 0
             }
@@ -611,6 +611,6 @@
       ]
     },
     "created_at": "2026-02-13T12:18:02.950Z",
-    "updated_at": "2026-02-13T13:12:55.918Z"
+    "updated_at": "2026-02-15T16:42:57.976Z"
   }
 ]

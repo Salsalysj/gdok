@@ -137,6 +137,7 @@ export default function CraftMaterialsClient({
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
   const [expandedNestedItems, setExpandedNestedItems] = useState<Record<string, boolean>>({});
   const [summaryExpanded, setSummaryExpanded] = useState<Record<string, boolean>>({});
+  const [summaryComponentTooltipKey, setSummaryComponentTooltipKey] = useState<string | null>(null);
   const [manualPriceInputs, setManualPriceInputs] = useState<Record<string, string>>({});
 
   const toggleSummaryExpanded = useCallback((sectionKey: string, index: number) => {
@@ -1750,12 +1751,12 @@ export default function CraftMaterialsClient({
     <div className="min-h-screen bg-gray-950 text-white p-6">
       <div>
         <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="hidden md:flex items-center gap-3 flex-wrap">
             <h1 className="text-3xl font-semibold tracking-tight">제작 재료 교환 효율</h1>
             <FavoriteButton title="제작 재료 교환" />
           </div>
           {allowShopSave && (
-            <div className="flex gap-2">
+            <div className="hidden md:flex gap-2">
               <button
                 onClick={() => {
                   const name = selectedShopId
@@ -1815,7 +1816,7 @@ export default function CraftMaterialsClient({
         )}
 
         {/* 요약 카드 */}
-        <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
+        <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6 text-xs md:text-base">
           <div className="space-y-6">
             {CRAFT_MATERIAL_SECTIONS.map((sectionKey) => {
               const items = sectionDetails[sectionKey] ?? [];
@@ -1823,7 +1824,43 @@ export default function CraftMaterialsClient({
                 <div key={sectionKey}>
                   <h3 className="text-lg font-semibold text-white mb-3">{sectionKey}</h3>
                   {items.length > 0 ? (
-                    <div className="overflow-x-auto">
+                    <>
+                      <div className="md:hidden space-y-2">
+                        {items.map((item, index) => {
+                          const summaryKey = `${sectionKey}-${index}`;
+                          const bundleItem = shopData[sectionKey]?.[index];
+                          const hasComponents = bundleItem?.components && bundleItem.components.length > 0;
+                          const showTooltip = summaryComponentTooltipKey === summaryKey;
+                          return (
+                            <div
+                              key={index}
+                              className={`border-b border-gray-600/50 pb-2 ${hasComponents ? 'cursor-pointer' : ''}`}
+                              onClick={() => hasComponents && setSummaryComponentTooltipKey(showTooltip ? null : summaryKey)}
+                            >
+                              <div className="text-gray-300 font-medium">
+                                {item.itemName} × {item.quantity}
+                                {item.isRecommended && <span className="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-600/80 text-white">추천</span>}
+                              </div>
+                              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-gray-400">
+                                <span className="text-yellow-300">가치 {formatNumberWithSignificantDigits(item.value)}골드</span>
+                                <span className="text-blue-300">교환비용 {formatNumberWithSignificantDigits(item.bloodstoneCost)}</span>
+                                <span className="text-green-300">단위당 {item.bloodstoneCost > 0 ? formatNumberWithSignificantDigits(item.valuePerBloodstone) : '0'}골드</span>
+                              </div>
+                              {showTooltip && hasComponents && bundleItem && (
+                                <div className="mt-2 p-2 bg-gray-800 rounded border border-gray-600 text-[11px] text-gray-300 space-y-1" onClick={(e) => e.stopPropagation()}>
+                                  <div className="font-semibold text-gray-400">구성 요소</div>
+                                  {bundleItem.components.map((c, i) => (
+                                    <div key={i}>
+                                      {c.itemName === '__nested__' && c.nestedItem ? `묶음: ${c.nestedItem.itemName || '(미입력)'}` : (c.itemName === '__manual__' || c.itemName === '' ? '(직접 입력)' : c.itemName)} × {formatNumberWithSignificantDigits(c.quantity || 0)}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="overflow-x-auto hidden md:block">
                       <table className="w-full border-collapse">
                         <thead>
                           <tr className="border-b border-gray-700">
@@ -1931,6 +1968,7 @@ export default function CraftMaterialsClient({
                         </tbody>
                       </table>
                     </div>
+                    </>
                   ) : (
                     <div className="text-sm text-gray-500">묶음 항목이 없습니다.</div>
                   )}
@@ -1942,7 +1980,7 @@ export default function CraftMaterialsClient({
 
         {/* 카테고리별 편집 */}
         {CRAFT_MATERIAL_SECTIONS.map((sectionKey) => (
-          <div key={sectionKey} className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
+          <div key={sectionKey} className="hidden md:block bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
             <h2 className="text-2xl font-semibold mb-4">{sectionKey}</h2>
             <div className="space-y-4">
               {(shopData[sectionKey] ?? []).map((item, index) => renderBundleItem(sectionKey, item, index))}
