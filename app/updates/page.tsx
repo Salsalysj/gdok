@@ -29,7 +29,7 @@ export default function UpdatesPage() {
                 <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold text-blue-400 mb-1 sm:mb-2">개선 사항</h3>
                 <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-[10px] sm:text-xs md:text-sm text-gray-300 ml-3 sm:ml-4 whitespace-normal break-words">
                   <li>레이드 보상 아이템에 아크그리드 코어 추가</li>
-                  <li>모바일 UI 일부 개선 (컨텐츠 보상 탭)</li>
+                  <li>모바일 UI 개선</li>
                 </ul>
               </div>
             </div>
