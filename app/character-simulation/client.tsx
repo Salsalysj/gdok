@@ -576,6 +576,7 @@ function CharacterSimulation({
   const [convertKazeros1730ToSerka, setConvertKazeros1730ToSerka] = useState(false);
   /** 목표 재련 '상세' 툴팁 표시 중인 행 인덱스 (null이면 미표시) */
   const [detailTooltipIndex, setDetailTooltipIndex] = useState<number | null>(null);
+  const [mobileItemTooltip, setMobileItemTooltip] = useState<{ title: string; lines: string[] } | null>(null);
 
   // 원정대 1640+ 전원 armory 조회 후 캐시 저장 (preloaded 있으면 해당 캐릭터는 스킵)
   const loadRoster = async (
@@ -1619,11 +1620,13 @@ function CharacterSimulation({
   return (
     <div className="min-h-screen bg-gray-950 sm:p-6 lg:p-8">
       <div className="mb-4 sm:mb-6 md:mb-10 px-4 sm:px-0">
-        <div className="flex items-center gap-3 flex-wrap mb-1 sm:mb-2">
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold tracking-tight text-white">내 캐릭터 시뮬레이션</h1>
-          <FavoriteButton title="내 캐릭터 시뮬레이션" />
+        <div className="hidden sm:block">
+          <div className="flex items-center gap-3 flex-wrap mb-1 sm:mb-2">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold tracking-tight text-white">내 캐릭터 시뮬레이션</h1>
+            <FavoriteButton title="내 캐릭터 시뮬레이션" />
+          </div>
+          <p className="text-[10px] sm:text-xs md:text-sm text-gray-400 whitespace-normal break-words">캐릭터명을 입력하여 착용 중인 장비의 재련 단계를 확인할 수 있습니다.</p>
         </div>
-        <p className="text-[10px] sm:text-xs md:text-sm text-gray-400 whitespace-normal break-words">캐릭터명을 입력하여 착용 중인 장비의 재련 단계를 확인할 수 있습니다.</p>
       </div>
 
       <div className="space-y-8 px-4 sm:px-0">
@@ -1822,7 +1825,7 @@ function CharacterSimulation({
                 <div className="bg-gray-900/70 rounded-lg border border-gray-700 overflow-hidden text-xs">
                   <div className="px-3 py-2 bg-gray-800/50 border-b border-gray-700">
                     <h3 className="text-base font-semibold text-white">상급재련 전략 요약</h3>
-                    <p className="text-[11px] text-gray-400 mt-0.5">목표 상급재련 단계별 보조재료 가치 및 전략 분석 (상급 재련 시뮬레이션 기반)</p>
+                    <p className="hidden sm:block text-[11px] text-gray-400 mt-0.5">목표 상급재련 단계별 보조재료 가치 및 전략 분석 (상급 재련 시뮬레이션 기반)</p>
                   </div>
                   <div className="p-3 space-y-4">
                     {!advancedRefiningAnalysis || advancedRefiningAnalysis.length === 0 ? (
@@ -2126,26 +2129,30 @@ function CharacterSimulation({
                       <span className="text-sm font-medium text-gray-200">1730 이상의 카제로스 장비를 세르카 장비로의 계승 기준으로 계산</span>
                     </label>
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full min-w-[880px] border border-gray-800 text-[13px] sm:text-sm">
+                  <div className="overflow-x-auto sm:overflow-visible">
+                    <table className="w-full border border-gray-800 text-[11px] sm:text-[13px] md:text-sm table-fixed sm:table-auto sm:min-w-[880px]">
                       <thead>
                         <tr className="bg-gray-900/90 text-gray-200">
-                          <th className="px-2 sm:px-3 py-2 sm:py-3 text-left font-medium border-b border-gray-700 min-w-[3.5rem]">장비 부위</th>
-                          <th className="px-2 sm:px-3 py-2 sm:py-3 text-left font-medium border-b border-gray-700 min-w-[7rem]">장비명</th>
-                          <th className="px-2 sm:px-3 py-2 sm:py-3 text-center font-medium border-b border-gray-700 min-w-[4.5rem]">목표 재련</th>
-                          <th className="px-2 sm:px-3 py-2 sm:py-3 text-right font-medium border-b border-gray-700 min-w-[6.5rem]">야금/재봉 가치</th>
-                          <th className="px-2 sm:px-3 py-2 sm:py-3 text-right font-medium border-b border-gray-700 min-w-[5.5rem]">숨결 가치</th>
-                          <th className="px-2 sm:px-3 py-2 sm:py-3 text-right font-medium border-b border-gray-700 min-w-[5rem]">돌파석 가치</th>
+                          <th className="px-1 sm:px-3 py-1.5 sm:py-3 text-left font-medium border-b border-gray-700 w-[20%] sm:w-auto sm:min-w-[3.5rem]">장비 부위</th>
+                          <th className="hidden sm:table-cell px-2 sm:px-3 py-2 sm:py-3 text-left font-medium border-b border-gray-700 min-w-[7rem]">장비명</th>
+                          <th className="px-1 sm:px-3 py-1.5 sm:py-3 text-center font-medium border-b border-gray-700 w-[14%] sm:w-auto sm:min-w-[4.5rem]">목표 재련</th>
+                          <th className="px-1 sm:px-3 py-1.5 sm:py-3 text-right font-medium border-b border-gray-700 w-[22%] sm:w-auto sm:min-w-[6.5rem]">야금/재봉</th>
+                          <th className="px-1 sm:px-3 py-1.5 sm:py-3 text-right font-medium border-b border-gray-700 w-[22%] sm:w-auto sm:min-w-[5.5rem]">숨결</th>
+                          <th className="px-1 sm:px-3 py-1.5 sm:py-3 text-right font-medium border-b border-gray-700 w-[22%] sm:w-auto sm:min-w-[5rem]">돌파석</th>
                         </tr>
                       </thead>
                       <tbody>
                         {equipmentWithValues.length > 0 ? (
                           equipmentWithValues.map((eq, idx) => (
                             <tr key={idx} className={idx % 2 === 0 ? 'bg-gray-900/50' : 'bg-gray-800/50'}>
-                              <td className="px-2 sm:px-3 py-2 sm:py-3 text-white font-medium border-b border-gray-800 align-top whitespace-nowrap">
-                                {eq.type}
+                              <td className="px-1 sm:px-3 py-1.5 sm:py-3 text-white font-medium border-b border-gray-800 align-top">
+                                <span className="sm:hidden block leading-tight">
+                                  {eq.type}
+                                  <span className="block text-[10px] text-gray-400 font-normal">({eq.isSerkaEquipment ? '세르카' : '카제'}장비)</span>
+                                </span>
+                                <span className="hidden sm:inline">{eq.type}</span>
                               </td>
-                              <td className="px-2 sm:px-3 py-2 sm:py-3 text-gray-300 border-b border-gray-800 align-top max-w-[12rem]">
+                              <td className="hidden sm:table-cell px-2 sm:px-3 py-2 sm:py-3 text-gray-300 border-b border-gray-800 align-top max-w-[12rem]">
                                 <div className="flex flex-col gap-0.5 min-w-0">
                                   <div className="flex items-start gap-2 min-w-0">
                                     {eq.Icon && (
@@ -2158,7 +2165,7 @@ function CharacterSimulation({
                                   )}
                                 </div>
                               </td>
-                              <td className="px-2 sm:px-3 py-2 sm:py-3 text-center text-blue-300 font-medium border-b border-gray-800 align-top">
+                              <td className="px-1 sm:px-3 py-1.5 sm:py-3 text-center text-blue-300 font-medium border-b border-gray-800 align-top">
                                 <div className="flex flex-col items-center gap-0.5">
                                   <span className="whitespace-nowrap">{eq.targetLevel != null ? `+${eq.targetLevel}` : '-'}</span>
                                   {eq.convertedToSerka && (
@@ -2166,7 +2173,7 @@ function CharacterSimulation({
                                   )}
                                   {(() => {
                                     const adv = getAdvancedTargetLabel(eq.advancedProgress);
-                                    return adv ? <span className="text-[11px] sm:text-xs text-gray-400">{adv}</span> : null;
+                                    return adv ? <span className="hidden sm:inline text-[11px] sm:text-xs text-gray-400">{adv}</span> : null;
                                   })()}
                                   {eq.avgConsumption && eq.avgConsumption.length > 0 && (
                                     <div className="relative inline-flex flex-col items-center mt-1">
@@ -2205,40 +2212,47 @@ function CharacterSimulation({
                                   )}
                                 </div>
                               </td>
-                              <td className="px-2 sm:px-3 py-2 sm:py-3 text-right border-b border-gray-800 align-top min-w-0">
+                              <td className="px-1 sm:px-3 py-1.5 sm:py-3 text-right border-b border-gray-800 align-top min-w-0">
                                 {eq.craftValue != null || eq.enhancedCraftValue != null ? (
-                                  <div className="space-y-1.5">
+                                  <div className="space-y-1 sm:space-y-1.5">
                                     {eq.craftValue != null && (
                                       <div className="break-words">
-                                        <div className="text-yellow-300 font-medium">
-                                          {formatNumberWithSignificantDigits(eq.craftValue)} 골드
+                                        <div className="text-yellow-300 font-medium text-[10px] sm:text-sm">
+                                          {formatNumberWithSignificantDigits(eq.craftValue)}<span className="sm:hidden"> G</span><span className="hidden sm:inline"> 골드</span>
                                         </div>
                                         {eq.craftItemName && (
-                                          <div className="text-[11px] sm:text-xs text-gray-400 mt-0.5 break-words">
-                                            {eq.craftItemName}
-                                          </div>
-                                        )}
-                                        {eq.craftMarketPrice != null && (
-                                          <div className="text-[10px] sm:text-xs text-gray-500 mt-0.5">
-                                            거래소: {formatNumberWithSignificantDigits(eq.craftMarketPrice)} 골드
-                                          </div>
+                                          <>
+                                            <div className="sm:hidden flex items-center gap-1 mt-0.5 justify-end">
+                                              <button type="button" onClick={() => setMobileItemTooltip({ title: eq.craftItemName!, lines: eq.craftMarketPrice != null ? [`거래소: ${formatNumberWithSignificantDigits(eq.craftMarketPrice)} 골드`] : [] })} className="flex-shrink-0" aria-label={eq.craftItemName}>
+                                                <ItemIcon name={eq.craftItemName} size="sm" className="w-5 h-5 sm:w-8 sm:h-8" />
+                                              </button>
+                                            </div>
+                                            <div className="hidden sm:block text-[10px] sm:text-xs text-gray-400 mt-0.5 break-words">{eq.craftItemName}</div>
+                                            {eq.craftMarketPrice != null && (
+                                              <div className="hidden sm:block text-[10px] sm:text-xs text-gray-500 mt-0.5">거래소: {formatNumberWithSignificantDigits(eq.craftMarketPrice)} 골드</div>
+                                            )}
+                                          </>
                                         )}
                                       </div>
                                     )}
                                     {eq.enhancedCraftValue != null && (
-                                      <div className={eq.craftValue != null ? 'pt-1.5 border-t border-gray-700' : ''}>
-                                        <div className="text-amber-300 font-medium">
-                                          {formatNumberWithSignificantDigits(eq.enhancedCraftValue)} 골드
+                                      <div className={eq.craftValue != null ? 'pt-1 sm:pt-1.5 border-t border-gray-700' : ''}>
+                                        <div className="text-amber-300 font-medium text-[10px] sm:text-sm">
+                                          {formatNumberWithSignificantDigits(eq.enhancedCraftValue)}<span className="sm:hidden"> G</span><span className="hidden sm:inline"> 골드</span>
                                         </div>
                                         {eq.enhancedCraftItemName && (
-                                          <div className="text-[11px] sm:text-xs text-gray-400 mt-0.5 break-words">
-                                            {eq.enhancedCraftItemName}
-                                          </div>
-                                        )}
-                                        {eq.enhancedCraftMarketPrice != null && (
-                                          <div className="text-[10px] sm:text-xs text-gray-500 mt-0.5">
-                                            거래소: {formatNumberWithSignificantDigits(eq.enhancedCraftMarketPrice)} 골드
-                                          </div>
+                                          <>
+                                            <div className="sm:hidden flex items-center gap-1 mt-0.5 justify-end">
+                                              <button type="button" onClick={() => setMobileItemTooltip({ title: eq.enhancedCraftItemName!, lines: eq.enhancedCraftMarketPrice != null ? [`거래소: ${formatNumberWithSignificantDigits(eq.enhancedCraftMarketPrice)} 골드`] : [] })} className="relative flex-shrink-0" aria-label={eq.enhancedCraftItemName}>
+                                                <ItemIcon name={eq.enhancedCraftItemName} size="sm" className="w-5 h-5 sm:w-8 sm:h-8" />
+                                                <span className="absolute -top-0.5 -right-0.5 text-[8px] leading-none text-amber-400" aria-hidden>▲</span>
+                                              </button>
+                                            </div>
+                                            <div className="hidden sm:block text-[10px] sm:text-xs text-gray-400 mt-0.5 break-words">{eq.enhancedCraftItemName}</div>
+                                            {eq.enhancedCraftMarketPrice != null && (
+                                              <div className="hidden sm:block text-[10px] sm:text-xs text-gray-500 mt-0.5">거래소: {formatNumberWithSignificantDigits(eq.enhancedCraftMarketPrice)} 골드</div>
+                                            )}
+                                          </>
                                         )}
                                       </div>
                                     )}
@@ -2247,34 +2261,40 @@ function CharacterSimulation({
                                   <span className="text-gray-500">-</span>
                                 )}
                               </td>
-                              <td className="px-2 sm:px-3 py-2 sm:py-3 text-right border-b border-gray-800 align-top min-w-0">
+                              <td className="px-1 sm:px-3 py-1.5 sm:py-3 text-right border-b border-gray-800 align-top min-w-0">
                                 {eq.breathValue != null ? (
                                   <div className="break-words">
-                                    <div className="text-orange-300 font-medium">
-                                      {formatNumberWithSignificantDigits(eq.breathValue)} 골드
+                                    <div className="text-orange-300 font-medium text-[10px] sm:text-sm">
+                                      {formatNumberWithSignificantDigits(eq.breathValue)}<span className="sm:hidden"> G</span><span className="hidden sm:inline"> 골드</span>
                                     </div>
                                     {eq.breathItemName && (
-                                      <div className="text-[11px] sm:text-xs text-gray-400 mt-0.5 break-words">
-                                        {eq.breathItemName}
-                                      </div>
-                                    )}
-                                    {eq.breathMarketPrice != null && (
-                                      <div className="text-[10px] sm:text-xs text-gray-500 mt-0.5">
-                                        거래소: {formatNumberWithSignificantDigits(eq.breathMarketPrice)} 골드
-                                      </div>
+                                      <>
+                                        <div className="sm:hidden flex items-center gap-1 mt-0.5 justify-end">
+                                          <button type="button" onClick={() => setMobileItemTooltip({ title: eq.breathItemName!, lines: eq.breathMarketPrice != null ? [`거래소: ${formatNumberWithSignificantDigits(eq.breathMarketPrice)} 골드`] : [] })} className="flex-shrink-0" aria-label={eq.breathItemName}>
+                                            <ItemIcon name={eq.breathItemName} size="sm" className="w-5 h-5 sm:w-8 sm:h-8" />
+                                          </button>
+                                        </div>
+                                        <div className="hidden sm:block text-[10px] sm:text-xs text-gray-400 mt-0.5 break-words">{eq.breathItemName}</div>
+                                        {eq.breathMarketPrice != null && (
+                                          <div className="hidden sm:block text-[10px] sm:text-xs text-gray-500 mt-0.5">거래소: {formatNumberWithSignificantDigits(eq.breathMarketPrice)} 골드</div>
+                                        )}
+                                      </>
                                     )}
                                   </div>
                                 ) : (
                                   <span className="text-gray-500">-</span>
                                 )}
                               </td>
-                              <td className="px-2 sm:px-3 py-2 sm:py-3 text-right border-b border-gray-800 align-top min-w-0">
+                              <td className="px-1 sm:px-3 py-1.5 sm:py-3 text-right border-b border-gray-800 align-top min-w-0">
                                 {eq.breakthroughValue != null ? (
                                   <div>
-                                    <div className="text-green-300 font-medium">
-                                      {formatNumberWithSignificantDigits(eq.breakthroughValue)} 골드
+                                    <div className="text-green-300 font-medium text-[10px] sm:text-sm">
+                                      {formatNumberWithSignificantDigits(eq.breakthroughValue)}<span className="sm:hidden"> G</span><span className="hidden sm:inline"> 골드</span>
                                     </div>
-                                    <div className="text-[11px] sm:text-xs text-gray-400 mt-0.5">
+                                    <div className="sm:hidden flex items-center gap-1 mt-0.5 justify-end">
+                                      <ItemIcon name={eq.isSerkaEquipment ? '전이 돌파석' : '순환 돌파석'} size="sm" className="w-5 h-5 flex-shrink-0" />
+                                    </div>
+                                    <div className="hidden sm:block text-[10px] sm:text-xs text-gray-400 mt-0.5">
                                       {eq.isSerkaEquipment ? '전이 돌파석' : '순환 돌파석'}
                                     </div>
                                   </div>
@@ -2300,6 +2320,22 @@ function CharacterSimulation({
           </>
         ) : null}
       </div>
+
+      {/* 모바일: 아이템 툴팁 (아이콘 터치 시) */}
+      {mobileItemTooltip && (
+        <div className="fixed inset-0 z-50 sm:hidden" aria-modal="true" role="dialog" aria-label="아이템 상세">
+          <button type="button" className="absolute inset-0 bg-black/50 focus:outline-none" onClick={() => setMobileItemTooltip(null)} aria-label="닫기" />
+          <div className="absolute bottom-0 left-0 right-0 rounded-t-xl bg-gray-800 border border-gray-700 border-b-0 shadow-2xl p-4 max-h-[60vh] overflow-y-auto">
+            <h4 className="text-sm font-semibold text-white mb-2 break-keep">{mobileItemTooltip.title}</h4>
+            <ul className="space-y-1 text-xs text-gray-300">
+              {mobileItemTooltip.lines.map((line, i) => (
+                <li key={i} className="break-keep">{line}</li>
+              ))}
+            </ul>
+            <button type="button" className="mt-4 w-full py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium rounded-lg" onClick={() => setMobileItemTooltip(null)}>닫기</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

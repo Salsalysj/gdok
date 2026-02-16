@@ -1709,9 +1709,9 @@ export default function BoxSelectorClient({
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-6">
+    <div className="min-h-screen bg-gray-950 text-white p-4 sm:p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
+        <div className="mb-8 hidden sm:block">
           <div className="flex items-center gap-3 flex-wrap mb-2">
             <h1 className="text-3xl font-semibold">상자 선택 도우미</h1>
             <FavoriteButton title="상자 선택 도우미" />
@@ -1719,10 +1719,10 @@ export default function BoxSelectorClient({
           <p className="text-gray-400">선택 상자 속 아이템들의 가치를 계산하여 최적의 결과를 알려주는 도구입니다.</p>
         </div>
 
-        {/* 저장된 리스트 드롭다운 */}
-        <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
-          <div className="flex items-center gap-4">
-            <label className="text-sm font-medium text-gray-300 whitespace-nowrap">저장된 리스트:</label>
+        {/* 저장된 리스트 드롭다운 - 모바일: 카드 밖, 드롭다운 폭 페이지 내 */}
+        <div className="mb-6 sm:bg-gray-800/50 sm:rounded-lg sm:border sm:border-gray-700 sm:p-6 w-full min-w-0 max-w-full">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4 min-w-0">
+            <label className="hidden sm:inline text-sm font-medium text-gray-300 whitespace-nowrap">저장된 리스트:</label>
             <select
               value={selectedBoxId || ''}
               onChange={(e) => {
@@ -1732,18 +1732,18 @@ export default function BoxSelectorClient({
                   handleNewBox();
                 }
               }}
-              className="flex-1 px-4 py-2 bg-gray-900 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500 disabled:opacity-50"
+              className="flex-1 min-w-0 max-w-full sm:max-w-none px-4 py-2 bg-gray-900 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500 disabled:opacity-50"
               disabled={isLoading}
             >
               <option value="">새로 만들기...</option>
               {savedBoxSelectors.map((box) => (
                 <option key={box.id} value={box.id}>
-                  {box.box_name || '(이름 없음)'} {box.item_name ? `(${box.item_name})` : ''}
+                  {box.box_name || '(이름 없음)'}
                 </option>
               ))}
             </select>
             {allowSave && (
-              <>
+              <div className="hidden sm:flex flex-wrap items-center gap-2">
                 <button
                   onClick={() => {
                     setShowSaveModal(true);
@@ -1769,7 +1769,7 @@ export default function BoxSelectorClient({
                     삭제
                   </button>
                 )}
-              </>
+              </div>
             )}
           </div>
         </div>
@@ -1813,55 +1813,55 @@ export default function BoxSelectorClient({
 
         {/* 요약 */}
         {boxData.items.length > 0 && (
-          <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
-            <h2 className="text-2xl font-semibold mb-6">요약</h2>
+          <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-4 sm:p-6 mb-4 sm:mb-6">
+            <h2 className="hidden sm:block text-2xl font-semibold mb-6">요약</h2>
             
             {/* 기본 정보 */}
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-3 text-blue-300">기본 정보</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="mb-4 sm:mb-6">
+              <h3 className="hidden sm:block text-lg font-semibold mb-3 text-blue-300">기본 정보</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <div className="text-sm text-gray-400 mb-1">아이템 이름</div>
-                  <div className="text-lg font-medium text-white">{boxData.itemName || '(미입력)'}</div>
+                  <div className="text-xs sm:text-sm text-gray-400 mb-0.5 sm:mb-1">아이템 이름</div>
+                  <div className="text-sm sm:text-lg font-medium text-white">{boxData.itemName || '(미입력)'}</div>
                 </div>
                 {boxData.acquisitionSource && (
                   <div>
-                    <div className="text-sm text-gray-400 mb-1">획득처</div>
-                    <div className="text-lg font-medium text-white">{boxData.acquisitionSource}</div>
+                    <div className="text-xs sm:text-sm text-gray-400 mb-0.5 sm:mb-1">획득처</div>
+                    <div className="text-sm sm:text-lg font-medium text-white">{boxData.acquisitionSource}</div>
                   </div>
                 )}
               </div>
             </div>
 
             {/* 구성품 정보 */}
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-3 text-purple-300">구성품 정보</h3>
+            <div className="mb-4 sm:mb-6">
+              <h3 className="text-sm sm:text-lg font-semibold mb-2 sm:mb-3 text-purple-300">구성품 정보</h3>
               <div className="space-y-2">
                 {itemValues.map((itemValue, idx) => {
                   const isExpanded = expandedSummaryItems[idx] || false;
                   return (
                     <div key={idx} className="bg-gray-900/50 rounded-lg border border-gray-700">
-                      <div className="flex items-center justify-between p-3">
-                        <div className="flex items-center gap-2 flex-1">
+                      <div className="flex items-center justify-between p-2 sm:p-3">
+                        <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
                           <button
                             onClick={() => setExpandedSummaryItems(prev => ({ ...prev, [idx]: !prev[idx] }))}
-                            className="text-gray-400 hover:text-white transition-colors mr-2"
+                            className="text-gray-400 hover:text-white transition-colors mr-1 sm:mr-2 shrink-0"
                           >
                             {isExpanded ? '▼' : '▶'}
                           </button>
-                          <span className="text-white font-medium">{itemValue.item.itemName || `항목 ${idx + 1}`}</span>
-                          <span className="text-xs text-gray-400">({itemValue.item.itemType})</span>
+                          <span className="text-white font-medium text-sm sm:text-base truncate">{itemValue.item.itemName || `항목 ${idx + 1}`}</span>
+                          <span className="text-[10px] sm:text-xs text-gray-400 shrink-0">({itemValue.item.itemType})</span>
                           {itemValue.item.quantity > 1 && (
-                            <span className="text-xs text-blue-400">× {itemValue.item.quantity}</span>
+                            <span className="text-[10px] sm:text-xs text-blue-400 shrink-0">× {itemValue.item.quantity}</span>
                           )}
                         </div>
-                        <div className="text-lg font-semibold text-green-400">
+                        <div className="text-sm sm:text-lg font-semibold text-green-400 shrink-0 ml-1">
                           {formatNumberWithSignificantDigits(itemValue.value)} 골드
                         </div>
                       </div>
                       {isExpanded && (
-                        <div className="px-3 pb-3 pt-2 border-t border-gray-700/50">
-                          <div className="space-y-2 mt-2">
+                        <div className="px-2 sm:px-3 pb-2 sm:pb-3 pt-1.5 sm:pt-2 border-t border-gray-700/50">
+                          <div className="space-y-1.5 sm:space-y-2 mt-1.5 sm:mt-2">
                             {itemValue.item.components.map((component, compIdx) => {
                               const compValue = calculateComponentValue(component, itemValue.item);
                               // 선택되지 않은 항목의 가치도 계산
@@ -1926,33 +1926,33 @@ export default function BoxSelectorClient({
                               }
                               const isNested = component.itemName === '__nested__' && component.nestedItem;
                               return (
-                                <div key={compIdx} className="bg-gray-800/50 rounded p-2 border border-gray-700/50">
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
+                                <div key={compIdx} className="bg-gray-800/50 rounded p-1.5 sm:p-2 border border-gray-700/50">
+                                  <div className="flex items-center justify-between gap-1">
+                                    <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-wrap">
                                       {isNested ? (
-                                        <span className="text-sm text-blue-300">📦 {component.nestedItem?.itemName || '하위 묶음 항목'}</span>
+                                        <span className="text-xs sm:text-sm text-blue-300">📦 {component.nestedItem?.itemName || '하위 묶음 항목'}</span>
                                       ) : (
-                                        <span className="text-sm text-white">
+                                        <span className="text-xs sm:text-sm text-white">
                                           {component.itemName === '__manual__' || component.itemName === '' 
                                             ? '(직접 입력)' 
                                             : component.itemName}
                                         </span>
                                       )}
-                                      <span className="text-xs text-gray-400">
+                                      <span className="text-[10px] sm:text-xs text-gray-400">
                                         수량: {component.quantity || 0}
                                       </span>
                                       {itemValue.item.itemType === '확률' && component.probability !== undefined && (
-                                        <span className="text-xs text-yellow-400">
+                                        <span className="text-[10px] sm:text-xs text-yellow-400">
                                           확률: {component.probability}%
                                         </span>
                                       )}
                                       {itemValue.item.itemType === '선택' && (
-                                        <span className={`text-xs ${component.selected ? 'text-green-400' : 'text-gray-500'}`}>
+                                        <span className={`text-[10px] sm:text-xs ${component.selected ? 'text-green-400' : 'text-gray-500'}`}>
                                           {component.selected ? '✓ 선택됨' : '(미선택)'}
                                         </span>
                                       )}
                                     </div>
-                                    <div className={`text-sm font-medium ${component.selected || itemValue.item.itemType !== '선택' ? 'text-green-400' : 'text-gray-500'}`}>
+                                    <div className={`text-xs sm:text-sm font-medium shrink-0 ${component.selected || itemValue.item.itemType !== '선택' ? 'text-green-400' : 'text-gray-500'}`}>
                                       {formatNumberWithSignificantDigits(component.selected || itemValue.item.itemType !== '선택' ? compValue : unselectedValue)} 골드
                                     </div>
                                   </div>
@@ -1988,8 +1988,8 @@ export default function BoxSelectorClient({
                                         // 선택 타입인 경우 선택되지 않아도 가치 표시
 
                                         return (
-                                          <div key={nestedIdx} className="flex items-center justify-between text-xs">
-                                            <div className="flex items-center gap-2">
+                                          <div key={nestedIdx} className="flex items-center justify-between text-[10px] sm:text-xs">
+                                            <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
                                               <span className="text-gray-300">
                                                 {nestedComp.itemName === '__manual__' || nestedComp.itemName === '' 
                                                   ? '(직접 입력)' 
@@ -2027,17 +2027,17 @@ export default function BoxSelectorClient({
 
             {/* 최고 가치 항목 */}
             {bestItem && (
-              <div className="bg-gradient-to-r from-yellow-900/30 to-orange-900/30 rounded-lg p-4 border border-yellow-500/50">
-                <h3 className="text-lg font-semibold mb-2 text-yellow-300">✨ 최고 가치 항목</h3>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-white font-semibold text-xl">{bestItem.item.itemName || '항목'}</div>
-                    <div className="text-sm text-gray-300 mt-1">
+              <div className="bg-gradient-to-r from-yellow-900/30 to-orange-900/30 rounded-lg p-3 sm:p-4 border border-yellow-500/50">
+                <h3 className="text-sm sm:text-lg font-semibold mb-1.5 sm:mb-2 text-yellow-300">✨ 최고 가치 항목</h3>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="text-white font-semibold text-sm sm:text-xl truncate">{bestItem.item.itemName || '항목'}</div>
+                    <div className="text-xs sm:text-sm text-gray-300 mt-0.5 sm:mt-1">
                       {bestItem.item.itemType}
                       {bestItem.item.quantity > 1 && ` × ${bestItem.item.quantity}`}
                     </div>
                   </div>
-                  <div className="text-2xl font-bold text-yellow-400">
+                  <div className="text-lg sm:text-2xl font-bold text-yellow-400 shrink-0">
                     {formatNumberWithSignificantDigits(bestItem.value)} 골드
                   </div>
                 </div>
@@ -2045,10 +2045,10 @@ export default function BoxSelectorClient({
             )}
 
             {/* 총 가치 */}
-            <div className="mt-6 pt-6 border-t border-gray-700">
+            <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-gray-700">
               <div className="flex items-center justify-between">
-                <div className="text-xl font-semibold text-white">총 가치</div>
-                <div className="text-3xl font-bold text-green-400">
+                <div className="text-sm sm:text-xl font-semibold text-white">총 가치</div>
+                <div className="text-xl sm:text-3xl font-bold text-green-400">
                   {formatNumberWithSignificantDigits(totalValue)} 골드
                 </div>
               </div>
@@ -2056,8 +2056,8 @@ export default function BoxSelectorClient({
           </div>
         )}
 
-        {/* 기본 정보 */}
-        <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
+        {/* 기본 정보 - 모바일 숨김 */}
+        <div className="hidden sm:block bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">기본 정보</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -2083,8 +2083,8 @@ export default function BoxSelectorClient({
           </div>
         </div>
 
-        {/* 구성품 */}
-        <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
+        {/* 구성품 - 모바일 숨김 */}
+        <div className="hidden sm:block bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold">구성품</h2>
           </div>

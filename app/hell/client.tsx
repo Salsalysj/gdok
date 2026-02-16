@@ -32,6 +32,21 @@ type HellData = {
 
 type RatesProps = { exchange: number | null; discord: number | null };
 
+/** 모바일 툴팁용 lines 생성 (일반재련과 동일 형식) */
+function buildRewardTooltipLines(item: { itemName: string; quantity: number; price?: number | null }): string[] {
+  const q = formatNumberWithSignificantDigits(item.quantity);
+  const quantityLine =
+    item.itemName === '실링' ? `수량: ${q} 실링` :
+    item.itemName === '카드 경험치' ? `수량: ${q}` : `수량: ${q}개`;
+  const lines: string[] = [quantityLine];
+  const unitPrice = item.price ?? 0;
+  if (unitPrice > 0) {
+    lines.push(`단가: ${formatNumberWithSignificantDigits(unitPrice)} 골드`);
+    lines.push(`합계: ${formatNumberWithSignificantDigits(unitPrice * item.quantity)} 골드`);
+  }
+  return lines;
+}
+
 export default function HellClient({ 
   data, 
   rates,
@@ -55,17 +70,23 @@ export default function HellClient({
   const [activeHellType, setActiveHellType] = useState<string>('지옥1');
   const [activeHellStage, setActiveHellStage] = useState<string>('0단계');
   const [activeTab, setActiveTab] = useState<'보상' | '교환효율'>('보상');
-  /** 모바일 전용 툴팁: 터치 시 즉시 표시 */
-  const [mobileTooltipItemName, setMobileTooltipItemName] = useState<string | null>(null);
+  /** 모바일 툴팁 (일반재련과 동일: title + lines) */
+  const [itemTooltip, setItemTooltip] = useState<{ title: string; lines: string[] } | null>(null);
   
-  const showMobileTooltip = (itemName: string) => {
-    setMobileTooltipItemName(itemName);
+  const showMobileTooltip = (title: string, lines: string[]) => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setItemTooltip({ title, lines });
+    }
   };
   
   useEffect(() => {
-    if (!mobileTooltipItemName) return;
-    const t = setTimeout(() => setMobileTooltipItemName(null), 2000);
-    const onPointer = () => setMobileTooltipItemName(null);
+    if (!itemTooltip) return;
+    const close = () => setItemTooltip(null);
+    const t = setTimeout(close, 2000);
+    const onPointer = () => {
+      close();
+      clearTimeout(t);
+    };
     window.addEventListener('click', onPointer);
     window.addEventListener('touchstart', onPointer, { passive: true });
     return () => {
@@ -73,7 +94,7 @@ export default function HellClient({
       window.removeEventListener('click', onPointer);
       window.removeEventListener('touchstart', onPointer);
     };
-  }, [mobileTooltipItemName]);
+  }, [itemTooltip]);
   
   // 지옥3 카테고리 펼치기 상태
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
@@ -438,9 +459,29 @@ export default function HellClient({
   
   return (
     <div className="min-h-screen bg-gray-950 p-4 md:p-6 lg:p-8">
-      {mobileTooltipItemName && (
-        <div className="md:hidden fixed bottom-20 left-4 right-4 z-50 px-3 py-2 rounded-lg bg-gray-800 border border-gray-600 text-white text-sm text-center shadow-lg">
-          {mobileTooltipItemName}
+      {itemTooltip && (
+        <div className="fixed inset-0 z-50 md:hidden" aria-modal="true" role="dialog" aria-label="아이템 상세">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/50 focus:outline-none"
+            onClick={() => setItemTooltip(null)}
+            aria-label="툴팁 닫기"
+          />
+          <div className="absolute bottom-0 left-0 right-0 rounded-t-xl bg-gray-800 border border-gray-700 border-b-0 shadow-2xl p-4 max-h-[60vh] overflow-y-auto">
+            <h4 className="text-sm font-semibold text-white mb-2 break-keep">{itemTooltip.title}</h4>
+            <ul className="space-y-1 text-xs text-gray-300">
+              {itemTooltip.lines.map((line, i) => (
+                <li key={i} className="break-keep">{line}</li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              className="mt-4 w-full py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium rounded-lg"
+              onClick={() => setItemTooltip(null)}
+            >
+              닫기
+            </button>
+          </div>
         </div>
       )}
       <div>
@@ -955,7 +996,7 @@ export default function HellClient({
             }
             
             return (
-              <div key={idx} className="bg-gray-800/50 rounded-lg p-6 border border-gray-700">
+              <div key={idx} className="p-4 md:p-6 border-b border-gray-700">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
                   <h3 className="text-lg md:text-2xl font-bold text-white">단계 {stage.stage}</h3>
                   {isSpecialStage && hellExpectedValue !== null ? (
@@ -1099,21 +1140,23 @@ export default function HellClient({
                                           const quantityStr = formatNumberWithSignificantDigits(reward.quantity);
                                           const itemTotalStr = formatNumberWithSignificantDigits(itemTotal);
                                           const tradeInfo = getTradeClass(reward.itemName);
+                                          const tooltipLines = buildRewardTooltipLines({ itemName: reward.itemName, quantity: reward.quantity, price: adjustedPrice ?? undefined });
                                           return (
                                             <div
                                               key={`base-${rewardIdx}`}
-                                              className="flex items-center justify-between gap-2 py-1.5 pl-3 border-b border-gray-700/50 last:border-0"
+                                              role="button"
+                                              tabIndex={0}
+                                              onClick={(e) => { e.stopPropagation(); showMobileTooltip(reward.itemName, tooltipLines); }}
+                                              onTouchEnd={(e) => { e.preventDefault(); showMobileTooltip(reward.itemName, tooltipLines); }}
+                                              className="flex items-center justify-between gap-2 py-1.5 pl-3 border-b border-gray-700/50 last:border-0 cursor-default touch-manipulation md:cursor-default"
                                             >
                                               <span className="text-gray-300 text-sm flex items-center gap-2 min-w-0">
-                                                <button
-                                                  type="button"
-                                                  className="touch-manipulation flex-shrink-0"
-                                                  onClick={(e) => { e.stopPropagation(); showMobileTooltip(reward.itemName); }}
-                                                  onTouchEnd={(e) => { e.preventDefault(); showMobileTooltip(reward.itemName); }}
-                                                >
+                                                <span className="flex-shrink-0">
                                                   <ItemIcon name={reward.itemName} size="sm" />
-                                                </button>
-                                                <span className="hidden md:inline">{reward.itemName} {quantityStr}개</span>
+                                                </span>
+                                                <span className="hidden md:inline">{reward.itemName} {adjustedPrice != null && adjustedPrice > 0 ? (
+                                                  <><span className="text-yellow-300">{formatNumberWithSignificantDigits(adjustedPrice)}골드</span><span className="text-gray-400"> x </span><span className="text-blue-300">{quantityStr}개</span></>
+                                                ) : `${quantityStr}개`}</span>
                                                 <span className="md:hidden">{quantityStr}</span>
                                                 <span className={`ml-1 px-1.5 py-0.5 rounded text-[10px] ${tradeInfo.badgeClass}`}>{tradeInfo.badgeText}</span>
                                               </span>
@@ -1149,21 +1192,21 @@ export default function HellClient({
                                   const tradeInfo = getTradeClass(reward.itemName);
                                   const isChosen = category === '파괴석/수호석' && chosen != null && reward.itemName === chosen;
                                   
+                                  const rewardTooltipLines = buildRewardTooltipLines({ itemName: reward.itemName, quantity: reward.quantity, price: adjustedPrice ?? undefined });
                                   return (
                                     <div
                                       key={rewardIdx}
-                                      className={`rounded-lg border p-3 ${isChosen ? 'bg-amber-900/20 border-amber-600/60' : 'bg-gray-900/50 border-gray-700'}`}
+                                      role="button"
+                                      tabIndex={0}
+                                      onClick={(e) => { e.stopPropagation(); showMobileTooltip(reward.itemName, rewardTooltipLines); }}
+                                      onTouchEnd={(e) => { e.preventDefault(); showMobileTooltip(reward.itemName, rewardTooltipLines); }}
+                                      className={`rounded-lg border p-3 cursor-default touch-manipulation md:cursor-default ${isChosen ? 'bg-amber-900/20 border-amber-600/60' : 'bg-gray-900/50 border-gray-700'}`}
                                     >
                                       <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-2 mb-1">
                                         <div className="flex items-center gap-2 min-w-0">
-                                          <button
-                                            type="button"
-                                            className="touch-manipulation flex-shrink-0"
-                                            onClick={(e) => { e.stopPropagation(); showMobileTooltip(reward.itemName); }}
-                                            onTouchEnd={(e) => { e.preventDefault(); showMobileTooltip(reward.itemName); }}
-                                          >
+                                          <span className="flex-shrink-0">
                                             <ItemIcon name={reward.itemName} size="sm" />
-                                          </button>
+                                          </span>
                                           <span className={`font-medium ${tradeInfo.nameClass} hidden md:inline`}>{reward.itemName}</span>
                                           <span className="md:hidden text-gray-400 text-sm">{quantityStr}</span>
                                           <span className={`px-1.5 py-0.5 rounded text-[10px] ${tradeInfo.badgeClass}`}>{tradeInfo.badgeText}</span>
@@ -1212,11 +1255,16 @@ export default function HellClient({
                                                 component.quantity === reward.selectedComponent.quantity;
                                               const componentPriceStr = component.price !== null ? formatNumberWithSignificantDigits(component.price) : '-';
                                               const componentTotalStr = formatNumberWithSignificantDigits(component.totalValue);
+                                              const compTooltipLines = buildRewardTooltipLines({ itemName: component.itemName, quantity: component.quantity, price: component.price ?? undefined });
                                               
                                               return (
                                                 <div
                                                   key={compIdx}
-                                                  className={`text-[10px] p-1.5 rounded ${
+                                                  role="button"
+                                                  tabIndex={0}
+                                                  onClick={(e) => { e.stopPropagation(); showMobileTooltip(component.itemName, compTooltipLines); }}
+                                                  onTouchEnd={(e) => { e.preventDefault(); showMobileTooltip(component.itemName, compTooltipLines); }}
+                                                  className={`text-[10px] p-1.5 rounded cursor-default touch-manipulation md:cursor-default ${
                                                     isSelected
                                                       ? 'bg-yellow-900/30 border border-yellow-600'
                                                       : 'bg-gray-800/50 border border-gray-600'
@@ -1224,14 +1272,9 @@ export default function HellClient({
                                                 >
                                                   <div className="flex items-center justify-between gap-1">
                                                     <div className="flex items-center gap-1.5 min-w-0">
-                                                      <button
-                                                        type="button"
-                                                        className="touch-manipulation flex-shrink-0"
-                                                        onClick={(e) => { e.stopPropagation(); showMobileTooltip(component.itemName); }}
-                                                        onTouchEnd={(e) => { e.preventDefault(); showMobileTooltip(component.itemName); }}
-                                                      >
+                                                      <span className="flex-shrink-0">
                                                         <ItemIcon name={component.itemName} size="sm" />
-                                                      </button>
+                                                      </span>
                                                       <span className={`${isSelected ? 'text-yellow-400 font-semibold' : 'text-gray-300'} hidden md:inline`}>
                                                         {component.itemName}
                                                       </span>
@@ -1279,22 +1322,22 @@ export default function HellClient({
                       
                       // 상급재련 보조 선택 상자 구성품 표시
                       const isSelectionBox = reward.itemName === '상급재련 보조 선택 상자' && reward.selectionComponents;
+                      const rewardTooltipLines = buildRewardTooltipLines({ itemName: reward.itemName, quantity: reward.quantity, price: adjustedPrice ?? undefined });
                       
                       return (
                         <div
                           key={rewardIdx}
-                          className="bg-gray-900/50 rounded-lg border border-gray-700 p-4"
+                          role="button"
+                          tabIndex={0}
+                          onClick={(e) => { e.stopPropagation(); showMobileTooltip(reward.itemName, rewardTooltipLines); }}
+                          onTouchEnd={(e) => { e.preventDefault(); showMobileTooltip(reward.itemName, rewardTooltipLines); }}
+                          className="bg-gray-900/50 rounded-lg border border-gray-700 p-4 cursor-default touch-manipulation md:cursor-default"
                         >
                           <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 mb-3">
                             <div className="flex items-center gap-2 min-w-0">
-                              <button
-                                type="button"
-                                className="touch-manipulation flex-shrink-0"
-                                onClick={(e) => { e.stopPropagation(); showMobileTooltip(reward.itemName); }}
-                                onTouchEnd={(e) => { e.preventDefault(); showMobileTooltip(reward.itemName); }}
-                              >
+                              <span className="flex-shrink-0">
                                 <ItemIcon name={reward.itemName} />
-                              </button>
+                              </span>
                               <span className={`font-medium ${tradeInfo.nameClass} hidden md:inline`}>{reward.itemName}</span>
                               <span className="md:hidden text-gray-400 text-sm">{quantityStr}</span>
                               <span className={`px-1.5 py-0.5 rounded text-[10px] ${tradeInfo.badgeClass}`}>{tradeInfo.badgeText}</span>
@@ -1327,11 +1370,16 @@ export default function HellClient({
                                     component.quantity === reward.selectedComponent.quantity;
                                   const componentPriceStr = component.price !== null ? formatNumberWithSignificantDigits(component.price) : '-';
                                   const componentTotalStr = formatNumberWithSignificantDigits(component.totalValue);
+                                  const compTooltipLines = buildRewardTooltipLines({ itemName: component.itemName, quantity: component.quantity, price: component.price ?? undefined });
                                   
                                   return (
                                     <div
                                       key={compIdx}
-                                      className={`text-xs p-2 rounded ${
+                                      role="button"
+                                      tabIndex={0}
+                                      onClick={(e) => { e.stopPropagation(); showMobileTooltip(component.itemName, compTooltipLines); }}
+                                      onTouchEnd={(e) => { e.preventDefault(); showMobileTooltip(component.itemName, compTooltipLines); }}
+                                      className={`text-xs p-2 rounded cursor-default touch-manipulation md:cursor-default ${
                                         isSelected
                                           ? 'bg-yellow-900/30 border border-yellow-600'
                                           : 'bg-gray-800/50 border border-gray-700'
@@ -1339,14 +1387,9 @@ export default function HellClient({
                                     >
                                       <div className="flex items-center justify-between gap-1">
                                         <div className="flex items-center gap-2 min-w-0">
-                                          <button
-                                            type="button"
-                                            className="touch-manipulation flex-shrink-0"
-                                            onClick={(e) => { e.stopPropagation(); showMobileTooltip(component.itemName); }}
-                                            onTouchEnd={(e) => { e.preventDefault(); showMobileTooltip(component.itemName); }}
-                                          >
+                                          <span className="flex-shrink-0">
                                             <ItemIcon name={component.itemName} size="sm" />
-                                          </button>
+                                          </span>
                                           <span className={`${isSelected ? 'text-yellow-400 font-semibold' : 'text-gray-300'} hidden md:inline`}>
                                             {component.itemName}
                                           </span>

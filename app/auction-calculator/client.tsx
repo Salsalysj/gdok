@@ -111,7 +111,7 @@ export default function AuctionCalculatorClient({ marketData }: AuctionCalculato
   return (
     <div className="min-h-screen bg-gray-950 p-3 md:p-4 lg:p-5">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-4 md:mb-5">
+        <div className="mb-4 md:mb-5 hidden sm:block">
           <div className="flex items-center gap-3 flex-wrap mb-1.5">
             <h1 className="text-2xl md:text-[26px] font-semibold tracking-tight text-white">
               경매 계산기
@@ -124,8 +124,8 @@ export default function AuctionCalculatorClient({ marketData }: AuctionCalculato
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5 items-start">
-          {/* 왼쪽: 아이템 리스트 */}
-          <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-4 md:p-5">
+          {/* 왼쪽(데스크톱) / 아래(모바일): 아이템 리스트 */}
+          <div className="order-2 lg:order-1 bg-gray-800/50 rounded-lg border border-gray-700 p-4 md:p-5">
             <h2 className="text-lg font-semibold text-white mb-3">아이템 목록</h2>
             
             {/* 검색 */}
@@ -183,8 +183,8 @@ export default function AuctionCalculatorClient({ marketData }: AuctionCalculato
             </div>
           </div>
           
-          {/* 오른쪽: 계산기 */}
-          <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-4 md:p-5">
+          {/* 오른쪽(데스크톱) / 위(모바일): 계산기 */}
+          <div className="order-1 lg:order-2 bg-gray-800/50 rounded-lg border border-gray-700 p-4 md:p-5">
             <h2 className="text-lg font-semibold text-white mb-3">계산기</h2>
             
             {/* 인원수 선택 */}

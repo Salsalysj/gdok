@@ -82,6 +82,21 @@ function calculateStageTotals(
   return { tradable, total };
 }
 
+/** 모바일 툴팁용 lines 생성 (일반재련과 동일 형식: 수량, 단가, 합계) */
+function buildRewardTooltipLines(item: { itemName: string; quantity: number; price?: number | null }): string[] {
+  const q = formatNumberWithSignificantDigits(item.quantity);
+  const quantityLine =
+    item.itemName === '실링' ? `수량: ${q} 실링` :
+    item.itemName === '카드 경험치' ? `수량: ${q}` : `수량: ${q}개`;
+  const lines: string[] = [quantityLine];
+  const unitPrice = item.price ?? 0;
+  if (unitPrice > 0) {
+    lines.push(`단가: ${formatNumberWithSignificantDigits(unitPrice)} 골드`);
+    lines.push(`합계: ${formatNumberWithSignificantDigits(unitPrice * item.quantity)} 골드`);
+  }
+  return lines;
+}
+
 type ValueDbEntryMap = Record<string, { itemName: string; unitType: '크리스탈' | '골드' | '현금' | null; unitValue: number | null; note?: string }>;
 
 export default function ContentRewardsClient({ 
@@ -101,12 +116,13 @@ export default function ContentRewardsClient({
   /** 펼친 큐브/모래시계 보상: key = `${stageIdx}-${rewardIdx}` */
   const [expandedCubeKeys, setExpandedCubeKeys] = useState<Set<string>>(new Set());
   /** 모바일 전용 툴팁: 터치 시 즉시 표시 */
-  const [mobileTooltipItemName, setMobileTooltipItemName] = useState<string | null>(null);
+  /** 모바일 툴팁 (일반재련과 동일: title + lines) */
+  const [itemTooltip, setItemTooltip] = useState<{ title: string; lines: string[] } | null>(null);
   const contentTypes: ContentType[] = ['쿠르잔 전선', '에브니 큐브', '가디언 토벌'];
 
-  const showMobileTooltip = (itemName: string) => {
+  const showMobileTooltip = (title: string, lines: string[]) => {
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
-      setMobileTooltipItemName(itemName);
+      setItemTooltip({ title, lines });
     }
   };
 
@@ -134,8 +150,8 @@ export default function ContentRewardsClient({
 
   // 모바일 툴팁: 외부 터치/클릭 시 닫기, 2초 후 자동 닫기
   useEffect(() => {
-    if (!mobileTooltipItemName) return;
-    const close = () => setMobileTooltipItemName(null);
+    if (!itemTooltip) return;
+    const close = () => setItemTooltip(null);
     const timer = setTimeout(close, 2000);
     const handleClose = () => {
       close();
@@ -148,7 +164,7 @@ export default function ContentRewardsClient({
       document.removeEventListener('touchstart', handleClose);
       document.removeEventListener('click', handleClose);
     };
-  }, [mobileTooltipItemName]);
+  }, [itemTooltip]);
   
   // 사용 가능한 컨텐츠만 필터링 (useMemo로 감싸기)
   const availableContents = useMemo(() => {
@@ -408,10 +424,28 @@ export default function ContentRewardsClient({
   return (
     <div className="min-h-screen bg-gray-950 p-4 md:p-6 lg:p-8">
       {/* 모바일 전용 툴팁: 터치 시 즉시 표시 */}
-      {mobileTooltipItemName && (
-        <div className="fixed inset-x-4 bottom-8 z-50 md:hidden">
-          <div className="mx-auto max-w-sm rounded-lg bg-gray-800 px-4 py-3 text-center text-sm text-white shadow-lg border border-gray-600">
-            {mobileTooltipItemName}
+      {itemTooltip && (
+        <div className="fixed inset-0 z-50 md:hidden" aria-modal="true" role="dialog" aria-label="아이템 상세">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/50 focus:outline-none"
+            onClick={() => setItemTooltip(null)}
+            aria-label="툴팁 닫기"
+          />
+          <div className="absolute bottom-0 left-0 right-0 rounded-t-xl bg-gray-800 border border-gray-700 border-b-0 shadow-2xl p-4 max-h-[60vh] overflow-y-auto">
+            <h4 className="text-sm font-semibold text-white mb-2 break-keep">{itemTooltip.title}</h4>
+            <ul className="space-y-1 text-xs text-gray-300">
+              {itemTooltip.lines.map((line, i) => (
+                <li key={i} className="break-keep">{line}</li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              className="mt-4 w-full py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium rounded-lg"
+              onClick={() => setItemTooltip(null)}
+            >
+              닫기
+            </button>
           </div>
         </div>
       )}
@@ -599,27 +633,32 @@ export default function ContentRewardsClient({
                       if (isCubeTicket) {
                         const displayTotal = (cubeUnitTotal ?? 0) * reward.quantity;
                         const list = reward.cubeStageRewards!;
+                        const cubeTooltipLines = buildRewardTooltipLines({
+                          ...reward,
+                          price: reward.quantity > 0 ? displayTotal / reward.quantity : undefined,
+                        });
                         return (
                           <div key={rewardIdx} className="border-b border-gray-700/50 last:border-0">
                             <div
-                              className={`flex items-center justify-between gap-2 py-1.5 pl-3 ${strike}`}
+                              role="button"
+                              tabIndex={0}
+                              onClick={(e) => { e.stopPropagation(); showMobileTooltip(reward.itemName, cubeTooltipLines); }}
+                              onTouchEnd={(e) => { e.preventDefault(); showMobileTooltip(reward.itemName, cubeTooltipLines); }}
+                              className={`flex items-center justify-between gap-2 py-1.5 pl-3 cursor-default touch-manipulation md:cursor-default ${strike}`}
                             >
                               <span className="text-gray-300 text-sm flex items-center gap-2 min-w-0">
-                                <span
-                                  role="button"
-                                  tabIndex={0}
-                                  onClick={(e) => { e.stopPropagation(); showMobileTooltip(reward.itemName); }}
-                                  onTouchEnd={(e) => { e.preventDefault(); showMobileTooltip(reward.itemName); }}
-                                  className="flex-shrink-0 cursor-default touch-manipulation md:cursor-default"
-                                >
+                                <span className="flex-shrink-0">
                                   <ItemIcon name={reward.itemName} size="sm" className="flex-shrink-0" />
                                 </span>
                                 <span className="hidden md:inline">{reward.itemName} </span>
-                                {(reward.itemName === '카드 경험치' || reward.itemName === '실링') ? quantityStr : `${quantityStr}개`}
+                                <span className="md:hidden">{(reward.itemName === '카드 경험치' || reward.itemName === '실링') ? quantityStr : `${quantityStr}개`}</span>
+                                <span className="hidden md:inline">{reward.quantity > 0 ? (
+                                  <><span className="text-yellow-300">{formatNumberWithSignificantDigits(displayTotal / reward.quantity)}골드</span><span className="text-gray-400"> x </span><span className="text-blue-300">{quantityStr}개</span></>
+                                ) : (reward.itemName === '카드 경험치' || reward.itemName === '실링') ? quantityStr : `${quantityStr}개`}</span>
                                 <span className={`ml-1 px-1.5 py-0.5 rounded text-[10px] ${tradeInfo.badgeClass}`}>{tradeInfo.badgeText}</span>
                                 <button
                                   type="button"
-                                  onClick={() => toggleCubeExpand(expandKey)}
+                                  onClick={(e) => { e.stopPropagation(); toggleCubeExpand(expandKey); }}
                                   className="ml-1 px-2 py-0.5 rounded bg-gray-700/80 hover:bg-gray-600 text-gray-300 text-xs font-medium transition-colors"
                                   aria-expanded={isExpanded}
                                 >
@@ -638,19 +677,23 @@ export default function ContentRewardsClient({
                                     const strikeCube = (!isGuardianTab && isExcludedForTotal(r.itemName)) ? 'line-through opacity-60' : '';
                                     const rTotal = (r.price || 0) * r.quantity;
                                     return (
-                                      <div key={i} className={`flex items-center justify-between gap-2 py-1 pl-2 text-sm ${strikeCube}`}>
+                                      <div
+                                        key={i}
+                                        role="button"
+                                        tabIndex={0}
+                                        onClick={(e) => { e.stopPropagation(); showMobileTooltip(r.itemName, buildRewardTooltipLines(r)); }}
+                                        onTouchEnd={(e) => { e.preventDefault(); showMobileTooltip(r.itemName, buildRewardTooltipLines(r)); }}
+                                        className={`flex items-center justify-between gap-2 py-1 pl-2 text-sm cursor-default touch-manipulation md:cursor-default ${strikeCube}`}
+                                      >
                                         <span className="text-gray-400 flex items-center gap-2 min-w-0">
-                                          <span
-                                            role="button"
-                                            tabIndex={0}
-                                            onClick={(e) => { e.stopPropagation(); showMobileTooltip(r.itemName); }}
-                                            onTouchEnd={(e) => { e.preventDefault(); showMobileTooltip(r.itemName); }}
-                                            className="flex-shrink-0 cursor-default touch-manipulation md:cursor-default"
-                                          >
+                                          <span className="flex-shrink-0">
                                             <ItemIcon name={r.itemName} size="sm" className="flex-shrink-0" />
                                           </span>
                                           <span className="hidden md:inline">{r.itemName} </span>
-                                          {(r.itemName === '카드 경험치' || r.itemName === '실링') ? formatNumberWithSignificantDigits(r.quantity) : `${formatNumberWithSignificantDigits(r.quantity)}개`}
+                                          <span className="md:hidden">{(r.itemName === '카드 경험치' || r.itemName === '실링') ? formatNumberWithSignificantDigits(r.quantity) : `${formatNumberWithSignificantDigits(r.quantity)}개`}</span>
+                                          <span className="hidden md:inline">{(r.price != null && r.price > 0) ? (
+                                            <><span className="text-yellow-300">{formatNumberWithSignificantDigits(r.price)}골드</span><span className="text-gray-400"> x </span><span className="text-blue-300">{(r.itemName === '카드 경험치' || r.itemName === '실링') ? formatNumberWithSignificantDigits(r.quantity) : `${formatNumberWithSignificantDigits(r.quantity)}개`}</span></>
+                                          ) : (r.itemName === '카드 경험치' || r.itemName === '실링') ? formatNumberWithSignificantDigits(r.quantity) : `${formatNumberWithSignificantDigits(r.quantity)}개`}</span>
                                           <span className={`ml-1 px-1.5 py-0.5 rounded text-[10px] ${info.badgeClass}`}>{info.badgeText}</span>
                                         </span>
                                         <span className="text-gray-500 text-xs flex-shrink-0">
@@ -667,19 +710,23 @@ export default function ContentRewardsClient({
                       }
 
                       return (
-                        <div key={rewardIdx} className={`flex items-center justify-between gap-2 py-1.5 pl-3 border-b border-gray-700/50 last:border-0 ${strike}`}>
+                        <div
+                          key={rewardIdx}
+                          role="button"
+                          tabIndex={0}
+                          onClick={(e) => { e.stopPropagation(); showMobileTooltip(reward.itemName, buildRewardTooltipLines(reward)); }}
+                          onTouchEnd={(e) => { e.preventDefault(); showMobileTooltip(reward.itemName, buildRewardTooltipLines(reward)); }}
+                          className={`flex items-center justify-between gap-2 py-1.5 pl-3 border-b border-gray-700/50 last:border-0 cursor-default touch-manipulation md:cursor-default ${strike}`}
+                        >
                           <span className="text-gray-300 text-sm flex items-center gap-2 min-w-0">
-                            <span
-                              role="button"
-                              tabIndex={0}
-                              onClick={(e) => { e.stopPropagation(); showMobileTooltip(reward.itemName); }}
-                              onTouchEnd={(e) => { e.preventDefault(); showMobileTooltip(reward.itemName); }}
-                              className="flex-shrink-0 cursor-default touch-manipulation md:cursor-default"
-                            >
+                            <span className="flex-shrink-0">
                               <ItemIcon name={reward.itemName} size="sm" className="flex-shrink-0" />
                             </span>
                             <span className="hidden md:inline">{reward.itemName} </span>
-                            {(reward.itemName === '카드 경험치' || reward.itemName === '실링') ? quantityStr : `${quantityStr}개`}
+                            <span className="md:hidden">{(reward.itemName === '카드 경험치' || reward.itemName === '실링') ? quantityStr : `${quantityStr}개`}</span>
+                            <span className="hidden md:inline">{(reward.price != null && reward.price > 0) ? (
+                            <><span className="text-yellow-300">{formatNumberWithSignificantDigits(reward.price)}골드</span><span className="text-gray-400"> x </span><span className="text-blue-300">{(reward.itemName === '카드 경험치' || reward.itemName === '실링') ? quantityStr : `${quantityStr}개`}</span></>
+                          ) : (reward.itemName === '카드 경험치' || reward.itemName === '실링') ? quantityStr : `${quantityStr}개`}</span>
                             <span className={`ml-1 px-1.5 py-0.5 rounded text-[10px] ${tradeInfo.badgeClass}`}>{tradeInfo.badgeText}</span>
                           </span>
                           <span className="text-gray-400 text-sm flex-shrink-0">

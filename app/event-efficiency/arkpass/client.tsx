@@ -1133,8 +1133,8 @@ export default function ArkpassGuideClient({
               </div>
         </div>
         
-        <div className="bg-gray-900/70 border border-gray-700 rounded-2xl p-8">
-          <div className="flex flex-col gap-4">
+        <div>
+          <div className="flex flex-col gap-6">
             {/* 저장된 가이드 목록 */}
             {savedGuides.length > 0 ? (
               <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-4">

@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import FavoriteButton from '../components/FavoriteButton';
+import GoldUnit from '../components/GoldUnit';
 import ItemIcon from '../components/ItemIcon';
 import {
   getMaterialsForLevel,
@@ -1008,20 +1009,34 @@ export default function AdvancedRefiningClient({
   return (
     <div className="min-h-screen bg-gray-950 p-4 md:p-6 lg:p-8">
       <div>
-        <div className="mb-6 md:mb-10">
-          <div className="flex items-center gap-3 flex-wrap mb-2">
+        <div className="mb-4 md:mb-10">
+          <div className="hidden md:flex items-center gap-3 flex-wrap mb-2">
             <h1 className="text-3xl font-semibold tracking-tight text-white">
               상급 재련 시뮬레이션
             </h1>
             <FavoriteButton title="상급 재련" />
           </div>
-          <p className="text-base text-gray-400">
+          <p className="text-base text-gray-400 hidden md:block">
             상급 재련의 효율을 시뮬레이션하고 최적의 전략을 제시합니다
           </p>
         </div>
 
-        {/* 서브탭 */}
-        <div className="flex gap-2 mb-6 flex-wrap">
+        {/* 서브탭: 모바일 드롭다운 / 데스크톱 버튼 */}
+        <div className="md:hidden mb-4">
+          <select
+            value={activeSubTab}
+            onChange={(e) => handleSubTabChange(e.target.value as SubTab)}
+            className="w-full px-4 py-3 rounded-lg bg-gray-800 border border-gray-600 text-white font-semibold focus:outline-none focus:ring-2 focus:ring-purple-500"
+            aria-label="상재 단계 선택"
+          >
+            {subTabs.map((tab) => (
+              <option key={tab.key} value={tab.key}>
+                {tab.label}{tab.range ? ` (${tab.range})` : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="hidden md:flex gap-2 mb-6 flex-wrap">
           {subTabs.map((tab) => (
             <button
               key={tab.key}
@@ -1076,95 +1091,39 @@ export default function AdvancedRefiningClient({
           </div>
         ) : (
           <div className="space-y-6">
-            {/* 1. 재련 재료 */}
-                  <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-              <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                <span className="text-2xl">📦</span>
-                1회 재련 재료
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <h3 className="text-sm font-semibold text-purple-400 mb-2">필수 재료</h3>
-                  <div className="space-y-2">
-                    {currentMaterials.filter(m => !m.isOptional).map((mat) => {
-                      const value = materialValues[mat.name];
-                      return (
-                        <div key={mat.name} className="bg-gray-900/50 px-3 py-2 rounded">
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="text-gray-300 text-sm flex items-center gap-2">
-                              <ItemIcon name={mat.name} size="sm" className="flex-shrink-0" />
-                              {mat.name}
-                            </span>
-                            <span className="text-white font-medium">{formatNumber(mat.amount)}</span>
-                          </div>
-                          {value?.totalValue != null && (
-                            <div className="text-xs text-yellow-400 text-right">
-                              {formatNumber(value.totalValue)} 골드
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-blue-400 mb-2">보조 재료 (선택)</h3>
-                  <div className="space-y-2">
-                    {currentMaterials.filter(m => m.isOptional).map((mat) => {
-                      const value = materialValues[mat.name];
-                      return (
-                        <div key={mat.name} className="bg-gray-900/50 px-3 py-2 rounded">
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="text-gray-300 text-sm flex items-center gap-2">
-                              <ItemIcon name={mat.name} size="sm" className="flex-shrink-0" />
-                              {mat.name}
-                            </span>
-                            <span className="text-white font-medium">{formatNumber(mat.amount)}</span>
-                          </div>
-                          {value?.totalValue != null && (
-                            <div className="text-xs text-yellow-400 text-right">
-                              {formatNumber(value.totalValue)} 골드
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-              
-              {/* 가치 합계 */}
-              <div className="mt-4 pt-4 border-t border-gray-700">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-purple-900/20 rounded-lg p-3 border border-purple-700/50">
-                    <div className="text-sm text-purple-300 mb-1">필수 재료 가치 합계</div>
-                    <div className="text-xl font-bold text-purple-400">
-                      {formatNumber(requiredMaterialsTotal)} 골드
-                    </div>
-                  </div>
-                  <div className="bg-blue-900/20 rounded-lg p-3 border border-blue-700/50">
-                    <div className="text-sm text-blue-300 mb-1">1회 재련 재료 가치 합계 (전체)</div>
-                    <div className="text-xl font-bold text-blue-400">
-                      {formatNumber(allMaterialsTotal)} 골드
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             {(
               <>
-                {/* 최적 시뮬레이션 (1회 재련 재료 바로 다음) */}
-                {optimalStrategy && optimalResult && (
+                {/* 최적 시뮬레이션 */}
+                {optimalStrategy && optimalResult && (() => {
+                  const breathMat = currentMaterials.find(m => m.isOptional && m.name.includes('숨결'));
+                  const craftMat = currentMaterials.find(m => m.isOptional && (m.name.includes('야금술') || m.name.includes('재봉술')));
+                  const breathDisplayName = breathMat?.name ?? null;
+                  const craftDisplayName = (() => {
+                    if (!craftMat) return null;
+                    const stage = activeSubTab === '상재1' ? '1단계' : activeSubTab === '상재2' ? '2단계' : activeSubTab === '상재3' ? '3단계' : '4단계';
+                    const name = craftMat.name;
+                    if (name.includes('야금술')) return name.replace(/장인의 야금술 : \d단계/, `장인의 야금술 : ${stage}`);
+                    if (name.includes('재봉술')) return name.replace(/장인의 재봉술 : \d단계/, `장인의 재봉술 : ${stage}`);
+                    return name;
+                  })();
+                  const TurnIconsOnly = ({ turn }: { turn: { useBreath?: boolean; useCraftsmanship?: boolean } }) => (
+                    <div className="flex items-center justify-center gap-1.5">
+                      {breathDisplayName && turn.useBreath && <ItemIcon name={breathDisplayName} size="sm" />}
+                      {craftDisplayName && turn.useCraftsmanship && <ItemIcon name={craftDisplayName} size="sm" />}
+                      {!(breathDisplayName && turn.useBreath) && !(craftDisplayName && turn.useCraftsmanship) && <span className="text-gray-500 text-xs">-</span>}
+                    </div>
+                  );
+                  return (
                   <div className="bg-gray-800 rounded-lg border border-green-700/50 p-6">
                     <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                       <span className="text-2xl">⚡</span>
                       최적 시뮬레이션
                     </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className={`grid gap-4 mb-4 ${(activeSubTab === '상재3' || activeSubTab === '상재4') && optimalStrategy.enhancedAncestorTurn ? 'grid-cols-3' : 'grid-cols-2'} md:grid-cols-2`}>
                       <div className="bg-gray-900/50 rounded-lg p-4">
                         <h3 className="text-sm font-semibold text-green-400 mb-3">일반 턴</h3>
-                        <div className="space-y-2 text-sm">
+                        <div className="md:hidden flex justify-center py-1"><TurnIconsOnly turn={optimalStrategy.normalTurn} /></div>
+                        <div className="hidden md:block space-y-2 text-sm">
                           <div className="flex justify-between">
                             <span className="text-gray-400">숨결 투입</span>
                             <span className={optimalStrategy.normalTurn.useBreath ? 'text-green-400 font-medium' : 'text-red-400'}>
@@ -1181,7 +1140,8 @@ export default function AdvancedRefiningClient({
                       </div>
                       <div className="bg-gray-900/50 rounded-lg p-4">
                         <h3 className="text-sm font-semibold text-purple-400 mb-3">선조 턴</h3>
-                        <div className="space-y-2 text-sm">
+                        <div className="md:hidden flex justify-center py-1"><TurnIconsOnly turn={optimalStrategy.ancestorTurn} /></div>
+                        <div className="hidden md:block space-y-2 text-sm">
                           <div className="flex justify-between">
                             <span className="text-gray-400">숨결 투입</span>
                             <span className={optimalStrategy.ancestorTurn.useBreath ? 'text-green-400 font-medium' : 'text-red-400'}>
@@ -1199,7 +1159,8 @@ export default function AdvancedRefiningClient({
                       {optimalStrategy.enhancedAncestorTurn && (activeSubTab === '상재3' || activeSubTab === '상재4') && (
                         <div className="bg-gray-900/50 rounded-lg p-4">
                           <h3 className="text-sm font-semibold text-orange-400 mb-3">강화 선조 턴</h3>
-                          <div className="space-y-2 text-sm">
+                          <div className="md:hidden flex justify-center py-1"><TurnIconsOnly turn={optimalStrategy.enhancedAncestorTurn} /></div>
+                          <div className="hidden md:block space-y-2 text-sm">
                             <div className="flex justify-between">
                               <span className="text-gray-400">숨결 투입</span>
                               <span className={optimalStrategy.enhancedAncestorTurn.useBreath ? 'text-green-400 font-medium' : 'text-red-400'}>
@@ -1216,7 +1177,7 @@ export default function AdvancedRefiningClient({
                         </div>
                       )}
                     </div>
-                    <SimulationStats 
+                    <SimulationStats
                       result={optimalResult} 
                       color="green"
                       costBreakdown={optimalStrategy ? calculateTotalCost(
@@ -1228,13 +1189,22 @@ export default function AdvancedRefiningClient({
                         optimalStrategy.enhancedAncestorTurn?.useBreath,
                         optimalStrategy.enhancedAncestorTurn?.useCraftsmanship
                       ) : null}
+                      materialBreakdown={optimalResult.materialBreakdown}
+                      materialDisplayNameFn={(name) => {
+                        if (activeSubTab === '상재2' || activeSubTab === '상재3' || activeSubTab === '상재4') {
+                          const stage = activeSubTab === '상재2' ? '2단계' : activeSubTab === '상재3' ? '3단계' : '4단계';
+                          if (name.includes('장인의 야금술 : 1단계')) return name.replace('장인의 야금술 : 1단계', `장인의 야금술 : ${stage}`);
+                          if (name.includes('장인의 재봉술 : 1단계')) return name.replace('장인의 재봉술 : 1단계', `장인의 재봉술 : ${stage}`);
+                        }
+                        return name;
+                      }}
                     />
                   </div>
-                )}
+                  ); })()}
 
-                {/* 최적 방식 재료 소모량 */}
+                {/* 최적 방식 재료 소모량 - 모바일 숨김(합계 옆 ? 툴팁으로 대체) */}
                 {optimalResult && (
-                  <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+                  <div className="hidden md:block bg-gray-800 rounded-lg border border-gray-700 p-6">
                     <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                       <span className="text-2xl">📊</span>
                       최적 방식 총 재료 소모량
@@ -1255,17 +1225,145 @@ export default function AdvancedRefiningClient({
                           }
                           return (
                             <div key={name} className="bg-gray-900/50 rounded-lg p-3">
-                              <div className="text-xs text-gray-400 mb-1 flex items-center gap-2">
+                              <div className="md:hidden flex items-center justify-center gap-2">
                                 <ItemIcon name={displayName} size="sm" className="flex-shrink-0" />
-                                {displayName}
+                                <span className="text-base font-bold text-white">× {formatNumber(amount)}</span>
                               </div>
-                              <div className="text-lg font-bold text-white">{formatNumber(amount)}</div>
+                              <div className="hidden md:block">
+                                <div className="text-xs text-gray-400 mb-1 flex items-center gap-2">
+                                  <ItemIcon name={displayName} size="sm" className="flex-shrink-0" />
+                                  {displayName}
+                                </div>
+                                <div className="text-lg font-bold text-white">{formatNumber(amount)}</div>
+                              </div>
                             </div>
                           );
                         })}
                     </div>
                   </div>
                 )}
+
+                {/* 1회 재련 재료 - 최적 방식 총 재료 소모량 다음 */}
+                <div className="bg-gray-800 rounded-lg border border-gray-700 p-4 md:p-6">
+                  <h2 className="text-lg md:text-xl font-bold text-white mb-4 flex items-center gap-2">
+                    <span className="text-xl md:text-2xl">📦</span>
+                    1회 재련 재료
+                  </h2>
+
+                  {/* 필수 재료 (시도당) - 일반재련 MaterialLine 스타일 */}
+                  <div className="mb-4">
+                    <h4 className="text-xs font-semibold text-purple-200 mb-2">필수 재료 (시도당)</h4>
+                    <div className="bg-gray-900/80 rounded-lg border border-gray-700/50 p-4">
+                      <div className="space-y-1.5">
+                        {currentMaterials.filter(m => !m.isOptional).map((mat, index, arr) => {
+                          const value = materialValues[mat.name];
+                          const isLast = index === arr.length - 1;
+                          const unitPrice = value?.unitPrice ?? 0;
+                          const totalPrice = value?.totalValue ?? 0;
+                          const quantityText = formatNumber(mat.amount);
+                          const totalText = totalPrice > 0 ? formatNumber(totalPrice) : '0';
+                          const isGold = mat.name === '골드';
+                          const quantityDisplay = isGold ? `${quantityText} 골드` : `${quantityText}개`;
+                          const unitPriceStr = unitPrice > 0 ? formatNumber(unitPrice) : '';
+                          const showDesktopUnitQty = !isGold && unitPriceStr;
+                          return (
+                            <div
+                              key={mat.name}
+                              className={`flex items-center justify-between gap-2 py-1.5 pl-3 border-b border-gray-700/50 ${isLast ? 'border-b-0' : ''}`}
+                            >
+                              <span className="text-gray-300 text-sm flex items-center gap-2 min-w-0">
+                                <span className="flex-shrink-0">
+                                  <ItemIcon name={mat.name} size="sm" className="flex-shrink-0" />
+                                </span>
+                                <span className="hidden md:inline">{mat.name} </span>
+                                <span className="md:hidden">{quantityDisplay}</span>
+                                {showDesktopUnitQty ? (
+                                  <span className="hidden md:inline">
+                                    <span className="text-yellow-300">{unitPriceStr}골드</span>
+                                    <span className="text-gray-400"> x </span>
+                                    <span className="text-blue-300">{quantityText}개</span>
+                                  </span>
+                                ) : (
+                                  <span className="hidden md:inline">{quantityDisplay}</span>
+                                )}
+                              </span>
+                              <span className="text-gray-400 text-sm flex-shrink-0">
+                                ({totalText}<GoldUnit />)
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 보조 재료 (선택) - 일반재련 MaterialLine 스타일 */}
+                  {currentMaterials.filter(m => m.isOptional).length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="text-xs font-semibold text-purple-200 mb-2">보조 재료 (선택)</h4>
+                      <div className="bg-gray-900/80 rounded-lg border border-gray-700/50 p-4">
+                        <div className="space-y-1.5">
+                          {currentMaterials.filter(m => m.isOptional).map((mat, index, arr) => {
+                            const value = materialValues[mat.name];
+                            const isLast = index === arr.length - 1;
+                            const unitPrice = value?.unitPrice ?? 0;
+                            const totalPrice = value?.totalValue ?? 0;
+                            const quantityText = formatNumber(mat.amount);
+                            const totalText = totalPrice > 0 ? formatNumber(totalPrice) : '0';
+                            const isGold = mat.name === '골드';
+                            const quantityDisplay = isGold ? `${quantityText} 골드` : `${quantityText}개`;
+                            const unitPriceStr = unitPrice > 0 ? formatNumber(unitPrice) : '';
+                            const showDesktopUnitQty = !isGold && unitPriceStr;
+                            return (
+                              <div
+                                key={mat.name}
+                                className={`flex items-center justify-between gap-2 py-1.5 pl-3 border-b border-gray-700/50 ${isLast ? 'border-b-0' : ''}`}
+                              >
+                                <span className="text-gray-300 text-sm flex items-center gap-2 min-w-0">
+                                  <span className="flex-shrink-0">
+                                    <ItemIcon name={mat.name} size="sm" className="flex-shrink-0" />
+                                  </span>
+                                  <span className="hidden md:inline">{mat.name} </span>
+                                  <span className="md:hidden">{quantityDisplay}</span>
+                                  {showDesktopUnitQty ? (
+                                    <span className="hidden md:inline">
+                                      <span className="text-yellow-300">{unitPriceStr}골드</span>
+                                      <span className="text-gray-400"> x </span>
+                                      <span className="text-blue-300">{quantityText}개</span>
+                                    </span>
+                                  ) : (
+                                    <span className="hidden md:inline">{quantityDisplay}</span>
+                                  )}
+                                </span>
+                                <span className="text-gray-400 text-sm flex-shrink-0">
+                                  ({totalText}<GoldUnit />)
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 가치 합계 - 모바일 숨김 */}
+                  <div className="mt-4 pt-4 border-t border-gray-700 hidden md:block">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="bg-purple-900/20 rounded-lg p-3 border border-purple-700/50">
+                        <div className="text-sm text-purple-300 mb-1">필수 재료 가치 합계</div>
+                        <div className="text-xl font-bold text-purple-400">
+                          {formatNumber(requiredMaterialsTotal)}<span className="md:hidden"> G</span><span className="hidden md:inline"> 골드</span>
+                        </div>
+                      </div>
+                      <div className="bg-blue-900/20 rounded-lg p-3 border border-blue-700/50">
+                        <div className="text-sm text-blue-300 mb-1">1회 재련 재료 가치 합계 (전체)</div>
+                        <div className="text-xl font-bold text-blue-400">
+                          {formatNumber(allMaterialsTotal)}<span className="md:hidden"> G</span><span className="hidden md:inline"> 골드</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
                 {/* 보조재료 실제 가치 분석 */}
                 {craftsmanshipAnalysis && (
@@ -1741,7 +1839,7 @@ export default function AdvancedRefiningClient({
                       </div>
                     </div>
 
-                    <div className="mt-4 pt-4 border-t border-gray-700">
+                    <div className="mt-4 pt-4 border-t border-gray-700 hidden md:block">
                       <div className="text-sm text-gray-400 text-center leading-relaxed">
                         각 턴 타입별로 보조재료를 추가 투입했을 때의 순수 가치를 측정한 것입니다.
                         <br />
@@ -1753,8 +1851,8 @@ export default function AdvancedRefiningClient({
                   </div>
                 )}
 
-                {/* 보조재료 미투입/전부투입 (2개 단으로) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* 보조재료 미투입/전부투입 (2개 단으로) - 모바일 숨김 */}
+                <div className="hidden md:grid grid-cols-1 md:grid-cols-2 gap-6">
                   {noAuxResult && noAuxCostBreakdown && (
                     <SimulationCard
                       title="보조재료 미투입 시 예상 비용"
@@ -1778,8 +1876,8 @@ export default function AdvancedRefiningClient({
                   )}
                 </div>
 
-                {/* 모든 시나리오 확인 버튼 */}
-                <div className="flex justify-center">
+                {/* 모든 시나리오 확인 버튼 - 모바일 숨김 */}
+                <div className="hidden md:flex justify-center">
                   <button
                     onClick={() => {
                       setShowAllScenarios(!showAllScenarios);
@@ -1791,29 +1889,48 @@ export default function AdvancedRefiningClient({
                 </div>
 
                 {/* 모든 시나리오 표 */}
-                {showAllScenarios && (
+                {showAllScenarios && (() => {
+                  const breathMat = currentMaterials.find(m => m.isOptional && m.name.includes('숨결'));
+                  const craftMat = currentMaterials.find(m => m.isOptional && (m.name.includes('야금술') || m.name.includes('재봉술')));
+                  const breathDisplayName = breathMat?.name ?? null;
+                  const craftDisplayName = (() => {
+                    if (!craftMat) return null;
+                    const stage = activeSubTab === '상재1' ? '1단계' : activeSubTab === '상재2' ? '2단계' : activeSubTab === '상재3' ? '3단계' : '4단계';
+                    const name = craftMat.name;
+                    if (name.includes('야금술')) return name.replace(/장인의 야금술 : \d단계/, `장인의 야금술 : ${stage}`);
+                    if (name.includes('재봉술')) return name.replace(/장인의 재봉술 : \d단계/, `장인의 재봉술 : ${stage}`);
+                    return name;
+                  })();
+                  const TurnIcons = ({ turn }: { turn: { useBreath?: boolean; useCraftsmanship?: boolean } }) => (
+                    <div className="flex items-center gap-1 flex-wrap justify-center">
+                      {breathDisplayName && turn.useBreath && <ItemIcon name={breathDisplayName} size="sm" className="flex-shrink-0" />}
+                      {craftDisplayName && turn.useCraftsmanship && <ItemIcon name={craftDisplayName} size="sm" className="flex-shrink-0" />}
+                      {!(breathDisplayName && turn.useBreath) && !(craftDisplayName && turn.useCraftsmanship) && <span className="text-gray-500">-</span>}
+                    </div>
+                  );
+                  return (
                   <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
                     <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                       <span className="text-2xl">📋</span>
                       모든 시나리오 비교 ({allScenariosResults.length}가지)
                     </h2>
                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
+                        <table className="w-full text-xs md:text-sm">
                           <thead>
                             <tr className="border-b border-gray-700">
-                              <th className="px-3 py-2 text-left text-gray-300">일반턴</th>
-                              <th className="px-3 py-2 text-left text-gray-300">선조턴</th>
+                              <th className="px-2 md:px-3 py-2 text-left text-gray-300">일반턴</th>
+                              <th className="px-2 md:px-3 py-2 text-left text-gray-300">선조턴</th>
                               {(activeSubTab === '상재3' || activeSubTab === '상재4') && (
-                                <th className="px-3 py-2 text-left text-gray-300">강화선조턴</th>
+                                <th className="px-2 md:px-3 py-2 text-left text-gray-300">강화선조턴</th>
                               )}
-                              <th className="px-3 py-2 text-right text-gray-300">기대 횟수</th>
-                              <th className="px-3 py-2 text-right text-gray-300">일반턴</th>
-                              <th className="px-3 py-2 text-right text-gray-300">선조턴</th>
+                              <th className="px-2 md:px-3 py-2 text-right text-gray-300">기대 횟수</th>
+                              <th className="px-2 md:px-3 py-2 text-right text-gray-300">일반턴</th>
+                              <th className="px-2 md:px-3 py-2 text-right text-gray-300">선조턴</th>
                               {(activeSubTab === '상재3' || activeSubTab === '상재4') && (
-                                <th className="px-3 py-2 text-right text-gray-300">강화선조턴</th>
+                                <th className="px-2 md:px-3 py-2 text-right text-gray-300">강화선조턴</th>
                               )}
-                              <th className="px-3 py-2 text-right text-gray-300">무료턴</th>
-                              <th className="px-3 py-2 text-right text-yellow-400 font-bold">총 비용</th>
+                              <th className="px-2 md:px-3 py-2 text-right text-gray-300">무료턴</th>
+                              <th className="px-2 md:px-3 py-2 text-right text-yellow-400 font-bold">총 비용</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1836,35 +1953,30 @@ export default function AdvancedRefiningClient({
                                     key={index} 
                                     className={`border-b border-gray-800/50 hover:bg-gray-900/50 ${isOptimal ? 'bg-green-900/20' : ''}`}
                                   >
-                                    <td className="px-3 py-2 text-gray-300">
-                                      숨결: {scenario.strategy.normalTurn.useBreath ? '✓' : '✗'}<br />
-                                      야금술: {scenario.strategy.normalTurn.useCraftsmanship ? '✓' : '✗'}
+                                    <td className="px-2 md:px-3 py-2 text-gray-300">
+                                      <TurnIcons turn={scenario.strategy.normalTurn} />
                                     </td>
-                                    <td className="px-3 py-2 text-gray-300">
-                                      숨결: {scenario.strategy.ancestorTurn.useBreath ? '✓' : '✗'}<br />
-                                      야금술: {scenario.strategy.ancestorTurn.useCraftsmanship ? '✓' : '✗'}
+                                    <td className="px-2 md:px-3 py-2 text-gray-300">
+                                      <TurnIcons turn={scenario.strategy.ancestorTurn} />
                                     </td>
                                     {(activeSubTab === '상재3' || activeSubTab === '상재4') && (
-                                      <td className="px-3 py-2 text-gray-300">
+                                      <td className="px-2 md:px-3 py-2 text-gray-300">
                                         {scenario.strategy.enhancedAncestorTurn ? (
-                                          <>
-                                            숨결: {scenario.strategy.enhancedAncestorTurn.useBreath ? '✓' : '✗'}<br />
-                                            야금술: {scenario.strategy.enhancedAncestorTurn.useCraftsmanship ? '✓' : '✗'}
-                                          </>
-                                        ) : '-'}
+                                          <TurnIcons turn={scenario.strategy.enhancedAncestorTurn} />
+                                        ) : <span className="text-gray-500">-</span>}
                                       </td>
                                     )}
-                                    <td className="px-3 py-2 text-right text-white">{formatDecimal(scenario.result.expectedAttempts)}</td>
-                                    <td className="px-3 py-2 text-right text-white">{formatDecimal(scenario.result.normalTurns)}</td>
-                                    <td className="px-3 py-2 text-right text-purple-400">{formatDecimal(scenario.result.ancestorTurns)}</td>
+                                    <td className="px-2 md:px-3 py-2 text-right text-white">{formatDecimal(scenario.result.expectedAttempts)}</td>
+                                    <td className="px-2 md:px-3 py-2 text-right text-white">{formatDecimal(scenario.result.normalTurns)}</td>
+                                    <td className="px-2 md:px-3 py-2 text-right text-purple-400">{formatDecimal(scenario.result.ancestorTurns)}</td>
                                     {(activeSubTab === '상재3' || activeSubTab === '상재4') && (
-                                      <td className="px-3 py-2 text-right text-orange-400">
+                                      <td className="px-2 md:px-3 py-2 text-right text-orange-400">
                                         {scenario.result.enhancedAncestorTurns !== undefined ? formatDecimal(scenario.result.enhancedAncestorTurns) : '-'}
                                       </td>
                                     )}
-                                    <td className="px-3 py-2 text-right text-yellow-400">{formatDecimal(scenario.result.freeTurns)}</td>
-                                    <td className="px-3 py-2 text-right text-yellow-400 font-bold">
-                                      {formatNumber(scenario.costBreakdown.totalCost)} 골드
+                                    <td className="px-2 md:px-3 py-2 text-right text-yellow-400">{formatDecimal(scenario.result.freeTurns)}</td>
+                                    <td className="px-2 md:px-3 py-2 text-right text-yellow-400 font-bold">
+                                      {formatNumber(scenario.costBreakdown.totalCost)}<span className="md:hidden"> G</span><span className="hidden md:inline"> 골드</span>
                                       {isOptimal && <span className="ml-2 text-green-400">(최적)</span>}
                                     </td>
                                   </tr>
@@ -1874,7 +1986,7 @@ export default function AdvancedRefiningClient({
                         </table>
                       </div>
                   </div>
-                )}
+                ); })()}
               </>
             )}
           </div>
@@ -1930,6 +2042,8 @@ function SimulationStats({
   result, 
   color,
   costBreakdown = null,
+  materialBreakdown = null,
+  materialDisplayNameFn = (name: string) => name,
 }: { 
   result: SimulationResult; 
   color: 'red' | 'blue' | 'green';
@@ -1944,11 +2058,15 @@ function SimulationStats({
     enhancedAncestorTurnTotal?: number;
     freeTurnTotal: number;
   } | null;
+  materialBreakdown?: Record<string, number> | null;
+  materialDisplayNameFn?: (name: string) => string;
 }) {
+  const [showMaterialTooltip, setShowMaterialTooltip] = useState(false);
   const formatNumber = (num: number) => Math.round(num).toLocaleString();
   const formatDecimal = (num: number) => num.toFixed(1).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   const formatDecimalNumber = (num: number) => Math.round(num).toLocaleString();
-  
+  const goldUnit = <><span className="md:hidden"> G</span><span className="hidden md:inline"> 골드</span></>;
+
   const colorClasses = {
     red: 'text-red-400',
     blue: 'text-blue-400',
@@ -1957,7 +2075,33 @@ function SimulationStats({
 
   return (
     <div>
-      <div className={`grid gap-4 mb-4 ${result.enhancedAncestorTurns !== undefined ? 'grid-cols-2 md:grid-cols-5' : 'grid-cols-2 md:grid-cols-4'}`}>
+      {/* 모바일: 기대 횟수 + 턴별 횟수 한 카드로 */}
+      <div className="md:hidden mb-4 bg-gray-900/50 rounded-lg p-4 space-y-2">
+        <div className="flex justify-between items-baseline">
+          <span className={`text-sm font-semibold ${colorClasses[color]}`}>기대 횟수</span>
+          <span className={`text-sm font-bold ${colorClasses[color]}`}>{formatDecimal(result.expectedAttempts)}</span>
+        </div>
+        <div className="flex justify-between items-baseline text-xs">
+          <span className="text-gray-400">일반턴</span>
+          <span className="text-white font-medium">{formatDecimal(result.normalTurns)}</span>
+        </div>
+        <div className="flex justify-between items-baseline text-xs">
+          <span className="text-gray-400">선조턴</span>
+          <span className="text-purple-400 font-medium">{formatDecimal(result.ancestorTurns)}</span>
+        </div>
+        {result.enhancedAncestorTurns !== undefined && (
+          <div className="flex justify-between items-baseline text-xs">
+            <span className="text-gray-400">강화선조턴</span>
+            <span className="text-orange-400 font-medium">{formatDecimal(result.enhancedAncestorTurns)}</span>
+          </div>
+        )}
+        <div className="flex justify-between items-baseline text-xs">
+          <span className="text-gray-400">무료턴</span>
+          <span className="text-yellow-400 font-medium">{formatDecimal(result.freeTurns)}</span>
+        </div>
+      </div>
+      {/* 데스크톱: 기대 횟수·턴별 카드 그리드 */}
+      <div className={`hidden md:grid gap-4 mb-4 ${result.enhancedAncestorTurns !== undefined ? 'grid-cols-2 md:grid-cols-5' : 'grid-cols-2 md:grid-cols-4'}`}>
         <div className="bg-gray-900/50 rounded-lg p-4">
           <div className="text-xs text-gray-400 mb-1">기대 횟수</div>
           <div className={`text-2xl font-bold ${colorClasses[color]}`}>
@@ -1985,41 +2129,89 @@ function SimulationStats({
       </div>
       {costBreakdown && costBreakdown.totalCost > 0 && (
         <div className="bg-gray-800 rounded-lg p-4 border border-yellow-700/50">
-          <div className="text-sm text-yellow-300 mb-3 font-semibold">예상 총 비용</div>
-          <div className="space-y-2 text-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <span className="text-sm text-yellow-300 font-semibold">예상 총 비용</span>
+            {materialBreakdown && Object.keys(materialBreakdown).length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowMaterialTooltip(true)}
+                className="md:hidden px-2.5 py-1 rounded text-xs font-medium bg-gray-700/80 text-gray-200 hover:bg-gray-600"
+                aria-label="총 재료 소모량 보기"
+              >
+                재료 소모량
+              </button>
+            )}
+          </div>
+          <div className="hidden md:block space-y-2 text-sm">
             <div className="flex justify-between items-center">
               <span className="text-gray-300">일반턴 비용 × 일반턴 횟수</span>
               <span className="text-white font-medium">
-                {formatDecimalNumber(costBreakdown.normalTurnCost)} × {formatDecimal(result.normalTurns)} = {formatDecimalNumber(costBreakdown.normalTurnTotal)} 골드
+                {formatDecimalNumber(costBreakdown.normalTurnCost)} × {formatDecimal(result.normalTurns)} = {formatDecimalNumber(costBreakdown.normalTurnTotal)}{goldUnit}
               </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-300">선조턴 비용 × 선조턴 횟수</span>
               <span className="text-white font-medium">
-                {formatDecimalNumber(costBreakdown.ancestorTurnCost)} × {formatDecimal(result.ancestorTurns)} = {formatDecimalNumber(costBreakdown.ancestorTurnTotal)} 골드
+                {formatDecimalNumber(costBreakdown.ancestorTurnCost)} × {formatDecimal(result.ancestorTurns)} = {formatDecimalNumber(costBreakdown.ancestorTurnTotal)}{goldUnit}
               </span>
             </div>
             {costBreakdown.enhancedAncestorTurnCost !== undefined && costBreakdown.enhancedAncestorTurnTotal !== undefined && result.enhancedAncestorTurns !== undefined && (
               <div className="flex justify-between items-center">
                 <span className="text-gray-300">강화선조턴 비용 × 강화선조턴 횟수</span>
                 <span className="text-white font-medium">
-                  {formatDecimalNumber(costBreakdown.enhancedAncestorTurnCost)} × {formatDecimal(result.enhancedAncestorTurns)} = {formatDecimalNumber(costBreakdown.enhancedAncestorTurnTotal)} 골드
+                  {formatDecimalNumber(costBreakdown.enhancedAncestorTurnCost)} × {formatDecimal(result.enhancedAncestorTurns)} = {formatDecimalNumber(costBreakdown.enhancedAncestorTurnTotal)}{goldUnit}
                 </span>
               </div>
             )}
             <div className="flex justify-between items-center">
               <span className="text-gray-300">무료턴 비용 × 무료턴 횟수</span>
               <span className="text-white font-medium">
-                {formatDecimalNumber(costBreakdown.freeTurnCost)} × {formatDecimal(result.freeTurns)} = {formatDecimalNumber(costBreakdown.freeTurnTotal)} 골드
+                {formatDecimalNumber(costBreakdown.freeTurnCost)} × {formatDecimal(result.freeTurns)} = {formatDecimalNumber(costBreakdown.freeTurnTotal)}{goldUnit}
               </span>
             </div>
             <div className="pt-2 mt-2 border-t border-yellow-700/50 flex justify-between items-center">
               <span className="text-yellow-300 font-semibold">합계</span>
               <span className="text-2xl font-bold text-yellow-400">
-                {formatDecimalNumber(costBreakdown.totalCost)} 골드
+                {formatDecimalNumber(costBreakdown.totalCost)}{goldUnit}
               </span>
             </div>
           </div>
+          <div className="md:hidden flex justify-between items-center gap-2">
+            <span className="text-yellow-300 font-semibold">합계</span>
+            <span className="text-xl font-bold text-yellow-400">
+              {formatDecimalNumber(costBreakdown.totalCost)}{goldUnit}
+            </span>
+          </div>
+          {materialBreakdown && Object.keys(materialBreakdown).length > 0 && showMaterialTooltip && (
+            <div className="fixed inset-0 z-50 md:hidden" aria-modal="true" role="dialog" aria-label="총 재료 소모량">
+              <button
+                type="button"
+                className="absolute inset-0 bg-black/50 focus:outline-none"
+                onClick={() => setShowMaterialTooltip(false)}
+                aria-label="툴팁 닫기"
+              />
+              <div className="absolute bottom-0 left-0 right-0 rounded-t-xl bg-gray-800 border border-gray-700 border-b-0 shadow-2xl p-4 max-h-[60vh] overflow-y-auto">
+                <h4 className="text-sm font-semibold text-white mb-2 break-keep">총 재료 소모량</h4>
+                <ul className="space-y-1.5 text-xs text-gray-300">
+                  {Object.entries(materialBreakdown)
+                    .filter(([_, amount]) => amount > 0)
+                    .map(([name, amount]) => (
+                      <li key={name} className="flex items-center gap-2 break-keep">
+                        <ItemIcon name={materialDisplayNameFn(name)} size="sm" className="flex-shrink-0" />
+                        <span>{materialDisplayNameFn(name)} × {formatNumber(amount)}</span>
+                      </li>
+                    ))}
+                </ul>
+                <button
+                  type="button"
+                  className="mt-4 w-full py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium rounded-lg"
+                  onClick={() => setShowMaterialTooltip(false)}
+                >
+                  닫기
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

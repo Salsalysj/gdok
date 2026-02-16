@@ -23,7 +23,7 @@ export default function WageCalculatorPageContent({
   return (
     <>
       <div className="flex items-center justify-between gap-4 flex-wrap mb-6">
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="hidden sm:flex items-center gap-3 flex-wrap">
           <h1 className="text-3xl font-semibold">시급 계산기</h1>
           <FavoriteButton title="시급 계산기" />
         </div>

@@ -45,6 +45,21 @@ type ValueDbEntryMap = Record<string, {
 
 type RatesProps = { exchange: number | null; discord: number | null };
 
+/** 모바일 툴팁용 lines 생성 (일반재련과 동일 형식) */
+function buildRewardTooltipLines(item: { itemName: string; quantity: number; price?: number | null }): string[] {
+  const q = formatNumberWithSignificantDigits(item.quantity);
+  const quantityLine =
+    item.itemName === '실링' ? `수량: ${q} 실링` :
+    item.itemName === '카드 경험치' ? `수량: ${q}` : `수량: ${q}개`;
+  const lines: string[] = [quantityLine];
+  const unitPrice = item.price ?? 0;
+  if (unitPrice > 0) {
+    lines.push(`단가: ${formatNumberWithSignificantDigits(unitPrice)} 골드`);
+    lines.push(`합계: ${formatNumberWithSignificantDigits(unitPrice * item.quantity)} 골드`);
+  }
+  return lines;
+}
+
 export default function RaidRewardsClient({ 
   data, 
   data1730,
@@ -60,8 +75,8 @@ export default function RaidRewardsClient({
   const { state: priceOverrideState } = usePriceOverride();
   const { adjustedEntries } = useValueDb();
   const [refreshKey, setRefreshKey] = useState(0);
-  /** 모바일 전용 툴팁: 터치 시 즉시 표시 */
-  const [mobileTooltipItemName, setMobileTooltipItemName] = useState<string | null>(null);
+  /** 모바일 툴팁 (일반재련과 동일: title + lines) */
+  const [itemTooltip, setItemTooltip] = useState<{ title: string; lines: string[] } | null>(null);
   
   // 세르카 장비 계승 완료 스위치 상태 (UI용으로만 사용, 실제 데이터 선택에는 사용하지 않음)
   const [isSerkaCompleted, setIsSerkaCompleted] = useState<boolean>(false);
@@ -92,16 +107,16 @@ export default function RaidRewardsClient({
     };
   }, []);
 
-  const showMobileTooltip = (itemName: string) => {
+  const showMobileTooltip = (title: string, lines: string[]) => {
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
-      setMobileTooltipItemName(itemName);
+      setItemTooltip({ title, lines });
     }
   };
 
   // 모바일 툴팁: 외부 터치/클릭 시 닫기, 2초 후 자동 닫기
   useEffect(() => {
-    if (!mobileTooltipItemName) return;
-    const close = () => setMobileTooltipItemName(null);
+    if (!itemTooltip) return;
+    const close = () => setItemTooltip(null);
     const timer = setTimeout(close, 2000);
     const handleClose = () => {
       close();
@@ -114,7 +129,7 @@ export default function RaidRewardsClient({
       document.removeEventListener('touchstart', handleClose);
       document.removeEventListener('click', handleClose);
     };
-  }, [mobileTooltipItemName]);
+  }, [itemTooltip]);
 
   const categories = Object.keys(currentData);
   const [activeCategory, setActiveCategory] = useState<string>(categories[0] || '');
@@ -417,10 +432,28 @@ export default function RaidRewardsClient({
   return (
     <div className="min-h-screen bg-gray-950 p-4 md:p-6 lg:p-8">
       {/* 모바일 전용 툴팁: 터치 시 즉시 표시 */}
-      {mobileTooltipItemName && (
-        <div className="fixed inset-x-4 bottom-8 z-50 md:hidden">
-          <div className="mx-auto max-w-sm rounded-lg bg-gray-800 px-4 py-3 text-center text-sm text-white shadow-lg border border-gray-600">
-            {mobileTooltipItemName}
+      {itemTooltip && (
+        <div className="fixed inset-0 z-50 md:hidden" aria-modal="true" role="dialog" aria-label="아이템 상세">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/50 focus:outline-none"
+            onClick={() => setItemTooltip(null)}
+            aria-label="툴팁 닫기"
+          />
+          <div className="absolute bottom-0 left-0 right-0 rounded-t-xl bg-gray-800 border border-gray-700 border-b-0 shadow-2xl p-4 max-h-[60vh] overflow-y-auto">
+            <h4 className="text-sm font-semibold text-white mb-2 break-keep">{itemTooltip.title}</h4>
+            <ul className="space-y-1 text-xs text-gray-300">
+              {itemTooltip.lines.map((line, i) => (
+                <li key={i} className="break-keep">{line}</li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              className="mt-4 w-full py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium rounded-lg"
+              onClick={() => setItemTooltip(null)}
+            >
+              닫기
+            </button>
           </div>
         </div>
       )}
@@ -800,20 +833,25 @@ export default function RaidRewardsClient({
                               (isSerkaCompleted && (itemName === '운명의 파괴석' || itemName === '운명의 수호석' || itemName === '운명의 돌파석' || itemName === '순환 돌파석'))
                             ) && priceInfo.method;
                             
+                            const tooltipLines = buildRewardTooltipLines({ itemName, quantity, price: priceInfo.price ?? undefined });
                             return (
-                              <div key={itemName} className={`flex items-center justify-between gap-1 md:gap-2 py-0.5 md:py-1 pl-1 md:pl-3 ${strike}`}>
+                              <div
+                                key={itemName}
+                                role="button"
+                                tabIndex={0}
+                                onClick={(e) => { e.stopPropagation(); showMobileTooltip(itemName, tooltipLines); }}
+                                onTouchEnd={(e) => { e.preventDefault(); showMobileTooltip(itemName, tooltipLines); }}
+                                className={`flex items-center justify-between gap-1 md:gap-2 py-0.5 md:py-1 pl-1 md:pl-3 cursor-default touch-manipulation md:cursor-default ${strike}`}
+                              >
                                 <span className="text-gray-300 text-[10px] md:text-xs flex items-center gap-1 md:gap-2 min-w-0">
-                                  <span
-                                    role="button"
-                                    tabIndex={0}
-                                    onClick={(e) => { e.stopPropagation(); showMobileTooltip(itemName); }}
-                                    onTouchEnd={(e) => { e.preventDefault(); showMobileTooltip(itemName); }}
-                                    className="flex-shrink-0 cursor-default touch-manipulation md:cursor-default"
-                                  >
+                                  <span className="flex-shrink-0">
                                     <ItemIcon name={itemName} size="sm" className="flex-shrink-0" />
                                   </span>
                                   <span className="hidden md:inline">{itemName} </span>
-                                  {(itemName === '카드 경험치' || itemName === '실링') ? formatNumberWithSignificantDigits(quantity) : `${formatNumberWithSignificantDigits(quantity)}개`}
+                                  <span className="md:hidden">{(itemName === '카드 경험치' || itemName === '실링') ? formatNumberWithSignificantDigits(quantity) : `${formatNumberWithSignificantDigits(quantity)}개`}</span>
+                                  <span className="hidden md:inline">{(priceInfo.price != null && priceInfo.price > 0) ? (
+                                    <><span className="text-yellow-300">{formatNumberWithSignificantDigits(priceInfo.price)}골드</span><span className="text-gray-400"> x </span><span className="text-blue-300">{formatNumberWithSignificantDigits(quantity)}개</span></>
+                                  ) : (itemName === '카드 경험치' || itemName === '실링') ? formatNumberWithSignificantDigits(quantity) : `${formatNumberWithSignificantDigits(quantity)}개`}</span>
                                   {showMethod && (
                                     <span className="hidden md:inline text-xs text-gray-500 font-medium ml-1.5">({priceInfo.method})</span>
                                   )}
@@ -877,20 +915,25 @@ export default function RaidRewardsClient({
                               (isSerkaCompleted && (itemName === '운명의 파괴석' || itemName === '운명의 수호석' || itemName === '운명의 돌파석' || itemName === '순환 돌파석'))
                             ) && priceInfo.method;
                             
+                            const tooltipLines = buildRewardTooltipLines({ itemName, quantity, price: priceInfo.price ?? undefined });
                             return (
-                              <div key={itemName} className={`flex items-center justify-between gap-1 md:gap-2 py-0.5 md:py-1 pl-1 md:pl-3 ${strike}`}>
+                              <div
+                                key={itemName}
+                                role="button"
+                                tabIndex={0}
+                                onClick={(e) => { e.stopPropagation(); showMobileTooltip(itemName, tooltipLines); }}
+                                onTouchEnd={(e) => { e.preventDefault(); showMobileTooltip(itemName, tooltipLines); }}
+                                className={`flex items-center justify-between gap-1 md:gap-2 py-0.5 md:py-1 pl-1 md:pl-3 cursor-default touch-manipulation md:cursor-default ${strike}`}
+                              >
                                 <span className="text-gray-300 text-[10px] md:text-xs flex items-center gap-1 md:gap-2 min-w-0">
-                                  <span
-                                    role="button"
-                                    tabIndex={0}
-                                    onClick={(e) => { e.stopPropagation(); showMobileTooltip(itemName); }}
-                                    onTouchEnd={(e) => { e.preventDefault(); showMobileTooltip(itemName); }}
-                                    className="flex-shrink-0 cursor-default touch-manipulation md:cursor-default"
-                                  >
+                                  <span className="flex-shrink-0">
                                     <ItemIcon name={itemName} size="sm" className="flex-shrink-0" />
                                   </span>
                                   <span className="hidden md:inline">{itemName} </span>
-                                  {(itemName === '카드 경험치' || itemName === '실링') ? formatNumberWithSignificantDigits(quantity) : `${formatNumberWithSignificantDigits(quantity)}개`}
+                                  <span className="md:hidden">{(itemName === '카드 경험치' || itemName === '실링') ? formatNumberWithSignificantDigits(quantity) : `${formatNumberWithSignificantDigits(quantity)}개`}</span>
+                                  <span className="hidden md:inline">{(priceInfo.price != null && priceInfo.price > 0) ? (
+                                    <><span className="text-yellow-300">{formatNumberWithSignificantDigits(priceInfo.price)}골드</span><span className="text-gray-400"> x </span><span className="text-blue-300">{formatNumberWithSignificantDigits(quantity)}개</span></>
+                                  ) : (itemName === '카드 경험치' || itemName === '실링') ? formatNumberWithSignificantDigits(quantity) : `${formatNumberWithSignificantDigits(quantity)}개`}</span>
                                   {showMethod && (
                                     <span className="hidden md:inline text-xs text-gray-500 font-medium ml-1.5">({priceInfo.method})</span>
                                   )}

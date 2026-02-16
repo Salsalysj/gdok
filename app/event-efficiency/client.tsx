@@ -3740,8 +3740,8 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
           <FavoriteButton title="PC방 이벤트" />
         </div>
       </div>
-      <div className="bg-gray-800 border border-gray-700 rounded p-4 md:p-8 text-xs md:text-base">
-        <div className="flex flex-col gap-4">
+      <div className="text-xs md:text-base">
+        <div className="flex flex-col gap-6">
           
           {/* 새로 만들기 / 저장 버튼 (로컬에서만 표시, 카드 영역 안) */}
           {allowEventEfficiencySave && (

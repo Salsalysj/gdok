@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { usePriceAdjustment } from '../../hooks/usePriceAdjustment';
 import { usePriceOverride } from '../../contexts/PriceOverrideContext';
 import { useValueDb } from '../../contexts/ValueDbContext';
@@ -427,12 +427,30 @@ export default function WageCalculatorClient({
     });
   }, [allRows, sortBy, durations, showTradable, goldToCashPerGold]);
 
-  const tableClass = 'w-full border-collapse border border-gray-700 text-center';
-  const thClass = 'border border-gray-700 bg-gray-800 px-3 py-2 text-gray-200 font-semibold';
-  const tdClass = 'border border-gray-700 px-3 py-2 text-white';
+  const tableClass = 'w-full border-collapse border border-gray-700 text-center text-[11px] sm:text-base table-fixed sm:table-auto';
+  const thClass = 'border border-gray-700 bg-gray-800 px-1.5 sm:px-3 py-1 sm:py-2 text-gray-200 font-semibold';
+  const tdClass = 'border border-gray-700 px-1.5 sm:px-3 py-1 sm:py-2 text-white';
+  const thClassDuration = thClass + ' w-12 sm:w-auto';
+  const tdClassDuration = tdClass + ' w-12 sm:w-auto';
   const btnBase = 'px-3 py-1.5 text-sm rounded-lg border border-gray-600 transition-colors';
   const btnActive = 'bg-gray-600 border-gray-500 text-white';
   const btnInactive = 'text-gray-400 hover:text-white hover:bg-gray-700';
+
+  function getMobileContentDisplay(content: string): React.ReactNode {
+    let s = content
+      .replace(/필드보스/g, '필보')
+      .replace(/카오스게이트/g, '카게')
+      .replace(/([1-4]막|종막|서막)\s*\([^)]*\)\s*/g, '$1 ')
+      .replace(/막\s+/g, '막 ')
+      .replace(/(막)(노말|하드|나메)/g, '$1 $2')
+      .replace(/나이트메어/g, '나메')
+      .replace(/에브니\s*큐브\s*(\d+해금)/gi, '$1')
+      .replace(/할의\s*모래시계\s*(\d+)\s*단계/g, (_, n) => `할${n}단계`)
+      .replace(/할의\s*모래시계\s*(\d+)단계/g, (_, n) => `할${n}단계`)
+      .replace(/가디언\s*토벌/g, '가토')
+      .replace(/베히모스/g, '베히');
+    return s;
+  }
 
   return (
     <div>
@@ -465,7 +483,7 @@ export default function WageCalculatorClient({
             <th className={thClass}>컨텐츠</th>
             <th className={thClass}>레벨</th>
             <th className={thClass}>보상</th>
-            <th className={thClass}>소요시간(분)</th>
+            <th className={thClassDuration}><span className="sm:hidden">소요(분)</span><span className="hidden sm:inline">소요시간(분)</span></th>
             <th className={thClass}>시급</th>
           </tr>
         </thead>
@@ -480,10 +498,13 @@ export default function WageCalculatorClient({
             const rowBg = ROW_BG[durationKey] ?? '';
             return (
               <tr key={key} className={rowBg}>
-                <td className={tdClass}>{content}</td>
-                <td className={tdClass}>{level}</td>
-                <td className={tdClass}>{formatNumberWithSignificantDigits(value)}골드</td>
                 <td className={tdClass}>
+                  <span className="hidden sm:inline">{content}</span>
+                  <span className="sm:hidden">{getMobileContentDisplay(content)}</span>
+                </td>
+                <td className={tdClass}>{level}</td>
+                <td className={tdClass}>{formatNumberWithSignificantDigits(value)}<span className="sm:hidden"> G</span><span className="hidden sm:inline">골드</span></td>
+                <td className={tdClassDuration}>
                   <input
                     type="number"
                     min={0.1}
@@ -511,13 +532,13 @@ export default function WageCalculatorClient({
                         (e.target as HTMLInputElement).blur();
                       }
                     }}
-                    className="w-20 px-2 py-1 text-center bg-gray-800 border border-gray-600 rounded text-white focus:outline-none focus:border-gray-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    className="w-full min-w-0 max-w-full sm:w-20 px-1 sm:px-2 py-0.5 sm:py-1 text-center bg-gray-800 border border-gray-600 rounded text-[11px] sm:text-base text-white focus:outline-none focus:border-gray-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                 </td>
                 <td className={tdClass}>
                   {goldToCashPerGold != null
                     ? `${formatNumberWithSignificantDigits(hourlyCash)}원`
-                    : `${formatNumberWithSignificantDigits(hourlyGold)}골드`}
+                    : <>{formatNumberWithSignificantDigits(hourlyGold)}<span className="sm:hidden"> G</span><span className="hidden sm:inline">골드</span></>}
                 </td>
               </tr>
             );

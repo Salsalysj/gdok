@@ -7,6 +7,7 @@ import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
 import { usePriceOverride } from '../contexts/PriceOverrideContext';
 import FavoriteButton from '../components/FavoriteButton';
 import ItemIcon from '../components/ItemIcon';
+import GoldUnit from '../components/GoldUnit';
 
 type Props = {
   weaponStages: RefiningStage[];
@@ -110,6 +111,12 @@ function formatRate(value: number | null): string {
 function formatCost(value: number | null): string {
   if (value == null || value <= 0) return '-';
   return `${formatNumberWithSignificantDigits(value)} 골드`;
+}
+
+/** 모바일용: 골드 → G */
+function formatCostShort(value: number | null): string {
+  if (value == null || value <= 0) return '-';
+  return `${formatNumberWithSignificantDigits(value)} G`;
 }
 
 type CostLine = {
@@ -831,9 +838,10 @@ type StageCardProps = {
   sillingUnitPrice: number;
   selectedTier: 'basic' | 'upper';
   allStages?: RefiningStage[]; // 이전 단계 아이템 레벨 계산을 위한 전체 stages 배열
+  onMobileTooltip?: (content: { title: string; lines: string[] }) => void;
 };
 
-function StageCard({ stage, marketInfo, sillingUnitPrice, selectedTier, allStages }: StageCardProps) {
+function StageCard({ stage, marketInfo, sillingUnitPrice, selectedTier, allStages, onMobileTooltip }: StageCardProps) {
   const { adjustPrice } = usePriceAdjustment();
   
   // 이전 단계의 아이템 레벨 계산
@@ -1062,27 +1070,31 @@ function StageCard({ stage, marketInfo, sillingUnitPrice, selectedTier, allStage
         {oneTimeCost && (
           <div>
             <h4 className="text-xs font-semibold text-purple-200 mb-2">경험치 재료 (첫 시도 1회)</h4>
-            <div className="bg-gray-900/80 rounded-lg border border-gray-800 p-3">
-              <MaterialLine data={oneTimeCost} selectedTier={selectedTier} />
+            <div className="bg-gray-900/80 rounded-lg border border-gray-700/50 p-4">
+              <div className="space-y-1.5">
+                <MaterialLine data={oneTimeCost} selectedTier={selectedTier} onMobileTooltip={onMobileTooltip} isLast />
+              </div>
             </div>
           </div>
         )}
 
         <div>
           <h4 className="text-xs font-semibold text-purple-200 mb-2">필수 재료 (시도당)</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="bg-gray-900/80 rounded-lg border border-gray-800 divide-y divide-gray-800">
-              {essentialLeft.map(item => (
-                <MaterialLine key={item.name} data={item} selectedTier={selectedTier} />
-              ))}
-              {essentialLeft.length === 0 && (
-                <div className="px-4 py-3 text-xs text-gray-400">표시할 재료가 없습니다.</div>
+          <div className="bg-gray-900/80 rounded-lg border border-gray-700/50 p-4">
+            <div className="space-y-1.5">
+              {[...essentialLeft, ...essentialRight].length === 0 ? (
+                <div className="py-1.5 pl-3 text-xs text-gray-400">표시할 재료가 없습니다.</div>
+              ) : (
+                ([...essentialLeft, ...essentialRight] as CostLine[]).map((item, index, arr) => (
+                  <MaterialLine
+                    key={item.name === GOLD_ITEM || item.name === SILVER_ITEM ? `${item.name}-${index}` : item.name}
+                    data={item}
+                    selectedTier={selectedTier}
+                    onMobileTooltip={onMobileTooltip}
+                    isLast={index === arr.length - 1}
+                  />
+                ))
               )}
-            </div>
-            <div className="bg-gray-900/80 rounded-lg border border-gray-800 divide-y divide-gray-800">
-              {essentialRight.map(item => (
-                <MaterialLine key={item.name} data={item} selectedTier={selectedTier} />
-              ))}
             </div>
           </div>
         </div>
@@ -1090,15 +1102,23 @@ function StageCard({ stage, marketInfo, sillingUnitPrice, selectedTier, allStage
         {optionalCosts.length > 0 && (
           <div>
             <h4 className="text-xs font-semibold text-purple-200 mb-2">보조 재료 (선택)</h4>
-            <div className="bg-gray-900/80 rounded-lg border border-gray-800 divide-y divide-gray-800">
-              {optionalCosts.map(item => (
-                <MaterialLine key={item.name} data={item} selectedTier={selectedTier} />
-              ))}
+            <div className="bg-gray-900/80 rounded-lg border border-gray-700/50 p-4">
+              <div className="space-y-1.5">
+                {optionalCosts.map((item, index) => (
+                  <MaterialLine
+                    key={item.name}
+                    data={item}
+                    selectedTier={selectedTier}
+                    onMobileTooltip={onMobileTooltip}
+                    isLast={index === optionalCosts.length - 1}
+                  />
+                ))}
+              </div>
             </div>
           </div>
         )}
 
-        <div>
+        <div className="hidden md:block">
           <h4 className="text-xs font-semibold text-purple-200 mb-2">1회 시도 비용 요약 (경험치 제외)</h4>
           <div className="overflow-x-auto">
             <table className="min-w-full border border-gray-800 text-xs">
@@ -1125,64 +1145,66 @@ function StageCard({ stage, marketInfo, sillingUnitPrice, selectedTier, allStage
         </div>
 
         <div>
-          <div className="flex items-center justify-between mb-3">
-            <h4 className="text-xs font-semibold text-purple-200">재료 사용 최적화</h4>
-            <button
-              onClick={() => setShowOptimization(!showOptimization)}
-              className="px-3 py-1 bg-purple-700/40 hover:bg-purple-700/60 text-white text-xs rounded-lg"
-            >
-              {showOptimization ? '숨기기' : '자세히 보기'}
-            </button>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="bg-gray-900/80 rounded-lg border border-gray-800 p-4 space-y-2">
-              <h5 className="text-sm font-semibold text-white">{baseStrategy.label}</h5>
-              <p className="text-xs text-gray-400">{baseStrategy.description}</p>
-              <div className="space-y-1 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-gray-300">예상 비용:</span>
-                  <span className="text-green-300 font-medium">{formatCost(baseStrategy.expectedCost)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-300">평균 시도 횟수:</span>
-                  <span className="text-blue-300 font-medium">{formatNumberWithSignificantDigits(baseStrategy.averageAttempts)}회</span>
+          <div className="hidden md:block">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-xs font-semibold text-purple-200">재료 사용 최적화</h4>
+              <button
+                onClick={() => setShowOptimization(!showOptimization)}
+                className="px-3 py-1 bg-purple-700/40 hover:bg-purple-700/60 text-white text-xs rounded-lg"
+              >
+                {showOptimization ? '숨기기' : '자세히 보기'}
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="bg-gray-900/80 rounded-lg border border-gray-800 p-4 space-y-2">
+                <h5 className="text-sm font-semibold text-white">{baseStrategy.label}</h5>
+                <p className="text-xs text-gray-400">{baseStrategy.description}</p>
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-gray-300">예상 비용:</span>
+                    <span className="text-green-300 font-medium">{formatCost(baseStrategy.expectedCost)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-300">평균 시도 횟수:</span>
+                    <span className="text-blue-300 font-medium">{formatNumberWithSignificantDigits(baseStrategy.averageAttempts)}회</span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="bg-gray-900/80 rounded-lg border border-purple-600 p-4 space-y-2">
-              <h5 className="text-sm font-semibold text-purple-300">{optimalStrategy.label}</h5>
-              <p className="text-xs text-gray-400">{optimalStrategy.description}</p>
-              <div className="space-y-1 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-gray-300">예상 비용:</span>
-                  <span className="text-green-300 font-medium">{formatCost(optimalStrategy.expectedCost)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-300">평균 시도 횟수:</span>
-                  <span className="text-blue-300 font-medium">{formatNumberWithSignificantDigits(optimalStrategy.averageAttempts)}회</span>
-                </div>
-                <div className="flex justify-between pt-2 border-t border-gray-700">
-                  <span className="text-gray-300">기본 대비:</span>
-                  {(() => {
-                    const diff = optimalStrategy.expectedCost - baseStrategy.expectedCost;
-                    if (Math.abs(diff) < 1e-6) return <span className="text-gray-400">동일</span>;
-                    const sign = diff > 0 ? '+' : '-';
-                    const color = diff > 0 ? 'text-red-300' : 'text-green-300';
-                    return (
-                      <span className={`${color} font-medium`}>
-                        {sign}{formatNumberWithSignificantDigits(Math.abs(diff))} 골드
-                      </span>
-                    );
-                  })()}
+              <div className="bg-gray-900/80 rounded-lg border border-purple-600 p-4 space-y-2">
+                <h5 className="text-sm font-semibold text-purple-300">{optimalStrategy.label}</h5>
+                <p className="text-xs text-gray-400">{optimalStrategy.description}</p>
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-gray-300">예상 비용:</span>
+                    <span className="text-green-300 font-medium">{formatCost(optimalStrategy.expectedCost)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-300">평균 시도 횟수:</span>
+                    <span className="text-blue-300 font-medium">{formatNumberWithSignificantDigits(optimalStrategy.averageAttempts)}회</span>
+                  </div>
+                  <div className="flex justify-between pt-2 border-t border-gray-700">
+                    <span className="text-gray-300">기본 대비:</span>
+                    {(() => {
+                      const diff = optimalStrategy.expectedCost - baseStrategy.expectedCost;
+                      if (Math.abs(diff) < 1e-6) return <span className="text-gray-400">동일</span>;
+                      const sign = diff > 0 ? '+' : '-';
+                      const color = diff > 0 ? 'text-red-300' : 'text-green-300';
+                      return (
+                        <span className={`${color} font-medium`}>
+                          {sign}{formatNumberWithSignificantDigits(Math.abs(diff))} 골드
+                        </span>
+                      );
+                    })()}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
           {(fullBreathStrategy || fullMetallurgyStrategy || fullEnhancedMetallurgyStrategy || fullBothStrategy) && (
-            <div className="mt-3">
+            <div className="hidden md:block mt-3">
               <h5 className="text-xs font-semibold text-purple-200 mb-2">기타 전략</h5>
               <div className={`grid grid-cols-1 md:grid-cols-2 ${stage.enhancedMetallurgyMaterial ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-3`}>
                 {fullBreathStrategy && (
@@ -1342,7 +1364,10 @@ function StageCard({ stage, marketInfo, sillingUnitPrice, selectedTier, allStage
                   return (
                     <div key={insight.name} className="flex justify-between items-center py-2 border-b border-gray-700 last:border-b-0">
                       <div>
-                        <div className="text-white font-medium">{insight.name}</div>
+                        <div className="flex items-center gap-2">
+                          <ItemIcon name={insight.name} size="sm" className="flex-shrink-0" />
+                          <span className="text-white font-medium">{insight.name}</span>
+                        </div>
                         <div className="text-gray-400 text-xs">{usageText}</div>
                         {basisLabel && <div className="text-gray-500 text-xs">{basisLabel}</div>}
                       </div>
@@ -1410,14 +1435,18 @@ function StageCard({ stage, marketInfo, sillingUnitPrice, selectedTier, allStage
   );
 }
 
+/** 핵심 컨텐츠 페이지와 동일한 행 UI: 아이콘 + 이름(모바일 숨김) + 수량 / 오른쪽 합계 */
 function MaterialLine({
   data,
   selectedTier,
+  onMobileTooltip,
+  isLast,
 }: {
   data: CostLine;
   selectedTier?: 'basic' | 'upper';
+  onMobileTooltip?: (content: { title: string; lines: string[] }) => void;
+  isLast?: boolean;
 }) {
-  // 세르카 장비일 때 재료 이름 변경
   const getDisplayName = (name: string) => {
     if (selectedTier === 'upper') {
       const nameMap: Record<string, string> = {
@@ -1439,28 +1468,52 @@ function MaterialLine({
     ? `${formatNumberWithSignificantDigits(data.unitPrice)} 골드`
     : '-';
   const totalText = data.totalPrice > 0
-    ? `${formatNumberWithSignificantDigits(data.totalPrice)} 골드`
-    : '-';
+    ? formatNumberWithSignificantDigits(data.totalPrice)
+    : '0';
+
+  const tooltipLines: string[] = [
+    `수량: ${quantityText}${isGold ? ' 골드' : isSilver ? ' 실링' : '개'}`,
+  ];
+  if (!isGold) {
+    tooltipLines.push(`단가: ${unitText}`);
+    tooltipLines.push(`합계: ${totalText} 골드`);
+  }
+
+  const quantityDisplay = isGold ? `${quantityText} 골드` : isSilver ? `${quantityText} 실링` : `${quantityText}개`;
+  const unitPriceStr = data.unitPrice > 0 ? formatNumberWithSignificantDigits(data.unitPrice) : '';
+  const showDesktopUnitQty = !isGold && unitPriceStr;
+
+  const handleMobileTooltip = () => {
+    onMobileTooltip?.({ title: displayName, lines: tooltipLines });
+  };
 
   return (
-    <div className="flex items-center justify-between gap-3 px-4 py-2">
-      <div className="flex items-center gap-2 text-sm text-white">
-        <ItemIcon name={displayName} size="sm" className="flex-shrink-0" />
-        <span className="font-medium">{displayName}</span>
-      </div>
-      <div className="flex flex-col text-right text-xs text-gray-300">
-        <span>
-          수량: {quantityText}
-          {isGold ? ' 골드' : ''}
-          {isSilver ? ' 실링' : ''}
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={(e) => { e.stopPropagation(); handleMobileTooltip(); }}
+      onTouchEnd={(e) => { e.preventDefault(); handleMobileTooltip(); }}
+      className={`flex items-center justify-between gap-2 py-1.5 pl-3 border-b border-gray-700/50 ${isLast ? 'border-b-0' : ''} cursor-default touch-manipulation md:cursor-default`}
+    >
+      <span className="text-gray-300 text-sm flex items-center gap-2 min-w-0">
+        <span className="flex-shrink-0">
+          <ItemIcon name={displayName} size="sm" className="flex-shrink-0" />
         </span>
-        {!isGold && (
-          <>
-            <span>단가: {unitText}</span>
-            <span>합계: {totalText}</span>
-          </>
+        <span className="hidden md:inline">{displayName} </span>
+        <span className="md:hidden">{quantityDisplay}</span>
+        {showDesktopUnitQty ? (
+          <span className="hidden md:inline">
+            <span className="text-yellow-300">{unitPriceStr}골드</span>
+            <span className="text-gray-400"> x </span>
+            <span className="text-blue-300">{quantityText}{isSilver ? ' 실링' : '개'}</span>
+          </span>
+        ) : (
+          <span className="hidden md:inline">{quantityDisplay}</span>
         )}
-      </div>
+      </span>
+      <span className="text-gray-400 text-sm flex-shrink-0">
+        ({totalText}<GoldUnit />)
+      </span>
     </div>
   );
 }
@@ -1475,6 +1528,8 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
   const [lightMode, setLightMode] = useState<boolean>(false);
   const [discordRate, setDiscordRate] = useState<number | null>(initialRates?.discord ?? null);
   const [crystalGoldRate, setCrystalGoldRate] = useState<number | null>(initialCrystalGoldRate ?? null);
+  // 모바일: 재료 아이템 툴팁 (아이콘 터치 시)
+  const [itemTooltip, setItemTooltip] = useState<{ title: string; lines: string[] } | null>(null);
 
   // 디코기준 스위치 상태 동기화
   useEffect(() => {
@@ -1631,8 +1686,12 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
       
       let weaponCost: number | null = null;
       let weaponStrategy: string = '-';
+      let weaponBreathAttempts = 0;
+      let weaponMetallurgyAttempts = 0;
       let armorCost: number | null = null;
       let armorStrategy: string = '-';
+      let armorBreathAttempts = 0;
+      let armorMetallurgyAttempts = 0;
       
       // 아이템 레벨 정보 (무기와 방어구 중 하나라도 있으면 사용)
       const weaponItemLevel = weaponStage?.itemLevel ?? null;
@@ -1656,12 +1715,16 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
         const { optimalStrategy } = calculateOptimalStrategy(weaponStage, adjustedMarketInfo);
         weaponCost = optimalStrategy.expectedCost;
         weaponStrategy = getDetailedStrategyLabel(optimalStrategy, weaponStage, 'weapon');
+        weaponBreathAttempts = optimalStrategy.breathAttempts;
+        weaponMetallurgyAttempts = optimalStrategy.metallurgyAttempts;
         weaponAvgConsumption = getAverageConsumptionLines(weaponStage, optimalStrategy, adjustedMarketInfo);
       }
       if (armorStage) {
         const { optimalStrategy } = calculateOptimalStrategy(armorStage, adjustedMarketInfo);
         armorCost = optimalStrategy.expectedCost;
         armorStrategy = getDetailedStrategyLabel(optimalStrategy, armorStage, 'armor');
+        armorBreathAttempts = optimalStrategy.breathAttempts;
+        armorMetallurgyAttempts = optimalStrategy.metallurgyAttempts;
         armorAvgConsumption = getAverageConsumptionLines(armorStage, optimalStrategy, adjustedMarketInfo);
       }
       const totalCost = weaponCost != null && armorCost != null 
@@ -1673,9 +1736,13 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
         prevItemLevel: estimatedPrevItemLevel,
         weaponCost,
         weaponStrategy,
+        weaponBreathAttempts,
+        weaponMetallurgyAttempts,
         weaponAvgConsumption,
         armorCost,
         armorStrategy,
+        armorBreathAttempts,
+        armorMetallurgyAttempts,
         armorAvgConsumption,
         totalCost,
       };
@@ -1692,8 +1759,12 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
       
       let weaponCost: number | null = null;
       let weaponStrategy: string = '-';
+      let weaponBreathAttempts = 0;
+      let weaponMetallurgyAttempts = 0;
       let armorCost: number | null = null;
       let armorStrategy: string = '-';
+      let armorBreathAttempts = 0;
+      let armorMetallurgyAttempts = 0;
       
       // 아이템 레벨 정보 (무기와 방어구 중 하나라도 있으면 사용)
       const weaponItemLevel = weaponStage?.itemLevel ?? null;
@@ -1717,12 +1788,16 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
         const { optimalStrategy } = calculateOptimalStrategy(weaponStage, adjustedMarketInfo);
         weaponCost = optimalStrategy.expectedCost;
         weaponStrategy = getDetailedStrategyLabel(optimalStrategy, weaponStage, 'weapon');
+        weaponBreathAttempts = optimalStrategy.breathAttempts;
+        weaponMetallurgyAttempts = optimalStrategy.metallurgyAttempts;
         weaponAvgConsumption = getAverageConsumptionLines(weaponStage, optimalStrategy, adjustedMarketInfo);
       }
       if (armorStage) {
         const { optimalStrategy } = calculateOptimalStrategy(armorStage, adjustedMarketInfo);
         armorCost = optimalStrategy.expectedCost;
         armorStrategy = getDetailedStrategyLabel(optimalStrategy, armorStage, 'armor');
+        armorBreathAttempts = optimalStrategy.breathAttempts;
+        armorMetallurgyAttempts = optimalStrategy.metallurgyAttempts;
         armorAvgConsumption = getAverageConsumptionLines(armorStage, optimalStrategy, adjustedMarketInfo);
       }
       const totalCost = weaponCost != null && armorCost != null 
@@ -1734,9 +1809,13 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
         prevItemLevel: estimatedPrevItemLevel,
         weaponCost,
         weaponStrategy,
+        weaponBreathAttempts,
+        weaponMetallurgyAttempts,
         weaponAvgConsumption,
         armorCost,
         armorStrategy,
+        armorBreathAttempts,
+        armorMetallurgyAttempts,
         armorAvgConsumption,
         totalCost,
       };
@@ -2014,7 +2093,7 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
   return (
     <div className="min-h-screen bg-gray-950 py-8 px-4">
       <div className="space-y-8">
-        <header className="space-y-3 mb-8">
+        <header className="hidden md:block space-y-3 mb-8">
           <div className="flex items-center gap-3 flex-wrap mb-2">
             <h1 className="text-3xl font-semibold tracking-tight text-white">재련 효율</h1>
             <FavoriteButton title="일반 재련" />
@@ -2088,16 +2167,16 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
             {/* 무기 탭 콘텐츠 */}
             {activeSimulationTab === 'weapon' && (
               <div className="space-y-8">
-                <div className="space-y-2">
+                <div className="hidden md:block space-y-2">
                   <p className="text-gray-300 text-sm">
                     목표 재련 수치별 필요 재료와 1회 시도 비용을 계산합니다. 보조 재료 사용 시 성공률 증가 효과와 비용 변화를 함께 확인할 수 있습니다.
                   </p>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2">
-                    <label htmlFor="tier-select" className="text-sm text-gray-300">등급 선택</label>
                     <select
                       id="tier-select"
+                      aria-label="등급 선택"
                       value={selectedTier}
                       onChange={(e) => {
                         setSelectedTier(e.target.value as 'basic' | 'upper');
@@ -2109,9 +2188,9 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
                     </select>
                 </div>
                 <div className="flex items-center gap-2">
-                  <label htmlFor="refine-level" className="text-sm text-gray-300">재련 단계 선택</label>
                   <select
                     id="refine-level"
+                    aria-label="재련 단계 선택"
                     value={selectedLevel === 'all' ? 'all' : String(selectedLevel)}
                     onChange={(e) => {
                       const value = e.target.value;
@@ -2129,7 +2208,7 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
 
                 <div className="grid grid-cols-1 gap-5">
                   {filteredStages.map(stage => (
-                    <StageCard key={stage.level} stage={stage} marketInfo={marketInfo} sillingUnitPrice={sillingUnitPrice} selectedTier={selectedTier} allStages={currentStages} />
+                    <StageCard key={stage.level} stage={stage} marketInfo={marketInfo} sillingUnitPrice={sillingUnitPrice} selectedTier={selectedTier} allStages={currentStages} onMobileTooltip={setItemTooltip} />
                   ))}
                 </div>
               </div>
@@ -2138,16 +2217,16 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
             {/* 방어구 탭 콘텐츠 */}
             {activeSimulationTab === 'armor' && (
               <div className="space-y-8">
-                <div className="space-y-2">
+                <div className="hidden md:block space-y-2">
                   <p className="text-gray-300 text-sm">
                     목표 재련 수치별 필요 재료와 1회 시도 비용을 계산합니다. 보조 재료 사용 시 성공률 증가 효과와 비용 변화를 함께 확인할 수 있습니다.
                   </p>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2">
-                    <label htmlFor="tier-select-armor" className="text-sm text-gray-300">등급 선택</label>
                     <select
                       id="tier-select-armor"
+                      aria-label="등급 선택"
                       value={selectedTier}
                       onChange={(e) => {
                         setSelectedTier(e.target.value as 'basic' | 'upper');
@@ -2159,9 +2238,9 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
                     </select>
                 </div>
                 <div className="flex items-center gap-2">
-                  <label htmlFor="refine-level-armor" className="text-sm text-gray-300">재련 단계 선택</label>
                   <select
                     id="refine-level-armor"
+                    aria-label="재련 단계 선택"
                     value={selectedLevel === 'all' ? 'all' : String(selectedLevel)}
                     onChange={(e) => {
                       const value = e.target.value;
@@ -2179,7 +2258,7 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
 
                 <div className="grid grid-cols-1 gap-5">
                   {filteredStages.map(stage => (
-                    <StageCard key={stage.level} stage={stage} marketInfo={marketInfo} sillingUnitPrice={sillingUnitPrice} selectedTier={selectedTier} allStages={currentStages} />
+                    <StageCard key={stage.level} stage={stage} marketInfo={marketInfo} sillingUnitPrice={sillingUnitPrice} selectedTier={selectedTier} allStages={currentStages} onMobileTooltip={setItemTooltip} />
                   ))}
                 </div>
               </div>
@@ -2188,7 +2267,7 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
             {/* 요약표 탭 콘텐츠 */}
             {activeSimulationTab === 'summary' && (
               <div className="space-y-8">
-                <div className="space-y-2">
+                <div className="space-y-2 hidden md:block">
                   <p className="text-gray-300 text-sm">
                     무기와 방어구의 재련 비용을 한눈에 비교할 수 있는 요약표입니다. 6부위 합계는 [무기 재련 비용 + 방어구 재련 비용 × 5]로 계산됩니다.
                   </p>
@@ -2224,37 +2303,44 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
                     물음표 클릭 시 각 단계의 재련 재료 소모 갯수를 확인할 수 있습니다.
                   </p>
                   <div className="overflow-x-auto">
-                    <table className="min-w-full border border-gray-800 text-sm">
+                    <table className="min-w-full border border-gray-800 text-xs md:text-sm table-fixed md:table-auto">
+                      <colgroup>
+                        <col className="w-[18%] md:w-auto" />
+                        <col className="w-[28%] md:w-auto" />
+                        <col className="w-[28%] md:w-auto" />
+                        <col className="w-[26%] md:w-auto" />
+                      </colgroup>
                       <thead>
                         <tr className="bg-gray-900/90 text-gray-200">
-                          <th className="px-4 py-3 text-left font-medium border-b border-gray-700">목표 재련 단계</th>
-                          <th className="px-4 py-3 text-left font-medium border-b border-gray-700">재련 비용(무기)</th>
-                          <th className="px-4 py-3 text-left font-medium border-b border-gray-700">재련 비용(방어구)</th>
-                          <th className="px-4 py-3 text-right font-medium border-b border-gray-700">6부위 합계</th>
+                          <th className="px-2 md:px-4 py-2 md:py-3 text-left font-medium border-b border-gray-700"><span className="md:hidden">목표 단계</span><span className="hidden md:inline">목표 재련 단계</span></th>
+                          <th className="px-2 md:px-4 py-2 md:py-3 text-left font-medium border-b border-gray-700"><span className="md:hidden">무기</span><span className="hidden md:inline">재련 비용(무기)</span></th>
+                          <th className="px-2 md:px-4 py-2 md:py-3 text-left font-medium border-b border-gray-700"><span className="md:hidden">방어구</span><span className="hidden md:inline">재련 비용(방어구)</span></th>
+                          <th className="px-2 md:px-4 py-2 md:py-3 text-right font-medium border-b border-gray-700"><span className="md:hidden">합계 (6부위)</span><span className="hidden md:inline">6부위 합계</span></th>
                         </tr>
                       </thead>
                       <tbody>
                         {summaryData.map((row, idx) => (
                           <tr key={row.level} className={idx % 2 === 0 ? 'bg-gray-900/50' : 'bg-gray-800/50'}>
-                            <td className="px-4 py-3 text-white font-medium border-b border-gray-800">
-                              <div>{row.level - 1} → {row.level}강</div>
+                            <td className="px-2 md:px-4 py-2 md:py-3 text-white font-medium border-b border-gray-800">
+                              <div><span className="md:hidden">{row.level}강</span><span className="hidden md:inline">{row.level - 1} → {row.level}강</span></div>
                               {row.prevItemLevel != null && row.itemLevel != null && (
-                                <div className="text-xs text-gray-400 mt-1">
-                                  ({row.prevItemLevel} → {row.itemLevel})
+                                <div className="text-[10px] md:text-xs text-gray-400 mt-0.5 md:mt-1">
+                                  <span className="md:hidden">{row.itemLevel}</span><span className="hidden md:inline">({row.prevItemLevel} → {row.itemLevel})</span>
                                 </div>
                               )}
                             </td>
-                            <td className="px-4 py-3 text-gray-300 border-b border-gray-800">
+                            <td className="px-2 md:px-4 py-2 md:py-3 text-gray-300 border-b border-gray-800">
                               {row.weaponCost != null ? (
-                                <div className="relative inline-flex items-center gap-1.5">
-                                  <div>
-                                    <div>{formatCost(row.weaponCost)}</div>
-                                    <div className="text-xs text-gray-400">(최적 전략: {row.weaponStrategy})</div>
+                                <div className="relative inline-flex items-center gap-1 md:gap-1.5">
+                                  <div className="min-w-0">
+                                    <div><span className="md:hidden">{formatCostShort(row.weaponCost)}</span><span className="hidden md:inline">{formatCost(row.weaponCost)}</span></div>
+                                    <div className="text-[10px] md:text-xs text-gray-400 mt-0.5">
+                                      <span className="md:hidden"><span>숨결 {row.weaponBreathAttempts}회</span><br /><span>야금술 {row.weaponMetallurgyAttempts}회</span></span><span className="hidden md:inline">(최적 전략: {row.weaponStrategy})</span></div>
                                   </div>
                                   <button
                                     type="button"
                                     onClick={() => setSummaryAvgTooltip((prev) => prev?.type === 'weapon' && prev?.level === row.level ? null : { type: 'weapon', level: row.level })}
-                                    className="w-4 h-4 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-200 hover:bg-gray-700/80 text-xs font-medium flex-shrink-0"
+                                    className="w-3.5 h-3.5 md:w-4 md:h-4 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-200 hover:bg-gray-700/80 text-[10px] md:text-xs font-medium flex-shrink-0"
                                     aria-label="평균 재료 소모량 보기"
                                   >
                                     ?
@@ -2287,17 +2373,18 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
                                 '-'
                               )}
                             </td>
-                            <td className="px-4 py-3 text-gray-300 border-b border-gray-800">
+                            <td className="px-2 md:px-4 py-2 md:py-3 text-gray-300 border-b border-gray-800">
                               {row.armorCost != null ? (
-                                <div className="relative inline-flex items-center gap-1.5">
-                                  <div>
-                                    <div>{formatCost(row.armorCost)}</div>
-                                    <div className="text-xs text-gray-400">(최적 전략: {row.armorStrategy})</div>
+                                <div className="relative inline-flex items-center gap-1 md:gap-1.5">
+                                  <div className="min-w-0">
+                                    <div><span className="md:hidden">{formatCostShort(row.armorCost)}</span><span className="hidden md:inline">{formatCost(row.armorCost)}</span></div>
+                                    <div className="text-[10px] md:text-xs text-gray-400 mt-0.5">
+                                      <span className="md:hidden"><span>숨결 {row.armorBreathAttempts}회</span><br /><span>재봉술 {row.armorMetallurgyAttempts}회</span></span><span className="hidden md:inline">(최적 전략: {row.armorStrategy})</span></div>
                                   </div>
                                   <button
                                     type="button"
                                     onClick={() => setSummaryAvgTooltip((prev) => prev?.type === 'armor' && prev?.level === row.level ? null : { type: 'armor', level: row.level })}
-                                    className="w-4 h-4 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-200 hover:bg-gray-700/80 text-xs font-medium flex-shrink-0"
+                                    className="w-3.5 h-3.5 md:w-4 md:h-4 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-200 hover:bg-gray-700/80 text-[10px] md:text-xs font-medium flex-shrink-0"
                                     aria-label="평균 재료 소모량 보기"
                                   >
                                     ?
@@ -2330,8 +2417,8 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
                                 '-'
                               )}
                             </td>
-                            <td className="px-4 py-3 text-right text-green-300 font-medium border-b border-gray-800">
-                              {row.totalCost != null ? formatCost(row.totalCost) : '-'}
+                            <td className="px-2 md:px-4 py-2 md:py-3 text-right text-green-300 font-medium border-b border-gray-800">
+                              {row.totalCost != null ? <><span className="md:hidden">{formatCostShort(row.totalCost)}</span><span className="hidden md:inline">{formatCost(row.totalCost)}</span></> : '-'}
                             </td>
                           </tr>
                         ))}
@@ -2372,7 +2459,7 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
 
             {activeSpecialTab === 'circular' && (
               <>
-                <div className="space-y-2">
+                <div className="space-y-2 hidden md:block">
                   <p className="text-gray-300 text-sm">
                     순환 돌파석을 사용한 특수 재련의 효율을 계산합니다. 순환 돌파석 1개당 기대 가치를 확인할 수 있습니다.
                   </p>
@@ -2381,12 +2468,12 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
                 {/* 특수 재련 효율 표 */}
                 <div className="bg-gray-900/70 rounded-lg border border-gray-700 overflow-hidden">
                   <div className="overflow-x-auto">
-                    <table className="min-w-full border border-gray-800 text-sm">
+                    <table className="min-w-full border border-gray-800 text-xs md:text-sm">
                       <thead>
                         <tr className="bg-gray-900/90 text-gray-200">
                           <th className="px-4 py-3 text-left font-medium border-b border-gray-700">목표 재련 단계</th>
-                          <th className="px-4 py-3 text-right font-medium border-b border-gray-700">순환 돌파석 1개당 (무기)</th>
-                          <th className="px-4 py-3 text-right font-medium border-b border-gray-700">순환 돌파석 1개당 (방어구)</th>
+                          <th className="px-4 py-3 text-right font-medium border-b border-gray-700"><span className="md:hidden">순환 돌파석 1개당<br />(무기)</span><span className="hidden md:inline">순환 돌파석 1개당 (무기)</span></th>
+                          <th className="px-4 py-3 text-right font-medium border-b border-gray-700"><span className="md:hidden">순환 돌파석 1개당<br />(방어구)</span><span className="hidden md:inline">순환 돌파석 1개당 (방어구)</span></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -2412,7 +2499,7 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
 
             {activeSpecialTab === 'transition' && (
               <>
-                <div className="space-y-2">
+                <div className="space-y-2 hidden md:block">
                   <p className="text-gray-300 text-sm">
                     전이 돌파석을 사용한 특수 재련의 효율을 계산합니다. 전이 돌파석 1개당 기대 가치를 확인할 수 있습니다. (세르카 장비 기준)
                   </p>
@@ -2421,12 +2508,12 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
                 {/* 특수 재련 효율 표 */}
                 <div className="bg-gray-900/70 rounded-lg border border-gray-700 overflow-hidden">
                   <div className="overflow-x-auto">
-                    <table className="min-w-full border border-gray-800 text-sm">
+                    <table className="min-w-full border border-gray-800 text-xs md:text-sm">
                       <thead>
                         <tr className="bg-gray-900/90 text-gray-200">
                           <th className="px-4 py-3 text-left font-medium border-b border-gray-700">목표 재련 단계</th>
-                          <th className="px-4 py-3 text-right font-medium border-b border-gray-700">전이 돌파석 1개당 (무기)</th>
-                          <th className="px-4 py-3 text-right font-medium border-b border-gray-700">전이 돌파석 1개당 (방어구)</th>
+                          <th className="px-4 py-3 text-right font-medium border-b border-gray-700"><span className="md:hidden">전이 돌파석 1개당<br />(무기)</span><span className="hidden md:inline">전이 돌파석 1개당 (무기)</span></th>
+                          <th className="px-4 py-3 text-right font-medium border-b border-gray-700"><span className="md:hidden">전이 돌파석 1개당<br />(방어구)</span><span className="hidden md:inline">전이 돌파석 1개당 (방어구)</span></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -2452,6 +2539,33 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
           </div>
         )}
       </div>
+
+      {/* 모바일: 재료 아이템 툴팁 오버레이 (컨텐츠 효율 페이지와 동일 디자인) */}
+      {itemTooltip && (
+        <div className="fixed inset-0 z-50 md:hidden" aria-modal="true" role="dialog" aria-label="재료 상세">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/50 focus:outline-none"
+            onClick={() => setItemTooltip(null)}
+            aria-label="툴팁 닫기"
+          />
+          <div className="absolute bottom-0 left-0 right-0 rounded-t-xl bg-gray-800 border border-gray-700 border-b-0 shadow-2xl p-4 max-h-[60vh] overflow-y-auto">
+            <h4 className="text-sm font-semibold text-white mb-2 break-keep">{itemTooltip.title}</h4>
+            <ul className="space-y-1 text-xs text-gray-300">
+              {itemTooltip.lines.map((line, i) => (
+                <li key={i} className="break-keep">{line}</li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              className="mt-4 w-full py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium rounded-lg"
+              onClick={() => setItemTooltip(null)}
+            >
+              닫기
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

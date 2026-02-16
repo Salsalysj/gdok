@@ -374,15 +374,15 @@ export default function SummaryTable({ valueDbMap, silverCashValue = null, initi
     const show = (breath && breathName) || (craft && craftName);
     if (!show) return <span className="text-gray-500">-</span>;
     return (
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1 md:gap-1.5">
         {breath && breathName && (
           <span title={breathName}>
-            <ItemIcon name={breathName} size="sm" className="flex-shrink-0" />
+            <ItemIcon name={breathName} size="sm" className="flex-shrink-0 w-5 h-5 md:w-8 md:h-8" />
           </span>
         )}
         {craft && craftName && (
           <span title={craftName}>
-            <ItemIcon name={craftName} size="sm" className="flex-shrink-0" />
+            <ItemIcon name={craftName} size="sm" className="flex-shrink-0 w-5 h-5 md:w-8 md:h-8" />
           </span>
         )}
       </div>
@@ -390,17 +390,20 @@ export default function SummaryTable({ valueDbMap, silverCashValue = null, initi
   };
 
   return (
-    <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 overflow-x-auto">
-      <h2 className="text-2xl font-bold text-white mb-6">최적 시나리오 요약표</h2>
-      <table className="w-full border-collapse">
+    <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-4 md:p-6 overflow-x-auto">
+      <h2 className="text-xl md:text-2xl font-bold text-white mb-4 md:mb-6">최적 시나리오 요약표</h2>
+      <table className="w-full border-collapse text-xs md:text-sm table-fixed md:table-auto">
         <thead>
           <tr className="border-b border-gray-700">
-            <th className="text-left py-3 px-4 text-gray-300 font-semibold">구분</th>
-            <th className="text-left py-3 px-4 text-gray-300 font-semibold">단계</th>
-            <th className="text-left py-3 px-4 text-gray-300 font-semibold">일반턴</th>
-            <th className="text-left py-3 px-4 text-gray-300 font-semibold">선조턴</th>
-            <th className="text-left py-3 px-4 text-gray-300 font-semibold">강화선조턴</th>
-            <th className="text-right py-3 px-4 text-gray-300 font-semibold">총비용</th>
+            <th className="text-left py-2 md:py-3 px-1 md:px-4 text-gray-300 font-semibold whitespace-nowrap w-14 md:w-auto border-r border-gray-700/70 last:border-r-0 md:border-r-0">구분</th>
+            <th className="text-left py-2 md:py-3 px-1 md:px-4 text-gray-300 font-semibold whitespace-nowrap w-8 md:w-auto border-r border-gray-700/70 last:border-r-0 md:border-r-0">단계</th>
+            <th className="text-left py-2 md:py-3 px-1 md:px-4 text-gray-300 font-semibold whitespace-nowrap w-14 md:w-auto border-r border-gray-700/70 last:border-r-0 md:border-r-0">일반턴</th>
+            <th className="text-left py-2 md:py-3 px-1 md:px-4 text-gray-300 font-semibold whitespace-nowrap w-14 md:w-auto border-r border-gray-700/70 last:border-r-0 md:border-r-0">선조턴</th>
+            <th className="text-left py-2 md:py-3 px-1 md:px-4 text-gray-300 font-semibold w-14 md:w-auto leading-tight border-r border-gray-700/70 last:border-r-0 md:border-r-0">
+              <span className="md:hidden">강화<br />선조턴</span>
+              <span className="hidden md:inline">강화선조턴</span>
+            </th>
+            <th className="text-right py-2 md:py-3 px-1 md:px-4 text-gray-300 font-semibold whitespace-nowrap w-16 md:w-auto border-r border-gray-700/70 last:border-r-0 md:border-r-0">총비용</th>
           </tr>
         </thead>
         <tbody>
@@ -411,9 +414,12 @@ export default function SummaryTable({ valueDbMap, silverCashValue = null, initi
                 index % 2 === 0 ? 'bg-gray-800/30' : 'bg-gray-800/10'
               }`}
             >
-              <td className="py-3 px-4 text-white font-medium">{row.gearType}</td>
-              <td className="py-3 px-4 text-gray-300">{row.level}</td>
-              <td className="py-3 px-4 text-gray-400 text-sm">
+              <td className="py-2 md:py-3 px-1 md:px-4 text-white font-medium whitespace-nowrap border-r border-gray-700/70 last:border-r-0 md:border-r-0">{row.gearType}</td>
+              <td className="py-2 md:py-3 px-1 md:px-4 text-gray-300 border-r border-gray-700/70 last:border-r-0 md:border-r-0">
+                <span className="md:hidden">{row.level.replace('상재', '')}</span>
+                <span className="hidden md:inline">{row.level}</span>
+              </td>
+              <td className="py-2 md:py-3 px-1 md:px-4 text-gray-400 text-xs md:text-sm border-r border-gray-700/70 last:border-r-0 md:border-r-0">
                 <TurnIcons
                   breath={row.normalTurn.breath}
                   craft={row.normalTurn.craft}
@@ -421,7 +427,7 @@ export default function SummaryTable({ valueDbMap, silverCashValue = null, initi
                   gearType={row.gearType}
                 />
               </td>
-              <td className="py-3 px-4 text-gray-400 text-sm">
+              <td className="py-2 md:py-3 px-1 md:px-4 text-gray-400 text-xs md:text-sm border-r border-gray-700/70 last:border-r-0 md:border-r-0">
                 <TurnIcons
                   breath={row.ancestorTurn.breath}
                   craft={row.ancestorTurn.craft}
@@ -429,7 +435,7 @@ export default function SummaryTable({ valueDbMap, silverCashValue = null, initi
                   gearType={row.gearType}
                 />
               </td>
-              <td className="py-3 px-4 text-gray-400 text-sm">
+              <td className="py-2 md:py-3 px-1 md:px-4 text-gray-400 text-xs md:text-sm border-r border-gray-700/70 last:border-r-0 md:border-r-0">
                 {row.enhancedAncestorTurn ? (
                   <TurnIcons
                     breath={row.enhancedAncestorTurn.breath}
@@ -441,8 +447,8 @@ export default function SummaryTable({ valueDbMap, silverCashValue = null, initi
                   <span className="text-gray-500">-</span>
                 )}
               </td>
-              <td className="py-3 px-4 text-right text-white font-semibold">
-                {formatNumber(row.totalCost)} 골드
+              <td className="py-2 md:py-3 px-1 md:px-4 text-right text-white font-semibold whitespace-nowrap border-r border-gray-700/70 last:border-r-0 md:border-r-0">
+                {formatNumber(row.totalCost)}<span className="md:hidden"> G</span><span className="hidden md:inline"> 골드</span>
               </td>
             </tr>
           ))}
