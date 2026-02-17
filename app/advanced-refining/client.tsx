@@ -22,6 +22,7 @@ import simulationDataLevel3 from '@/lib/advancedRefiningData-level3.json';
 import simulationDataLevel4 from '@/lib/advancedRefiningData-level4.json';
 import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
 import { usePriceOverride } from '../contexts/PriceOverrideContext';
+import { useTapOnly } from '../hooks/useTapOnly';
 import SummaryTable from './summary-table';
 
 type SubTab = '상재1' | '상재2' | '상재3' | '상재4' | '요약표';
@@ -63,6 +64,22 @@ export default function AdvancedRefiningClient({
   const [lightMode, setLightMode] = useState<boolean>(false);
   const [discordRate, setDiscordRate] = useState<number | null>(initialRates?.discord ?? null);
   const [crystalGoldRate, setCrystalGoldRate] = useState<number | null>(initialCrystalGoldRate ?? null);
+  /** 모바일: 필수/보조 재료 행 터치 시 툴팁 */
+  const [itemTooltip, setItemTooltip] = useState<{ title: string; lines: string[] } | null>(null);
+  const { onTouchStart: tapStart, onTouchEnd: tapEnd } = useTapOnly();
+
+  // 모바일 툴팁 열려 있을 때 본문 스크롤/터치 차단
+  useEffect(() => {
+    if (!itemTooltip) return;
+    const prevOverflow = document.body.style.overflow;
+    const prevTouchAction = document.body.style.touchAction;
+    document.body.style.overflow = 'hidden';
+    document.body.style.touchAction = 'none';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.body.style.touchAction = prevTouchAction;
+    };
+  }, [itemTooltip]);
 
   // 디코기준 스위치 상태 동기화
   useEffect(() => {
@@ -391,6 +408,12 @@ export default function AdvancedRefiningClient({
     return Math.round(num).toLocaleString();
   };
   const formatDecimal = (num: number) => num.toFixed(1).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+  const showMobileTooltip = useCallback((title: string, lines: string[]) => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setItemTooltip({ title, lines });
+    }
+  }, []);
 
   // 재료 가치 계산 (가격 조정 적용)
   const getMaterialValue = useMemo(() => {
@@ -1008,6 +1031,33 @@ export default function AdvancedRefiningClient({
 
   return (
     <div className="min-h-screen bg-gray-950 p-4 md:p-6 lg:p-8">
+      {/* 모바일: 필수/보조 재료 행 터치 시 툴팁 오버레이 */}
+      {itemTooltip && (
+        <div className="fixed inset-0 z-50 md:hidden touch-none" aria-modal="true" role="dialog" aria-label="재료 상세">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/50 focus:outline-none"
+            onClick={() => setItemTooltip(null)}
+            onTouchEnd={(e) => { e.preventDefault(); setItemTooltip(null); }}
+            aria-label="툴팁 닫기"
+          />
+          <div className="absolute bottom-0 left-0 right-0 rounded-t-xl bg-gray-800 border border-gray-700 border-b-0 shadow-2xl p-4 max-h-[60vh] overflow-y-auto touch-auto" onClick={(e) => e.stopPropagation()}>
+            <h4 className="text-sm font-semibold text-white mb-2 break-keep">{itemTooltip.title}</h4>
+            <ul className="space-y-1 text-xs text-gray-300">
+              {itemTooltip.lines.map((line, i) => (
+                <li key={i} className="break-keep">{line}</li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              className="mt-4 w-full py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium rounded-lg"
+              onClick={() => setItemTooltip(null)}
+            >
+              닫기
+            </button>
+          </div>
+        </div>
+      )}
       <div>
         <div className="mb-4 md:mb-10">
           <div className="hidden md:flex items-center gap-3 flex-wrap mb-2">
@@ -1266,10 +1316,19 @@ export default function AdvancedRefiningClient({
                           const quantityDisplay = isGold ? `${quantityText} 골드` : `${quantityText}개`;
                           const unitPriceStr = unitPrice > 0 ? formatNumber(unitPrice) : '';
                           const showDesktopUnitQty = !isGold && unitPriceStr;
+                          const tooltipLines: string[] = [
+                            isGold ? `수량: ${quantityText} 골드` : `수량: ${quantityText}개`,
+                            ...(unitPrice > 0 ? [`단가: ${unitPriceStr} 골드`, `합계: ${totalText} 골드`] : []),
+                          ];
                           return (
                             <div
                               key={mat.name}
-                              className={`flex items-center justify-between gap-2 py-1.5 pl-3 border-b border-gray-700/50 ${isLast ? 'border-b-0' : ''}`}
+                              role="button"
+                              tabIndex={0}
+                              onClick={(e) => { e.stopPropagation(); showMobileTooltip(mat.name, tooltipLines); }}
+                              onTouchStart={tapStart}
+                              onTouchEnd={(e) => tapEnd(e, () => showMobileTooltip(mat.name, tooltipLines))}
+                              className={`flex items-center justify-between gap-2 py-1.5 pl-3 border-b border-gray-700/50 ${isLast ? 'border-b-0' : ''} cursor-default touch-manipulation md:cursor-default`}
                             >
                               <span className="text-gray-300 text-sm flex items-center gap-2 min-w-0">
                                 <span className="flex-shrink-0">
@@ -1314,10 +1373,19 @@ export default function AdvancedRefiningClient({
                             const quantityDisplay = isGold ? `${quantityText} 골드` : `${quantityText}개`;
                             const unitPriceStr = unitPrice > 0 ? formatNumber(unitPrice) : '';
                             const showDesktopUnitQty = !isGold && unitPriceStr;
+                            const tooltipLines: string[] = [
+                              isGold ? `수량: ${quantityText} 골드` : `수량: ${quantityText}개`,
+                              ...(unitPrice > 0 ? [`단가: ${unitPriceStr} 골드`, `합계: ${totalText} 골드`] : []),
+                            ];
                             return (
                               <div
                                 key={mat.name}
-                                className={`flex items-center justify-between gap-2 py-1.5 pl-3 border-b border-gray-700/50 ${isLast ? 'border-b-0' : ''}`}
+                                role="button"
+                                tabIndex={0}
+                                onClick={(e) => { e.stopPropagation(); showMobileTooltip(mat.name, tooltipLines); }}
+                                onTouchStart={tapStart}
+                                onTouchEnd={(e) => tapEnd(e, () => showMobileTooltip(mat.name, tooltipLines))}
+                                className={`flex items-center justify-between gap-2 py-1.5 pl-3 border-b border-gray-700/50 ${isLast ? 'border-b-0' : ''} cursor-default touch-manipulation md:cursor-default`}
                               >
                                 <span className="text-gray-300 text-sm flex items-center gap-2 min-w-0">
                                   <span className="flex-shrink-0">
@@ -2067,6 +2135,19 @@ function SimulationStats({
   const formatDecimalNumber = (num: number) => Math.round(num).toLocaleString();
   const goldUnit = <><span className="md:hidden"> G</span><span className="hidden md:inline"> 골드</span></>;
 
+  // 모바일: 총 재료 소모량 모달 열려 있을 때 본문 스크롤/터치 차단
+  useEffect(() => {
+    if (!showMaterialTooltip) return;
+    const prevOverflow = document.body.style.overflow;
+    const prevTouchAction = document.body.style.touchAction;
+    document.body.style.overflow = 'hidden';
+    document.body.style.touchAction = 'none';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.body.style.touchAction = prevTouchAction;
+    };
+  }, [showMaterialTooltip]);
+
   const colorClasses = {
     red: 'text-red-400',
     blue: 'text-blue-400',
@@ -2183,14 +2264,15 @@ function SimulationStats({
             </span>
           </div>
           {materialBreakdown && Object.keys(materialBreakdown).length > 0 && showMaterialTooltip && (
-            <div className="fixed inset-0 z-50 md:hidden" aria-modal="true" role="dialog" aria-label="총 재료 소모량">
+            <div className="fixed inset-0 z-50 md:hidden touch-none" aria-modal="true" role="dialog" aria-label="총 재료 소모량">
               <button
                 type="button"
                 className="absolute inset-0 bg-black/50 focus:outline-none"
                 onClick={() => setShowMaterialTooltip(false)}
+                onTouchEnd={(e) => { e.preventDefault(); setShowMaterialTooltip(false); }}
                 aria-label="툴팁 닫기"
               />
-              <div className="absolute bottom-0 left-0 right-0 rounded-t-xl bg-gray-800 border border-gray-700 border-b-0 shadow-2xl p-4 max-h-[60vh] overflow-y-auto">
+              <div className="absolute bottom-0 left-0 right-0 rounded-t-xl bg-gray-800 border border-gray-700 border-b-0 shadow-2xl p-4 max-h-[60vh] overflow-y-auto touch-auto" onClick={(e) => e.stopPropagation()}>
                 <h4 className="text-sm font-semibold text-white mb-2 break-keep">총 재료 소모량</h4>
                 <ul className="space-y-1.5 text-xs text-gray-300">
                   {Object.entries(materialBreakdown)

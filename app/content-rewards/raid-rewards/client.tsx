@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { formatNumberWithSignificantDigits } from '../../utils/formatNumber';
 import { usePriceAdjustment } from '../../hooks/usePriceAdjustment';
+import { useTapOnly } from '../../hooks/useTapOnly';
 import { usePriceOverride } from '../../contexts/PriceOverrideContext';
 import { useValueDb } from '../../contexts/ValueDbContext';
 import FavoriteButton from '../../components/FavoriteButton';
@@ -113,21 +114,21 @@ export default function RaidRewardsClient({
     }
   };
 
-  // 모바일 툴팁: 외부 터치/클릭 시 닫기, 2초 후 자동 닫기
+  const { onTouchStart: tapStart, onTouchEnd: tapEnd } = useTapOnly();
+
+  // 모바일 툴팁: 열려 있을 때 본문 스크롤/터치 차단, 2초 후 자동 닫기
   useEffect(() => {
     if (!itemTooltip) return;
     const close = () => setItemTooltip(null);
     const timer = setTimeout(close, 2000);
-    const handleClose = () => {
-      close();
-      clearTimeout(timer);
-    };
-    document.addEventListener('touchstart', handleClose, { once: true });
-    document.addEventListener('click', handleClose, { once: true });
+    const prevOverflow = document.body.style.overflow;
+    const prevTouchAction = document.body.style.touchAction;
+    document.body.style.overflow = 'hidden';
+    document.body.style.touchAction = 'none';
     return () => {
       clearTimeout(timer);
-      document.removeEventListener('touchstart', handleClose);
-      document.removeEventListener('click', handleClose);
+      document.body.style.overflow = prevOverflow;
+      document.body.style.touchAction = prevTouchAction;
     };
   }, [itemTooltip]);
 
@@ -433,14 +434,15 @@ export default function RaidRewardsClient({
     <div className="min-h-screen bg-gray-950 p-4 md:p-6 lg:p-8">
       {/* 모바일 전용 툴팁: 터치 시 즉시 표시 */}
       {itemTooltip && (
-        <div className="fixed inset-0 z-50 md:hidden" aria-modal="true" role="dialog" aria-label="아이템 상세">
+        <div className="fixed inset-0 z-50 md:hidden touch-none" aria-modal="true" role="dialog" aria-label="아이템 상세">
           <button
             type="button"
             className="absolute inset-0 bg-black/50 focus:outline-none"
             onClick={() => setItemTooltip(null)}
+            onTouchEnd={(e) => { e.preventDefault(); setItemTooltip(null); }}
             aria-label="툴팁 닫기"
           />
-          <div className="absolute bottom-0 left-0 right-0 rounded-t-xl bg-gray-800 border border-gray-700 border-b-0 shadow-2xl p-4 max-h-[60vh] overflow-y-auto">
+          <div className="absolute bottom-0 left-0 right-0 rounded-t-xl bg-gray-800 border border-gray-700 border-b-0 shadow-2xl p-4 max-h-[60vh] overflow-y-auto touch-auto" onClick={(e) => e.stopPropagation()}>
             <h4 className="text-sm font-semibold text-white mb-2 break-keep">{itemTooltip.title}</h4>
             <ul className="space-y-1 text-xs text-gray-300">
               {itemTooltip.lines.map((line, i) => (
@@ -840,7 +842,8 @@ export default function RaidRewardsClient({
                                 role="button"
                                 tabIndex={0}
                                 onClick={(e) => { e.stopPropagation(); showMobileTooltip(itemName, tooltipLines); }}
-                                onTouchEnd={(e) => { e.preventDefault(); showMobileTooltip(itemName, tooltipLines); }}
+                                onTouchStart={tapStart}
+                                onTouchEnd={(e) => tapEnd(e, () => showMobileTooltip(itemName, tooltipLines))}
                                 className={`flex items-center justify-between gap-1 md:gap-2 py-0.5 md:py-1 pl-1 md:pl-3 cursor-default touch-manipulation md:cursor-default ${strike}`}
                               >
                                 <span className="text-gray-300 text-[10px] md:text-xs flex items-center gap-1 md:gap-2 min-w-0">
@@ -922,7 +925,8 @@ export default function RaidRewardsClient({
                                 role="button"
                                 tabIndex={0}
                                 onClick={(e) => { e.stopPropagation(); showMobileTooltip(itemName, tooltipLines); }}
-                                onTouchEnd={(e) => { e.preventDefault(); showMobileTooltip(itemName, tooltipLines); }}
+                                onTouchStart={tapStart}
+                                onTouchEnd={(e) => tapEnd(e, () => showMobileTooltip(itemName, tooltipLines))}
                                 className={`flex items-center justify-between gap-1 md:gap-2 py-0.5 md:py-1 pl-1 md:pl-3 cursor-default touch-manipulation md:cursor-default ${strike}`}
                               >
                                 <span className="text-gray-300 text-[10px] md:text-xs flex items-center gap-1 md:gap-2 min-w-0">

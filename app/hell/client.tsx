@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import ItemIcon from '../components/ItemIcon';
 import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
 import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
+import { useTapOnly } from '../hooks/useTapOnly';
 import { useValueDb } from '../contexts/ValueDbContext';
 import type { ValueDbEntry } from '@/lib/valueDb';
 import type { RefiningStage } from '../value-db/page';
@@ -78,21 +79,22 @@ export default function HellClient({
       setItemTooltip({ title, lines });
     }
   };
+
+  const { onTouchStart: tapStart, onTouchEnd: tapEnd } = useTapOnly();
   
+  // 모바일 툴팁: 열려 있을 때 본문 스크롤/터치 차단, 2초 후 자동 닫기
   useEffect(() => {
     if (!itemTooltip) return;
     const close = () => setItemTooltip(null);
     const t = setTimeout(close, 2000);
-    const onPointer = () => {
-      close();
-      clearTimeout(t);
-    };
-    window.addEventListener('click', onPointer);
-    window.addEventListener('touchstart', onPointer, { passive: true });
+    const prevOverflow = document.body.style.overflow;
+    const prevTouchAction = document.body.style.touchAction;
+    document.body.style.overflow = 'hidden';
+    document.body.style.touchAction = 'none';
     return () => {
       clearTimeout(t);
-      window.removeEventListener('click', onPointer);
-      window.removeEventListener('touchstart', onPointer);
+      document.body.style.overflow = prevOverflow;
+      document.body.style.touchAction = prevTouchAction;
     };
   }, [itemTooltip]);
   
@@ -460,14 +462,15 @@ export default function HellClient({
   return (
     <div className="min-h-screen bg-gray-950 p-4 md:p-6 lg:p-8">
       {itemTooltip && (
-        <div className="fixed inset-0 z-50 md:hidden" aria-modal="true" role="dialog" aria-label="아이템 상세">
+        <div className="fixed inset-0 z-50 md:hidden touch-none" aria-modal="true" role="dialog" aria-label="아이템 상세">
           <button
             type="button"
             className="absolute inset-0 bg-black/50 focus:outline-none"
             onClick={() => setItemTooltip(null)}
+            onTouchEnd={(e) => { e.preventDefault(); setItemTooltip(null); }}
             aria-label="툴팁 닫기"
           />
-          <div className="absolute bottom-0 left-0 right-0 rounded-t-xl bg-gray-800 border border-gray-700 border-b-0 shadow-2xl p-4 max-h-[60vh] overflow-y-auto">
+          <div className="absolute bottom-0 left-0 right-0 rounded-t-xl bg-gray-800 border border-gray-700 border-b-0 shadow-2xl p-4 max-h-[60vh] overflow-y-auto touch-auto" onClick={(e) => e.stopPropagation()}>
             <h4 className="text-sm font-semibold text-white mb-2 break-keep">{itemTooltip.title}</h4>
             <ul className="space-y-1 text-xs text-gray-300">
               {itemTooltip.lines.map((line, i) => (
@@ -1147,7 +1150,8 @@ export default function HellClient({
                                               role="button"
                                               tabIndex={0}
                                               onClick={(e) => { e.stopPropagation(); showMobileTooltip(reward.itemName, tooltipLines); }}
-                                              onTouchEnd={(e) => { e.preventDefault(); showMobileTooltip(reward.itemName, tooltipLines); }}
+                                              onTouchStart={tapStart}
+                                              onTouchEnd={(e) => tapEnd(e, () => showMobileTooltip(reward.itemName, tooltipLines))}
                                               className="flex items-center justify-between gap-2 py-1.5 pl-3 border-b border-gray-700/50 last:border-0 cursor-default touch-manipulation md:cursor-default"
                                             >
                                               <span className="text-gray-300 text-sm flex items-center gap-2 min-w-0">
@@ -1199,7 +1203,8 @@ export default function HellClient({
                                       role="button"
                                       tabIndex={0}
                                       onClick={(e) => { e.stopPropagation(); showMobileTooltip(reward.itemName, rewardTooltipLines); }}
-                                      onTouchEnd={(e) => { e.preventDefault(); showMobileTooltip(reward.itemName, rewardTooltipLines); }}
+                                      onTouchStart={tapStart}
+                                      onTouchEnd={(e) => tapEnd(e, () => showMobileTooltip(reward.itemName, rewardTooltipLines))}
                                       className={`rounded-lg border p-3 cursor-default touch-manipulation md:cursor-default ${isChosen ? 'bg-amber-900/20 border-amber-600/60' : 'bg-gray-900/50 border-gray-700'}`}
                                     >
                                       <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-2 mb-1">
@@ -1263,7 +1268,8 @@ export default function HellClient({
                                                   role="button"
                                                   tabIndex={0}
                                                   onClick={(e) => { e.stopPropagation(); showMobileTooltip(component.itemName, compTooltipLines); }}
-                                                  onTouchEnd={(e) => { e.preventDefault(); showMobileTooltip(component.itemName, compTooltipLines); }}
+                                                  onTouchStart={tapStart}
+                                                  onTouchEnd={(e) => tapEnd(e, () => showMobileTooltip(component.itemName, compTooltipLines))}
                                                   className={`text-[10px] p-1.5 rounded cursor-default touch-manipulation md:cursor-default ${
                                                     isSelected
                                                       ? 'bg-yellow-900/30 border border-yellow-600'
@@ -1330,7 +1336,8 @@ export default function HellClient({
                           role="button"
                           tabIndex={0}
                           onClick={(e) => { e.stopPropagation(); showMobileTooltip(reward.itemName, rewardTooltipLines); }}
-                          onTouchEnd={(e) => { e.preventDefault(); showMobileTooltip(reward.itemName, rewardTooltipLines); }}
+                          onTouchStart={tapStart}
+                          onTouchEnd={(e) => tapEnd(e, () => showMobileTooltip(reward.itemName, rewardTooltipLines))}
                           className="bg-gray-900/50 rounded-lg border border-gray-700 p-4 cursor-default touch-manipulation md:cursor-default"
                         >
                           <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 mb-3">
@@ -1378,7 +1385,8 @@ export default function HellClient({
                                       role="button"
                                       tabIndex={0}
                                       onClick={(e) => { e.stopPropagation(); showMobileTooltip(component.itemName, compTooltipLines); }}
-                                      onTouchEnd={(e) => { e.preventDefault(); showMobileTooltip(component.itemName, compTooltipLines); }}
+                                      onTouchStart={tapStart}
+                                      onTouchEnd={(e) => tapEnd(e, () => showMobileTooltip(component.itemName, compTooltipLines))}
                                       className={`text-xs p-2 rounded cursor-default touch-manipulation md:cursor-default ${
                                         isSelected
                                           ? 'bg-yellow-900/30 border border-yellow-600'

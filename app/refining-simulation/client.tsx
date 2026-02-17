@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
 import type { RefiningStage, MarketItemInfo } from './page';
 import { usePriceAdjustment } from '../hooks/usePriceAdjustment';
+import { useTapOnly } from '../hooks/useTapOnly';
 import { usePriceOverride } from '../contexts/PriceOverrideContext';
 import FavoriteButton from '../components/FavoriteButton';
 import ItemIcon from '../components/ItemIcon';
@@ -1487,12 +1488,15 @@ function MaterialLine({
     onMobileTooltip?.({ title: displayName, lines: tooltipLines });
   };
 
+  const { onTouchStart: tapStart, onTouchEnd: tapEnd } = useTapOnly();
+
   return (
     <div
       role="button"
       tabIndex={0}
       onClick={(e) => { e.stopPropagation(); handleMobileTooltip(); }}
-      onTouchEnd={(e) => { e.preventDefault(); handleMobileTooltip(); }}
+      onTouchStart={tapStart}
+      onTouchEnd={(e) => tapEnd(e, handleMobileTooltip)}
       className={`flex items-center justify-between gap-2 py-1.5 pl-3 border-b border-gray-700/50 ${isLast ? 'border-b-0' : ''} cursor-default touch-manipulation md:cursor-default`}
     >
       <span className="text-gray-300 text-sm flex items-center gap-2 min-w-0">
@@ -1530,6 +1534,19 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
   const [crystalGoldRate, setCrystalGoldRate] = useState<number | null>(initialCrystalGoldRate ?? null);
   // 모바일: 재료 아이템 툴팁 (아이콘 터치 시)
   const [itemTooltip, setItemTooltip] = useState<{ title: string; lines: string[] } | null>(null);
+
+  // 모바일 툴팁 열려 있을 때 본문 스크롤/터치 차단
+  useEffect(() => {
+    if (!itemTooltip) return;
+    const prevOverflow = document.body.style.overflow;
+    const prevTouchAction = document.body.style.touchAction;
+    document.body.style.overflow = 'hidden';
+    document.body.style.touchAction = 'none';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.body.style.touchAction = prevTouchAction;
+    };
+  }, [itemTooltip]);
 
   // 디코기준 스위치 상태 동기화
   useEffect(() => {
@@ -2542,14 +2559,15 @@ export default function RefiningSimulationClient({ weaponStages, armorStages, we
 
       {/* 모바일: 재료 아이템 툴팁 오버레이 (컨텐츠 효율 페이지와 동일 디자인) */}
       {itemTooltip && (
-        <div className="fixed inset-0 z-50 md:hidden" aria-modal="true" role="dialog" aria-label="재료 상세">
+        <div className="fixed inset-0 z-50 md:hidden touch-none" aria-modal="true" role="dialog" aria-label="재료 상세">
           <button
             type="button"
             className="absolute inset-0 bg-black/50 focus:outline-none"
             onClick={() => setItemTooltip(null)}
+            onTouchEnd={(e) => { e.preventDefault(); setItemTooltip(null); }}
             aria-label="툴팁 닫기"
           />
-          <div className="absolute bottom-0 left-0 right-0 rounded-t-xl bg-gray-800 border border-gray-700 border-b-0 shadow-2xl p-4 max-h-[60vh] overflow-y-auto">
+          <div className="absolute bottom-0 left-0 right-0 rounded-t-xl bg-gray-800 border border-gray-700 border-b-0 shadow-2xl p-4 max-h-[60vh] overflow-y-auto touch-auto" onClick={(e) => e.stopPropagation()}>
             <h4 className="text-sm font-semibold text-white mb-2 break-keep">{itemTooltip.title}</h4>
             <ul className="space-y-1 text-xs text-gray-300">
               {itemTooltip.lines.map((line, i) => (

@@ -441,6 +441,20 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
   const [summaryItemEnabled, setSummaryItemEnabled] = useState<Record<string, boolean>>({});
   // 모바일: 항목명 터치 시 구성요소 툴팁 (title + lines)
   const [compositionTooltip, setCompositionTooltip] = useState<{ title: string; lines: string[] } | null>(null);
+
+  // 모바일 툴팁 열려 있을 때 본문 스크롤/터치 차단
+  useEffect(() => {
+    if (!compositionTooltip) return;
+    const prevOverflow = document.body.style.overflow;
+    const prevTouchAction = document.body.style.touchAction;
+    document.body.style.overflow = 'hidden';
+    document.body.style.touchAction = 'none';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.body.style.touchAction = prevTouchAction;
+    };
+  }, [compositionTooltip]);
+
   const [braceletPriceInput, setBraceletPriceInput] = useState('100');
   const [totalDaysInput, setTotalDaysInput] = useState('20');
   const [totalWeeksInput, setTotalWeeksInput] = useState(getInitialTotalWeeks());
@@ -4429,14 +4443,15 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
 
             {/* 모바일: 구성요소 툴팁 오버레이 */}
             {compositionTooltip && (
-              <div className="fixed inset-0 z-50 md:hidden" aria-modal="true" role="dialog" aria-label="구성요소">
+              <div className="fixed inset-0 z-50 md:hidden touch-none" aria-modal="true" role="dialog" aria-label="구성요소">
                 <button
                   type="button"
                   className="absolute inset-0 bg-black/50 focus:outline-none"
                   onClick={() => setCompositionTooltip(null)}
+                  onTouchEnd={(e) => { e.preventDefault(); setCompositionTooltip(null); }}
                   aria-label="툴팁 닫기"
                 />
-                <div className="absolute bottom-0 left-0 right-0 rounded-t-xl bg-gray-800 border border-gray-700 border-b-0 shadow-2xl p-4 max-h-[60vh] overflow-y-auto">
+                <div className="absolute bottom-0 left-0 right-0 rounded-t-xl bg-gray-800 border border-gray-700 border-b-0 shadow-2xl p-4 max-h-[60vh] overflow-y-auto touch-auto" onClick={(e) => e.stopPropagation()}>
                   <h4 className="text-sm font-semibold text-white mb-2 break-keep">{compositionTooltip.title}</h4>
                   <p className="text-xs text-gray-400 mb-2">구성요소</p>
                   <ul className="space-y-1 text-xs text-gray-300">
