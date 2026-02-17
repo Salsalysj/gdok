@@ -83,6 +83,8 @@ export default function RaidRewardsClient({
   const [isSerkaCompleted, setIsSerkaCompleted] = useState<boolean>(false);
   // 물음표 버튼 메모 표시 상태
   const [showSerkaTooltip, setShowSerkaTooltip] = useState<boolean>(false);
+  /** 모바일: 선택한 난이도 (노말/하드/나이트메어 등) - 버튼으로 선택, 요약 밑에 표시 */
+  const [mobileSelectedDifficulty, setMobileSelectedDifficulty] = useState<string | null>(null);
   
   // 항상 raid-rewards.json 데이터 사용
   const currentData = data;
@@ -167,6 +169,15 @@ export default function RaidRewardsClient({
       gates: diffData.gates || {}
     }));
   }, [currentData, activeCategory, activeRaid]);
+
+  // 모바일 난이도 선택: 레이드/난이도 목록이 바뀌면 현재 선택이 목록에 있으면 유지, 없으면 첫 난이도로
+  useEffect(() => {
+    if (allDifficultiesData.length > 0) {
+      setMobileSelectedDifficulty(prev =>
+        allDifficultiesData.some(d => d.difficulty === prev) ? prev : allDifficultiesData[0].difficulty
+      );
+    }
+  }, [allDifficultiesData]);
 
   // 가격 조정 함수 - adjustedEntries 사용 (가치계산DB 사이드바와 동일한 방식)
   // 반환값: { price: number | null, method?: '거래소 기준' | '5:1 합성 기준' }
@@ -716,8 +727,8 @@ export default function RaidRewardsClient({
           });
 
           return (
-            <div className="mb-8 bg-gradient-to-br from-gray-800 via-gray-800 to-gray-900 rounded-xl p-4 md:p-6 border border-gray-700 shadow-2xl">
-              <h3 className="text-lg md:text-2xl font-bold text-white mb-2 flex items-center gap-2">
+            <div className="mb-6 md:mb-8 pt-4 pb-4 md:pt-6 md:pb-6 md:px-6 md:bg-gradient-to-br md:from-gray-800 md:via-gray-800 md:to-gray-900 md:rounded-xl md:border md:border-gray-700 md:shadow-2xl border-b border-gray-700/60 md:border-b-0">
+              <h3 className="text-lg md:text-2xl font-bold text-white mb-2 md:mb-2 flex items-center gap-2">
                 <span className="inline-block w-1 h-6 bg-blue-500 rounded"></span>
                 요약
               </h3>
@@ -727,9 +738,9 @@ export default function RaidRewardsClient({
                 </p>
               )}
               
-              <div className="grid grid-cols-2 gap-3 md:gap-5">
+              <div className="grid grid-cols-2 gap-2 md:gap-5">
                 {/* 좌측 - 난이도별 총합 */}
-                <div className="bg-gray-900/60 backdrop-blur rounded-lg border border-gray-700/50 p-2 md:p-4 shadow-lg">
+                <div className="p-3 md:p-4 md:bg-gray-900/60 md:backdrop-blur md:rounded-lg md:border md:border-gray-700/50 md:shadow-lg">
                   <div className="space-y-2 md:space-y-3">
                     {difficultySummary.map(({ difficulty, level, clearGold, clearBound, moreCost, moreBound }) => (
                       <div key={difficulty} className="border-b border-gray-700/50 pb-1.5 md:pb-2.5 last:border-0 last:pb-0">
@@ -754,7 +765,7 @@ export default function RaidRewardsClient({
                 </div>
 
                 {/* 우측 - 관문별 효율 (난이도별) */}
-                <div className="bg-gray-900/60 backdrop-blur rounded-lg border border-gray-700/50 p-2 md:p-4 shadow-lg">
+                <div className="p-3 md:p-4 md:bg-gray-900/60 md:backdrop-blur md:rounded-lg md:border md:border-gray-700/50 md:shadow-lg">
                   <div className="space-y-2 md:space-y-3">
                     {difficultySummary.map(({ difficulty, level, gates }) => (
                       <div key={difficulty} className="border-b border-gray-700/50 pb-1.5 md:pb-2.5 last:border-0 last:pb-0">
@@ -778,19 +789,65 @@ export default function RaidRewardsClient({
           );
         })()}
 
-        {/* 관문별 보상 표시 - 모든 난이도 */}
+        {/* 모바일 전용: 요약 밑 난이도 선택 버튼 */}
         {allDifficultiesData.length > 0 && (
-          <div className="space-y-6">
-            {allDifficultiesData.map(({ difficulty, level, gates }) => (
-              <div key={difficulty} className="bg-gradient-to-br from-gray-800 via-gray-850 to-gray-900 rounded-xl p-3 md:p-5 border border-gray-700/50 shadow-xl">
-                <h2 className="text-base md:text-2xl font-bold text-white mb-3 md:mb-5 flex items-center gap-2">
+          <div className="md:hidden flex flex-wrap gap-2 mb-4">
+            {allDifficultiesData.map(({ difficulty, level }) => {
+              const selected = (mobileSelectedDifficulty ?? allDifficultiesData[0]?.difficulty) === difficulty;
+              const mobileLabel = difficulty === '나이트메어' ? '나메' : difficulty;
+              return (
+                <button
+                  key={difficulty}
+                  type="button"
+                  onClick={() => setMobileSelectedDifficulty(difficulty)}
+                  className={`px-4 py-2.5 rounded-lg font-semibold text-sm transition-colors ${
+                    selected ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
+                  }`}
+                >
+                  {mobileLabel}{level ? ` (${level})` : ''}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* 데스크탑 전용: 카드 위 난이도 탭 */}
+        {allDifficultiesData.length > 0 && (
+          <div className="hidden md:flex border-b border-gray-700/50 rounded-t-xl overflow-hidden bg-gray-800/80">
+            {allDifficultiesData.map(({ difficulty, level }) => {
+              const selected = (mobileSelectedDifficulty ?? allDifficultiesData[0]?.difficulty) === difficulty;
+              return (
+                <button
+                  key={difficulty}
+                  type="button"
+                  onClick={() => setMobileSelectedDifficulty(difficulty)}
+                  className={`flex-1 px-4 py-3 text-sm font-semibold transition-colors ${
+                    selected ? 'bg-gray-700/80 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+                  }`}
+                >
+                  {difficulty} {level ? `(${level})` : ''}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* 관문별 보상 표시 - 선택한 난이도만 (모바일: 버튼 선택, 데스크탑: 탭 선택) */}
+        {allDifficultiesData.length > 0 && (
+          <div className="space-y-4 md:space-y-0">
+            {allDifficultiesData.map(({ difficulty, level, gates }) => {
+              const selectedDiff = mobileSelectedDifficulty ?? allDifficultiesData[0]?.difficulty;
+              const isHidden = difficulty !== selectedDiff;
+              return (
+              <div key={difficulty} className={`pt-4 pb-4 md:pt-5 md:pb-5 md:px-5 md:bg-gradient-to-br md:from-gray-800 md:via-gray-850 md:to-gray-900 md:rounded-b-xl md:rounded-t-none md:border md:border-t-0 md:border-gray-700/50 md:shadow-xl border-b border-gray-700/50 last:border-b-0 ${isHidden ? 'hidden' : ''}`}>
+                <h2 className="sr-only">
                   <span className="inline-block w-1 h-6 bg-purple-500 rounded"></span>
                   {difficulty} {level && `(${level})`}
                 </h2>
                 
-                <div className="space-y-4">
+                <div className="space-y-3 md:space-y-4">
                   {Object.entries(gates).map(([gateNumber, gateData]) => (
-                    <div key={gateNumber} className="bg-gray-900/50 backdrop-blur rounded-lg p-3 md:p-4 border border-gray-700/30">
+                    <div key={gateNumber} className="p-3 md:p-4 md:bg-gray-900/50 md:backdrop-blur md:rounded-lg md:border md:border-gray-700/30">
                       <h3 className="text-sm md:text-lg font-bold text-gray-200 mb-2 md:mb-3">{gateNumber}관문</h3>
                 
                 <div className="grid grid-cols-2 lg:grid-cols-2 gap-2 md:gap-3">
@@ -805,7 +862,7 @@ export default function RaidRewardsClient({
                     }, 0);
                     
                     return (
-                      <div className="bg-gray-900/80 rounded-lg border border-blue-500/20 p-2 md:p-3 shadow-md">
+                      <div className="p-2 md:p-3 md:bg-gray-900/80 md:rounded-lg md:border md:border-blue-500/20 md:shadow-md">
                         <h4 className="text-xs md:text-base font-bold text-blue-400 mb-2 md:mb-3">클리어 보상</h4>
                         
                         <div className="space-y-1 md:space-y-1.5">
@@ -883,7 +940,7 @@ export default function RaidRewardsClient({
                     const isProfit = efficiency >= 0;
                     
                     return (
-                      <div className="bg-gray-900/80 rounded-lg border border-purple-500/20 p-2 md:p-3 shadow-md">
+                      <div className="p-2 md:p-3 md:bg-gray-900/80 md:rounded-lg md:border md:border-purple-500/20 md:shadow-md">
                         <div className="flex flex-row items-center justify-between gap-2 mb-2 md:mb-3">
                           <h4 className="text-xs md:text-base font-bold text-purple-400">더보기 효율</h4>
                           <span className={`text-xs md:text-sm font-bold whitespace-nowrap ${isProfit ? 'text-green-400' : 'text-red-400'}`}>
@@ -957,7 +1014,8 @@ export default function RaidRewardsClient({
                   ))}
                 </div>
               </div>
-            ))}
+            );
+            })}
           </div>
         )}
       </div>

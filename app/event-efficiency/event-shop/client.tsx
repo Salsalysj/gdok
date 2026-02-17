@@ -2107,7 +2107,7 @@ export default function EventShopClient({
 
         {/* 요약 카드 */}
         {tabs.length > 0 && tabs.some(tab => tab.items.length > 0) && (
-          <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6 text-xs md:text-base">
+          <div className="p-4 mb-4 text-xs md:text-base bg-gray-800/50 rounded-lg border border-gray-700 md:p-6 md:mb-6">
             <h2 className="hidden md:block text-2xl font-semibold mb-6">요약</h2>
             {(() => {
               // 총 주수 계산 (종료일 - 시작일 / 7, 소수점 반올림)
@@ -2144,33 +2144,37 @@ export default function EventShopClient({
               const totalRequired = (weeklyTotal * totalWeeks) + expeditionTotal;
 
               return (
-                <div className="mb-4 space-y-1 text-sm text-gray-300">
-                  {totalWeeks > 0 && (
-                    <div>총 주수 = {totalWeeks}주</div>
-                  )}
-                  {weeklyTotal > 0 && (
-                    <div>주간 교환에 필요한 최대 수량 = {formatNumberWithSignificantDigits(weeklyTotal)}개 / 주</div>
-                  )}
-                  {totalRequired > 0 && (
-                    <div>
-                      <span className="md:inline">모든 항목 교환에 필요한 최대 수량</span>
-                      <br className="md:hidden" />
-                      <span className="md:inline"> = {formatNumberWithSignificantDigits(weeklyTotal)}개 × {totalWeeks}주 + {formatNumberWithSignificantDigits(expeditionTotal)}개 = {formatNumberWithSignificantDigits(totalRequired)}개</span>
+                <div className="mb-4">
+                  <div className="py-3 md:bg-gray-700/50 md:rounded-lg md:p-4 md:border md:border-gray-600">
+                    <div className="space-y-2 text-sm text-gray-300">
+                      {totalWeeks > 0 && (
+                        <div>총 주수 = {totalWeeks}주</div>
+                      )}
+                      {weeklyTotal > 0 && (
+                        <div>주간 교환에 필요한 최대 수량 = {formatNumberWithSignificantDigits(weeklyTotal)}개 / 주</div>
+                      )}
+                      {totalRequired > 0 && (
+                        <div>
+                          <span className="md:inline">모든 항목 교환에 필요한 최대 수량</span>
+                          <br className="md:hidden" />
+                          <span className="md:inline"> = {formatNumberWithSignificantDigits(weeklyTotal)}개 × {totalWeeks}주 + {formatNumberWithSignificantDigits(expeditionTotal)}개 = {formatNumberWithSignificantDigits(totalRequired)}개</span>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
               );
             })()}
-            <div className="space-y-6">
+            <div className="space-y-4 md:space-y-6">
               {tabs.map((tab) => {
                 const tabItems = allItemsDetails.filter(item => item.tabId === tab.id);
                 if (tabItems.length === 0) return null;
                 
                 return (
-                  <div key={tab.id} className="bg-gray-700/30 rounded-lg border border-gray-600 p-4">
-                    <div className="mb-4">
-                      <h3 className="text-xl font-semibold text-white mb-2">{tab.name || '(탭 이름 없음)'}</h3>
-                      <div className="flex items-center gap-4 text-sm text-gray-300">
+                  <div key={tab.id} className="py-3 border-b border-gray-700/50 last:border-b-0 md:py-0 md:border-b-0 md:bg-gray-700/50 md:rounded-lg md:p-4 md:border md:border-gray-600">
+                    <div className="mb-3">
+                      <h3 className="text-lg font-medium text-white mb-2">{tab.name || '(탭 이름 없음)'}</h3>
+                      <div className="flex items-center gap-4 text-sm text-gray-400">
                         {tab.coinName && (
                           <span>주화: <span className="text-blue-300">{tab.coinName}</span></span>
                         )}

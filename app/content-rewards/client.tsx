@@ -574,7 +574,7 @@ export default function ContentRewardsClient({
             const cashValueTotal = goldToCashPerGold ? totals.total * goldToCashPerGold : null;
             
             return (
-              <div key={idx} className="bg-gray-800 rounded p-6 border border-gray-700">
+              <div key={idx} className="bg-gray-800 rounded px-3 py-6 md:p-6 border border-gray-700">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
                   <h3 className="text-lg md:text-2xl font-bold text-white">{stage.stage}</h3>
                   <div className="flex flex-wrap items-end gap-3 md:gap-4 justify-start md:justify-end text-left md:text-right">
@@ -604,7 +604,7 @@ export default function ContentRewardsClient({
                 </div>
 
                 {/* 보상 표시 - 레이드 보상처럼 세로 나열, 큐브/모래시계는 해당 항목 밑 펼치기 */}
-                <div className="bg-gray-900/80 rounded-lg border border-gray-700/50 p-4">
+                <div className="bg-gray-900/80 rounded-lg border border-gray-700/50 px-2 py-4 md:p-4">
                   <div className="space-y-1.5">
                     {stage.rewards.map((reward, rewardIdx) => {
                       const itemTotal = (reward.price || 0) * reward.quantity;

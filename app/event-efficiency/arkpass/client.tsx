@@ -1378,18 +1378,17 @@ export default function ArkpassGuideClient({
         
         {/* 요약 카드 */}
         {levels.length > 0 && (
-          <div className="bg-gray-900/70 border border-gray-700 rounded-2xl p-8">
-            <h2 className="hidden md:block text-xl font-bold text-white mb-4">요약</h2>
-            <div className="space-y-4">
+          <div className="bg-gray-900/70 border border-gray-700 rounded-2xl p-4 md:p-8 space-y-4 md:space-y-6">
+            <div className="space-y-4 md:space-y-6">
               {levels.map((level, levelIndex) => (
-                <div key={levelIndex} className="bg-gray-800/50 rounded-lg border border-gray-700 p-4">
-                  <div className="flex items-center gap-2 mb-3">
+                <div key={levelIndex} className="pt-4 pb-4 border-b border-gray-700/50 last:border-b-0 first:pt-0">
+                  <div className="flex items-center gap-2 mb-2 md:mb-3">
                     <h3 className="text-lg font-semibold text-purple-300">레벨 {levelIndex + 1}</h3>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                     {/* 선택지 A */}
-                    <div className={`bg-gray-900/50 rounded-lg p-3 border-2 ${level.recommended === 'left' ? 'border-yellow-500 shadow-lg shadow-yellow-500/30' : 'border-gray-700'}`}>
+                    <div className={`rounded-lg p-3 border-2 ${level.recommended === 'left' ? 'border-yellow-500 shadow-lg shadow-yellow-500/30 bg-gray-900/30' : 'border-gray-700/70 bg-gray-900/30'}`}>
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
                           <h4 className="text-sm font-semibold text-blue-300">선택지 A</h4>
@@ -1409,7 +1408,7 @@ export default function ArkpassGuideClient({
                             const expandKey = `${levelIndex}-left-${bundleIndex}`;
                             const isExpanded = expandedBundles.has(expandKey);
                             return (
-                              <div key={bundleIndex} className="bg-gray-800/50 rounded p-2 border border-gray-600">
+                              <div key={bundleIndex} className="rounded p-2 bg-gray-800/40 border border-gray-600/70">
                                 <div className="flex items-start justify-between gap-2">
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 mb-1">
@@ -1475,7 +1474,7 @@ export default function ArkpassGuideClient({
                     </div>
                     
                     {/* 선택지 B */}
-                    <div className={`bg-gray-900/50 rounded-lg p-3 border-2 ${level.recommended === 'right' ? 'border-yellow-500 shadow-lg shadow-yellow-500/30' : 'border-gray-700'}`}>
+                    <div className={`rounded-lg p-3 border-2 ${level.recommended === 'right' ? 'border-yellow-500 shadow-lg shadow-yellow-500/30 bg-gray-900/30' : 'border-gray-700/70 bg-gray-900/30'}`}>
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
                           <h4 className="text-sm font-semibold text-pink-300">선택지 B</h4>
@@ -1495,7 +1494,7 @@ export default function ArkpassGuideClient({
                             const expandKey = `${levelIndex}-right-${bundleIndex}`;
                             const isExpanded = expandedBundles.has(expandKey);
                             return (
-                              <div key={bundleIndex} className="bg-gray-800/50 rounded p-2 border border-gray-600">
+                              <div key={bundleIndex} className="rounded p-2 bg-gray-800/40 border border-gray-600/70">
                                 <div className="flex items-start justify-between gap-2">
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 mb-1">

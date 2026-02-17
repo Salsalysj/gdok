@@ -3747,15 +3747,15 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
   // 대신 경고 메시지를 표시하거나 기본정보 카드만 숨김
 
   return (
-    <div className="px-4 py-8 space-y-6">
-      <div className="mb-6">
+    <div className="px-4 py-4 md:py-8 space-y-4 md:space-y-6">
+      <div className="mb-4 md:mb-6">
         <div className="hidden md:flex items-center gap-3 flex-wrap mb-2">
           <h1 className="text-3xl font-semibold tracking-tight text-white">PC방 이벤트</h1>
           <FavoriteButton title="PC방 이벤트" />
         </div>
       </div>
       <div className="text-xs md:text-base">
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-4 md:gap-6">
           
           {/* 새로 만들기 / 저장 버튼 (로컬에서만 표시, 카드 영역 안) */}
           {allowEventEfficiencySave && (
@@ -3900,7 +3900,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
           </div>
           )}
 
-          <div className="flex flex-nowrap gap-1 md:gap-2 overflow-x-auto pb-1">
+          <div className="hidden md:flex flex-nowrap gap-1 md:gap-2 overflow-x-auto pb-1">
             {eventSubTabs.map((subTab) => {
               const isActive = subTab.key === activeSubTab.key;
               return (
@@ -3919,11 +3919,11 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
             })}
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-4 md:space-y-6">
             {activeSubTab.key === 'summary' && (
-              <div className="bg-gradient-to-br from-gray-900/90 to-gray-800/90 border-2 border-purple-500/40 rounded-2xl p-6 space-y-6 shadow-2xl">
-              <div className="flex flex-col gap-4">
-                <div className="flex flex-wrap items-center gap-4 text-sm text-gray-200 bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+              <div className="p-4 space-y-4 md:bg-gradient-to-br md:from-gray-900/90 md:to-gray-800/90 md:border-2 md:border-purple-500/40 md:rounded-2xl md:p-6 md:space-y-6 md:shadow-2xl">
+              <div className="flex flex-col gap-3 md:gap-4">
+                <div className="flex flex-wrap items-center gap-3 md:gap-4 text-sm text-gray-200 p-3 md:p-4 md:bg-gray-800/50 md:rounded-lg md:border md:border-gray-700">
                   <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
                     <div className="flex items-center gap-2">
                       <span className="text-gray-300">총 진행 일수:</span>
@@ -3946,9 +3946,9 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:grid-cols-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
                 {/* 모바일: 전체 합계 + 시간당 (각각 ~~G (~~~원)) */}
-                <div className="bg-gradient-to-br from-gray-800/70 to-gray-900/70 border border-yellow-500/30 rounded-xl p-4 md:p-5 shadow-lg hover:shadow-yellow-500/20 transition-shadow duration-300 lg:hidden">
+                <div className="bg-gradient-to-br from-gray-800/70 to-gray-900/70 border border-yellow-500/30 rounded-xl p-3 md:p-5 shadow-lg hover:shadow-yellow-500/20 transition-shadow duration-300 lg:hidden">
                   <div className="text-xs md:text-sm text-gray-400">전체 합계</div>
                   <div className="text-lg md:text-2xl font-bold text-yellow-300 mt-1">
                     {aggregateTotals.totalGold > 0
@@ -3961,7 +3961,7 @@ export default function EventEfficiencyClient({ etcListItems, crystalGoldRate, m
                     )}
                   </div>
                 </div>
-                <div className="bg-gradient-to-br from-gray-800/70 to-gray-900/70 border border-green-500/30 rounded-xl p-4 md:p-5 shadow-lg hover:shadow-green-500/20 transition-shadow duration-300 lg:hidden">
+                <div className="bg-gradient-to-br from-gray-800/70 to-gray-900/70 border border-green-500/30 rounded-xl p-3 md:p-5 shadow-lg hover:shadow-green-500/20 transition-shadow duration-300 lg:hidden">
                   <div className="text-xs md:text-sm text-gray-400">시간당</div>
                   <div className="text-lg md:text-2xl font-bold text-yellow-300 mt-1">
                     {aggregateTotals.hourlyGold

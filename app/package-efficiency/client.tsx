@@ -3271,25 +3271,25 @@ export default function PackageEfficiencyClient({
                   </div>
                   <h3 className="text-xl font-bold text-white">구성품 내용</h3>
                 </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-0 md:gap-4">
                 {packageData.items.map((packageItem, itemIndex) => {
                   const typeColors = {
-                    '확정': { border: 'border-blue-500/30', bg: 'bg-blue-500/5', icon: 'text-blue-400', badge: 'bg-blue-500/20 text-blue-400' },
-                    '확률': { border: 'border-purple-500/30', bg: 'bg-purple-500/5', icon: 'text-purple-400', badge: 'bg-purple-500/20 text-purple-400' },
-                    '선택': { border: 'border-yellow-500/30', bg: 'bg-yellow-500/5', icon: 'text-yellow-400', badge: 'bg-yellow-500/20 text-yellow-400' },
+                    '확정': { border: 'md:border-blue-500/30', bg: 'md:bg-blue-500/5', icon: 'text-blue-400', badge: 'bg-blue-500/20 text-blue-400' },
+                    '확률': { border: 'md:border-purple-500/30', bg: 'md:bg-purple-500/5', icon: 'text-purple-400', badge: 'bg-purple-500/20 text-purple-400' },
+                    '선택': { border: 'md:border-yellow-500/30', bg: 'md:bg-yellow-500/5', icon: 'text-yellow-400', badge: 'bg-yellow-500/20 text-yellow-400' },
                   };
                   const colors = typeColors[packageItem.itemType as keyof typeof typeColors] || typeColors['확정'];
                   
                   return (
-                  <div key={itemIndex} className={`relative bg-gray-900/70 rounded-lg p-5 border ${colors.border} ${colors.bg}`} data-scroll-anchor="true">
-                    {/* 타입 배지 */}
-                    <div className="absolute top-3 right-3">
+                  <div key={itemIndex} className={`relative py-4 border-b border-gray-700/50 last:border-b-0 md:border-b-0 md:last:border-b-0 md:bg-gray-900/70 md:rounded-lg md:p-5 md:border ${colors.border} ${colors.bg}`} data-scroll-anchor="true">
+                    {/* 타입 배지 (모바일 숨김) */}
+                    <div className="hidden md:block absolute top-3 right-3">
                       <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${colors.badge}`}>
                         {packageItem.itemType}
                       </span>
                     </div>
                     
-                    <div className="mb-3 pr-16 text-sm">
+                    <div className="mb-2 md:mb-3 pr-0 md:pr-16 text-sm">
                       <div className="flex items-center gap-2 mb-1">
                         {packageData.category === '패스' && (
                           <span className="text-xs font-semibold text-purple-400 whitespace-nowrap">
@@ -3992,21 +3992,21 @@ export default function PackageEfficiencyClient({
                 {/* 3+보너스 구성품 표시 */}
                 {packageData.packageType === '3+보너스' && packageData.bonus3Items.length > 0 && packageData.bonus3Items.map((packageItem, itemIndex) => {
                   const typeColors = {
-                    '확정': { border: 'border-blue-500/30', bg: 'bg-blue-500/5', icon: 'text-blue-400', badge: 'bg-blue-500/20 text-blue-400' },
-                    '확률': { border: 'border-purple-500/30', bg: 'bg-purple-500/5', icon: 'text-purple-400', badge: 'bg-purple-500/20 text-purple-400' },
-                    '선택': { border: 'border-yellow-500/30', bg: 'bg-yellow-500/5', icon: 'text-yellow-400', badge: 'bg-yellow-500/20 text-yellow-400' },
+                    '확정': { border: 'md:border-blue-500/30', bg: 'md:bg-blue-500/5', icon: 'text-blue-400', badge: 'bg-blue-500/20 text-blue-400' },
+                    '확률': { border: 'md:border-purple-500/30', bg: 'md:bg-purple-500/5', icon: 'text-purple-400', badge: 'bg-purple-500/20 text-purple-400' },
+                    '선택': { border: 'md:border-yellow-500/30', bg: 'md:bg-yellow-500/5', icon: 'text-yellow-400', badge: 'bg-yellow-500/20 text-yellow-400' },
                   };
                   const colors = typeColors[packageItem.itemType as keyof typeof typeColors] || typeColors['확정'];
                   
                   return (
-                  <div key={`bonus3-${itemIndex}`} className={`relative bg-gray-900/70 rounded-lg p-5 border ${colors.border} ${colors.bg}`}>
-                    <div className="absolute top-3 right-3">
+                  <div key={`bonus3-${itemIndex}`} className={`relative py-4 border-b border-gray-700/50 last:border-b-0 md:border-b-0 md:last:border-b-0 md:bg-gray-900/70 md:rounded-lg md:p-5 md:border ${colors.border} ${colors.bg}`}>
+                    <div className="hidden md:block absolute top-3 right-3">
                       <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${colors.badge}`}>
                         {packageItem.itemType}
                       </span>
                     </div>
                     
-                    <div className="mb-3 pr-16 text-sm">
+                    <div className="mb-2 md:mb-3 pr-0 md:pr-16 text-sm">
                       <div className="flex items-center gap-2 mb-1">
                         <svg className={`w-3.5 h-3.5 ${colors.icon}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />

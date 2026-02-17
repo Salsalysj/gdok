@@ -77,6 +77,8 @@ export default function ExpeditionWeeklyClient({ entryData }: { entryData: Exped
   const [error, setError] = useState('');
   const [results, setResults] = useState<CharacterResult[] | null>(null);
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
+  /** 모바일: 주간합계 '상세' 버튼으로 연 툴팁 행 인덱스 (null이면 미표시) */
+  const [mobileDetailRow, setMobileDetailRow] = useState<number | null>(null);
 
   useEffect(() => {
     try {
@@ -247,6 +249,75 @@ export default function ExpeditionWeeklyClient({ entryData }: { entryData: Exped
           }
           return (
             <>
+              {/* 모바일 전용: 주간합계 '상세' 툴팁 오버레이 */}
+              {mobileDetailRow != null && results[mobileDetailRow] && (
+                <div className="fixed inset-0 z-50 md:hidden touch-none" aria-modal="true" role="dialog" aria-label="상세 보기">
+                  <button
+                    type="button"
+                    className="absolute inset-0 bg-black/50 focus:outline-none"
+                    onClick={() => setMobileDetailRow(null)}
+                    onTouchEnd={(e) => { e.preventDefault(); setMobileDetailRow(null); }}
+                    aria-label="닫기"
+                  />
+                  <div className="absolute bottom-0 left-0 right-0 rounded-t-xl bg-gray-800 border border-gray-700 border-b-0 shadow-2xl p-4 max-h-[70vh] overflow-y-auto touch-auto" onClick={(e) => e.stopPropagation()}>
+                    <h4 className="text-sm font-semibold text-white mb-3">{results[mobileDetailRow].name} – 상세</h4>
+                    <div className="space-y-4 text-xs">
+                      <div>
+                        <div className="text-gray-400 font-semibold mb-2">핵심 컨텐츠</div>
+                        <div className="space-y-2">
+                          {[
+                            { label: '전선&균열', data: results[mobileDetailRow].frontRift },
+                            { label: '큐브&모래시계', data: results[mobileDetailRow].cubeHourglass },
+                            { label: '가디언 토벌', data: results[mobileDetailRow].guardian },
+                          ].map(({ label, data }) => (
+                            <div key={label} className="text-gray-200">
+                              <span className="text-gray-500">{label}: </span>
+                              {data ? (
+                                <>
+                                  <span>{data.name}</span>
+                                  <span className="text-gray-400 ml-1">
+                                    <span className="text-yellow-400">{Math.round(data.weeklyTradable).toLocaleString()}</span>
+                                    {' / '}
+                                    {Math.round(data.weeklyTotal).toLocaleString()}<GoldUnit />
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="text-gray-500">-</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-gray-400 font-semibold mb-2">레이드 (상위 3종)</div>
+                        <div className="space-y-2">
+                          {results[mobileDetailRow].raids.length > 0 ? (
+                            results[mobileDetailRow].raids.map((raid) => (
+                              <div key={raid.name} className="text-gray-200">
+                                <span>{raid.name}</span>
+                                <span className="text-gray-400 ml-1">
+                                  <span className="text-yellow-400">{Math.round(raid.weeklyTradable).toLocaleString()}</span>
+                                  {' / '}
+                                  {Math.round(raid.weeklyTotal).toLocaleString()}<GoldUnit />
+                                </span>
+                              </div>
+                            ))
+                          ) : (
+                            <span className="text-gray-500">-</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="mt-4 w-full py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium rounded-lg"
+                      onClick={() => setMobileDetailRow(null)}
+                    >
+                      닫기
+                    </button>
+                  </div>
+                </div>
+              )}
               <div className="rounded-lg border border-gray-700 bg-gray-800/60 p-4">
                 <h2 className="text-sm font-semibold text-gray-300 mb-3">6캐릭 핵심 컨텐츠 주간 수익 합계</h2>
                 <div className="flex flex-wrap gap-6 text-sm">
@@ -265,7 +336,56 @@ export default function ExpeditionWeeklyClient({ entryData }: { entryData: Exped
                 </div>
               </div>
               <div className="overflow-x-hidden md:overflow-x-auto bg-gray-900/70 rounded-lg border border-gray-700">
-            <table className="w-full text-xs md:text-sm table-fixed">
+            {/* 모바일 전용: 2열 테이블 (캐릭터명, 주간합계+상세) */}
+            <table className="w-full text-xs table-fixed md:hidden">
+              <colgroup>
+                <col className="w-[45%]" />
+                <col className="w-[55%]" />
+              </colgroup>
+              <thead>
+                <tr className="border-b border-gray-700 bg-gray-800/50">
+                  <th className="px-2 py-2 text-left font-semibold text-gray-300 whitespace-nowrap text-[11px]">캐릭터명</th>
+                  <th className="px-2 py-2 text-right font-semibold text-gray-300 whitespace-nowrap text-[11px]">
+                    <div>주간 합계</div>
+                    <div className="text-[10px] font-normal text-gray-400">(<span className="text-yellow-400">거래가능</span> / 전체)</div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {results.map((char, idx) => (
+                  <tr key={char.name} className={`border-b border-gray-800 ${idx % 2 === 0 ? 'bg-gray-900/30' : 'bg-gray-900/10'}`}>
+                    <td className="px-2 py-2 font-medium text-white whitespace-nowrap text-[11px]">
+                      <div>{char.name}</div>
+                      <div className="text-[10px] text-gray-400">레벨 {Math.round(char.itemLevel)}</div>
+                      {idx === 0 && (
+                        <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-600/40 text-amber-200">1위</span>
+                      )}
+                    </td>
+                    <td className="px-2 py-2 text-right">
+                      <div className="flex flex-row items-center justify-end gap-2">
+                        <div>
+                          <div className="text-yellow-400 font-semibold whitespace-nowrap text-[11px]">
+                            {Math.round(char.totalWeeklyTradable).toLocaleString()}<GoldUnit />
+                          </div>
+                          <div className="text-[10px] text-gray-400 whitespace-nowrap">
+                            / {Math.round(char.totalWeeklyTotal).toLocaleString()}<GoldUnit />
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setMobileDetailRow(idx)}
+                          className="flex-shrink-0 py-1.5 px-3 rounded bg-gray-700 hover:bg-gray-600 text-gray-200 text-xs font-medium whitespace-nowrap"
+                        >
+                          상세
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {/* 데스크탑 전용: 4열 테이블 */}
+            <table className="hidden md:table w-full text-sm table-fixed">
               <colgroup>
                 <col className="w-1/4" />
                 <col className="w-1/4" />
@@ -274,26 +394,26 @@ export default function ExpeditionWeeklyClient({ entryData }: { entryData: Exped
               </colgroup>
               <thead>
                 <tr className="border-b border-gray-700 bg-gray-800/50">
-                  <th className="px-2 py-2 md:px-3 md:py-3 text-left font-semibold text-gray-300 whitespace-nowrap text-[11px] md:text-base">캐릭터명</th>
-                  <th className="px-2 py-2 md:px-3 md:py-3 text-left font-semibold text-gray-300 whitespace-nowrap text-[11px] md:text-base">핵심 컨텐츠</th>
-                  <th className="px-2 py-2 md:px-3 md:py-3 text-left font-semibold text-gray-300 whitespace-nowrap text-[11px] md:text-base"><span className="md:hidden">레이드</span><span className="hidden md:inline">레이드 (상위 3종)</span></th>
-                  <th className="px-2 py-2 md:px-3 md:py-3 text-right font-semibold text-gray-300 whitespace-nowrap text-[11px] md:text-base">
+                  <th className="px-3 py-3 text-left font-semibold text-gray-300 whitespace-nowrap text-base">캐릭터명</th>
+                  <th className="px-3 py-3 text-left font-semibold text-gray-300 whitespace-nowrap text-base">핵심 컨텐츠</th>
+                  <th className="px-3 py-3 text-left font-semibold text-gray-300 whitespace-nowrap text-base">레이드 (상위 3종)</th>
+                  <th className="px-3 py-3 text-right font-semibold text-gray-300 whitespace-nowrap text-base">
                     <div>주간 합계</div>
-                    <div className="text-[10px] md:text-xs font-normal text-gray-400">(<span className="text-yellow-400">거래가능</span> / 전체)</div>
+                    <div className="text-xs font-normal text-gray-400">(<span className="text-yellow-400">거래가능</span> / 전체)</div>
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {results.map((char, idx) => (
                   <tr key={char.name} className={`border-b border-gray-800 ${idx % 2 === 0 ? 'bg-gray-900/30' : 'bg-gray-900/10'}`}>
-                    <td className="px-2 py-2 md:px-3 md:py-3 font-medium text-white whitespace-nowrap text-[11px] md:text-base">
+                    <td className="px-3 py-3 font-medium text-white whitespace-nowrap text-base">
                       <div>{char.name}</div>
-                      <div className="text-[10px] md:text-xs text-gray-400">레벨 {Math.round(char.itemLevel)}</div>
+                      <div className="text-xs text-gray-400">레벨 {Math.round(char.itemLevel)}</div>
                       {idx === 0 && (
                         <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-600/40 text-amber-200">1위</span>
                       )}
                     </td>
-                    <td className="px-2 py-2 md:px-3 md:py-3 align-top">
+                    <td className="px-3 py-3 align-top">
                       <div className="flex flex-col gap-1.5 md:gap-2">
                         {(() => {
                           type BlockData = { name: string; weeklyTradable: number; weeklyTotal: number; details: RewardDetail[]; weeklyCount: number } | null;
@@ -364,7 +484,7 @@ export default function ExpeditionWeeklyClient({ entryData }: { entryData: Exped
                         })()}
                       </div>
                     </td>
-                    <td className="px-2 py-2 md:px-3 md:py-3">
+                    <td className="px-3 py-3">
                       {char.raids.length > 0 ? (
                         <div className="space-y-1 md:space-y-1.5">
                           {char.raids.map((raid, ri) => (
@@ -422,11 +542,11 @@ export default function ExpeditionWeeklyClient({ entryData }: { entryData: Exped
                         <span className="text-gray-500 text-xs">-</span>
                       )}
                     </td>
-                    <td className="px-2 py-2 md:px-3 md:py-3 text-right">
-                      <div className="text-yellow-400 font-semibold whitespace-nowrap text-[11px] md:text-base">
+                    <td className="px-3 py-3 text-right">
+                      <div className="text-yellow-400 font-semibold whitespace-nowrap text-base">
                         {Math.round(char.totalWeeklyTradable).toLocaleString()}<GoldUnit />
                       </div>
-                      <div className="text-[10px] md:text-xs text-gray-400 whitespace-nowrap">
+                      <div className="text-xs text-gray-400 whitespace-nowrap">
                         / {Math.round(char.totalWeeklyTotal).toLocaleString()}<GoldUnit />
                       </div>
                     </td>
