@@ -534,6 +534,177 @@ const STORAGE_KEY = 'character-simulation-cache';
 const ROSTER_CACHE_KEY = 'character-simulation-roster-cache';
 const ARMORY_FETCH_DELAY_MS = 350;
 
+/** 카제로스 목표 재련 21+ → 세르카 계승 매핑 (21→12, 22→13, ...) */
+const KAZEROS_TO_SERKA_STAGE_OFFSET = 9; // 21 - 12 = 9
+/** 카제로스 20 → 세르카 11 (계승 후) */
+const KAZEROS_20_TO_SERKA = 11;
+
+/**
+ * 현재 재련 단계에서 목표 재련 단계까지의 진행 경로를 반환합니다.
+ * isKazerosToSerka가 true이면 카제로스 20단계 달성 후 세르카 계승을 포함합니다.
+ */
+function getProgressionSteps(
+  currentStage: number,
+  targetStage: number,
+  isKazerosToSerka: boolean
+): string[] {
+  if (!isKazerosToSerka) {
+    if (currentStage >= targetStage) return [];
+    const steps: string[] = [];
+    for (let s = currentStage; s < targetStage; s++) {
+      steps.push(`${s} → ${s + 1}`);
+    }
+    return steps;
+  }
+  // 카제로스 → 세르카 계승 경로
+  // 세르카 계승은 항상 카제로스 20단계 + 상재4 완료 후 발생
+  const steps: string[] = [];
+  for (let s = currentStage; s < 20; s++) {
+    steps.push(`${s} → ${s + 1}`);
+  }
+  steps.push('세르카 계승');
+  const serkaStart = KAZEROS_20_TO_SERKA; // 계승 직후 세르카 단계 (= 11)
+  for (let s = serkaStart; s < targetStage; s++) {
+    steps.push(`${s} → ${s + 1}`);
+  }
+  return steps;
+}
+
+/**
+ * 카제로스 재련 우선순위 로드맵에 따라 목표 재련 단계를 시뮬레이션합니다.
+ *
+ * 우선순위:
+ *  일반재련 16단계 → 상재1 → 일반재련 17~18단계 → 상재2,3,4 → 일반재련 19~20단계 → 세르카 계승(상재4 완료 필요)
+ *
+ * 일반재련 1단계 = +5 아이템 레벨, 상재 1단계 = +10 아이템 레벨
+ * 실제 아이템 레벨 = 일반재련 단계의 CSV 아이템 레벨 + 상재 완료 단계 × 10
+ */
+function calculateTargetLevelStages(
+  equipments: Array<{
+    type: string;
+    currentLevel: number | null;
+    currentItemLevel: number | null;
+    isSerkaEquipment: boolean;
+  }>,
+  targetAvgLevel: number,
+  weaponStages: RefiningStage[],
+  armorStages: RefiningStage[],
+  weaponStagesSerka: RefiningStage[],
+  armorStagesSerka: RefiningStage[]
+): Array<{ targetStageLevel: number | null; targetItemLevel: number | null; useSerkaForDisplay?: boolean }> {
+  const getStagesArr = (type: string, isSerka: boolean): RefiningStage[] =>
+    type === '무기'
+      ? (isSerka ? weaponStagesSerka : weaponStages)
+      : (isSerka ? armorStagesSerka : armorStages);
+
+  const getBaseIL = (level: number, type: string, isSerka: boolean): number | null =>
+    getStagesArr(type, isSerka).find(s => s.level === level)?.itemLevel ?? null;
+
+  return equipments.map((eq) => {
+    const currentStage = eq.currentLevel ?? 0;
+    const currentIL = eq.currentItemLevel ?? 0;
+
+    if (currentStage === 0 && currentIL === 0) {
+      return { targetStageLevel: null, targetItemLevel: null };
+    }
+
+    let stage = currentStage;
+    let il = currentIL;
+    let isSerka = eq.isSerkaEquipment;
+
+    // 현재 상재 완료 단계 추정: (실제 아이템레벨 - 현재 단계 CSV 아이템레벨) / 10
+    const baseILNow = getBaseIL(stage, eq.type, isSerka) ?? il;
+    let adv = Math.max(0, Math.floor((il - baseILNow) / 10));
+
+    // 이미 목표 레벨 이상이면 현재 단계 그대로 반환
+    if (il >= targetAvgLevel) {
+      return { targetStageLevel: stage, targetItemLevel: il, useSerkaForDisplay: isSerka };
+    }
+
+    let result = { targetStageLevel: stage, targetItemLevel: il, useSerkaForDisplay: isSerka };
+
+    for (let iter = 0; iter < 150; iter++) {
+      let nextStage = stage;
+      let nextIL = il;
+      let nextAdv = adv;
+      let nextIsSerka = isSerka;
+      let moved = false;
+
+      if (isSerka) {
+        // 세르카: 상재 없이 일반재련만 진행
+        const ns = stage + 1;
+        const nsIL = getBaseIL(ns, eq.type, true);
+        if (nsIL == null) break;
+        nextStage = ns;
+        nextIL = nsIL;
+        moved = true;
+      } else if (stage < 16) {
+        // 카제로스 일반재련 16단계까지
+        const ns = stage + 1;
+        const nsIL = getBaseIL(ns, eq.type, false);
+        if (nsIL == null) break;
+        nextStage = ns;
+        nextIL = nsIL + adv * 10;
+        moved = true;
+      } else if (stage === 16 && adv < 1) {
+        // 16단계 도달 후 상재1 진행
+        nextAdv = 1;
+        nextIL = il + 10;
+        moved = true;
+      } else if ((stage === 16 && adv >= 1) || stage === 17) {
+        // 상재1 완료 후 일반재련 17 또는 18단계로
+        const ns = stage + 1;
+        const nsIL = getBaseIL(ns, eq.type, false);
+        if (nsIL == null) break;
+        nextStage = ns;
+        nextIL = nsIL + adv * 10;
+        moved = true;
+      } else if (stage >= 18 && adv < 4) {
+        // 18단계 이상에서 상재 2,3,4 진행 (비표준 포함)
+        nextAdv = adv + 1;
+        nextIL = il + 10;
+        moved = true;
+      } else if (adv >= 4 && stage < 20) {
+        // 상재4 완료 후 일반재련 19~20단계로
+        const ns = stage + 1;
+        const nsIL = getBaseIL(ns, eq.type, false);
+        if (nsIL == null) break;
+        nextStage = ns;
+        nextIL = nsIL + 40;
+        moved = true;
+      } else if (stage === 20 && adv >= 4) {
+        // 20단계 + 상재4 완료 → 세르카 계승
+        const serkaArr = getStagesArr(eq.type, true)
+          .filter(s => s.itemLevel != null)
+          .sort((a, b) => a.level - b.level);
+        const inheritStage = KAZEROS_20_TO_SERKA; // = 11
+        const inheritData = serkaArr.find(s => s.level === inheritStage) ?? serkaArr[0];
+        if (!inheritData) break;
+        nextIsSerka = true;
+        nextStage = inheritData.level;
+        nextIL = inheritData.itemLevel!;
+        nextAdv = 0;
+        moved = true;
+      }
+
+      if (!moved) break;
+
+      stage = nextStage;
+      il = nextIL;
+      adv = nextAdv;
+      isSerka = nextIsSerka;
+
+      if (il <= targetAvgLevel) {
+        result = { targetStageLevel: stage, targetItemLevel: il, useSerkaForDisplay: isSerka };
+      }
+
+      if (il >= targetAvgLevel) break;
+    }
+
+    return result;
+  });
+}
+
 type RosterCache = {
   rosterOwner: string;
   roster: RosterCharacter[];
@@ -577,6 +748,10 @@ function CharacterSimulation({
   /** 목표 재련 '상세' 툴팁 표시 중인 행 인덱스 (null이면 미표시) */
   const [detailTooltipIndex, setDetailTooltipIndex] = useState<number | null>(null);
   const [mobileItemTooltip, setMobileItemTooltip] = useState<{ title: string; lines: string[] } | null>(null);
+  const [viewMode, setViewMode] = useState<'efficiency' | 'target-level'>('efficiency');
+  const [targetLevelDropdownValue, setTargetLevelDropdownValue] = useState<number | null>(null);
+  const [appliedTargetLevel, setAppliedTargetLevel] = useState<number | null>(null);
+  const [targetLevelProgressionIndex, setTargetLevelProgressionIndex] = useState<number | null>(null);
 
   // 원정대 1640+ 전원 armory 조회 후 캐시 저장 (preloaded 있으면 해당 캐릭터는 스킵)
   const loadRoster = async (
@@ -751,6 +926,13 @@ function CharacterSimulation({
     setCharacterName(selectedName);
     handleSearch(selectedName, false);
   };
+
+  // 캐릭터 변경 시 목표 레벨 초기화
+  useEffect(() => {
+    setAppliedTargetLevel(null);
+    setTargetLevelDropdownValue(null);
+    setTargetLevelProgressionIndex(null);
+  }, [characterName]);
 
   // 마운트 시 localStorage에서 가장 최근 캐릭터 복원
   useEffect(() => {
@@ -1248,6 +1430,45 @@ function CharacterSimulation({
     });
   }, [sortedEquipment, weaponStages, armorStages, weaponStagesSerka, armorStagesSerka, adjustedMarketInfo, refreshKey, convertKazeros1730ToSerka]);
 
+  const currentAvgItemLevel = useMemo(() => {
+    if (!equipmentWithValues.length) return null;
+    const getIL = (eq: (typeof equipmentWithValues)[0]): number | null => {
+      if (eq.itemLevel != null) return eq.itemLevel;
+      if (eq.currentLevel == null) return null;
+      const stages = eq.type === '무기'
+        ? (eq.isSerkaEquipment ? weaponStagesSerka : weaponStages)
+        : (eq.isSerkaEquipment ? armorStagesSerka : armorStages);
+      return stages.find(s => s.level === eq.currentLevel)?.itemLevel ?? null;
+    };
+    const levels = equipmentWithValues.map(getIL).filter((l): l is number => l != null);
+    if (!levels.length) return null;
+    return levels.reduce((a, b) => a + b, 0) / levels.length;
+  }, [equipmentWithValues, weaponStages, armorStages, weaponStagesSerka, armorStagesSerka]);
+
+  const targetLevelOptions = useMemo(() => {
+    if (currentAvgItemLevel == null) return [];
+    const minLevel = (Math.floor(currentAvgItemLevel / 5) + 1) * 5;
+    const options: number[] = [];
+    for (let l = minLevel; l <= 1800; l += 5) {
+      options.push(l);
+    }
+    return options;
+  }, [currentAvgItemLevel]);
+
+  const targetLevelStages = useMemo(() => {
+    if (appliedTargetLevel == null || !equipmentWithValues.length) return null;
+    return calculateTargetLevelStages(
+      equipmentWithValues.map(eq => ({
+        type: eq.type,
+        currentLevel: eq.currentLevel,
+        currentItemLevel: eq.itemLevel ?? null,
+        isSerkaEquipment: eq.isSerkaEquipment,
+      })),
+      appliedTargetLevel,
+      weaponStages, armorStages, weaponStagesSerka, armorStagesSerka
+    );
+  }, [appliedTargetLevel, equipmentWithValues, weaponStages, armorStages, weaponStagesSerka, armorStagesSerka]);
+
   const summaryValues = useMemo(() => {
     if (!equipmentWithValues.length) {
       return {
@@ -1716,6 +1937,32 @@ function CharacterSimulation({
           </div>
         ) : characterData ? (
           <>
+            {/* 모드 전환 버튼 */}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setViewMode('efficiency')}
+                className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                  viewMode === 'efficiency'
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700 border border-gray-700'
+                }`}
+              >
+                재련 효율
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('target-level')}
+                className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                  viewMode === 'target-level'
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700 border border-gray-700'
+                }`}
+              >
+                목표 레벨 계산
+              </button>
+            </div>
+
             {hasTier3Equipment ? (
               <div className="bg-yellow-900/30 border border-yellow-500 rounded-lg p-6 text-center">
                 <p className="text-yellow-300 text-lg font-semibold">
@@ -1724,7 +1971,41 @@ function CharacterSimulation({
               </div>
             ) : (
               <>
-                {/* 일반 재련 요약 정보 */}
+                {/* 목표 레벨 계산 모드: 레벨 선택기 */}
+                {viewMode === 'target-level' && (
+                  <div className="bg-gray-900/70 rounded-lg border border-gray-700 p-4">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <label className="text-sm text-white font-medium">목표 레벨</label>
+                      <select
+                        value={targetLevelDropdownValue ?? ''}
+                        onChange={(e) => setTargetLevelDropdownValue(e.target.value ? Number(e.target.value) : null)}
+                        className="px-3 py-1.5 bg-gray-800 text-white rounded-lg border border-gray-700 focus:border-purple-500 focus:outline-none"
+                      >
+                        <option value="">레벨 선택</option>
+                        {targetLevelOptions.map(lvl => (
+                          <option key={lvl} value={lvl}>{lvl}</option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => setAppliedTargetLevel(targetLevelDropdownValue)}
+                        disabled={!targetLevelDropdownValue}
+                        className="px-4 py-1.5 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-sm"
+                      >
+                        계산 시작
+                      </button>
+                      {appliedTargetLevel != null && (
+                        <span className="text-sm text-gray-400">
+                          목표: <span className="text-purple-300 font-medium">{appliedTargetLevel}</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* 일반 재련 요약 정보 (재련 효율 모드에서만 표시) */}
+                {viewMode === 'efficiency' && (
+                <>
                 <div className="bg-gray-900/70 rounded-lg border border-gray-700 overflow-hidden text-xs">
                   <div className="px-3 py-2 bg-gray-800/50 border-b border-gray-700">
                     <h3 className="text-base font-semibold text-white">일반 재련 요약</h3>
@@ -2114,9 +2395,12 @@ function CharacterSimulation({
                     )}
                   </div>
                 </div>
+                </>
+                )}
 
                 {/* 장비 표 */}
                 <div className="bg-gray-900/70 rounded-lg border border-gray-700 overflow-hidden">
+                  {viewMode === 'efficiency' && (
                   <div className="px-3 py-2 bg-gray-800/50 border-b border-gray-700 flex flex-wrap items-center gap-3">
                     <label className={`flex items-center gap-3 select-none rounded-lg px-3 py-2 ${hasKazeros1730Equipment ? 'cursor-pointer bg-gray-700/70 hover:bg-gray-700 border border-gray-600' : 'cursor-not-allowed opacity-60 bg-gray-800/50 border border-gray-700'}`}>
                       <input
@@ -2129,6 +2413,7 @@ function CharacterSimulation({
                       <span className="text-sm font-medium text-gray-200">1730 이상의 카제로스 장비를 세르카 장비로의 계승 기준으로 계산</span>
                     </label>
                   </div>
+                  )}
                   <div className="overflow-x-auto sm:overflow-visible">
                     <table className="w-full border border-gray-800 text-[11px] sm:text-[13px] md:text-sm table-fixed sm:table-auto sm:min-w-[880px]">
                       <thead>
@@ -2136,9 +2421,11 @@ function CharacterSimulation({
                           <th className="px-1 sm:px-3 py-1.5 sm:py-3 text-left font-medium border-b border-gray-700 w-[20%] sm:w-auto sm:min-w-[3.5rem]">장비 부위</th>
                           <th className="hidden sm:table-cell px-2 sm:px-3 py-2 sm:py-3 text-left font-medium border-b border-gray-700 min-w-[7rem]">장비명</th>
                           <th className="px-1 sm:px-3 py-1.5 sm:py-3 text-center font-medium border-b border-gray-700 w-[14%] sm:w-auto sm:min-w-[4.5rem]">목표 재련</th>
+                          {viewMode === 'efficiency' && (<>
                           <th className="px-1 sm:px-3 py-1.5 sm:py-3 text-right font-medium border-b border-gray-700 w-[22%] sm:w-auto sm:min-w-[6.5rem]">야금/재봉</th>
                           <th className="px-1 sm:px-3 py-1.5 sm:py-3 text-right font-medium border-b border-gray-700 w-[22%] sm:w-auto sm:min-w-[5.5rem]">숨결</th>
                           <th className="px-1 sm:px-3 py-1.5 sm:py-3 text-right font-medium border-b border-gray-700 w-[22%] sm:w-auto sm:min-w-[5rem]">돌파석</th>
+                          </>)}
                         </tr>
                       </thead>
                       <tbody>
@@ -2166,6 +2453,7 @@ function CharacterSimulation({
                                 </div>
                               </td>
                               <td className="px-1 sm:px-3 py-1.5 sm:py-3 text-center text-blue-300 font-medium border-b border-gray-800 align-top">
+                                {viewMode === 'efficiency' ? (
                                 <div className="flex flex-col items-center gap-0.5">
                                   <span className="whitespace-nowrap">{eq.targetLevel != null ? `+${eq.targetLevel}` : '-'}</span>
                                   {eq.convertedToSerka && (
@@ -2211,7 +2499,61 @@ function CharacterSimulation({
                                     </div>
                                   )}
                                 </div>
+                                ) : (
+                                  /* 목표 레벨 계산 모드 */
+                                  (() => {
+                                    const ts = targetLevelStages?.[idx];
+                                    if (!ts || ts.targetStageLevel == null) return <span className="text-gray-500">-</span>;
+                                    const isKazerosToSerkaConversion = ts.useSerkaForDisplay && !eq.isSerkaEquipment;
+                                    const isAlready = !isKazerosToSerkaConversion && ts.targetStageLevel === (eq.currentLevel ?? -1);
+                                    const currentStage = eq.currentLevel ?? 0;
+                                    const progressionSteps = !isAlready
+                                      ? getProgressionSteps(currentStage, ts.targetStageLevel, isKazerosToSerkaConversion)
+                                      : [];
+                                    return (
+                                      <div className="relative inline-flex flex-col items-center gap-0.5">
+                                        <button
+                                          type="button"
+                                          onClick={() => setTargetLevelProgressionIndex((prev) => (prev === idx ? null : idx))}
+                                          className="text-left hover:bg-gray-700/50 rounded px-1 -mx-1 py-0.5 cursor-pointer"
+                                          aria-label="재련 진행 과정 보기"
+                                        >
+                                          <span className="whitespace-nowrap">
+                                            {isAlready
+                                              ? <span className="text-gray-400 text-[10px]">현재 단계</span>
+                                              : `+${ts.targetStageLevel}`}
+                                          </span>
+                                          {ts.targetItemLevel != null && (
+                                            <span className="block text-[10px] text-gray-400">{ts.targetItemLevel}</span>
+                                          )}
+                                          {isKazerosToSerkaConversion && (
+                                            <span className="text-[10px] text-amber-400/90">세르카 계승</span>
+                                          )}
+                                          {eq.convertedToSerka && !isKazerosToSerkaConversion && (
+                                            <span className="text-[10px] text-amber-400/90">세르카 환산</span>
+                                          )}
+                                        </button>
+                                        {targetLevelProgressionIndex === idx && progressionSteps.length > 0 && (
+                                          <>
+                                            <div className="fixed inset-0 z-10" aria-hidden onClick={() => setTargetLevelProgressionIndex(null)} />
+                                            <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 z-20 min-w-[180px] max-w-[90vw] rounded-lg border border-gray-600 bg-gray-800 py-2.5 px-3 shadow-xl">
+                                              <div className="text-xs font-semibold text-purple-200 mb-1.5">{eq.type} 재련 진행 과정</div>
+                                              <ul className="space-y-1 text-xs text-gray-300">
+                                                {progressionSteps.map((step, i) => (
+                                                  <li key={i} className={step === '세르카 계승' ? 'text-amber-400 font-medium' : ''}>
+                                                    {step}
+                                                  </li>
+                                                ))}
+                                              </ul>
+                                            </div>
+                                          </>
+                                        )}
+                                      </div>
+                                    );
+                                  })()
+                                )}
                               </td>
+                              {viewMode === 'efficiency' && (<>
                               <td className="px-1 sm:px-3 py-1.5 sm:py-3 text-right border-b border-gray-800 align-top min-w-0">
                                 {eq.craftValue != null || eq.enhancedCraftValue != null ? (
                                   <div className="space-y-1 sm:space-y-1.5">
@@ -2302,11 +2644,12 @@ function CharacterSimulation({
                                   <span className="text-gray-500">-</span>
                                 )}
                               </td>
+                              </>)}
                             </tr>
                           ))
                         ) : (
                           <tr>
-                            <td colSpan={6} className="px-2 sm:px-4 py-8 text-center text-gray-400 text-sm">
+                            <td colSpan={viewMode === 'efficiency' ? 6 : 3} className="px-2 sm:px-4 py-8 text-center text-gray-400 text-sm">
                               장비 정보를 불러올 수 없습니다.
                             </td>
                           </tr>
@@ -2314,6 +2657,22 @@ function CharacterSimulation({
                       </tbody>
                     </table>
                   </div>
+                  {viewMode === 'target-level' && appliedTargetLevel != null && equipmentWithValues.length > 0 && (
+                    <div className="px-3 py-2 border-t border-gray-700 bg-gray-800/50 flex flex-wrap items-center gap-4 text-sm">
+                      <span className="text-gray-300">
+                        현재 아이템 레벨 평균:{' '}
+                        <span className="font-medium text-white">
+                          {currentAvgItemLevel != null
+                            ? currentAvgItemLevel.toLocaleString('ko-KR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+                            : '-'}
+                        </span>
+                      </span>
+                      <span className="text-gray-300">
+                        목표 아이템 레벨 평균:{' '}
+                        <span className="font-medium text-purple-300">{appliedTargetLevel}</span>
+                      </span>
+                    </div>
+                  )}
                 </div>
               </>
             )}

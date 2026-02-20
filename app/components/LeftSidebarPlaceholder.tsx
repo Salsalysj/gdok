@@ -6,7 +6,7 @@ import { useFavorites } from '../contexts/FavoritesContext';
 
 export default function LeftSidebarPlaceholder() {
   const [isFavoritesOpen, setIsFavoritesOpen] = useState(true);
-  const { favorites, isLoaded, reorderFavorites } = useFavorites();
+  const { favorites, isLoaded, reorderFavorites, removeFavorite } = useFavorites();
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
@@ -164,6 +164,31 @@ export default function LeftSidebarPlaceholder() {
                       >
                         {favorite.title}
                       </Link>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          removeFavorite(favorite.url);
+                        }}
+                        className="flex-shrink-0 p-1 text-gray-500 hover:text-red-400 hover:bg-gray-800 rounded opacity-60 hover:opacity-100 transition-opacity"
+                        title="즐겨찾기에서 제거"
+                        aria-label="즐겨찾기에서 제거"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="w-4 h-4"
+                        >
+                          <line x1="18" y1="6" x2="6" y2="18" />
+                          <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                      </button>
                     </div>
                   ))
                 )}
