@@ -8,7 +8,7 @@ export default function Footer() {
           <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4">
             <span>© 2026 껨산기</span>
             <span className="hidden md:inline">·</span>
-            <span>Contact: <a href="mailto:snuggdok@gmail.com" className="hover:text-gray-300">snuggdok@gmail.com</a></span>
+            <span>Contact: <span className="hover:text-gray-300">snuggdok[at]지메일.com</span></span>
           </div>
           <div className="flex items-center gap-2 md:gap-4">
             <Link href="/about" className="hover:text-gray-300">

@@ -534,175 +534,145 @@ const STORAGE_KEY = 'character-simulation-cache';
 const ROSTER_CACHE_KEY = 'character-simulation-roster-cache';
 const ARMORY_FETCH_DELAY_MS = 350;
 
-/** 카제로스 목표 재련 21+ → 세르카 계승 매핑 (21→12, 22→13, ...) */
-const KAZEROS_TO_SERKA_STAGE_OFFSET = 9; // 21 - 12 = 9
-/** 카제로스 20 → 세르카 11 (계승 후) */
-const KAZEROS_20_TO_SERKA = 11;
+type TargetItemLevelOption = {
+  value: number;
+  label: string;
+};
 
-/**
- * 현재 재련 단계에서 목표 재련 단계까지의 진행 경로를 반환합니다.
- * isKazerosToSerka가 true이면 카제로스 20단계 달성 후 세르카 계승을 포함합니다.
- */
-function getProgressionSteps(
-  currentStage: number,
-  targetStage: number,
-  isKazerosToSerka: boolean
-): string[] {
-  if (!isKazerosToSerka) {
-    if (currentStage >= targetStage) return [];
-    const steps: string[] = [];
-    for (let s = currentStage; s < targetStage; s++) {
-      steps.push(`${s} → ${s + 1}`);
-    }
-    return steps;
+type ReachPathAction =
+  | { kind: 'normal'; isSerka: boolean; toLevel: number }
+  | { kind: 'advanced'; advancedLevel: number; percentUsed: number }
+  | { kind: 'inherit' };
+
+type ReachPathResult = {
+  steps: string[];
+  actions: ReachPathAction[];
+};
+
+function buildTargetItemLevelOptions(currentItemLevel: number | null): TargetItemLevelOption[] {
+  if (currentItemLevel == null) return [];
+  const options: TargetItemLevelOption[] = [];
+  const start = (Math.floor(currentItemLevel / 5) + 1) * 5;
+  for (let n = 0; n <= 200; n++) {
+    const next = start + n * 5;
+    if (next > 1800) break;
+    const rounded = Math.round(next * 10) / 10;
+    const isInt = Number.isInteger(rounded);
+    options.push({
+      value: rounded,
+      label: rounded.toLocaleString('ko-KR', {
+        minimumFractionDigits: isInt ? 0 : 1,
+        maximumFractionDigits: 1,
+      }),
+    });
   }
-  // 카제로스 → 세르카 계승 경로
-  // 세르카 계승은 항상 카제로스 20단계 + 상재4 완료 후 발생
-  const steps: string[] = [];
-  for (let s = currentStage; s < 20; s++) {
-    steps.push(`${s} → ${s + 1}`);
-  }
-  steps.push('세르카 계승');
-  const serkaStart = KAZEROS_20_TO_SERKA; // 계승 직후 세르카 단계 (= 11)
-  for (let s = serkaStart; s < targetStage; s++) {
-    steps.push(`${s} → ${s + 1}`);
-  }
-  return steps;
+  return options;
 }
 
 /**
- * 카제로스 재련 우선순위 로드맵에 따라 목표 재련 단계를 시뮬레이션합니다.
+ * 현재 장비 상태에서 목표 아이템 레벨까지 도달하는 단계별 경로를 반환합니다.
  *
- * 우선순위:
- *  일반재련 16단계 → 상재1 → 일반재련 17~18단계 → 상재2,3,4 → 일반재련 19~20단계 → 세르카 계승(상재4 완료 필요)
- *
- * 일반재련 1단계 = +5 아이템 레벨, 상재 1단계 = +10 아이템 레벨
- * 실제 아이템 레벨 = 일반재련 단계의 CSV 아이템 레벨 + 상재 완료 단계 × 10
+ * 진행 우선순위 (카제로스):
+ *   일반재련 16단계 → 상재1 → 17~18단계 → 상재2,3,4 → 19~20단계 → 세르카 계승
+ * 세르카 장비는 일반재련만 진행합니다.
  */
-function calculateTargetLevelStages(
-  equipments: Array<{
-    type: string;
-    currentLevel: number | null;
-    currentItemLevel: number | null;
-    isSerkaEquipment: boolean;
-  }>,
-  targetAvgLevel: number,
+function buildReachPath(
+  currentStage: number,
+  currentIL: number,
+  targetIL: number,
+  isCurrentSerka: boolean,
+  type: string,
   weaponStages: RefiningStage[],
   armorStages: RefiningStage[],
   weaponStagesSerka: RefiningStage[],
   armorStagesSerka: RefiningStage[]
-): Array<{ targetStageLevel: number | null; targetItemLevel: number | null; useSerkaForDisplay?: boolean }> {
-  const getStagesArr = (type: string, isSerka: boolean): RefiningStage[] =>
-    type === '무기'
-      ? (isSerka ? weaponStagesSerka : weaponStages)
-      : (isSerka ? armorStagesSerka : armorStages);
+): ReachPathResult {
+  const getArr = (t: string, sk: boolean): RefiningStage[] =>
+    t === '무기' ? (sk ? weaponStagesSerka : weaponStages) : (sk ? armorStagesSerka : armorStages);
+  const EPS = 1e-6;
+  const formatAdvStepLabel = (advLevel: number, percentUsed: number): string => {
+    const roundedPercent = Math.round(percentUsed * 10) / 10;
+    const percentText = Number.isInteger(roundedPercent) ? `${roundedPercent}` : `${roundedPercent.toFixed(1)}`;
+    return `상급재련 ${advLevel}단계 (${percentText}%)`;
+  };
 
-  const getBaseIL = (level: number, type: string, isSerka: boolean): number | null =>
-    getStagesArr(type, isSerka).find(s => s.level === level)?.itemLevel ?? null;
+  if (currentIL >= targetIL) return { steps: [], actions: [] };
 
-  return equipments.map((eq) => {
-    const currentStage = eq.currentLevel ?? 0;
-    const currentIL = eq.currentItemLevel ?? 0;
+  const steps: string[] = [];
+  const actions: ReachPathAction[] = [];
+  let stage = currentStage;
+  let il = currentIL;
+  let isSerka = isCurrentSerka;
 
-    if (currentStage === 0 && currentIL === 0) {
-      return { targetStageLevel: null, targetItemLevel: null };
+  const baseILNow = getArr(type, isSerka).find(s => s.level === stage)?.itemLevel ?? il;
+  let advProgress = Math.max(0, Math.min(4, (il - baseILNow) / 10));
+
+  for (let iter = 0; iter < 150; iter++) {
+    // 카제로스 상태에서 1730 도달 시, 현재 단계/상재 상태와 무관하게 즉시 세르카로 계승
+    if (!isSerka && il >= 1730 - EPS) {
+      isSerka = true;
+      advProgress = 0;
+      stage = 11;
+      il = 1730;
+      steps.push('세르카 계승');
+      actions.push({ kind: 'inherit' });
+      continue;
     }
+    if (il >= targetIL - EPS) break;
 
-    let stage = currentStage;
-    let il = currentIL;
-    let isSerka = eq.isSerkaEquipment;
-
-    // 현재 상재 완료 단계 추정: (실제 아이템레벨 - 현재 단계 CSV 아이템레벨) / 10
-    const baseILNow = getBaseIL(stage, eq.type, isSerka) ?? il;
-    let adv = Math.max(0, Math.floor((il - baseILNow) / 10));
-
-    // 이미 목표 레벨 이상이면 현재 단계 그대로 반환
-    if (il >= targetAvgLevel) {
-      return { targetStageLevel: stage, targetItemLevel: il, useSerkaForDisplay: isSerka };
+    if (isSerka) {
+      const ns = stage + 1;
+      const nsIL = getArr(type, true).find(s => s.level === ns)?.itemLevel;
+      if (nsIL == null) break;
+      stage = ns; il = nsIL;
+      steps.push(`세르카 ${ns}단계`);
+      actions.push({ kind: 'normal', isSerka: true, toLevel: ns });
+    } else if (stage < 16) {
+      const ns = stage + 1;
+      const nsIL = getArr(type, false).find(s => s.level === ns)?.itemLevel;
+      if (nsIL == null) break;
+      stage = ns; il = nsIL + advProgress * 10;
+      steps.push(`+${ns}단계`);
+      actions.push({ kind: 'normal', isSerka: false, toLevel: ns });
+    } else if (stage === 16 && advProgress < 1 - EPS) {
+      const remainToNextLevel = Math.max(0, (1 - advProgress) * 10);
+      const required = Math.min(remainToNextLevel, targetIL - il);
+      if (required <= EPS) break;
+      advProgress += required / 10;
+      il += required;
+      const percentUsed = (required / 10) * 100;
+      steps.push(formatAdvStepLabel(1, percentUsed));
+      actions.push({ kind: 'advanced', advancedLevel: 1, percentUsed });
+    } else if ((stage === 16 && advProgress >= 1 - EPS) || stage === 17) {
+      const ns = stage + 1;
+      const nsIL = getArr(type, false).find(s => s.level === ns)?.itemLevel;
+      if (nsIL == null) break;
+      stage = ns; il = nsIL + advProgress * 10;
+      steps.push(`+${ns}단계`);
+      actions.push({ kind: 'normal', isSerka: false, toLevel: ns });
+    } else if (stage >= 18 && advProgress < 4 - EPS) {
+      const nextAdvLevel = Math.floor(advProgress + EPS) + 1;
+      const remainToNextLevel = Math.max(0, (nextAdvLevel - advProgress) * 10);
+      const required = Math.min(remainToNextLevel, targetIL - il);
+      if (required <= EPS) break;
+      advProgress += required / 10;
+      il += required;
+      const percentUsed = (required / 10) * 100;
+      steps.push(formatAdvStepLabel(nextAdvLevel, percentUsed));
+      actions.push({ kind: 'advanced', advancedLevel: nextAdvLevel, percentUsed });
+    } else if (advProgress >= 4 - EPS && stage < 20) {
+      const ns = stage + 1;
+      const nsIL = getArr(type, false).find(s => s.level === ns)?.itemLevel;
+      if (nsIL == null) break;
+      stage = ns; il = nsIL + 40;
+      steps.push(`+${ns}단계`);
+      actions.push({ kind: 'normal', isSerka: false, toLevel: ns });
+    } else {
+      break;
     }
+  }
 
-    let result = { targetStageLevel: stage, targetItemLevel: il, useSerkaForDisplay: isSerka };
-
-    for (let iter = 0; iter < 150; iter++) {
-      let nextStage = stage;
-      let nextIL = il;
-      let nextAdv = adv;
-      let nextIsSerka = isSerka;
-      let moved = false;
-
-      if (isSerka) {
-        // 세르카: 상재 없이 일반재련만 진행
-        const ns = stage + 1;
-        const nsIL = getBaseIL(ns, eq.type, true);
-        if (nsIL == null) break;
-        nextStage = ns;
-        nextIL = nsIL;
-        moved = true;
-      } else if (stage < 16) {
-        // 카제로스 일반재련 16단계까지
-        const ns = stage + 1;
-        const nsIL = getBaseIL(ns, eq.type, false);
-        if (nsIL == null) break;
-        nextStage = ns;
-        nextIL = nsIL + adv * 10;
-        moved = true;
-      } else if (stage === 16 && adv < 1) {
-        // 16단계 도달 후 상재1 진행
-        nextAdv = 1;
-        nextIL = il + 10;
-        moved = true;
-      } else if ((stage === 16 && adv >= 1) || stage === 17) {
-        // 상재1 완료 후 일반재련 17 또는 18단계로
-        const ns = stage + 1;
-        const nsIL = getBaseIL(ns, eq.type, false);
-        if (nsIL == null) break;
-        nextStage = ns;
-        nextIL = nsIL + adv * 10;
-        moved = true;
-      } else if (stage >= 18 && adv < 4) {
-        // 18단계 이상에서 상재 2,3,4 진행 (비표준 포함)
-        nextAdv = adv + 1;
-        nextIL = il + 10;
-        moved = true;
-      } else if (adv >= 4 && stage < 20) {
-        // 상재4 완료 후 일반재련 19~20단계로
-        const ns = stage + 1;
-        const nsIL = getBaseIL(ns, eq.type, false);
-        if (nsIL == null) break;
-        nextStage = ns;
-        nextIL = nsIL + 40;
-        moved = true;
-      } else if (stage === 20 && adv >= 4) {
-        // 20단계 + 상재4 완료 → 세르카 계승
-        const serkaArr = getStagesArr(eq.type, true)
-          .filter(s => s.itemLevel != null)
-          .sort((a, b) => a.level - b.level);
-        const inheritStage = KAZEROS_20_TO_SERKA; // = 11
-        const inheritData = serkaArr.find(s => s.level === inheritStage) ?? serkaArr[0];
-        if (!inheritData) break;
-        nextIsSerka = true;
-        nextStage = inheritData.level;
-        nextIL = inheritData.itemLevel!;
-        nextAdv = 0;
-        moved = true;
-      }
-
-      if (!moved) break;
-
-      stage = nextStage;
-      il = nextIL;
-      adv = nextAdv;
-      isSerka = nextIsSerka;
-
-      if (il <= targetAvgLevel) {
-        result = { targetStageLevel: stage, targetItemLevel: il, useSerkaForDisplay: isSerka };
-      }
-
-      if (il >= targetAvgLevel) break;
-    }
-
-    return result;
-  });
+  return { steps, actions };
 }
 
 type RosterCache = {
@@ -747,11 +717,15 @@ function CharacterSimulation({
   const [convertKazeros1730ToSerka, setConvertKazeros1730ToSerka] = useState(false);
   /** 목표 재련 '상세' 툴팁 표시 중인 행 인덱스 (null이면 미표시) */
   const [detailTooltipIndex, setDetailTooltipIndex] = useState<number | null>(null);
+  const [targetPathTooltipIndex, setTargetPathTooltipIndex] = useState<number | null>(null);
+  const [targetCostTooltipIndex, setTargetCostTooltipIndex] = useState<number | null>(null);
+  const [targetTotalMaterialTooltipOpen, setTargetTotalMaterialTooltipOpen] = useState(false);
   const [mobileItemTooltip, setMobileItemTooltip] = useState<{ title: string; lines: string[] } | null>(null);
   const [viewMode, setViewMode] = useState<'efficiency' | 'target-level'>('efficiency');
-  const [targetLevelDropdownValue, setTargetLevelDropdownValue] = useState<number | null>(null);
-  const [appliedTargetLevel, setAppliedTargetLevel] = useState<number | null>(null);
-  const [targetLevelProgressionIndex, setTargetLevelProgressionIndex] = useState<number | null>(null);
+  /** 목표 레벨 계산 탭: 장비 인덱스 → 선택된 목표 아이템 레벨 */
+  const [equipmentTargetItemLevelSelections, setEquipmentTargetItemLevelSelections] = useState<Record<number, number>>({});
+  /** 목표 레벨 계산 탭: 일괄 적용용 목표 평균 레벨(10단위) */
+  const [targetAverageLevel, setTargetAverageLevel] = useState<number | null>(null);
 
   // 원정대 1640+ 전원 armory 조회 후 캐시 저장 (preloaded 있으면 해당 캐릭터는 스킵)
   const loadRoster = async (
@@ -927,11 +901,13 @@ function CharacterSimulation({
     handleSearch(selectedName, false);
   };
 
-  // 캐릭터 변경 시 목표 레벨 초기화
+  // 캐릭터 변경 시 목표 아이템 레벨 선택 초기화
   useEffect(() => {
-    setAppliedTargetLevel(null);
-    setTargetLevelDropdownValue(null);
-    setTargetLevelProgressionIndex(null);
+    setEquipmentTargetItemLevelSelections({});
+    setTargetAverageLevel(null);
+    setTargetPathTooltipIndex(null);
+    setTargetCostTooltipIndex(null);
+    setTargetTotalMaterialTooltipOpen(false);
   }, [characterName]);
 
   // 마운트 시 localStorage에서 가장 최근 캐릭터 복원
@@ -1445,29 +1421,320 @@ function CharacterSimulation({
     return levels.reduce((a, b) => a + b, 0) / levels.length;
   }, [equipmentWithValues, weaponStages, armorStages, weaponStagesSerka, armorStagesSerka]);
 
-  const targetLevelOptions = useMemo(() => {
-    if (currentAvgItemLevel == null) return [];
-    const minLevel = (Math.floor(currentAvgItemLevel / 5) + 1) * 5;
-    const options: number[] = [];
-    for (let l = minLevel; l <= 1800; l += 5) {
-      options.push(l);
-    }
-    return options;
+  /** 장비별 목표 아이템 레벨 드롭다운 선택지 배열 */
+  const equipmentTargetItemLevelOptions = useMemo(() => {
+    if (!equipmentWithValues.length) return [];
+    return equipmentWithValues.map(eq => buildTargetItemLevelOptions(eq.itemLevel ?? null));
+  }, [equipmentWithValues]);
+
+  /** 목표 평균 레벨 선택지: 현재 평균보다 높은 10의 배수 */
+  const targetAverageLevelOptions = useMemo(() => {
+    if (currentAvgItemLevel == null) return [] as number[];
+    const start = (Math.floor(currentAvgItemLevel / 10) + 1) * 10;
+    const values: number[] = [];
+    for (let v = start; v <= 1800; v += 10) values.push(v);
+    return values;
   }, [currentAvgItemLevel]);
 
-  const targetLevelStages = useMemo(() => {
-    if (appliedTargetLevel == null || !equipmentWithValues.length) return null;
-    return calculateTargetLevelStages(
-      equipmentWithValues.map(eq => ({
-        type: eq.type,
-        currentLevel: eq.currentLevel,
-        currentItemLevel: eq.itemLevel ?? null,
-        isSerkaEquipment: eq.isSerkaEquipment,
-      })),
-      appliedTargetLevel,
-      weaponStages, armorStages, weaponStagesSerka, armorStagesSerka
-    );
-  }, [appliedTargetLevel, equipmentWithValues, weaponStages, armorStages, weaponStagesSerka, armorStagesSerka]);
+  // 목표 레벨 계산 탭에서 각 장비의 기본값을 "바로 다음 단계(첫 옵션)"로 자동 선택
+  useEffect(() => {
+    if (!equipmentTargetItemLevelOptions.length) return;
+    setEquipmentTargetItemLevelSelections((prev) => {
+      let changed = false;
+      const next: Record<number, number> = {};
+      for (let idx = 0; idx < equipmentTargetItemLevelOptions.length; idx++) {
+        const opts = equipmentTargetItemLevelOptions[idx] ?? [];
+        if (!opts.length) continue;
+        const prevVal = prev[idx];
+        const hasPrev = prevVal != null && opts.some(o => o.value === prevVal);
+        next[idx] = hasPrev ? prevVal! : opts[0].value;
+        if (!hasPrev || prevVal !== next[idx]) changed = true;
+      }
+      if (!changed && Object.keys(prev).length === Object.keys(next).length) return prev;
+      return next;
+    });
+  }, [equipmentTargetItemLevelOptions]);
+
+  // 목표 평균 레벨 선택값 기본 세팅/유효성 유지
+  useEffect(() => {
+    if (!targetAverageLevelOptions.length) {
+      if (targetAverageLevel != null) setTargetAverageLevel(null);
+      return;
+    }
+    if (targetAverageLevel == null || !targetAverageLevelOptions.includes(targetAverageLevel)) {
+      setTargetAverageLevel(targetAverageLevelOptions[0]);
+    }
+  }, [targetAverageLevelOptions, targetAverageLevel]);
+
+  const applyTargetAverageLevel = useCallback(() => {
+    if (targetAverageLevel == null || !equipmentWithValues.length) return;
+    const EPS = 1e-6;
+    const requiredTotal = targetAverageLevel * equipmentWithValues.length;
+
+    type Plan = {
+      idx: number;
+      current: number;
+      fixed: boolean;
+      candidates: number[];
+      pointer: number;
+    };
+
+    const plans: Plan[] = equipmentWithValues.map((eq, idx) => {
+      const current = eq.itemLevel ?? 0;
+      const optionValues = (equipmentTargetItemLevelOptions[idx] ?? [])
+        .map(o => o.value)
+        .filter(v => Number.isFinite(v));
+      const uniqueSorted = Array.from(new Set([current, ...optionValues])).sort((a, b) => a - b);
+      const fixed = current >= targetAverageLevel - EPS; // 같거나 높으면 '유지' 고정
+
+      let pointer = 0;
+      if (!fixed) {
+        // 기본은 목표 평균 이하에서 가장 높은 값
+        for (let i = 0; i < uniqueSorted.length; i++) {
+          if (uniqueSorted[i] <= targetAverageLevel + EPS) pointer = i;
+          else break;
+        }
+      }
+
+      return { idx, current, fixed, candidates: uniqueSorted, pointer };
+    });
+
+    let total = plans.reduce((sum, p) => sum + p.candidates[p.pointer], 0);
+
+    for (let guard = 0; guard < 800; guard++) {
+      if (Math.abs(total - requiredTotal) <= EPS) break;
+
+      if (total > requiredTotal + EPS) {
+        // 총합이 높을 때: 1-step 하향 중에서 목표와 가장 가까워지는 선택
+        let bestIdx = -1;
+        let bestNextTotal = total;
+        let bestPref = Number.POSITIVE_INFINITY;
+        let bestScore = Number.POSITIVE_INFINITY;
+
+        for (let i = 0; i < plans.length; i++) {
+          const p = plans[i];
+          if (p.fixed || p.pointer <= 0) continue;
+          const drop = p.candidates[p.pointer] - p.candidates[p.pointer - 1];
+          const nextTotal = total - drop;
+          const pref = nextTotal >= requiredTotal - EPS ? 0 : 1;
+          const score = Math.abs(nextTotal - requiredTotal);
+          if (pref < bestPref || (pref === bestPref && score < bestScore)) {
+            bestIdx = i;
+            bestNextTotal = nextTotal;
+            bestPref = pref;
+            bestScore = score;
+          }
+        }
+
+        if (bestIdx < 0) break;
+        plans[bestIdx].pointer -= 1;
+        total = bestNextTotal;
+        continue;
+      }
+
+      // 총합이 낮을 때: 1-step 상향 중에서 목표와 가장 가까워지는 선택
+      let bestIdx = -1;
+      let bestNextTotal = total;
+      let bestPref = Number.POSITIVE_INFINITY;
+      let bestScore = Number.POSITIVE_INFINITY;
+
+      for (let i = 0; i < plans.length; i++) {
+        const p = plans[i];
+        if (p.fixed || p.pointer >= p.candidates.length - 1) continue;
+        const inc = p.candidates[p.pointer + 1] - p.candidates[p.pointer];
+        const nextTotal = total + inc;
+        const pref = nextTotal <= requiredTotal + EPS ? 0 : 1;
+        const score = Math.abs(nextTotal - requiredTotal);
+        if (pref < bestPref || (pref === bestPref && score < bestScore)) {
+          bestIdx = i;
+          bestNextTotal = nextTotal;
+          bestPref = pref;
+          bestScore = score;
+        }
+      }
+
+      if (bestIdx < 0) break;
+      plans[bestIdx].pointer += 1;
+      total = bestNextTotal;
+    }
+
+    const nextSelections: Record<number, number> = {};
+    for (const p of plans) {
+      const chosen = p.candidates[p.pointer];
+      if (Math.abs(chosen - p.current) <= EPS) continue; // 유지
+      nextSelections[p.idx] = chosen;
+    }
+    setEquipmentTargetItemLevelSelections(nextSelections);
+  }, [targetAverageLevel, equipmentWithValues, equipmentTargetItemLevelOptions]);
+
+  /** 목표 레벨 계산 탭: 각 장비의 도달 경로(표시 텍스트 + 비용 계산 액션) */
+  const equipmentReachPlans = useMemo(() => {
+    if (!equipmentWithValues.length) return [];
+    return equipmentWithValues.map((eq, idx) => {
+      const targetIL = equipmentTargetItemLevelSelections[idx];
+      if (targetIL == null) return { steps: [], actions: [] };
+      return buildReachPath(
+        eq.currentLevel ?? 0,
+        eq.itemLevel ?? 0,
+        targetIL,
+        eq.isSerkaEquipment,
+        eq.type,
+        weaponStages, armorStages, weaponStagesSerka, armorStagesSerka
+      );
+    });
+  }, [equipmentWithValues, equipmentTargetItemLevelSelections, weaponStages, armorStages, weaponStagesSerka, armorStagesSerka]);
+
+  const equipmentReachPaths = useMemo(() => {
+    return equipmentReachPlans.map(plan => plan.steps);
+  }, [equipmentReachPlans]);
+
+  /** 목표 레벨 계산 탭: 장비별 예상 비용/평균 재료 소모량 */
+  const equipmentReachCosts = useMemo(() => {
+    type CostLine = { name: string; quantity: number; totalCost: number };
+    if (!equipmentWithValues.length) return [] as Array<{ totalCost: number; materials: CostLine[] }>;
+
+    const mapByName = (target: Map<string, CostLine>, name: string, quantity: number, totalCost: number) => {
+      const prev = target.get(name);
+      if (prev) {
+        prev.quantity += quantity;
+        prev.totalCost += totalCost;
+      } else {
+        target.set(name, { name, quantity, totalCost });
+      }
+    };
+
+    const getAdvancedData = (level: number) => {
+      if (level === 1) return simulationDataLevel1;
+      if (level === 2) return simulationDataLevel2;
+      if (level === 3) return simulationDataLevel3;
+      return simulationDataLevel4;
+    };
+
+    const getBestAdvancedScenario = (advancedLevel: number, gearType: GearType) => {
+      const data = getAdvancedData(advancedLevel);
+      const refiningLevel = (`상재${advancedLevel}` as RefiningLevel);
+      const materials = getMaterialsForLevel(refiningLevel, gearType);
+      const filtered = (data as any).data.filter((item: any) => item.gearType === gearType);
+      let best: { totalCost: number; materialBreakdown: Record<string, number> } | null = null;
+      for (const item of filtered) {
+        const result: SimulationResult = {
+          expectedAttempts: item.result.expectedAttempts,
+          normalTurns: item.result.normalTurns,
+          ancestorTurns: item.result.ancestorTurns,
+          enhancedAncestorTurns: item.result.enhancedAncestorTurns || 0,
+          freeTurns: item.result.freeTurns,
+          totalCost: 0,
+          materialBreakdown: item.result.materialBreakdown,
+        };
+        const breakdown = calculateAdvancedTotalCostAdv(
+          result,
+          materials,
+          item.strategy.normalBreath,
+          item.strategy.normalCraft,
+          item.strategy.ancestorBreath,
+          item.strategy.ancestorCraft,
+          item.strategy.enhancedAncestorBreath || false,
+          item.strategy.enhancedAncestorCraft || false
+        );
+        if (!best || breakdown.totalCost < best.totalCost) {
+          best = { totalCost: breakdown.totalCost, materialBreakdown: item.result.materialBreakdown };
+        }
+      }
+      return best;
+    };
+
+    return equipmentWithValues.map((eq, idx) => {
+      const plan = equipmentReachPlans[idx];
+      if (!plan || !plan.actions.length) return { totalCost: 0, materials: [] as CostLine[] };
+
+      const isWeapon = eq.type === '무기';
+      const materialMap = new Map<string, CostLine>();
+      let totalCost = 0;
+
+      for (const action of plan.actions) {
+        if (action.kind === 'inherit') continue;
+
+        if (action.kind === 'normal') {
+          const stages = isWeapon
+            ? (action.isSerka ? weaponStagesSerka : weaponStages)
+            : (action.isSerka ? armorStagesSerka : armorStages);
+          const stage = stages.find(s => s.level === action.toLevel);
+          if (!stage) continue;
+          const { optimalStrategy } = calculateOptimalStrategy(stage, adjustedMarketInfo);
+          totalCost += optimalStrategy.expectedCost;
+          const lines = getAverageConsumptionLines(
+            stage as Parameters<typeof getAverageConsumptionLines>[0],
+            optimalStrategy as Parameters<typeof getAverageConsumptionLines>[1],
+            adjustedMarketInfo
+          );
+          for (const line of lines) {
+            mapByName(materialMap, line.name, line.quantity, line.totalPrice ?? 0);
+          }
+          continue;
+        }
+
+        const gearType: GearType = isWeapon ? '무기' : '방어구';
+        const best = getBestAdvancedScenario(action.advancedLevel, gearType);
+        if (!best) continue;
+        const ratio = Math.max(0, action.percentUsed) / 100;
+        totalCost += best.totalCost * ratio;
+        for (const [name, quantity] of Object.entries(best.materialBreakdown)) {
+          const q = (quantity ?? 0) * ratio;
+          const unitPrice = getMaterialValueAdv(name) ?? 0;
+          mapByName(materialMap, name, q, q * unitPrice);
+        }
+      }
+
+      const materials = Array.from(materialMap.values())
+        .filter(line => line.quantity > 0)
+        .sort((a, b) => b.totalCost - a.totalCost);
+
+      return { totalCost, materials };
+    });
+  }, [
+    equipmentWithValues,
+    equipmentReachPlans,
+    weaponStages,
+    armorStages,
+    weaponStagesSerka,
+    armorStagesSerka,
+    adjustedMarketInfo,
+    calculateAdvancedTotalCostAdv,
+    getMaterialValueAdv,
+  ]);
+
+  const targetLevelCostSummary = useMemo(() => {
+    const map = new Map<string, { name: string; quantity: number; totalCost: number }>();
+    let totalCost = 0;
+    for (const row of equipmentReachCosts) {
+      totalCost += row.totalCost || 0;
+      for (const m of row.materials) {
+        const prev = map.get(m.name);
+        if (prev) {
+          prev.quantity += m.quantity;
+          prev.totalCost += m.totalCost;
+        } else {
+          map.set(m.name, { name: m.name, quantity: m.quantity, totalCost: m.totalCost });
+        }
+      }
+    }
+    const materials = Array.from(map.values()).sort((a, b) => b.totalCost - a.totalCost);
+    return { totalCost, materials };
+  }, [equipmentReachCosts]);
+
+  /** 목표 레벨 탭: 목표 아이템 레벨 평균 (선택된 것은 선택값, 미선택은 현재값 기준) */
+  const selectedTargetAvgItemLevel = useMemo(() => {
+    if (!equipmentWithValues.length) return null;
+    if (!Object.keys(equipmentTargetItemLevelSelections).length) return null;
+    const ils = equipmentWithValues.map((eq, idx) => {
+      const selVal = equipmentTargetItemLevelSelections[idx];
+      if (selVal != null) return selVal;
+      return eq.itemLevel ?? null;
+    });
+    const valid = ils.filter((v): v is number => v != null);
+    if (!valid.length) return null;
+    return valid.reduce((a, b) => a + b, 0) / valid.length;
+  }, [equipmentWithValues, equipmentTargetItemLevelSelections]);
 
   const summaryValues = useMemo(() => {
     if (!equipmentWithValues.length) {
@@ -1971,37 +2238,6 @@ function CharacterSimulation({
               </div>
             ) : (
               <>
-                {/* 목표 레벨 계산 모드: 레벨 선택기 */}
-                {viewMode === 'target-level' && (
-                  <div className="bg-gray-900/70 rounded-lg border border-gray-700 p-4">
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <label className="text-sm text-white font-medium">목표 레벨</label>
-                      <select
-                        value={targetLevelDropdownValue ?? ''}
-                        onChange={(e) => setTargetLevelDropdownValue(e.target.value ? Number(e.target.value) : null)}
-                        className="px-3 py-1.5 bg-gray-800 text-white rounded-lg border border-gray-700 focus:border-purple-500 focus:outline-none"
-                      >
-                        <option value="">레벨 선택</option>
-                        {targetLevelOptions.map(lvl => (
-                          <option key={lvl} value={lvl}>{lvl}</option>
-                        ))}
-                      </select>
-                      <button
-                        type="button"
-                        onClick={() => setAppliedTargetLevel(targetLevelDropdownValue)}
-                        disabled={!targetLevelDropdownValue}
-                        className="px-4 py-1.5 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-sm"
-                      >
-                        계산 시작
-                      </button>
-                      {appliedTargetLevel != null && (
-                        <span className="text-sm text-gray-400">
-                          목표: <span className="text-purple-300 font-medium">{appliedTargetLevel}</span>
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
 
                 {/* 일반 재련 요약 정보 (재련 효율 모드에서만 표시) */}
                 {viewMode === 'efficiency' && (
@@ -2399,7 +2635,7 @@ function CharacterSimulation({
                 )}
 
                 {/* 장비 표 */}
-                <div className="bg-gray-900/70 rounded-lg border border-gray-700 overflow-hidden">
+                <div className={`bg-gray-900/70 rounded-lg border border-gray-700 ${viewMode === 'target-level' ? 'overflow-visible' : 'overflow-hidden'}`}>
                   {viewMode === 'efficiency' && (
                   <div className="px-3 py-2 bg-gray-800/50 border-b border-gray-700 flex flex-wrap items-center gap-3">
                     <label className={`flex items-center gap-3 select-none rounded-lg px-3 py-2 ${hasKazeros1730Equipment ? 'cursor-pointer bg-gray-700/70 hover:bg-gray-700 border border-gray-600' : 'cursor-not-allowed opacity-60 bg-gray-800/50 border border-gray-700'}`}>
@@ -2414,13 +2650,78 @@ function CharacterSimulation({
                     </label>
                   </div>
                   )}
-                  <div className="overflow-x-auto sm:overflow-visible">
+                  {viewMode === 'target-level' && (
+                  <div className="px-3 py-2 bg-gray-800/50 border-b border-gray-700 flex flex-wrap items-center gap-2">
+                    <span className="text-xs sm:text-sm text-gray-300">목표 평균 레벨</span>
+                    <select
+                      value={targetAverageLevel ?? ''}
+                      onChange={(e) => setTargetAverageLevel(e.target.value ? Number(e.target.value) : null)}
+                      className="text-[11px] sm:text-xs bg-gray-800 text-white rounded border border-gray-600 py-1 px-2 focus:border-purple-500 focus:outline-none leading-tight min-w-[110px]"
+                      aria-label="목표 평균 레벨"
+                    >
+                      <option value="">유지</option>
+                      {targetAverageLevelOptions.map(v => (
+                        <option key={v} value={v}>{v.toLocaleString('ko-KR')}</option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={applyTargetAverageLevel}
+                      className="px-3 py-1 rounded bg-purple-600 hover:bg-purple-500 text-white text-[11px] sm:text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={targetAverageLevel == null}
+                    >
+                      Go
+                    </button>
+                    <span className="ml-auto text-xs sm:text-sm text-gray-300">
+                      총 비용 합계:{' '}
+                      <span className="font-semibold text-emerald-300">
+                        {formatNumberWithSignificantDigits(targetLevelCostSummary.totalCost)} 골드
+                      </span>
+                    </span>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setTargetTotalMaterialTooltipOpen((prev) => !prev)}
+                        className="text-[11px] sm:text-xs px-2 py-1 rounded text-gray-300 hover:text-white hover:bg-gray-700/80 border border-gray-600"
+                      >
+                        전체 재료 상세
+                      </button>
+                      {targetTotalMaterialTooltipOpen && (
+                        <>
+                          <div className="fixed inset-0 z-10" aria-hidden onClick={() => setTargetTotalMaterialTooltipOpen(false)} />
+                          <div className="absolute right-0 top-full mt-1.5 z-20 min-w-[220px] max-w-[90vw] rounded-lg border border-gray-600 bg-gray-800 py-2 px-2.5 shadow-xl">
+                            <div className="text-xs font-semibold text-purple-200 mb-1.5">6부위 재료 소모량 합계</div>
+                            <div className="flex flex-col gap-1 text-[10px] text-gray-300">
+                              {targetLevelCostSummary.materials.length === 0 ? (
+                                <span className="text-gray-500">-</span>
+                              ) : (
+                                targetLevelCostSummary.materials.map((m) => (
+                                  <span key={m.name} className="inline-flex items-center gap-1 whitespace-nowrap">
+                                    <ItemIcon name={m.name} size="sm" className="flex-shrink-0" />
+                                    <span>x {formatNumberWithSignificantDigits(m.quantity)}</span>
+                                  </span>
+                                ))
+                              )}
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  )}
+                  <div className={viewMode === 'target-level' ? 'overflow-visible' : 'overflow-x-auto sm:overflow-visible'}>
                     <table className="w-full border border-gray-800 text-[11px] sm:text-[13px] md:text-sm table-fixed sm:table-auto sm:min-w-[880px]">
                       <thead>
                         <tr className="bg-gray-900/90 text-gray-200">
                           <th className="px-1 sm:px-3 py-1.5 sm:py-3 text-left font-medium border-b border-gray-700 w-[20%] sm:w-auto sm:min-w-[3.5rem]">장비 부위</th>
                           <th className="hidden sm:table-cell px-2 sm:px-3 py-2 sm:py-3 text-left font-medium border-b border-gray-700 min-w-[7rem]">장비명</th>
-                          <th className="px-1 sm:px-3 py-1.5 sm:py-3 text-center font-medium border-b border-gray-700 w-[14%] sm:w-auto sm:min-w-[4.5rem]">목표 재련</th>
+                          <th className="px-1 sm:px-3 py-1.5 sm:py-3 text-center font-medium border-b border-gray-700 w-[14%] sm:w-auto sm:min-w-[4.5rem]">목표 아이템 레벨</th>
+                          {viewMode === 'target-level' && (
+                            <th className="hidden sm:table-cell px-1 sm:px-3 py-1.5 sm:py-3 text-left font-medium border-b border-gray-700 sm:min-w-[7rem]">도달 경로</th>
+                          )}
+                          {viewMode === 'target-level' && (
+                            <th className="px-1 sm:px-3 py-1.5 sm:py-3 text-left font-medium border-b border-gray-700 w-[26%] sm:w-auto sm:min-w-[12rem]">예상 비용</th>
+                          )}
                           {viewMode === 'efficiency' && (<>
                           <th className="px-1 sm:px-3 py-1.5 sm:py-3 text-right font-medium border-b border-gray-700 w-[22%] sm:w-auto sm:min-w-[6.5rem]">야금/재봉</th>
                           <th className="px-1 sm:px-3 py-1.5 sm:py-3 text-right font-medium border-b border-gray-700 w-[22%] sm:w-auto sm:min-w-[5.5rem]">숨결</th>
@@ -2445,7 +2746,14 @@ function CharacterSimulation({
                                     {eq.Icon && (
                                       <img src={eq.Icon} alt={eq.Name} className="w-5 h-5 sm:w-6 sm:h-6 object-contain flex-shrink-0" />
                                     )}
-                                    <span className="break-words min-w-0">{eq.Name}</span>
+                                    <span className="break-words min-w-0">
+                                      {eq.Name}
+                                      {eq.itemLevel != null && (
+                                        <span className="ml-1 text-[11px] text-gray-400 font-normal">
+                                          ({Math.round(eq.itemLevel).toLocaleString('ko-KR')})
+                                        </span>
+                                      )}
+                                    </span>
                                   </div>
                                   {eq.advancedProgress != null && (
                                     <span className="text-[11px] sm:text-xs text-gray-400 break-words">{eq.advancedProgress}</span>
@@ -2500,59 +2808,171 @@ function CharacterSimulation({
                                   )}
                                 </div>
                                 ) : (
-                                  /* 목표 레벨 계산 모드 */
+                                  /* 목표 레벨 계산 모드: 목표 아이템 레벨 선택 */
                                   (() => {
-                                    const ts = targetLevelStages?.[idx];
-                                    if (!ts || ts.targetStageLevel == null) return <span className="text-gray-500">-</span>;
-                                    const isKazerosToSerkaConversion = ts.useSerkaForDisplay && !eq.isSerkaEquipment;
-                                    const isAlready = !isKazerosToSerkaConversion && ts.targetStageLevel === (eq.currentLevel ?? -1);
-                                    const currentStage = eq.currentLevel ?? 0;
-                                    const progressionSteps = !isAlready
-                                      ? getProgressionSteps(currentStage, ts.targetStageLevel, isKazerosToSerkaConversion)
-                                      : [];
+                                    const opts = equipmentTargetItemLevelOptions[idx] ?? [];
+                                    const selVal = equipmentTargetItemLevelSelections[idx];
                                     return (
-                                      <div className="relative inline-flex flex-col items-center gap-0.5">
-                                        <button
-                                          type="button"
-                                          onClick={() => setTargetLevelProgressionIndex((prev) => (prev === idx ? null : idx))}
-                                          className="text-left hover:bg-gray-700/50 rounded px-1 -mx-1 py-0.5 cursor-pointer"
-                                          aria-label="재련 진행 과정 보기"
-                                        >
-                                          <span className="whitespace-nowrap">
-                                            {isAlready
-                                              ? <span className="text-gray-400 text-[10px]">현재 단계</span>
-                                              : `+${ts.targetStageLevel}`}
-                                          </span>
-                                          {ts.targetItemLevel != null && (
-                                            <span className="block text-[10px] text-gray-400">{ts.targetItemLevel}</span>
-                                          )}
-                                          {isKazerosToSerkaConversion && (
-                                            <span className="text-[10px] text-amber-400/90">세르카 계승</span>
-                                          )}
-                                          {eq.convertedToSerka && !isKazerosToSerkaConversion && (
-                                            <span className="text-[10px] text-amber-400/90">세르카 환산</span>
-                                          )}
-                                        </button>
-                                        {targetLevelProgressionIndex === idx && progressionSteps.length > 0 && (
-                                          <>
-                                            <div className="fixed inset-0 z-10" aria-hidden onClick={() => setTargetLevelProgressionIndex(null)} />
-                                            <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 z-20 min-w-[180px] max-w-[90vw] rounded-lg border border-gray-600 bg-gray-800 py-2.5 px-3 shadow-xl">
-                                              <div className="text-xs font-semibold text-purple-200 mb-1.5">{eq.type} 재련 진행 과정</div>
-                                              <ul className="space-y-1 text-xs text-gray-300">
-                                                {progressionSteps.map((step, i) => (
-                                                  <li key={i} className={step === '세르카 계승' ? 'text-amber-400 font-medium' : ''}>
-                                                    {step}
-                                                  </li>
-                                                ))}
-                                              </ul>
-                                            </div>
-                                          </>
-                                        )}
+                                      <div className="flex flex-col items-stretch gap-0.5 min-w-0">
+                                        <div className="w-full flex justify-center">
+                                          <div className="w-full max-w-[220px] sm:max-w-[260px]">
+                                            <select
+                                              value={selVal ?? ''}
+                                              onChange={(e) => {
+                                                const value = e.target.value ? Number(e.target.value) : undefined;
+                                                setEquipmentTargetItemLevelSelections((prev) => {
+                                                  if (value == null) {
+                                                    const { [idx]: _, ...rest } = prev;
+                                                    return rest;
+                                                  }
+                                                  return { ...prev, [idx]: value };
+                                                });
+                                              }}
+                                              className="w-full text-[11px] sm:text-xs bg-gray-800 text-white rounded border border-gray-600 py-0.5 px-1 focus:border-purple-500 focus:outline-none leading-tight"
+                                              aria-label="목표 아이템 레벨"
+                                            >
+                                              <option value="">유지</option>
+                                              {opts.map(opt => (
+                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                              ))}
+                                            </select>
+                                          </div>
+                                        </div>
                                       </div>
                                     );
                                   })()
                                 )}
                               </td>
+                              {viewMode === 'target-level' && (
+                                <td className="hidden sm:table-cell px-1 sm:px-3 py-1.5 sm:py-3 border-b border-gray-800 align-top min-w-0">
+                                  {(() => {
+                                    const path = equipmentReachPaths[idx] ?? [];
+                                    if (!path.length) return <span className="text-gray-500 text-[10px]">-</span>;
+                                    return (
+                                      <div className="relative inline-flex flex-col items-start">
+                                        <button
+                                          type="button"
+                                          onClick={() => setTargetPathTooltipIndex((prev) => (prev === idx ? null : idx))}
+                                          className="text-[11px] px-2 py-0.5 rounded text-gray-300 hover:text-white hover:bg-gray-700/80 border border-gray-600"
+                                        >
+                                          보기
+                                        </button>
+                                        {targetPathTooltipIndex === idx && (
+                                          <>
+                                            <div className="fixed inset-0 z-10" aria-hidden onClick={() => setTargetPathTooltipIndex(null)} />
+                                            <div className="absolute left-0 top-full mt-1.5 z-20 min-w-[220px] max-w-[90vw] rounded-lg border border-gray-600 bg-gray-800 py-2.5 px-3 shadow-xl">
+                                              <div className="text-xs font-semibold text-purple-200 mb-1.5">도달 경로</div>
+                                              <div className="flex flex-col gap-0.5">
+                                                {path.map((step, si) => (
+                                                  <span
+                                                    key={si}
+                                                    className={`text-[10px] sm:text-[11px] leading-tight ${
+                                                      step === '세르카 계승'
+                                                        ? 'text-yellow-400 font-medium'
+                                                      : step.startsWith('상급재련')
+                                                        ? 'text-purple-300'
+                                                        : step.startsWith('세르카')
+                                                        ? 'text-cyan-300'
+                                                        : 'text-gray-300'
+                                                    }`}
+                                                  >
+                                                    {step}
+                                                  </span>
+                                                ))}
+                                              </div>
+                                            </div>
+                                          </>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
+                                </td>
+                              )}
+                              {viewMode === 'target-level' && (
+                                <td className="px-1 sm:px-3 py-1.5 sm:py-3 border-b border-gray-800 align-top min-w-0">
+                                  {(() => {
+                                    const cost = equipmentReachCosts[idx];
+                                    if (!cost || cost.totalCost <= 0) return <span className="text-gray-500 text-[10px]">-</span>;
+                                    const path = equipmentReachPaths[idx] ?? [];
+                                    return (
+                                      <div className="relative space-y-1">
+                                        <div className="text-[10px] sm:text-xs font-semibold text-emerald-300">
+                                          <span className="sm:hidden">{formatNumberWithSignificantDigits(cost.totalCost)} G</span>
+                                          <span className="hidden sm:inline">{formatNumberWithSignificantDigits(cost.totalCost)} 골드</span>
+                                        </div>
+                                        {cost.materials.length > 0 && (
+                                          <>
+                                            <div className="flex items-center gap-1">
+                                              <button
+                                                type="button"
+                                                onClick={() => setTargetCostTooltipIndex((prev) => (prev === idx ? null : idx))}
+                                                className="text-[10px] sm:text-[11px] px-2 py-0.5 rounded text-gray-300 hover:text-white hover:bg-gray-700/80 border border-gray-600"
+                                              >
+                                                재료 상세
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={() => setTargetPathTooltipIndex((prev) => (prev === idx ? null : idx))}
+                                                className="sm:hidden text-[10px] px-2 py-0.5 rounded text-gray-300 hover:text-white hover:bg-gray-700/80 border border-gray-600"
+                                              >
+                                                도달 경로
+                                              </button>
+                                            </div>
+                                            {targetCostTooltipIndex === idx && (
+                                              <>
+                                                <div className="fixed inset-0 z-10" aria-hidden onClick={() => setTargetCostTooltipIndex(null)} />
+                                                <div className="absolute left-0 top-full mt-1.5 z-20 min-w-[220px] max-w-[90vw] rounded-lg border border-gray-600 bg-gray-800 py-2 px-2.5 shadow-xl">
+                                                  <div className="text-xs font-semibold text-purple-200 mb-1.5">평균 재료 소모량</div>
+                                                  <div className="flex flex-col gap-1 text-[10px] text-gray-300">
+                                                    {cost.materials.map((m) => (
+                                                      <span key={m.name} className="inline-flex items-center gap-1 whitespace-nowrap">
+                                                        <ItemIcon name={m.name} size="sm" className="flex-shrink-0" />
+                                                        <span>x {formatNumberWithSignificantDigits(m.quantity)}</span>
+                                                      </span>
+                                                    ))}
+                                                  </div>
+                                                </div>
+                                              </>
+                                            )}
+                                            {targetPathTooltipIndex === idx && (
+                                              <div className="sm:hidden">
+                                                <>
+                                                  <div className="fixed inset-0 z-10" aria-hidden onClick={() => setTargetPathTooltipIndex(null)} />
+                                                  <div className="absolute left-0 top-full mt-1.5 z-20 min-w-[220px] max-w-[90vw] rounded-lg border border-gray-600 bg-gray-800 py-2.5 px-3 shadow-xl">
+                                                    <div className="text-xs font-semibold text-purple-200 mb-1.5">도달 경로</div>
+                                                    <div className="flex flex-col gap-0.5">
+                                                      {path.length === 0 ? (
+                                                        <span className="text-[10px] text-gray-500">-</span>
+                                                      ) : (
+                                                        path.map((step, si) => (
+                                                          <span
+                                                            key={si}
+                                                            className={`text-[10px] leading-tight ${
+                                                              step === '세르카 계승'
+                                                                ? 'text-yellow-400 font-medium'
+                                                              : step.startsWith('상급재련')
+                                                              ? 'text-purple-300'
+                                                              : step.startsWith('세르카')
+                                                              ? 'text-cyan-300'
+                                                              : 'text-gray-300'
+                                                            }`}
+                                                          >
+                                                            {step}
+                                                          </span>
+                                                        ))
+                                                      )}
+                                                    </div>
+                                                  </div>
+                                                </>
+                                              </div>
+                                            )}
+                                          </>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
+                                </td>
+                              )}
                               {viewMode === 'efficiency' && (<>
                               <td className="px-1 sm:px-3 py-1.5 sm:py-3 text-right border-b border-gray-800 align-top min-w-0">
                                 {eq.craftValue != null || eq.enhancedCraftValue != null ? (
@@ -2649,7 +3069,7 @@ function CharacterSimulation({
                           ))
                         ) : (
                           <tr>
-                            <td colSpan={viewMode === 'efficiency' ? 6 : 3} className="px-2 sm:px-4 py-8 text-center text-gray-400 text-sm">
+                            <td colSpan={viewMode === 'efficiency' ? 6 : 5} className="px-2 sm:px-4 py-8 text-center text-gray-400 text-sm">
                               장비 정보를 불러올 수 없습니다.
                             </td>
                           </tr>
@@ -2657,7 +3077,7 @@ function CharacterSimulation({
                       </tbody>
                     </table>
                   </div>
-                  {viewMode === 'target-level' && appliedTargetLevel != null && equipmentWithValues.length > 0 && (
+                  {viewMode === 'target-level' && equipmentWithValues.length > 0 && (
                     <div className="px-3 py-2 border-t border-gray-700 bg-gray-800/50 flex flex-wrap items-center gap-4 text-sm">
                       <span className="text-gray-300">
                         현재 아이템 레벨 평균:{' '}
@@ -2667,10 +3087,14 @@ function CharacterSimulation({
                             : '-'}
                         </span>
                       </span>
-                      <span className="text-gray-300">
-                        목표 아이템 레벨 평균:{' '}
-                        <span className="font-medium text-purple-300">{appliedTargetLevel}</span>
-                      </span>
+                      {selectedTargetAvgItemLevel != null && (
+                        <span className="text-gray-300">
+                          목표 아이템 레벨 평균:{' '}
+                          <span className="font-medium text-purple-300">
+                            {selectedTargetAvgItemLevel.toLocaleString('ko-KR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                          </span>
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>

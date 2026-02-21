@@ -50,9 +50,7 @@ export default function PrivacyPage() {
               개인정보 처리방침에 대한 문의사항이 있으시면 다음 이메일로 연락해 주세요:
             </p>
             <p className="text-[10px] sm:text-xs md:text-sm leading-relaxed mt-1 sm:mt-2">
-              <a href="mailto:snuggdok@gmail.com" className="text-gray-300 hover:text-white">
-                snuggdok@gmail.com
-              </a>
+              <span className="text-gray-300 hover:text-white">snuggdok[at]지메일.com</span>
             </p>
           </section>
 
