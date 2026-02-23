@@ -1,10 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { getMarketCache, setMarketCache } from '@/lib/marketCache';
 import { promises as fs } from 'fs';
 import path from 'path';
 
 export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
 
 const UPGRADE_FILE_WEAPON = path.join(process.cwd(), 'upgrade1.csv');
 const UPGRADE_FILE_ARMOR = path.join(process.cwd(), 'upgrade2.csv');

@@ -1,9 +1,8 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { revalidatePath } from 'next/cache';
 
 export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
 
 // Supabase 클라이언트 생성 (서버 사이드에서는 서비스 키 사용)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';

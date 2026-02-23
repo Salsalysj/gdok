@@ -1,7 +1,6 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 
-export const dynamic = 'force-dynamic';
 
 // POST: ValueDB 캐시 무효화 (etc_list.csv 업데이트 후 사용)
 export async function POST(request: Request) {

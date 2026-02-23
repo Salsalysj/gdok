@@ -1,10 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { getMarketCache, setMarketCache } from '@/lib/marketCache';
 
 export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
 
 const ITEM_SAMPLE_FILE = path.join(process.cwd(), 'item sample.csv');
 

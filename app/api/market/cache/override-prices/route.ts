@@ -1,9 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { getMarketCache, setMarketCache } from '@/lib/marketCache';
 import { createClient } from '@supabase/supabase-js';
 
 export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
 
 type OverrideRequest = {
   items: string[]; // 0골드로 설정할 아이템 이름 목록

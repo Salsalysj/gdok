@@ -12,9 +12,16 @@
     "revalidate-value-db": "node scripts/revalidate-value-db.js",
     "download-item-icons": "tsx scripts/download-item-icons.ts",
     "export-calendar-csv": "tsx scripts/export-calendar-to-csv.ts",
-    "download-calendar-icons": "tsx scripts/download-calendar-item-icons.ts"
+    "download-calendar-icons": "tsx scripts/download-calendar-item-icons.ts",
+    "cap:sync": "npx cap sync",
+    "cap:open:android": "npx cap open android",
+    "cap:run:android": "npx cap run android",
+    "cap:build:android:debug": "cd android && gradlew.bat assembleDebug",
+    "cap:build:android:release": "cd android && gradlew.bat assembleRelease"
   },
   "dependencies": {
+    "@capacitor/android": "^8.1.0",
+    "@capacitor/core": "^8.1.0",
     "@supabase/supabase-js": "^2.78.0",
     "chart.js": "^4.4.3",
     "next": "^14.0.0",
@@ -24,6 +31,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.1.0",
     "@types/node": "^20.0.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
