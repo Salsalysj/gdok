@@ -44,7 +44,7 @@ export default function AdsenseSidebar() {
         data-ad-slot="2344044261"
         data-ad-format="rectangle"
         data-full-width-responsive="false"
-        data-adtest="on"
+      //  data-adtest="on"  // 테스트 모드 비활성화
       />
     </div>
   );
