@@ -42,3 +42,13 @@ data/cached-market-data.json
 cursor_.md
 calc.xlsx
 
+# Capacitor / Android
+android/app/debug
+android/app/release
+android/.gradle
+android/.idea
+android/local.properties
+android/*.iml
+android/.cxx
+*.jks
+*.keystore
