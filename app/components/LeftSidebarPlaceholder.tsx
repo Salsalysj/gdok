@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useFavorites } from '../contexts/FavoritesContext';
+import AdsenseSidebar from './AdsenseSidebar';
 
 export default function LeftSidebarPlaceholder() {
   const [isFavoritesOpen, setIsFavoritesOpen] = useState(true);
@@ -12,17 +13,7 @@ export default function LeftSidebarPlaceholder() {
 
   return (
     <div className="h-full flex flex-col bg-gray-900 border-r border-gray-800">
-      <div className="p-4 border-b border-gray-800">
-        <Link href="/" className="flex items-center gap-2">
-          <img src="/page_logo_white.png" alt="" className="h-8 w-auto object-contain flex-shrink-0" />
-          <span className="text-xl md:text-2xl font-bold text-white">
-            껨산기
-          </span>
-          <span className="text-xs text-gray-400 hidden sm:inline">
-            by 스누껨독
-          </span>
-        </Link>
-      </div>
+
       <div className="flex-1 min-h-0 overflow-y-auto p-4">
         <nav className="space-y-2">
           <Link
@@ -199,7 +190,7 @@ export default function LeftSidebarPlaceholder() {
       </div>
 
       <div className="flex-1 overflow-y-auto flex items-center justify-center min-h-0">
-          <div className="text-gray-400 text-sm">광고주를 위한 공간 (많관부)</div>
+          <AdsenseSidebar />
       </div>
       {/* 하단 광고 영역 (남는 공간) */}
       {/* <div className="mt-auto flex-shrink-0 p-3 pt-2 border-t border-gray-800 flex justify-center items-center min-h-[80px]">

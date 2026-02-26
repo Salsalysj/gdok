@@ -129,6 +129,12 @@ export default async function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+        {/* Google AdSense - data-ad-client, data-ad-slot은 AdsenseSidebar 컴포넌트에서 설정 */}
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8290185223283573"
+          crossOrigin="anonymous"
+        />
       </head>
       <body suppressHydrationWarning className="flex flex-col min-h-screen">
         <FavoritesProvider>

@@ -2,8 +2,8 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: '필드보스/카오스게이트 보상 - 껨산기',
-  description: '필드보스와 카오스게이트 보상 가치 계산',
+  title: '필드보스 / 카오스게이트 보상 - 껨산기',
+  description: '필보와 카게의 보상 가치 계산',
 };
 
 import BossGateClient from './client';

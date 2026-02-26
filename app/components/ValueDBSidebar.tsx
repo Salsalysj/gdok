@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useMemo, useState, useRef, useEffect } from 'react';
+import AdsenseSidebar from './AdsenseSidebar';
 import { formatNumberWithSignificantDigits } from '../utils/formatNumber';
 import { usePriceOverride } from '../contexts/PriceOverrideContext';
 import { useValueDb } from '../contexts/ValueDbContext';
@@ -669,7 +670,7 @@ export default function ValueDBSidebar() {
       {/* 검색어가 없고 포커스되지 않았을 때 표시할 영역 */}
       {!searchQuery.trim() && !isSearchFocused && (
         <div className="flex-1 overflow-y-auto flex items-center justify-center min-h-0">
-          <div className="text-gray-400 text-sm">광고주를 위한 공간 (많관부)</div>
+          <AdsenseSidebar />
         </div>
       )}
       
