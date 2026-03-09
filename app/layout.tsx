@@ -1,12 +1,9 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import Navigation from './components/Navigation'
+import PriceAdjustmentBar from './components/PriceAdjustmentBar'
 import Footer from '../components/Footer'
 import ScrollToTopButton from './components/ScrollToTopButton'
-import SidebarWrapper from './components/SidebarWrapper'
-import LeftSidebarPlaceholder from './components/LeftSidebarPlaceholder'
-import ValueDBSidebar from './components/ValueDBSidebar'
-import { SidebarProvider } from './contexts/SidebarContext'
 import { PriceOverrideProvider } from './contexts/PriceOverrideContext'
 import { ValueDbProvider } from './contexts/ValueDbContext'
 import { FavoritesProvider } from './contexts/FavoritesContext'
@@ -138,8 +135,7 @@ export default async function RootLayout({
       </head>
       <body suppressHydrationWarning className="flex flex-col min-h-screen">
         <FavoritesProvider>
-          <SidebarProvider>
-            <PriceOverrideProvider>
+          <PriceOverrideProvider>
               <ValueDbProvider
               entries={valueDbData.entries}
               cubeStageRewards={valueDbData.cubeStageRewards}
@@ -165,35 +161,15 @@ export default async function RootLayout({
             >
               {/* Header */}
               <Navigation />
-              
-              {/* Body: 3-column grid layout */}
-              <div className="flex-1 min-w-0">
-                <div className="max-w-[1800px] mx-auto lg:px-6">
-                  <div className="grid lg:grid-cols-[360px,1fr,360px] gap-3">
-                    {/* Left Sidebar */}
-                    <aside className="hidden lg:block">
-                      <div className="sticky top-14 md:top-16 h-[calc(100dvh-3.5rem)] md:h-[calc(100dvh-4rem)]">
-                        <LeftSidebarPlaceholder />
-                      </div>
-                    </aside>
-                    
-                    {/* Main Content */}
-                    <main className="min-w-0 pt-14 md:pt-16 pb-6">
-                      {children}
-                    </main>
-                    
-                    {/* Right Sidebar */}
-                    <aside className="hidden lg:block">
-                      <div className="sticky top-14 md:top-16 h-[calc(100dvh-3.5rem)] md:h-[calc(100dvh-4rem)]">
-                        <ValueDBSidebar />
-                      </div>
-                    </aside>
-                  </div>
+              {/* Body - pt로 고정 네비 아래부터 시작 */}
+              <div className="flex-1 min-w-0 pt-14 md:pt-16">
+                <PriceAdjustmentBar />
+                <div className="max-w-[1080px] mx-auto px-4 lg:px-6 py-4 pb-6">
+                  <main className="min-w-0">
+                    {children}
+                  </main>
                 </div>
               </div>
-              
-              {/* Mobile Sidebar Wrapper (for toggle functionality) */}
-              <SidebarWrapper />
 
               {/* 모바일: 스크롤 시 맨 위로 가기 버튼 */}
               <ScrollToTopButton />
@@ -206,7 +182,6 @@ export default async function RootLayout({
               </div>
               </ValueDbProvider>
             </PriceOverrideProvider>
-          </SidebarProvider>
         </FavoritesProvider>
       </body>
     </html>

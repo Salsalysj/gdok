@@ -2,19 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useSidebar } from '../contexts/SidebarContext';
-import { usePriceOverride } from '../contexts/PriceOverrideContext';
+import { useEffect, useRef, useState } from 'react';
 import { useFavorites } from '../contexts/FavoritesContext';
 
 export default function Navigation() {
   const pathname = usePathname();
-  const { isOpen: sidebarOpen, toggle: toggleSidebar } = useSidebar();
-  const { state: priceOverrideState } = usePriceOverride();
-  const filterLabel = useMemo(() => {
-    const hasAnyOverride = priceOverrideState && Object.values(priceOverrideState).some(Boolean);
-    return hasAnyOverride ? '필터 : 조정됨' : '필터 : Default';
-  }, [priceOverrideState]);
   const [lightMode, setLightMode] = useState<boolean>(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [contentRewardsOpen, setContentRewardsOpen] = useState<boolean>(false);
@@ -161,16 +153,8 @@ export default function Navigation() {
             <span className="text-xs text-gray-400 hidden sm:inline">by 스누껨독</span>
           </Link>
 
-          {/* 모바일: DB/필터 버튼 + 햄버거 메뉴 */}
+          {/* 모바일: 햄버거 메뉴 */}
           <div className="flex items-center gap-2 lg:hidden ml-auto">
-            <button
-              type="button"
-              onClick={toggleSidebar}
-              className={`text-white px-3 py-1.5 text-sm font-medium hover:bg-gray-800 rounded border ${filterLabel === '필터 : 조정됨' ? 'border-amber-500 bg-amber-500/10' : 'border-gray-700'}`}
-              aria-label={filterLabel}
-            >
-              {filterLabel}
-            </button>
             <button
               type="button"
               onClick={() => {

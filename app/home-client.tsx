@@ -49,7 +49,7 @@ export default function HomeClient({
             href="/value-db"
             className="flex-1 px-4 py-2.5 rounded-lg font-medium text-sm text-white bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-gray-600 transition-colors text-center"
           >
-            사용된 계산 로직
+            가치계산 DB
           </Link>
           <a
             href="https://discord.gg/Bd7BGwsbV7"
