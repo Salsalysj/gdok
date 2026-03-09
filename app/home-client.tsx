@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import AdsenseHomeBanner from './components/AdsenseHomeBanner';
 
 type YouTubeVideo = {
   videoId: string;
@@ -31,40 +32,33 @@ export default function HomeClient({
     <div className="min-h-screen bg-gray-950">
       <h1 className="sr-only">껨산기</h1>
       <div className="py-6 sm:py-8 md:py-12 sm:px-6 max-w-7xl mx-auto">
-        {/* 헤더 (광고) */}
-        <div className="text-center mb-8 sm:mb-10 md:mb-18 space-y-2 sm:space-y-3 px-4 sm:px-0">
-          <div className="text-gray-400 text-sm">광고주를 위한 공간 (많관부)</div>
+        {/* 헤더 (광고) - 모바일에서 숨김 */}
+        <div className="hidden sm:block mb-8 sm:mb-10 md:mb-18 px-4 sm:px-0">
+          <AdsenseHomeBanner />
         </div>
 
-        {/* 사이트 소개 */}
-        <div className="bg-gray-900 border-x-0 sm:border-x border-gray-800 rounded-none sm:rounded-lg p-3 sm:p-6 md:p-8 mb-6 sm:mb-8">
-        
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
-            <div className="space-y-1 sm:space-y-2">
-              <h4 className="text-sm sm:text-base md:text-lg font-semibold text-white">실시간 시세 반영</h4>
-              <p className="text-[10px] sm:text-xs md:text-sm text-gray-400 leading-relaxed whitespace-normal break-words">
-                거래소 시세를 반영하여 정확한 가치 계산을 제공합니다.
-              </p>
-            </div>
-            <div className="space-y-1 sm:space-y-2">
-              <h4 className="text-sm sm:text-base md:text-lg font-semibold text-white">효율 분석</h4>
-              <p className="text-[10px] sm:text-xs md:text-sm text-gray-400 leading-relaxed whitespace-normal break-words">
-                다양한 컨텐츠와 패키지의 효율을 비교 분석합니다.
-              </p>
-            </div>
-            <div className="space-y-1 sm:space-y-2">
-              <h4 className="text-sm sm:text-base md:text-lg font-semibold text-white">빠른 계산</h4>
-              <p className="text-[10px] sm:text-xs md:text-sm text-gray-400 leading-relaxed whitespace-normal break-words">
-                복잡한 계산을 자동화하여 즉시 결과를 확인할 수 있습니다.
-              </p>
-            </div>
-            <div className="space-y-1 sm:space-y-2">
-              <h4 className="text-sm sm:text-base md:text-lg font-semibold text-white">맞춤 설정</h4>
-              <p className="text-[10px] sm:text-xs md:text-sm text-gray-400 leading-relaxed whitespace-normal break-words">
-                개인 상황에 맞는 가격 조정 옵션을 제공합니다.
-          </p>
-            </div>
-          </div>
+        {/* 업데이트 내역 / 사용된 계산 로직 / 오류·건의사항 버튼 (양옆맞춤) */}
+        <div className="flex gap-2 sm:gap-3 mb-6 sm:mb-8">
+          <Link
+            href="/updates"
+            className="flex-1 px-4 py-2.5 rounded-lg font-medium text-sm text-white bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-gray-600 transition-colors text-center"
+          >
+            업데이트 내역
+          </Link>
+          <Link
+            href="/value-db"
+            className="flex-1 px-4 py-2.5 rounded-lg font-medium text-sm text-white bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-gray-600 transition-colors text-center"
+          >
+            사용된 계산 로직
+          </Link>
+          <a
+            href="https://discord.gg/Bd7BGwsbV7"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 px-4 py-2.5 rounded-lg font-medium text-sm text-white bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-gray-600 transition-colors text-center"
+          >
+            오류/건의사항
+          </a>
         </div>
 
         {/* 메인 컨텐츠 그리드 */}

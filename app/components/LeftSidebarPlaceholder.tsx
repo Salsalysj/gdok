@@ -189,13 +189,8 @@ export default function LeftSidebarPlaceholder() {
         </nav>
       </div>
 
-      <div className="flex-1 overflow-y-auto flex items-center justify-center min-h-0">
-          <AdsenseSidebar />
-      </div>
-      {/* 하단 광고 영역 (남는 공간) */}
-      {/* <div className="mt-auto flex-shrink-0 p-3 pt-2 border-t border-gray-800 flex justify-center items-center min-h-[80px]">
-        <img src="/adraising.png" alt="ad" className="w-full h-auto object-contain" />
-      </div> */}
+
+
     </div>
   );
 }

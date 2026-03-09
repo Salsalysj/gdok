@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSidebar } from '../contexts/SidebarContext';
 import { usePriceOverride } from '../contexts/PriceOverrideContext';
+import { useFavorites } from '../contexts/FavoritesContext';
 
 export default function Navigation() {
   const pathname = usePathname();
@@ -20,9 +21,12 @@ export default function Navigation() {
   const [refiningOpen, setRefiningOpen] = useState<boolean>(false);
   const [eventEfficiencyOpen, setEventEfficiencyOpen] = useState<boolean>(false);
   const [exchangeEfficiencyOpen, setExchangeEfficiencyOpen] = useState<boolean>(false);
+  const [packageEfficiencyOpen, setPackageEfficiencyOpen] = useState<boolean>(false);
   const [customCalcOpen, setCustomCalcOpen] = useState<boolean>(false);
+  const [favoritesOpen, setFavoritesOpen] = useState<boolean>(false);
   const mobileAccordionTouchHandled = useRef(false);
-  type MobileSubmenuTab = 'content-rewards' | 'refining' | 'event-efficiency' | 'exchange-efficiency' | 'custom-calc' | null;
+  const { favorites, isLoaded, removeFavorite } = useFavorites();
+  type MobileSubmenuTab = 'content-rewards' | 'refining' | 'event-efficiency' | 'exchange-efficiency' | 'package-efficiency' | 'custom-calc' | null;
   const [mobileSubmenuTab, setMobileSubmenuTab] = useState<MobileSubmenuTab>(null);
 
   // 로컬 스토리지와 동기화 & 이벤트 브로드캐스트
@@ -56,7 +60,9 @@ export default function Navigation() {
     setRefiningOpen(false);
     setEventEfficiencyOpen(false);
     setExchangeEfficiencyOpen(false);
+    setPackageEfficiencyOpen(false);
     setCustomCalcOpen(false);
+    setFavoritesOpen(false);
   }, [pathname]);
 
   // 외부 클릭 시 서브탭 닫기
@@ -79,26 +85,32 @@ export default function Navigation() {
       if (exchangeEfficiencyOpen && !target.closest('.exchange-efficiency-menu')) {
         setExchangeEfficiencyOpen(false);
       }
+      if (packageEfficiencyOpen && !target.closest('.package-efficiency-menu')) {
+        setPackageEfficiencyOpen(false);
+      }
       if (customCalcOpen && !target.closest('.custom-calc-menu')) {
         setCustomCalcOpen(false);
       }
+      if (favoritesOpen && !target.closest('.favorites-menu')) {
+        setFavoritesOpen(false);
+      }
     };
 
-    if (contentRewardsOpen || refiningOpen || eventEfficiencyOpen || exchangeEfficiencyOpen || customCalcOpen) {
+    if (contentRewardsOpen || refiningOpen || eventEfficiencyOpen || exchangeEfficiencyOpen || packageEfficiencyOpen || customCalcOpen || favoritesOpen) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => {
         document.removeEventListener('mousedown', handleClickOutside);
       };
     }
-  }, [contentRewardsOpen, refiningOpen, eventEfficiencyOpen, exchangeEfficiencyOpen, customCalcOpen]);
+  }, [contentRewardsOpen, refiningOpen, eventEfficiencyOpen, exchangeEfficiencyOpen, packageEfficiencyOpen, customCalcOpen, favoritesOpen]);
 
   const tabs = [
     { name: '컨텐츠 보상', href: '/content-rewards', hasSubmenu: true },
-    { name: '이벤트 효율', href: '/event-efficiency', hasSubmenu: true },
-    { name: '각종 교환효율', href: '/bloodstone-shop', hasSubmenu: true },
-    { name: '과금 효율', href: '/package-efficiency' },
-    { name: '재련 효율', href: '/refining-simulation', hasSubmenu: true },
-    { name: '커스텀 계산기', href: '/custom-calculator', hasSubmenu: true },
+    { name: '이벤트', href: '/event-efficiency', hasSubmenu: true },
+    { name: '각종 교환', href: '/bloodstone-shop', hasSubmenu: true },
+    { name: '과금', hasSubmenu: true, noLink: true },
+    { name: '재련', href: '/refining-simulation', hasSubmenu: true },
+    { name: '커스텀', href: '/custom-calculator', hasSubmenu: true },
     { name: '쌀산기', href: '/auction-calculator' },
   ];
 
@@ -126,6 +138,10 @@ export default function Navigation() {
     { name: '혈석 상점 효율', href: '/bloodstone-shop' },
     { name: '제작 재료 교환', href: '/craft-materials' },
     { name: '싱글 상점 교환', href: '/single-shop' },
+  ];
+
+  const packageEfficiencySubTabs = [
+    { name: '과금 효율', href: '/package-efficiency' },
   ];
 
   const customCalcSubTabs = [
@@ -202,41 +218,35 @@ export default function Navigation() {
                   (tab.href === '/refining-simulation' && (pathname.startsWith('/refining-simulation') || pathname.startsWith('/advanced-refining') || pathname.startsWith('/character-simulation'))) ||
                   (tab.href === '/event-efficiency' && pathname.startsWith('/event-efficiency')) ||
                   (tab.name === '각종 교환효율' && (pathname.startsWith('/bloodstone-shop') || pathname.startsWith('/craft-materials') || pathname.startsWith('/single-shop'))) ||
-                  (tab.href === '/custom-calculator' && pathname.startsWith('/custom-calculator'));
+                  (tab.href === '/custom-calculator' && pathname.startsWith('/custom-calculator')) ||
+                  (tab.name === '과금' && tab.noLink && pathname.startsWith('/package-efficiency'));
                 
                 if (tab.hasSubmenu) {
                   const isContentRewards = tab.name === '컨텐츠 보상';
-                  const isRefining = tab.name === '재련 효율';
-                  const isEventEfficiency = tab.name === '이벤트 효율';
-                  const isExchangeEfficiency = tab.name === '각종 교환효율';
-                  const isCustomCalc = tab.name === '커스텀 계산기';
-                  const isOpen = isContentRewards ? contentRewardsOpen : (isRefining ? refiningOpen : (isEventEfficiency ? eventEfficiencyOpen : (isExchangeEfficiency ? exchangeEfficiencyOpen : (isCustomCalc ? customCalcOpen : false))));
-                  const setIsOpen = isContentRewards ? setContentRewardsOpen : (isRefining ? setRefiningOpen : (isEventEfficiency ? setEventEfficiencyOpen : (isExchangeEfficiency ? setExchangeEfficiencyOpen : (isCustomCalc ? setCustomCalcOpen : () => {}))));
-                  const subTabs = isContentRewards ? contentRewardsSubTabs : (isRefining ? refiningSubTabs : (isEventEfficiency ? eventEfficiencySubTabs : (isExchangeEfficiency ? exchangeEfficiencySubTabs : (isCustomCalc ? customCalcSubTabs : []))));
-                  const menuClass = isContentRewards ? 'content-rewards-menu' : (isRefining ? 'refining-menu' : (isEventEfficiency ? 'event-efficiency-menu' : (isExchangeEfficiency ? 'exchange-efficiency-menu' : (isCustomCalc ? 'custom-calc-menu' : ''))));
+                  const isRefining = tab.name === '재련';
+                  const isEventEfficiency = tab.name === '이벤트';
+                  const isExchangeEfficiency = tab.name === '각종 교환';
+                  const isPackageEfficiency = tab.name === '과금' && tab.noLink;
+                  const isCustomCalc = tab.name === '커스텀';
+                  const isOpen = isContentRewards ? contentRewardsOpen : (isRefining ? refiningOpen : (isEventEfficiency ? eventEfficiencyOpen : (isExchangeEfficiency ? exchangeEfficiencyOpen : (isPackageEfficiency ? packageEfficiencyOpen : (isCustomCalc ? customCalcOpen : false)))));
+                  const setIsOpen = isContentRewards ? setContentRewardsOpen : (isRefining ? setRefiningOpen : (isEventEfficiency ? setEventEfficiencyOpen : (isExchangeEfficiency ? setExchangeEfficiencyOpen : (isPackageEfficiency ? setPackageEfficiencyOpen : (isCustomCalc ? setCustomCalcOpen : () => {})))));
+                  const subTabs = isContentRewards ? contentRewardsSubTabs : (isRefining ? refiningSubTabs : (isEventEfficiency ? eventEfficiencySubTabs : (isExchangeEfficiency ? exchangeEfficiencySubTabs : (isPackageEfficiency ? packageEfficiencySubTabs : (isCustomCalc ? customCalcSubTabs : [])))));
+                  const menuClass = isContentRewards ? 'content-rewards-menu' : (isRefining ? 'refining-menu' : (isEventEfficiency ? 'event-efficiency-menu' : (isExchangeEfficiency ? 'exchange-efficiency-menu' : (isPackageEfficiency ? 'package-efficiency-menu' : (isCustomCalc ? 'custom-calc-menu' : '')))));
                   
                   return (
-                    <div key={tab.href} className={`relative ${menuClass}`}>
+                    <div key={tab.noLink ? 'package-efficiency-no-link' : tab.href} className={`relative ${menuClass}`}>
                       <button
                         onClick={() => setIsOpen(!isOpen)}
-                        className={`px-4 xl:px-6 py-2 rounded font-medium text-sm xl:text-base flex items-center gap-1 whitespace-nowrap flex-shrink-0 ${
+                        className={`w-24 xl:w-28 py-2.5 rounded-lg font-medium text-sm xl:text-base flex items-center justify-center whitespace-nowrap flex-shrink-0 transition-all duration-200 ${
                           isActive
-                            ? 'bg-gray-700 text-white'
-                            : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                            ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/30'
+                            : 'text-gray-300 hover:text-white hover:bg-gray-800/80 border border-gray-700/50 hover:border-gray-600'
                         }`}
                       >
                         {tab.name}
-                        <svg 
-                          className={`w-4 h-4 ${isOpen ? 'rotate-180' : ''}`}
-                          fill="none" 
-                          stroke="currentColor" 
-                          viewBox="0 0 24 24"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
                       </button>
                       {isOpen && (
-                        <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-700 rounded min-w-[160px] z-50">
+                        <div className="absolute top-full left-0 mt-2 bg-gray-800 border border-gray-700 rounded-lg min-w-[180px] z-50 shadow-xl overflow-hidden">
                           {subTabs.map((subTab) => {
                             const isSubActive = pathname === subTab.href || (subTab.href !== '/content-rewards' && pathname.startsWith(subTab.href + '/'));
                             return (
@@ -247,10 +257,10 @@ export default function Navigation() {
                                   e.stopPropagation();
                                   setIsOpen(false);
                                 }}
-                                className={`block px-4 py-2 text-sm first:rounded-t last:rounded-b ${
+                                className={`block px-4 py-2.5 text-sm transition-all duration-150 ${
                                   isSubActive
-                                    ? 'text-white bg-gray-700'
-                                    : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                                    ? 'text-white bg-gradient-to-r from-blue-600/20 to-purple-600/20 border-l-2 border-blue-500'
+                                    : 'text-gray-300 hover:text-white hover:bg-gray-700/50'
                                 }`}
                               >
                                 {subTab.name}
@@ -263,27 +273,104 @@ export default function Navigation() {
                   );
                 }
                 
+                if (!tab.href) return null;
+                
                 const isAuctionCalculator = tab.href === '/auction-calculator';
 
                 return (
-                  <Link
-                    key={tab.href}
-                    href={tab.href}
-                    className={`px-4 xl:px-6 py-2 rounded font-medium text-sm xl:text-base flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 ${
-                      isActive
-                        ? 'bg-gray-700 text-white'
-                        : 'text-gray-400 hover:text-white hover:bg-gray-800'
-                    }`}
-                  >
-                    {isAuctionCalculator ? (
-                      <>
-                        <span className="text-lg">🧮</span>
+                  <div key={tab.href} className="flex items-center gap-1">
+                    <Link
+                      href={tab.href}
+                      className={`w-24 xl:w-28 py-2.5 rounded-lg font-medium text-sm xl:text-base flex items-center justify-center gap-1.5 whitespace-nowrap flex-shrink-0 transition-all duration-200 ${
+                        isActive
+                          ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/30'
+                          : 'text-gray-300 hover:text-white hover:bg-gray-800/80 border border-gray-700/50 hover:border-gray-600'
+                      }`}
+                    >
+                      {isAuctionCalculator ? (
+                        <>
+                          <span className="text-lg">🧮</span>
+                          <span>{tab.name}</span>
+                        </>
+                      ) : (
                         <span>{tab.name}</span>
-                      </>
-                    ) : (
-                      <span>{tab.name}</span>
+                      )}
+                    </Link>
+                    {isAuctionCalculator && (
+                      <div className="relative favorites-menu">
+                        <button
+                          onClick={() => setFavoritesOpen(!favoritesOpen)}
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                            favoritesOpen
+                              ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/30'
+                              : 'text-gray-300 hover:text-white hover:bg-gray-800/80 border border-gray-700/50 hover:border-gray-600'
+                          }`}
+                          aria-label="즐겨찾기"
+                        >
+                          <svg 
+                            className={`w-4 h-4 ${favorites.length > 0 ? 'fill-yellow-400' : ''}`}
+                            fill="none" 
+                            stroke="currentColor" 
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                          </svg>
+                        </button>
+                        {favoritesOpen && isLoaded && (
+                          <div className="absolute top-full right-0 mt-2 bg-gray-800 border border-gray-700 rounded-lg min-w-[240px] max-w-[320px] z-50 shadow-xl overflow-hidden">
+                            <div className="px-4 py-3 border-b border-gray-700">
+                              <h3 className="text-sm font-semibold text-white">즐겨찾기</h3>
+                            </div>
+                            <div className="max-h-[400px] overflow-y-auto">
+                              {favorites.length > 0 ? (
+                                favorites.map((favorite) => {
+                                  const isSubActive = pathname === favorite.url || pathname.startsWith(favorite.url + '/');
+                                  return (
+                                    <div
+                                      key={favorite.url}
+                                      className={`group flex items-center gap-2 px-4 py-2.5 text-sm transition-all duration-150 ${
+                                        isSubActive
+                                          ? 'text-white bg-gradient-to-r from-blue-600/20 to-purple-600/20 border-l-2 border-blue-500'
+                                          : 'text-gray-300 hover:text-white hover:bg-gray-700/50'
+                                      }`}
+                                    >
+                                      <Link
+                                        href={favorite.url}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setFavoritesOpen(false);
+                                        }}
+                                        className="flex-1 truncate min-w-0"
+                                      >
+                                        {favorite.title}
+                                      </Link>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          e.preventDefault();
+                                          removeFavorite(favorite.url);
+                                        }}
+                                        className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors opacity-0 group-hover:opacity-100"
+                                        aria-label="즐겨찾기 삭제"
+                                      >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                      </button>
+                                    </div>
+                                  );
+                                })
+                              ) : (
+                                <div className="px-4 py-6 text-center text-gray-400 text-sm">
+                                  즐겨찾기가 없습니다
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     )}
-                  </Link>
+                  </div>
                 );
               })}
             </div>
@@ -301,20 +388,22 @@ export default function Navigation() {
                 (tab.href === '/refining-simulation' && (pathname.startsWith('/refining-simulation') || pathname.startsWith('/advanced-refining') || pathname.startsWith('/character-simulation'))) ||
                 (tab.href === '/event-efficiency' && pathname.startsWith('/event-efficiency')) ||
                 (tab.name === '각종 교환효율' && (pathname.startsWith('/bloodstone-shop') || pathname.startsWith('/craft-materials') || pathname.startsWith('/single-shop'))) ||
-                (tab.href === '/custom-calculator' && pathname.startsWith('/custom-calculator'));
+                (tab.href === '/custom-calculator' && pathname.startsWith('/custom-calculator')) ||
+                (tab.name === '과금' && tab.noLink && pathname.startsWith('/package-efficiency'));
               
               if (tab.hasSubmenu) {
                 const isContentRewards = tab.name === '컨텐츠 보상';
-                const isRefining = tab.name === '재련 효율';
-                const isEventEfficiency = tab.name === '이벤트 효율';
-                const isExchangeEfficiency = tab.name === '각종 교환효율';
-                const isCustomCalc = tab.name === '커스텀 계산기';
-                const tabKey: MobileSubmenuTab = isContentRewards ? 'content-rewards' : (isRefining ? 'refining' : (isEventEfficiency ? 'event-efficiency' : (isExchangeEfficiency ? 'exchange-efficiency' : (isCustomCalc ? 'custom-calc' : null))));
-                const isOpen = isContentRewards ? contentRewardsOpen : (isRefining ? refiningOpen : (isEventEfficiency ? eventEfficiencyOpen : (isExchangeEfficiency ? exchangeEfficiencyOpen : (isCustomCalc ? customCalcOpen : false))));
-                const setIsOpen = isContentRewards ? setContentRewardsOpen : (isRefining ? setRefiningOpen : (isEventEfficiency ? setEventEfficiencyOpen : (isExchangeEfficiency ? setExchangeEfficiencyOpen : (isCustomCalc ? setCustomCalcOpen : () => {}))));
+                const isRefining = tab.name === '재련';
+                const isEventEfficiency = tab.name === '이벤트';
+                const isExchangeEfficiency = tab.name === '각종 교환';
+                const isPackageEfficiency = tab.name === '과금' && tab.noLink;
+                const isCustomCalc = tab.name === '커스텀';
+                const tabKey: MobileSubmenuTab = isContentRewards ? 'content-rewards' : (isRefining ? 'refining' : (isEventEfficiency ? 'event-efficiency' : (isExchangeEfficiency ? 'exchange-efficiency' : (isPackageEfficiency ? 'package-efficiency' : (isCustomCalc ? 'custom-calc' : null)))));
+                const isOpen = isContentRewards ? contentRewardsOpen : (isRefining ? refiningOpen : (isEventEfficiency ? eventEfficiencyOpen : (isExchangeEfficiency ? exchangeEfficiencyOpen : (isPackageEfficiency ? packageEfficiencyOpen : (isCustomCalc ? customCalcOpen : false)))));
+                const setIsOpen = isContentRewards ? setContentRewardsOpen : (isRefining ? setRefiningOpen : (isEventEfficiency ? setEventEfficiencyOpen : (isExchangeEfficiency ? setExchangeEfficiencyOpen : (isPackageEfficiency ? setPackageEfficiencyOpen : (isCustomCalc ? setCustomCalcOpen : () => {})))));
                 
                 return (
-                  <div key={tab.href} className="relative">
+                  <div key={tab.noLink ? 'package-efficiency-no-link' : tab.href} className="relative">
                     <button
                       type="button"
                       onClick={() => {
@@ -335,25 +424,19 @@ export default function Navigation() {
                           if (mobileSubmenuTab === tabKey) setMobileSubmenuTab(null);
                         }
                       }}
-                      className={`relative z-10 w-full flex items-center justify-between px-4 py-3 rounded font-medium ${
+                      className={`relative z-10 w-full flex items-center justify-center px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
                         isActive
-                          ? 'bg-gray-700 text-white'
-                          : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                          ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/30'
+                          : 'text-gray-300 hover:text-white hover:bg-gray-800/80 border border-gray-700/50 hover:border-gray-600'
                       }`}
                     >
                       {tab.name}
-                      <svg 
-                        className={`w-4 h-4 ${isOpen ? 'rotate-180' : ''}`}
-                        fill="none" 
-                        stroke="currentColor" 
-                        viewBox="0 0 24 24"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
                     </button>
                   </div>
                 );
               }
+              
+              if (!tab.href) return null;
               
               const isAuctionCalculator = tab.href === '/auction-calculator';
               
@@ -365,10 +448,10 @@ export default function Navigation() {
                     // 링크 클릭은 정상적으로 처리되도록 함
                     setMobileMenuOpen(false);
                   }}
-                  className={`block px-4 py-3 rounded font-medium flex items-center gap-1.5 ${
+                  className={`block px-4 py-3 rounded-lg font-medium flex items-center gap-1.5 transition-all duration-200 ${
                     isActive
-                      ? 'bg-gray-700 text-white'
-                      : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/30'
+                      : 'text-gray-300 hover:text-white hover:bg-gray-800/80 border border-gray-700/50 hover:border-gray-600'
                   }`}
                 >
                   {isAuctionCalculator ? (
@@ -395,6 +478,7 @@ export default function Navigation() {
                   if (mobileSubmenuTab === 'refining') setRefiningOpen(false);
                   if (mobileSubmenuTab === 'event-efficiency') setEventEfficiencyOpen(false);
                   if (mobileSubmenuTab === 'exchange-efficiency') setExchangeEfficiencyOpen(false);
+                  if (mobileSubmenuTab === 'package-efficiency') setPackageEfficiencyOpen(false);
                   if (mobileSubmenuTab === 'custom-calc') setCustomCalcOpen(false);
                   setMobileSubmenuTab(null);
                 }}
@@ -403,10 +487,10 @@ export default function Navigation() {
                 <div className="flex items-center justify-between gap-2 p-4 border-b border-gray-700 flex-shrink-0">
                   <span className="font-semibold text-white truncate">
                     {mobileSubmenuTab === 'content-rewards' && '컨텐츠 보상'}
-                    {mobileSubmenuTab === 'refining' && '재련 효율'}
-                    {mobileSubmenuTab === 'event-efficiency' && '이벤트 효율'}
-                    {mobileSubmenuTab === 'exchange-efficiency' && '각종 교환효율'}
-                    {mobileSubmenuTab === 'custom-calc' && '커스텀 계산기'}
+                    {mobileSubmenuTab === 'refining' && '재련'}
+                    {mobileSubmenuTab === 'event-efficiency' && '이벤트'}
+                    {mobileSubmenuTab === 'exchange-efficiency' && '각종 교환'}
+                    {mobileSubmenuTab === 'custom-calc' && '커스텀'}
                   </span>
                   <button
                     type="button"
@@ -432,7 +516,7 @@ export default function Navigation() {
                         key={subTab.href}
                         href={subTab.href}
                         onClick={() => { setContentRewardsOpen(false); setMobileMenuOpen(false); setMobileSubmenuTab(null); }}
-                        className={`block px-4 py-2 rounded text-sm ${isSubActive ? 'text-white bg-gray-800' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}
+                        className={`block px-4 py-2.5 rounded-lg text-sm transition-all duration-150 ${isSubActive ? 'text-white bg-gradient-to-r from-blue-600/20 to-purple-600/20 border-l-2 border-blue-500' : 'text-gray-300 hover:text-white hover:bg-gray-800/80'}`}
                       >
                         {subTab.name}
                       </Link>
@@ -452,6 +536,11 @@ export default function Navigation() {
                   {mobileSubmenuTab === 'exchange-efficiency' && exchangeEfficiencySubTabs.map((subTab) => {
                     return (
                       <Link key={subTab.href} href={subTab.href} onClick={() => { setExchangeEfficiencyOpen(false); setMobileMenuOpen(false); setMobileSubmenuTab(null); }} className={`block px-4 py-2 rounded text-sm ${pathname === subTab.href || pathname.startsWith(subTab.href + '/') ? 'text-white bg-gray-800' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}>{subTab.name}</Link>
+                    );
+                  })}
+                  {mobileSubmenuTab === 'package-efficiency' && packageEfficiencySubTabs.map((subTab) => {
+                    return (
+                      <Link key={subTab.href} href={subTab.href} onClick={() => { setPackageEfficiencyOpen(false); setMobileMenuOpen(false); setMobileSubmenuTab(null); }} className={`block px-4 py-2 rounded text-sm ${pathname === subTab.href || pathname.startsWith(subTab.href + '/') ? 'text-white bg-gray-800' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}>{subTab.name}</Link>
                     );
                   })}
                   {mobileSubmenuTab === 'custom-calc' && customCalcSubTabs.map((subTab) => {

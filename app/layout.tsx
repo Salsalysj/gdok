@@ -169,7 +169,7 @@ export default async function RootLayout({
               {/* Body: 3-column grid layout */}
               <div className="flex-1 min-w-0">
                 <div className="max-w-[1800px] mx-auto lg:px-6">
-                  <div className="grid lg:grid-cols-[280px,1fr,360px] gap-3">
+                  <div className="grid lg:grid-cols-[360px,1fr,360px] gap-3">
                     {/* Left Sidebar */}
                     <aside className="hidden lg:block">
                       <div className="sticky top-14 md:top-16 h-[calc(100dvh-3.5rem)] md:h-[calc(100dvh-4rem)]">
