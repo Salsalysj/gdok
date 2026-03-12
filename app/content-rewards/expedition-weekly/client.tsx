@@ -53,14 +53,23 @@ function getHighestAccessible(ilvl: number, entries: ContentEntry[]): { name: st
 function getAccessibleRaidsTop3(ilvl: number, entries: ContentEntry[], limit = 3): { name: string; weeklyTradable: number; weeklyTotal: number; details: RewardDetail[]; weeklyCount: number }[] {
   const accessible = entries.filter((e) => e.minLevel <= ilvl);
   const byRaidName = new Map<string, ContentEntry>();
+  const clearGold = (e: ContentEntry) =>
+    (e.rewardDetails || []).find((d) => d.itemName === '골드')?.totalPrice ?? 0;
+
   for (const e of accessible) {
     const lastSpace = e.name.lastIndexOf(' ');
     const raidKey = lastSpace > 0 ? e.name.slice(0, lastSpace) : e.name;
     const existing = byRaidName.get(raidKey);
-    if (!existing || e.minLevel > existing.minLevel) byRaidName.set(raidKey, e);
+    if (!existing || e.minLevel > existing.minLevel || (e.minLevel === existing.minLevel && clearGold(e) > clearGold(existing))) {
+      byRaidName.set(raidKey, e);
+    }
   }
+
   return Array.from(byRaidName.values())
-    .sort((a, b) => b.minLevel - a.minLevel)
+    .sort((a, b) => {
+      if (b.minLevel !== a.minLevel) return b.minLevel - a.minLevel;
+      return clearGold(b) - clearGold(a);
+    })
     .slice(0, limit)
     .map((e) => ({
       name: e.name,

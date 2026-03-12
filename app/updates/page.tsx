@@ -20,6 +20,21 @@ export default function UpdatesPage() {
         </div>
 
         <div className="space-y-3 sm:space-y-4 md:space-y-6 lg:space-y-8">
+          {/* v0.5.1 */}
+          <div className="bg-gray-800 rounded-none sm:rounded-lg p-3 sm:p-4 md:p-6 border-x-0 sm:border-x border-gray-700">
+            <h2 className="text-sm sm:text-base md:text-lg lg:text-2xl font-bold text-white mb-2 sm:mb-3 md:mb-4">v0.5.1 (2026. 03. 10)</h2>
+            
+            <div className="space-y-2 sm:space-y-3 md:space-y-4">
+              <div>
+                <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold text-blue-400 mb-1 sm:mb-2">개선 사항</h3>
+                <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-[10px] sm:text-xs md:text-sm text-gray-300 ml-3 sm:ml-4 whitespace-normal break-words">
+                  <li>원정대 주간 수익 시뮬레이션에서 동일 레벨 구간에 있는 레이드 중 클리어 골드가 높은 레이드를 띄우도록 변경</li>
+                  <li>사이드바의 가격 조정 기능을 상단으로 이동 (좁은 모니터나 화면분할을 쓰시는 분들이 사이드바 기능을 사용할 수 없다는 의견이 있어서 레이아웃 변경)</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
           {/* v0.5.0 */}
           <div className="bg-gray-800 rounded-none sm:rounded-lg p-3 sm:p-4 md:p-6 border-x-0 sm:border-x border-gray-700">
             <h2 className="text-sm sm:text-base md:text-lg lg:text-2xl font-bold text-white mb-2 sm:mb-3 md:mb-4">v0.5.0 (2026. 02. 21)</h2>
