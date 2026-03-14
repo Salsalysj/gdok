@@ -130,8 +130,9 @@ export default function RaidRewardsClient({
   const [showSerkaTooltip, setShowSerkaTooltip] = useState<boolean>(false);
   /** 모바일: 선택한 난이도 (노말/하드/나이트메어 등) - 버튼으로 선택, 요약 밑에 표시 */
   const [mobileSelectedDifficulty, setMobileSelectedDifficulty] = useState<string | null>(null);
-  /** 블로그용 표 모달: { category, raid } | null */
+  /** 블로그용 표 모달: { category, raid } | null (배포 버전에서는 버튼 숨김) */
   const [copyTableTarget, setCopyTableTarget] = useState<{ category: string; raid: string } | null>(null);
+  const showBlogTableButton = process.env.NODE_ENV === 'development';
   
   // 항상 raid-rewards.json 데이터 사용
   const currentData = data;
@@ -518,8 +519,8 @@ export default function RaidRewardsClient({
         </div>
       )}
 
-      {/* 블로그용 표 모달 (티스토리 복사) */}
-      {copyTableTarget && currentData[copyTableTarget.category]?.[copyTableTarget.raid] && (
+      {/* 블로그용 표 모달 (티스토리 복사) - 배포 버전에서는 숨김 */}
+      {showBlogTableButton && copyTableTarget && currentData[copyTableTarget.category]?.[copyTableTarget.raid] && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
           aria-modal="true"
@@ -706,14 +707,16 @@ export default function RaidRewardsClient({
                         </option>
                       ))}
                     </select>
-                    <button
-                      type="button"
-                      onClick={() => activeCategory && activeRaid && setCopyTableTarget({ category: activeCategory, raid: activeRaid })}
-                      className="px-4 py-3 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white border border-gray-600 flex-shrink-0"
-                      title="블로그용 표 복사"
-                    >
-                      📋
-                    </button>
+                    {showBlogTableButton && (
+                      <button
+                        type="button"
+                        onClick={() => activeCategory && activeRaid && setCopyTableTarget({ category: activeCategory, raid: activeRaid })}
+                        className="px-4 py-3 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white border border-gray-600 flex-shrink-0"
+                        title="블로그용 표 복사"
+                      >
+                        📋
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
@@ -780,14 +783,16 @@ export default function RaidRewardsClient({
                         >
                           {raid}
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => setCopyTableTarget({ category: activeCategory, raid })}
-                          className="px-2.5 py-2.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white border border-gray-600 transition-all"
-                          title="블로그용 표 복사"
-                        >
-                          📋
-                        </button>
+                        {showBlogTableButton && (
+                          <button
+                            type="button"
+                            onClick={() => setCopyTableTarget({ category: activeCategory, raid })}
+                            className="px-2.5 py-2.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white border border-gray-600 transition-all"
+                            title="블로그용 표 복사"
+                          >
+                            📋
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>
