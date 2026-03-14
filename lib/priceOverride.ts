@@ -16,6 +16,7 @@ export function getPriceOverrideState(): {
   ignoreBreath: boolean;
   ignoreLowTierCrafting: boolean;
   ignoreGem: boolean;
+  ignoreHeavenChallengeTicket: boolean;
 } | null {
   // 서버 사이드에서는 null 반환 (클라이언트에서만 사용)
   if (typeof window === 'undefined') return null;
@@ -37,6 +38,7 @@ export function getPriceOverrideState(): {
         ignoreBreath: false,
         ignoreLowTierCrafting: false,
         ignoreGem: false,
+        ignoreHeavenChallengeTicket: false,
         ...parsed,
       };
     }
@@ -184,6 +186,13 @@ export function applyPriceOverride(itemName: string, originalPrice: number | nul
       itemName === '장인의 재봉술 : 1단계' ||
       itemName === '장인의 재봉술 : 2단계'
     ) {
+      return 0;
+    }
+  }
+
+  // 천상 도전권 미반영
+  if (state.ignoreHeavenChallengeTicket) {
+    if (itemName === '천상 도전권+1') {
       return 0;
     }
   }

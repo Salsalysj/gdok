@@ -1519,21 +1519,20 @@ export default function PackageEfficiencyClient({
       // enabled가 false인 경우 제외
       if (component.enabled === false) return;
       
-      // 중첩된 묶음 항목 처리
+      // 중첩된 묶음 항목 처리 (nestedValue에 nestedItem.quantity가 이미 포함됨. component.quantity는 일반 패키지와 동일하게 1로 간주)
       if (component.itemName === '__nested__' && component.nestedItem) {
-        // '보너스' 타입은 '골드'로 변환하여 처리
         const priceTypeForNested = itemPriceType === '보너스' ? '골드' : itemPriceType;
         const nestedValue = calculateNestedItemValue(component.nestedItem, priceTypeForNested);
         const itemQuantity = packageItem.quantity || 1;
         
         if (packageItem.itemType === '확정') {
-          itemValue += nestedValue * (component.quantity || 1) * itemQuantity;
+          itemValue += nestedValue * itemQuantity;
         } else if (packageItem.itemType === '확률') {
           const probability = component.probability || 0;
-          itemValue += nestedValue * (component.quantity || 1) * probability * itemQuantity;
+          itemValue += nestedValue * probability * itemQuantity;
         } else if (packageItem.itemType === '선택') {
           if (component.selected) {
-            itemValue += nestedValue * (component.quantity || 1) * itemQuantity;
+            itemValue += nestedValue * itemQuantity;
           }
         }
         return;
@@ -2197,6 +2196,15 @@ export default function PackageEfficiencyClient({
               { roomName: '보너스룸2', items: [] },
               { roomName: '보너스룸3', items: [] },
             ];
+          } else {
+            // 보너스룸 항목에 quantity 기본값 설정 (기존 저장 데이터 호환)
+            loadedData.bonusRooms = loadedData.bonusRooms.map((room: any) => ({
+              ...room,
+              items: (room.items || []).map((item: any) => ({
+                ...item,
+                quantity: item.quantity !== undefined && item.quantity >= 1 ? item.quantity : 1,
+              })),
+            }));
           }
           // 3+보너스 구성품 데이터가 없으면 초기화
           if (!loadedData.bonus3Items) {
@@ -2214,7 +2222,6 @@ export default function PackageEfficiencyClient({
           }
           setPackageData(loadedData);
           setSelectedPackageId(packageId);
-          alert('패키지가 불러와졌습니다.');
         } else {
           throw new Error('패키지를 찾을 수 없습니다.');
         }
@@ -2871,6 +2878,9 @@ export default function PackageEfficiencyClient({
                                 <div className="text-sm text-white font-semibold">
                                   {item.itemName || `항목 ${itemIndex + 1}`}
                                 </div>
+                                <span className="text-xs font-medium text-blue-400/90 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/30">
+                                  묶음 × {item.quantity}
+                                </span>
                               </div>
                               <span className="text-xs font-medium text-gray-500 bg-gray-700/50 px-2 py-0.5 rounded">
                                 {item.itemType}
@@ -4656,11 +4666,12 @@ export default function PackageEfficiencyClient({
                                     value={(component.itemName === '__nested__' && component.nestedItem) ? (component.nestedItem.quantity || '') : (component.quantity || '')}
                                     onChange={(e) => {
                                       const newQuantity = parseFloat(e.target.value) || 0;
-                                      updateBonusRoomComponent(roomIndex, itemIndex, compIndex, 'quantity', newQuantity);
-                                      // 하위 묶음 항목인 경우 nestedItem.quantity도 함께 업데이트
                                       if (component.itemName === '__nested__' && component.nestedItem) {
+                                        // 하위 묶음: nestedItem.quantity만 업데이트 (nestedValue에 이미 반영. component.quantity 중복 시 이중 곱셈 발생)
                                         const nestedItem = { ...component.nestedItem, quantity: newQuantity };
                                         updateBonusRoomComponent(roomIndex, itemIndex, compIndex, 'nestedItem', nestedItem);
+                                      } else {
+                                        updateBonusRoomComponent(roomIndex, itemIndex, compIndex, 'quantity', newQuantity);
                                       }
                                     }}
                                     className="w-20 px-2 py-1 bg-gray-600 text-white rounded border border-gray-500 text-xs"

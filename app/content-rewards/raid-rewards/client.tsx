@@ -61,6 +61,51 @@ function buildRewardTooltipLines(item: { itemName: string; quantity: number; pri
   return lines;
 }
 
+/** 보상 객체를 "항목 수량개" 형식 문자열로 변환 (항목별 줄바꿈, excludeGold: 골드 제외) */
+function formatRewardItems(rewards: RewardData, excludeGold = false): string {
+  if (!rewards || Object.keys(rewards).length === 0) return '-';
+  const entries = excludeGold
+    ? Object.entries(rewards).filter(([name]) => name !== '골드')
+    : Object.entries(rewards);
+  if (entries.length === 0) return '-';
+  return entries
+    .map(([name, qty]) => {
+      const q = Number.isInteger(qty) ? String(qty) : formatNumberWithSignificantDigits(qty);
+      return `${name} ${q}개`;
+    })
+    .join('<br>');
+}
+
+/** 레이드 데이터로 블로그용 HTML 테이블 생성 (난이도별) */
+function buildRaidTablesHtml(category: string, raidName: string, raidData: DifficultyData): string {
+  const tables: string[] = [];
+  for (const [difficulty, diffData] of Object.entries(raidData)) {
+    const level = diffData.level || '';
+    const gates = diffData.gates || {};
+    const gateNumbers = Object.keys(gates).sort((a, b) => Number(a) - Number(b));
+    if (gateNumbers.length === 0) continue;
+
+    let html = `<p><strong>${raidName} ${difficulty}${level ? ` (${level})` : ''}</strong></p>\n<table border="1" cellpadding="6" cellspacing="0" style="border-collapse: collapse;">\n`;
+    html += '<thead><tr><th>관문</th><th>클리어 보상</th><th>더보기 보상</th><th>클리어 골드</th><th>더보기 비용</th></tr></thead>\n<tbody>\n';
+
+    for (const gateNum of gateNumbers) {
+      const gate = gates[gateNum];
+      const clearRewards = gate?.클리어 || {};
+      const moreRewards = gate?.더보기 || {};
+      const clearGold = clearRewards['골드'] ?? 0;
+      const moreCost = Math.abs(moreRewards['골드'] ?? 0);
+
+      const clearStr = formatRewardItems(clearRewards, true);
+      const moreStr = formatRewardItems(moreRewards, true);
+
+      html += `<tr><td>${gateNum}관문</td><td>${clearStr}</td><td>${moreStr}</td><td>${clearGold.toLocaleString('ko-KR')}</td><td>${moreCost.toLocaleString('ko-KR')}</td></tr>\n`;
+    }
+    html += '</tbody></table>\n';
+    tables.push(html);
+  }
+  return tables.join('\n');
+}
+
 export default function RaidRewardsClient({ 
   data, 
   data1730,
@@ -85,6 +130,8 @@ export default function RaidRewardsClient({
   const [showSerkaTooltip, setShowSerkaTooltip] = useState<boolean>(false);
   /** 모바일: 선택한 난이도 (노말/하드/나이트메어 등) - 버튼으로 선택, 요약 밑에 표시 */
   const [mobileSelectedDifficulty, setMobileSelectedDifficulty] = useState<string | null>(null);
+  /** 블로그용 표 모달: { category, raid } | null */
+  const [copyTableTarget, setCopyTableTarget] = useState<{ category: string; raid: string } | null>(null);
   
   // 항상 raid-rewards.json 데이터 사용
   const currentData = data;
@@ -470,6 +517,72 @@ export default function RaidRewardsClient({
           </div>
         </div>
       )}
+
+      {/* 블로그용 표 모달 (티스토리 복사) */}
+      {copyTableTarget && currentData[copyTableTarget.category]?.[copyTableTarget.raid] && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
+          aria-modal="true"
+          role="dialog"
+          aria-label="블로그용 표"
+          onClick={() => setCopyTableTarget(null)}
+        >
+          <div
+            className="bg-gray-800 border border-gray-600 rounded-xl shadow-2xl max-w-4xl w-full max-h-[85vh] flex flex-col overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 border-b border-gray-700 flex items-center justify-between flex-shrink-0">
+              <h3 className="text-lg font-bold text-white">{copyTableTarget.raid} 블로그용 표</h3>
+              <button
+                type="button"
+                onClick={() => setCopyTableTarget(null)}
+                className="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-gray-700"
+                aria-label="닫기"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto flex-1 space-y-4">
+              <p className="text-xs text-gray-400">아래 표를 선택 후 복사하거나, 버튼으로 HTML을 클립보드에 복사할 수 있습니다.</p>
+              <div
+                className="bg-gray-900 rounded-lg p-4 text-sm text-gray-200 border border-gray-700 [&_table]:w-full [&_th]:text-left [&_th]:bg-gray-800 [&_td]:border-gray-600 [&_th]:border-gray-600 [&_*]:select-text"
+                dangerouslySetInnerHTML={{
+                  __html: buildRaidTablesHtml(
+                    copyTableTarget.category,
+                    copyTableTarget.raid,
+                    currentData[copyTableTarget.category][copyTableTarget.raid]
+                  ),
+                }}
+              />
+            </div>
+            <div className="p-4 border-t border-gray-700 flex gap-2 flex-shrink-0">
+              <button
+                type="button"
+                onClick={async () => {
+                  const raidData = currentData[copyTableTarget!.category][copyTableTarget!.raid];
+                  const html = buildRaidTablesHtml(copyTableTarget!.category, copyTableTarget!.raid, raidData);
+                  try {
+                    await navigator.clipboard.writeText(html);
+                    alert('클립보드에 복사되었습니다. 티스토리 HTML 입력 모드에 붙여넣기 하세요.');
+                  } catch {
+                    alert('복사에 실패했습니다.');
+                  }
+                }}
+                className="flex-1 py-3 px-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg"
+              >
+                클립보드에 복사
+              </button>
+              <button
+                type="button"
+                onClick={() => setCopyTableTarget(null)}
+                className="py-3 px-4 bg-gray-600 hover:bg-gray-500 text-white font-semibold rounded-lg"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div>
         <div className="mb-8 md:mb-12">
           <div className="mb-3">
@@ -567,31 +680,41 @@ export default function RaidRewardsClient({
           const isDesktopRaidList = raids.length > 0;
           return (
             <>
-              {/* 모바일: 구분 없이 모든 레이드 통합 - 드롭다운 */}
+              {/* 모바일: 구분 없이 모든 레이드 통합 - 드롭다운 + 표 복사 버튼 */}
               {isMobileRaidList && (
                 <div className="md:hidden mb-4">
                   <label htmlFor="mobile-raid-select" className="block text-base font-semibold text-gray-300 mb-2">
                     <span className="w-1 h-4 bg-purple-500 rounded inline-block mr-2 align-middle"></span>
                     레이드
                   </label>
-                  <select
-                    id="mobile-raid-select"
-                    value={`${activeCategory}|${activeRaid}`}
-                    onChange={(e) => {
-                      const [cat, r] = e.target.value.split('|');
-                      if (cat && r) {
-                        setActiveCategory(cat);
-                        setActiveRaid(r);
-                      }
-                    }}
-                    className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white font-medium focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  >
-                    {allRaidsFlat.map(({ category, raid }) => (
-                      <option key={`${category}-${raid}`} value={`${category}|${raid}`}>
-                        {raid}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex gap-2">
+                    <select
+                      id="mobile-raid-select"
+                      value={`${activeCategory}|${activeRaid}`}
+                      onChange={(e) => {
+                        const [cat, r] = e.target.value.split('|');
+                        if (cat && r) {
+                          setActiveCategory(cat);
+                          setActiveRaid(r);
+                        }
+                      }}
+                      className="flex-1 px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white font-medium focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    >
+                      {allRaidsFlat.map(({ category, raid }) => (
+                        <option key={`${category}-${raid}`} value={`${category}|${raid}`}>
+                          {raid}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => activeCategory && activeRaid && setCopyTableTarget({ category: activeCategory, raid: activeRaid })}
+                      className="px-4 py-3 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white border border-gray-600 flex-shrink-0"
+                      title="블로그용 표 복사"
+                    >
+                      📋
+                    </button>
+                  </div>
                 </div>
               )}
               {/* 모바일: 세르카 스위치 (레이드 선택 밑) */}
@@ -637,26 +760,35 @@ export default function RaidRewardsClient({
                   </div>
                 </div>
               </div>
-              {/* 데스크탑: 레이드 선택 (구분 내) */}
+              {/* 데스크탑: 레이드 선택 (구분 내) - 각 레이드마다 표 복사 버튼 */}
               {isDesktopRaidList && (
                 <div className="hidden md:block mb-8">
                   <h3 className="text-base font-semibold text-gray-300 mb-3 flex items-center gap-2">
                     <span className="w-1 h-4 bg-purple-500 rounded"></span>
                     레이드
                   </h3>
-                  <div className="flex flex-wrap gap-3">
+                  <div className="flex flex-wrap gap-2">
                     {raids.map(raid => (
-                      <button
-                        key={raid}
-                        onClick={() => setActiveRaid(raid)}
-                        className={`px-5 py-2.5 rounded-lg font-semibold transition-all shadow-md hover:shadow-lg ${
-                          activeRaid === raid
-                            ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white scale-105 shadow-purple-500/30'
-                            : 'bg-gray-800/80 text-gray-400 hover:text-white hover:bg-gray-700/80 hover:scale-105'
-                        }`}
-                      >
-                        {raid}
-                      </button>
+                      <div key={raid} className="flex items-center gap-1">
+                        <button
+                          onClick={() => setActiveRaid(raid)}
+                          className={`px-5 py-2.5 rounded-lg font-semibold transition-all shadow-md hover:shadow-lg ${
+                            activeRaid === raid
+                              ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white scale-105 shadow-purple-500/30'
+                              : 'bg-gray-800/80 text-gray-400 hover:text-white hover:bg-gray-700/80 hover:scale-105'
+                          }`}
+                        >
+                          {raid}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCopyTableTarget({ category: activeCategory, raid })}
+                          className="px-2.5 py-2.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white border border-gray-600 transition-all"
+                          title="블로그용 표 복사"
+                        >
+                          📋
+                        </button>
+                      </div>
                     ))}
                   </div>
                 </div>

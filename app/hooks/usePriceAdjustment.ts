@@ -60,6 +60,13 @@ export function usePriceAdjustment() {
         }
       }
 
+      // 천상 도전권 미반영 (originalPrice가 null이어도 아이템 이름으로 확인)
+      if (state.ignoreHeavenChallengeTicket) {
+        if (itemName === '천상 도전권+1') {
+          return 0;
+        }
+      }
+
       // 융화 재료 미반영 (originalPrice가 null이어도 아이템 이름으로 확인)
       if (state.ignoreFusionMaterial) {
         if (
@@ -158,7 +165,7 @@ export function usePriceAdjustment() {
 
       return originalPrice;
     };
-  }, [state.has97Stone, state.ignoreCardExp, state.hasFullRelicEngraving, state.ignoreBreakthroughStone, state.ignoreFragment, state.cardSetGraduated, state.ignoreSilver, state.ignoreDestructionGuardStone, state.ignoreFusionMaterial, state.ignoreBreath, state.ignoreLowTierCrafting, state.ignoreGem]);
+  }, [state.has97Stone, state.ignoreCardExp, state.hasFullRelicEngraving, state.ignoreBreakthroughStone, state.ignoreFragment, state.cardSetGraduated, state.ignoreSilver, state.ignoreDestructionGuardStone, state.ignoreFusionMaterial, state.ignoreBreath, state.ignoreLowTierCrafting, state.ignoreGem, state.ignoreHeavenChallengeTicket]);
 
   const adjustRelicEngravingAverage = useMemo(() => {
     return (originalPrice: number | null): number | null => {

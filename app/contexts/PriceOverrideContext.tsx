@@ -15,6 +15,7 @@ type PriceOverrideState = {
   ignoreBreath: boolean;
   ignoreLowTierCrafting: boolean;
   ignoreGem: boolean;
+  ignoreHeavenChallengeTicket: boolean;
 };
 
 const PriceOverrideContext = createContext<{
@@ -36,6 +37,7 @@ export function PriceOverrideProvider({ children }: { children: ReactNode }) {
     ignoreBreath: false,
     ignoreLowTierCrafting: false,
     ignoreGem: false,
+    ignoreHeavenChallengeTicket: false,
   });
   const isInitialMount = useRef(true);
   const previousStateRef = useRef<PriceOverrideState | undefined>(undefined);

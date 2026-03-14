@@ -19,6 +19,7 @@ const INITIAL_OVERRIDES = {
   ignoreBreath: false,
   ignoreLowTierCrafting: false,
   ignoreGem: false,
+  ignoreHeavenChallengeTicket: false,
 };
 
 const BUTTONS: { key: keyof typeof INITIAL_OVERRIDES; label: string }[] = [
@@ -34,6 +35,7 @@ const BUTTONS: { key: keyof typeof INITIAL_OVERRIDES; label: string }[] = [
   { key: 'ignoreBreath', label: '숨결' },
   { key: 'ignoreLowTierCrafting', label: '하위 야금/재봉' },
   { key: 'ignoreGem', label: '젬' },
+  { key: 'ignoreHeavenChallengeTicket', label: '천상 도전권' },
 ];
 
 export default function PriceAdjustmentBar() {
@@ -42,6 +44,12 @@ export default function PriceAdjustmentBar() {
   const [localOverrides, setLocalOverrides] = useState(state);
   const [lightMode, setLightMode] = useState<boolean>(false);
   const [discordRate, setDiscordRate] = useState<number | null>(null);
+  const [barExpanded, setBarExpanded] = useState(() => {
+    try {
+      const saved = localStorage.getItem('priceAdjustBarExpanded');
+      return saved === null ? true : saved === '1';
+    } catch { return true; }
+  });
 
   useEffect(() => {
     setLocalOverrides(state);
@@ -89,8 +97,21 @@ export default function PriceAdjustmentBar() {
   return (
     <div className="sticky top-14 md:top-16 z-30 bg-gray-900 border-b border-gray-800 px-3 py-2">
       <div className="max-w-[1800px] mx-auto flex flex-col items-center gap-2">
-        {/* 1행: 골드 환율 + 디코기준 */}
+        {/* 1행: 가격 조정 토글 + 골드 환율 + 디코기준 */}
         <div className="flex items-center justify-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => {
+              setBarExpanded((x) => {
+                const next = !x;
+                try { localStorage.setItem('priceAdjustBarExpanded', next ? '1' : '0'); } catch {}
+                return next;
+              });
+            }}
+            className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded border border-gray-600 bg-gray-800 text-gray-300 hover:bg-gray-700 flex-shrink-0"
+          >
+            가격 조정 {barExpanded ? '▲' : '▼'}
+          </button>
           <Link
             href="/crystal-gold"
             className="inline-flex items-center px-2 py-1 rounded border border-blue-500/60 text-[11px] text-blue-300 hover:bg-blue-900/40 hover:text-blue-100 transition-colors"
@@ -124,31 +145,33 @@ export default function PriceAdjustmentBar() {
           <span className={`text-[11px] ${!lightMode ? 'font-bold text-purple-400' : 'text-gray-500'}`}>디코기준</span>
         </div>
 
-        {/* 2행: 가격 조정 버튼들 */}
-        <div className="flex items-center justify-center gap-1.5 flex-wrap">
-          <span className="text-[11px] text-gray-500 flex-shrink-0">가격 조정:</span>
-          {BUTTONS.map(({ key, label }) => (
+        {/* 2행: 가격 조정 버튼들 (펼쳤을 때만 표시) */}
+        {barExpanded && (
+        <div className="flex items-center justify-center gap-1.5 flex-wrap w-full">
+            <span className="text-[11px] text-gray-500 flex-shrink-0">가격 조정:</span>
+            {BUTTONS.map(({ key, label }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => handleToggle(key)}
+                className={`text-[11px] px-2 py-1 rounded border whitespace-nowrap ${
+                  !localOverrides[key]
+                    ? 'bg-blue-700/50 border-blue-500/70 text-blue-50'
+                    : 'bg-gray-800 border-gray-600 text-gray-300 line-through'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
             <button
-              key={key}
               type="button"
-              onClick={() => handleToggle(key)}
-              className={`text-[11px] px-2 py-1 rounded border whitespace-nowrap ${
-                !localOverrides[key]
-                  ? 'bg-blue-700/50 border-blue-500/70 text-blue-50'
-                  : 'bg-gray-800 border-gray-600 text-gray-300 line-through'
-              }`}
+              onClick={handleReset}
+              className="text-[11px] px-2 py-1 rounded border border-gray-600 bg-gray-800 text-gray-300 hover:bg-gray-700"
             >
-              {label}
+              초기화
             </button>
-          ))}
-          <button
-            type="button"
-            onClick={handleReset}
-            className="text-[11px] px-2 py-1 rounded border border-gray-600 bg-gray-800 text-gray-300 hover:bg-gray-700"
-          >
-            초기화
-          </button>
         </div>
+        )}
       </div>
     </div>
   );

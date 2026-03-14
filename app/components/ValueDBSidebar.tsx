@@ -220,6 +220,7 @@ export default function ValueDBSidebar() {
                 ignoreBreath: false,
                 ignoreLowTierCrafting: false,
                 ignoreGem: false,
+                ignoreHeavenChallengeTicket: false,
               };
               setLocalOverrides(initial);
               setState(initial);
@@ -400,6 +401,20 @@ export default function ValueDBSidebar() {
               ${!localOverrides.ignoreGem ? 'bg-blue-700/50 border-blue-500/70 text-blue-50' : 'bg-gray-800 border-gray-600 text-gray-300 line-through'}`}
           >
             젬
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              setLocalOverrides(prev => {
+                const next = { ...prev, ignoreHeavenChallengeTicket: !prev.ignoreHeavenChallengeTicket };
+                setTimeout(() => setState(next), 0);
+                return next;
+              })
+            }
+            className={`text-[11px] px-2 py-1 rounded border text-left truncate
+              ${!localOverrides.ignoreHeavenChallengeTicket ? 'bg-blue-700/50 border-blue-500/70 text-blue-50' : 'bg-gray-800 border-gray-600 text-gray-300 line-through'}`}
+          >
+            천상 도전권
           </button>
         </div>
       </div>
