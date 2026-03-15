@@ -41,23 +41,26 @@ export default function HomeClient({
         <div className="flex gap-2 sm:gap-3 mb-6 sm:mb-8">
           <Link
             href="/updates"
-            className="flex-1 px-4 py-2.5 rounded-lg font-medium text-sm text-white bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-gray-600 transition-colors text-center"
+            className="flex-1 px-3 sm:px-4 py-2.5 rounded-lg font-medium text-xs sm:text-sm text-white bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-gray-600 transition-colors text-center whitespace-nowrap"
           >
-            업데이트 내역
+            <span className="md:hidden">업데이트</span>
+            <span className="hidden md:inline">업데이트 내역</span>
           </Link>
           <Link
             href="/value-db"
-            className="flex-1 px-4 py-2.5 rounded-lg font-medium text-sm text-white bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-gray-600 transition-colors text-center"
+            className="flex-1 px-3 sm:px-4 py-2.5 rounded-lg font-medium text-xs sm:text-sm text-white bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-gray-600 transition-colors text-center whitespace-nowrap"
           >
-            가치계산 DB
+            <span className="md:hidden">가치DB</span>
+            <span className="hidden md:inline">가치계산 DB</span>
           </Link>
           <a
             href="https://discord.gg/Bd7BGwsbV7"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex-1 px-4 py-2.5 rounded-lg font-medium text-sm text-white bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-gray-600 transition-colors text-center"
+            className="flex-1 px-3 sm:px-4 py-2.5 rounded-lg font-medium text-xs sm:text-sm text-white bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-gray-600 transition-colors text-center whitespace-nowrap"
           >
-            오류/건의사항
+            <span className="md:hidden">오류·건의</span>
+            <span className="hidden md:inline">오류/건의사항</span>
           </a>
         </div>
 

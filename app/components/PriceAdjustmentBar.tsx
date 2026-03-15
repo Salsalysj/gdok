@@ -47,8 +47,8 @@ export default function PriceAdjustmentBar() {
   const [barExpanded, setBarExpanded] = useState(() => {
     try {
       const saved = localStorage.getItem('priceAdjustBarExpanded');
-      return saved === null ? true : saved === '1';
-    } catch { return true; }
+      return saved === null ? false : saved === '1';
+    } catch { return false; }
   });
 
   useEffect(() => {
@@ -120,10 +120,13 @@ export default function PriceAdjustmentBar() {
             <span className="mr-1">📈</span>
             <span>골드 환율</span>
           </Link>
-          <span className="text-xs font-semibold text-gray-300">
+          <span className="hidden md:inline text-xs font-semibold text-gray-300">
             {goldPerWon != null ? `1원당 ${formatNumberWithSignificantDigits(goldPerWon)}골드` : '...'}
           </span>
-          <span className={`text-[11px] ${lightMode ? 'font-bold text-blue-400' : 'text-gray-500'}`}>화폐거래소</span>
+          <span className={`text-[11px] ${lightMode ? 'font-bold text-blue-400' : 'text-gray-500'}`}>
+            <span className="md:hidden">인게임</span>
+            <span className="hidden md:inline">화폐거래소</span>
+          </span>
           <button
             type="button"
             onClick={() => {
@@ -142,7 +145,10 @@ export default function PriceAdjustmentBar() {
           >
             <span className={`inline-block h-5 w-5 rounded-full bg-white transition-transform ${!lightMode ? 'translate-x-5' : 'translate-x-1'}`} />
           </button>
-          <span className={`text-[11px] ${!lightMode ? 'font-bold text-purple-400' : 'text-gray-500'}`}>디코기준</span>
+          <span className={`text-[11px] ${!lightMode ? 'font-bold text-purple-400' : 'text-gray-500'}`}>
+            <span className="md:hidden">디코</span>
+            <span className="hidden md:inline">디코기준</span>
+          </span>
         </div>
 
         {/* 2행: 가격 조정 버튼들 (펼쳤을 때만 표시) */}

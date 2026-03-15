@@ -145,16 +145,16 @@ export default function Navigation() {
     <nav className="bg-gray-900 border-b border-gray-700 fixed top-0 left-0 right-0 z-40">
       <div className="w-full">
         {/* 상단 헤더 */}
-        <div className="flex items-center h-14 md:h-16 px-3 md:px-4 overflow-x-auto min-w-0">
+        <div className="flex items-center h-14 md:h-16 px-3 md:px-4 min-w-0">
           {/* 모바일: 로고만 (데스크톱에서는 숨김) */}
-          <Link href="/" className="flex lg:hidden items-center gap-2 flex-shrink-0">
-            <img src="/page_logo_white.png" alt="껨산기" className="h-10 md:h-11 w-auto object-contain" />
-            <span className="text-xs px-2 py-0.5 bg-gray-800 text-gray-300 border border-gray-700 rounded">오픈베타</span>
-            <span className="text-xs text-gray-400 hidden sm:inline">by 스누껨독</span>
+          <Link href="/" className="flex lg:hidden items-center gap-2 min-w-0 flex-1 overflow-hidden">
+            <img src="/page_logo_white.png" alt="껨산기" className="h-10 md:h-11 w-auto object-contain flex-shrink-0" />
+            <span className="text-xs px-2 py-0.5 bg-gray-800 text-gray-300 border border-gray-700 rounded flex-shrink-0">오픈베타</span>
+            <span className="text-xs text-gray-400 hidden sm:inline flex-shrink-0 truncate">by 스누껨독</span>
           </Link>
 
-          {/* 모바일: 햄버거 메뉴 */}
-          <div className="flex items-center gap-2 lg:hidden ml-auto">
+          {/* 모바일: 햄버거 메뉴 (항상 표시) */}
+          <div className="flex items-center gap-2 lg:hidden flex-shrink-0 ml-2">
             <button
               type="button"
               onClick={() => {

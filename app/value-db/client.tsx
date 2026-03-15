@@ -6,9 +6,22 @@ import { useValueDb } from '../contexts/ValueDbContext';
 import FavoriteButton from '../components/FavoriteButton';
 import { ITEM_ICON_MAP } from '@/lib/valueDbIcons';
 
+function formatValueWithUnitSuffix(
+  unitValue: number | null,
+  unitType: '크리스탈' | '골드' | '현금' | null
+): string {
+  if (unitValue == null) return '정보 없음';
+  const num = formatNumberWithSignificantDigits(unitValue);
+  if (unitType === '크리스탈') return `${num}크리`;
+  if (unitType === '골드') return `${num}G`;
+  if (unitType === '현금') return `${num}원`;
+  return num;
+}
+
 export default function ValueDBClient() {
   const { adjustedEntries } = useValueDb();
   const [searchQuery, setSearchQuery] = useState('');
+  const [tooltipItem, setTooltipItem] = useState<string | null>(null);
 
   // 검색 필터링 및 자동완성
   const filteredEntries = useMemo(() => {
@@ -34,11 +47,11 @@ export default function ValueDBClient() {
     <div className="min-h-screen bg-gray-950 p-4 md:p-6 lg:p-8">
       <div>
         <div className="mb-6 md:mb-10">
-          <div className="flex items-center gap-3 flex-wrap mb-2">
+          <div className="hidden md:flex items-center gap-3 flex-wrap mb-2">
             <h1 className="text-3xl font-semibold tracking-tight text-white">가치 계산 DB</h1>
             <FavoriteButton title="가치 계산 DB" />
           </div>
-          <p className="text-base text-gray-400 mb-4">
+          <p className="hidden md:block text-base text-gray-400 mb-4">
             과금 효율 탭에서 선택 가능한 아이템들의 기준 가치를 확인합니다. 크리스탈/골드/현금 항목은
             각 단위로 표시되며, 별도 정보가 없으면 시장가(골드 기준)가 사용됩니다.
           </p>
@@ -83,44 +96,80 @@ export default function ValueDBClient() {
           </div>
         </div>
 
+        {tooltipItem && (
+          <div
+            className="fixed inset-0 z-50 md:hidden"
+            onClick={() => setTooltipItem(null)}
+            aria-hidden="true"
+          />
+        )}
         <div className="overflow-x-auto bg-gray-900/70 rounded-xl border border-gray-800">
           <table className="min-w-full divide-y divide-gray-800 text-sm md:text-base">
             <thead className="bg-gray-800/60">
               <tr>
-                <th className="px-4 py-3 text-left font-semibold text-gray-200">아이템명</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-200 w-28">단위</th>
-                <th className="px-4 py-3 text-right font-semibold text-gray-200 w-40">가치</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-200">비고</th>
+                <th className="px-3 md:px-4 py-3 text-left font-semibold text-gray-200">아이템명</th>
+                <th className="hidden md:table-cell px-4 py-3 text-left font-semibold text-gray-200 w-28">단위</th>
+                <th className="px-3 md:px-4 py-3 text-right font-semibold text-gray-200 w-28 md:w-40">가치</th>
+                <th className="hidden md:table-cell px-4 py-3 text-left font-semibold text-gray-200">비고</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800">
               {filteredEntries.map((entry) => (
                 <tr key={entry.itemName}>
-                  <td className="px-4 py-3 text-white">
+                  <td className="px-3 md:px-4 py-3 text-white relative">
                     <div className="flex items-center gap-2">
-                      {(entry.iconFileName ?? ITEM_ICON_MAP[entry.itemName]) ? (
-                        <img
-                          src={`/value-db-icons/${entry.iconFileName ?? ITEM_ICON_MAP[entry.itemName]}`}
-                          alt=""
-                          className="w-8 h-8 object-contain flex-shrink-0 rounded border border-gray-600"
-                        />
-                      ) : (
-                        <span className="w-8 h-8 flex-shrink-0 flex items-center justify-center bg-gray-700/50 rounded border border-gray-600">
-                          <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                          </svg>
-                        </span>
-                      )}
-                      <span>{entry.itemName}</span>
+                      <span className="hidden md:inline flex-shrink-0">
+                        {(entry.iconFileName ?? ITEM_ICON_MAP[entry.itemName]) ? (
+                          <img
+                            src={`/value-db-icons/${entry.iconFileName ?? ITEM_ICON_MAP[entry.itemName]}`}
+                            alt=""
+                            className="w-8 h-8 object-contain rounded border border-gray-600"
+                          />
+                        ) : (
+                          <span className="w-8 h-8 flex items-center justify-center bg-gray-700/50 rounded border border-gray-600">
+                            <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                            </svg>
+                          </span>
+                        )}
+                      </span>
+                      <span
+                        className={`${(entry.note ?? '') ? 'cursor-pointer md:cursor-default' : ''}`}
+                        onClick={() => {
+                          if (!(entry.note ?? '')) return;
+                          setTooltipItem((prev) => (prev === entry.itemName ? null : entry.itemName));
+                        }}
+                        role={(entry.note ?? '') ? 'button' : undefined}
+                        tabIndex={(entry.note ?? '') ? 0 : undefined}
+                        onKeyDown={(e) => {
+                          if ((entry.note ?? '') && (e.key === 'Enter' || e.key === ' ')) {
+                            e.preventDefault();
+                            setTooltipItem((prev) => (prev === entry.itemName ? null : entry.itemName));
+                          }
+                        }}
+                      >
+                        {entry.itemName}
+                      </span>
                     </div>
+                    {tooltipItem === entry.itemName && (entry.note ?? '') && (
+                      <div
+                        className="md:hidden absolute left-0 right-0 top-full z-[60] mt-1 p-3 bg-gray-800 border border-gray-600 rounded-lg shadow-xl text-xs text-gray-300"
+                        onClick={(e) => { e.stopPropagation(); setTooltipItem(null); }}
+                      >
+                        {entry.note}
+                      </div>
+                    )}
                   </td>
-                  <td className="px-4 py-3 text-gray-300">{entry.unitType ?? '-'}</td>
-                  <td className="px-4 py-3 text-right text-yellow-300">
-                    {entry.unitValue != null
-                      ? formatNumberWithSignificantDigits(entry.unitValue)
-                      : '정보 없음'}
+                  <td className="hidden md:table-cell px-4 py-3 text-gray-300">{entry.unitType ?? '-'}</td>
+                  <td className="px-3 md:px-4 py-3 text-right text-yellow-300">
+                    <span className="md:hidden">{formatValueWithUnitSuffix(entry.unitValue, entry.unitType)}</span>
+                    <span className="hidden md:inline">
+                      {entry.unitValue != null
+                        ? formatNumberWithSignificantDigits(entry.unitValue)
+                        : '정보 없음'}
+                    </span>
                   </td>
-                  <td className="px-4 py-3 text-xs text-gray-400">{entry.note ?? ''}</td>
+                  <td className="hidden md:table-cell px-4 py-3 text-xs text-gray-400">{entry.note ?? ''}</td>
                 </tr>
               ))}
               {filteredEntries.length === 0 && (
