@@ -2,8 +2,16 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: '레이드 (더보기 효율) - 껨산기',
-  description: '에픽 레이드, 카제로스 레이드, 그림자 레이드 클리어 보상 및 더보기 효율 계산',
+  title: '레이드 보상 | 클리어 골드·더보기 비용 - 껨산기',
+  description: '카제로스 레이드, 에픽 레이드, 그림자 레이드의 클리어 보상·더보기 보상·클리어 골드·더보기 골드·더보기 비용을 한눈에 확인. 에기르, 세르카, 1막·2막·3막·4막 보상과 골드 정보.',
+  keywords: [
+    '레이드 보상', '카제로스 레이드', '에픽 레이드', '그림자 레이드',
+    '클리어 보상', '더보기 보상', '클리어 골드', '더보기 골드', '더보기 비용',
+    '에기르 보상', '에기르 골드', '세르카 보상', '세르카 골드',
+    '베히모스 보상', '베히모스 골드',
+    '서막 보상', '1막 보상', '2막 보상', '3막 보상', '4막 보상', '종막 보상',
+    '로스트아크 레이드 보상', '로스트아크 레이드 골드',
+  ],
 };
 
 import RaidRewardsClient from './client';
@@ -80,12 +88,27 @@ export default async function RaidRewardsPage() {
   // 환율 데이터 가져오기
   const rates = await getRates();
   
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: '레이드 보상 | 클리어 골드·더보기 비용 - 껨산기',
+    description: '카제로스 레이드, 에픽 레이드, 그림자 레이드의 클리어 보상·더보기 보상·클리어 골드·더보기 골드·더보기 비용을 한눈에 확인. 에기르, 세르카, 1막·2막·3막·4막 보상과 골드 정보.',
+    url: 'https://www.gcalc.kr/content-rewards/raid-rewards',
+    keywords: '레이드 보상, 카제로스 레이드, 에픽 레이드, 그림자 레이드, 클리어 보상, 더보기 보상, 클리어 골드, 더보기 골드, 더보기 비용, 에기르 보상, 에기르 골드, 세르카 보상, 세르카 골드, 베히모스 보상, 서막 보상, 1막 보상, 2막 보상, 3막 보상, 4막 보상, 종막 보상',
+  };
+
   return (
-    <RaidRewardsClient 
-      data={raidRewardsData} 
-      data1730={raidRewards1730Data}
-      valueDbEntryMap={valueDbEntryMap} 
-      rates={rates} 
-    />
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <RaidRewardsClient 
+        data={raidRewardsData} 
+        data1730={raidRewards1730Data}
+        valueDbEntryMap={valueDbEntryMap} 
+        rates={rates} 
+      />
+    </>
   );
 }

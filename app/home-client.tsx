@@ -62,6 +62,14 @@ export default function HomeClient({
             <span className="md:hidden">오류·건의</span>
             <span className="hidden md:inline">오류/건의사항</span>
           </a>
+          <a
+            href="https://jungbla.tistory.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 px-3 sm:px-4 py-2.5 rounded-lg font-medium text-xs sm:text-sm text-white bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-gray-600 transition-colors text-center whitespace-nowrap"
+          >
+            비밀수첩
+          </a>
         </div>
 
         {/* 메인 컨텐츠 그리드 */}

@@ -70,7 +70,9 @@ function formatRewardItems(rewards: RewardData, excludeGold = false): string {
   if (entries.length === 0) return '-';
   return entries
     .map(([name, qty]) => {
-      const q = Number.isInteger(qty) ? String(qty) : formatNumberWithSignificantDigits(qty);
+      const q = (qty > 0 && qty < 1)
+        ? '0~1'
+        : (Number.isInteger(qty) ? String(qty) : formatNumberWithSignificantDigits(qty));
       return `${name} ${q}개`;
     })
     .join('<br>');
@@ -1190,6 +1192,15 @@ export default function RaidRewardsClient({
           </div>
         )}
       </div>
+
+      {/* SEO용 숨김 텍스트: 크롤러 인덱싱용, 화면에는 표시되지 않음 */}
+      <p className="sr-only">
+        이 페이지에서는 카제로스 레이드, 에픽 레이드, 그림자 레이드의 레이드 보상(클리어 보상, 더보기 보상)과
+        클리어 골드·더보기 골드·더보기 비용을 확인할 수 있습니다.
+        에기르 보상, 에기르 골드, 세르카 보상, 세르카 골드, 베히모스 보상,
+        서막 보상, 1막 보상, 2막 보상, 3막 보상, 4막 보상, 종막 보상,
+        로스트아크 레이드 보상, 로스트아크 레이드 골드 정보를 제공합니다.
+      </p>
     </div>
   );
 }
