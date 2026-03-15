@@ -76,7 +76,18 @@ function formatRewardItems(rewards: RewardData, excludeGold = false): string {
     .join('<br>');
 }
 
-/** 레이드 데이터로 블로그용 HTML 테이블 생성 (난이도별) */
+/** 보상 객체들 합산 (여러 관문의 클리어/더보기 합계) */
+function mergeRewardTotals(rewardMaps: RewardData[]): RewardData {
+  const out: RewardData = {};
+  for (const rewards of rewardMaps) {
+    for (const [name, qty] of Object.entries(rewards)) {
+      out[name] = (out[name] ?? 0) + qty;
+    }
+  }
+  return out;
+}
+
+/** 레이드 데이터로 블로그용 HTML 테이블 생성 (난이도별, 난이도마다 마지막에 합계 행 추가) */
 function buildRaidTablesHtml(category: string, raidName: string, raidData: DifficultyData): string {
   const tables: string[] = [];
   for (const [difficulty, diffData] of Object.entries(raidData)) {
@@ -85,8 +96,13 @@ function buildRaidTablesHtml(category: string, raidName: string, raidData: Diffi
     const gateNumbers = Object.keys(gates).sort((a, b) => Number(a) - Number(b));
     if (gateNumbers.length === 0) continue;
 
-    let html = `<p><strong>${raidName} ${difficulty}${level ? ` (${level})` : ''}</strong></p>\n<table border="1" cellpadding="6" cellspacing="0" style="border-collapse: collapse;">\n`;
-    html += '<thead><tr><th>관문</th><th>클리어 보상</th><th>더보기 보상</th><th>클리어 골드</th><th>더보기 비용</th></tr></thead>\n<tbody>\n';
+    const allClearRewards: RewardData[] = [];
+    const allMoreRewards: RewardData[] = [];
+    let totalClearGold = 0;
+    let totalMoreCost = 0;
+
+    let html = `<table border="1" cellpadding="6" cellspacing="0" style="border-collapse: collapse; border: 1px solid #999;">\n`;
+    html += `<thead><tr><td style="border:1px solid #999;padding:6px;text-align:left;background:#e8e8e8;font-weight:bold">관문</td><td style="border:1px solid #999;padding:6px;text-align:left;background:#e8e8e8;font-weight:bold">클리어 보상</td><td style="border:1px solid #999;padding:6px;text-align:left;background:#e8e8e8;font-weight:bold">더보기 보상</td><td style="border:1px solid #999;padding:6px;text-align:left;background:#e8e8e8;font-weight:bold">클리어 골드</td><td style="border:1px solid #999;padding:6px;text-align:left;background:#e8e8e8;font-weight:bold">더보기 비용</td></tr></thead>\n<tbody>\n`;
 
     for (const gateNum of gateNumbers) {
       const gate = gates[gateNum];
@@ -95,11 +111,23 @@ function buildRaidTablesHtml(category: string, raidName: string, raidData: Diffi
       const clearGold = clearRewards['골드'] ?? 0;
       const moreCost = Math.abs(moreRewards['골드'] ?? 0);
 
+      allClearRewards.push(clearRewards);
+      allMoreRewards.push(moreRewards);
+      totalClearGold += clearGold;
+      totalMoreCost += moreCost;
+
       const clearStr = formatRewardItems(clearRewards, true);
       const moreStr = formatRewardItems(moreRewards, true);
 
-      html += `<tr><td>${gateNum}관문</td><td>${clearStr}</td><td>${moreStr}</td><td>${clearGold.toLocaleString('ko-KR')}</td><td>${moreCost.toLocaleString('ko-KR')}</td></tr>\n`;
+      html += `<tr><td style="border:1px solid #999;padding:6px">${gateNum}관문</td><td style="border:1px solid #999;padding:6px">${clearStr}</td><td style="border:1px solid #999;padding:6px">${moreStr}</td><td style="border:1px solid #999;padding:6px">${clearGold.toLocaleString('ko-KR')}</td><td style="border:1px solid #999;padding:6px">${moreCost.toLocaleString('ko-KR')}</td></tr>\n`;
     }
+
+    const sumClear = mergeRewardTotals(allClearRewards);
+    const sumMore = mergeRewardTotals(allMoreRewards);
+    const sumClearStr = formatRewardItems(sumClear, true);
+    const sumMoreStr = formatRewardItems(sumMore, true);
+    html += `<tr><td style="border:1px solid #999;padding:6px">합계</td><td style="border:1px solid #999;padding:6px">${sumClearStr}</td><td style="border:1px solid #999;padding:6px">${sumMoreStr}</td><td style="border:1px solid #999;padding:6px">${totalClearGold.toLocaleString('ko-KR')}</td><td style="border:1px solid #999;padding:6px">${totalMoreCost.toLocaleString('ko-KR')}</td></tr>\n`;
+
     html += '</tbody></table>\n';
     tables.push(html);
   }
@@ -544,7 +572,7 @@ export default function RaidRewardsClient({
               </button>
             </div>
             <div className="p-4 overflow-y-auto flex-1 space-y-4">
-              <p className="text-xs text-gray-400">아래 표를 선택 후 복사하거나, 버튼으로 HTML을 클립보드에 복사할 수 있습니다.</p>
+              <p className="text-xs text-gray-400">표 전체 복사 버튼을 누른 뒤 블로그 본문(글쓰기)에 붙여넣으면 표가 그대로 삽입됩니다.</p>
               <div
                 className="bg-gray-900 rounded-lg p-4 text-sm text-gray-200 border border-gray-700 [&_table]:w-full [&_th]:text-left [&_th]:bg-gray-800 [&_td]:border-gray-600 [&_th]:border-gray-600 [&_*]:select-text"
                 dangerouslySetInnerHTML={{
@@ -561,17 +589,23 @@ export default function RaidRewardsClient({
                 type="button"
                 onClick={async () => {
                   const raidData = currentData[copyTableTarget!.category][copyTableTarget!.raid];
-                  const html = buildRaidTablesHtml(copyTableTarget!.category, copyTableTarget!.raid, raidData);
+                  const tableHtml = buildRaidTablesHtml(copyTableTarget!.category, copyTableTarget!.raid, raidData);
+                  const docHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${tableHtml}</body></html>`;
                   try {
-                    await navigator.clipboard.writeText(html);
-                    alert('클립보드에 복사되었습니다. 티스토리 HTML 입력 모드에 붙여넣기 하세요.');
+                    await navigator.clipboard.write([
+                      new ClipboardItem({
+                        'text/html': new Blob([docHtml], { type: 'text/html' }),
+                        'text/plain': new Blob([tableHtml], { type: 'text/plain' }),
+                      }),
+                    ]);
+                    alert('클립보드에 복사되었습니다. 블로그 본문(글쓰기)에 붙여넣기 하세요.');
                   } catch {
                     alert('복사에 실패했습니다.');
                   }
                 }}
                 className="flex-1 py-3 px-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg"
               >
-                클립보드에 복사
+                표 전체 복사
               </button>
               <button
                 type="button"
