@@ -608,9 +608,156 @@
           ],
           "bloodstoneCost": 5
         }
+      ],
+      "은총의 파편": [
+        {
+          "itemName": "영웅 젬 선택 상자",
+          "itemType": "확정",
+          "quantity": 1,
+          "components": [
+            {
+              "itemName": "영웅 젬",
+              "quantity": 1,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0
+            },
+            {
+              "itemName": "제작 비용",
+              "quantity": 1,
+              "manualPrice": -10000,
+              "manualUnitType": null,
+              "probability": 0
+            }
+          ],
+          "bloodstoneCost": 10
+        },
+        {
+          "itemName": "젬 랜덤 상자",
+          "itemType": "확률",
+          "quantity": 1,
+          "components": [
+            {
+              "itemName": "고급 젬",
+              "quantity": 1,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.8
+            },
+            {
+              "itemName": "희귀 젬",
+              "quantity": 1,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.15
+            },
+            {
+              "itemName": "영웅 젬",
+              "quantity": 1,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0.05
+            }
+          ],
+          "bloodstoneCost": 10
+        },
+        {
+          "itemName": "지평의 야금술 선택 상자",
+          "itemType": "선택",
+          "quantity": 1,
+          "components": [
+            {
+              "itemName": "야금술 : 업화 [19-20]",
+              "quantity": 1,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "selected": false
+            },
+            {
+              "itemName": "장인의 야금술 : 3단계",
+              "quantity": 2,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "selected": false
+            },
+            {
+              "itemName": "장인의 야금술 : 4단계",
+              "quantity": 1,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "selected": true
+            }
+          ],
+          "bloodstoneCost": 10
+        },
+        {
+          "itemName": "지평의 재봉술 선택 상자",
+          "itemType": "확정",
+          "quantity": 3,
+          "components": [
+            {
+              "itemName": "재봉술 : 업화 [19-20]",
+              "quantity": 1,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0
+            },
+            {
+              "itemName": "장인의 재봉술 : 3단계",
+              "quantity": 2,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0
+            },
+            {
+              "itemName": "장인의 재봉술 : 4단계",
+              "quantity": 1,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0
+            }
+          ],
+          "bloodstoneCost": 10
+        },
+        {
+          "itemName": "지평의 재련 재료 상자",
+          "itemType": "확정",
+          "quantity": 1,
+          "components": [
+            {
+              "itemName": "운명의 파편 1개당",
+              "quantity": 22500,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0
+            },
+            {
+              "itemName": "운명의 파괴석 결정",
+              "quantity": 2000,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0
+            },
+            {
+              "itemName": "운명의 수호석 결정",
+              "quantity": 4000,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0
+            },
+            {
+              "itemName": "위대한 운명의 돌파석",
+              "quantity": 60,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0
+            }
+          ],
+          "bloodstoneCost": 60
+        }
       ]
     },
     "created_at": "2026-02-13T12:18:02.950Z",
-    "updated_at": "2026-02-15T16:42:57.976Z"
+    "updated_at": "2026-03-20T13:32:10.023Z"
   }
 ]

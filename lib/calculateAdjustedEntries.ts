@@ -1056,6 +1056,7 @@ export function calculateAdjustedEntries(params: CalculateAdjustedEntriesParams)
     '낙뢰의 뿔',
     '우뢰의 뇌옥',
     '고통의 가시',
+    '은총의 파편',
   ];
   if (craftMaterialShopData && rates?.exchange != null) {
     const crystalGoldRate = rates.exchange;

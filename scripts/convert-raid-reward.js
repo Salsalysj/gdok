@@ -16,7 +16,8 @@ const rewardItemColumns = headers.slice(6);
 const result = {
   '에픽 레이드': {},
   '카제로스 레이드': {},
-  '그림자 레이드': {}
+  '그림자 레이드': {},
+  '어비스 던전': {}
 };
 
 // 난이도별 레벨 정보 저장

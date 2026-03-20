@@ -28,7 +28,7 @@ type BundleItem = {
   bloodstoneCost?: number; // 혈석 교환 비용
 };
 
-// 제작 재료 교환 8개 카테고리 (Supabase shop_data 키와 동일)
+// 제작 재료 교환 9개 카테고리 (Supabase shop_data 키와 동일)
 export const CRAFT_MATERIAL_SECTIONS = [
   '베히모스의 비늘',
   '알키오네의 눈',
@@ -37,6 +37,7 @@ export const CRAFT_MATERIAL_SECTIONS = [
   '낙뢰의 뿔',
   '우뢰의 뇌옥',
   '고통의 가시',
+  '은총의 파편',
 ] as const;
 export type SectionKey = (typeof CRAFT_MATERIAL_SECTIONS)[number];
 
