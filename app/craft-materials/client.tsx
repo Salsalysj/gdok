@@ -864,7 +864,11 @@ export default function CraftMaterialsClient({
   // 묶음 항목 업데이트
   const updateBundleItem = (section: SectionKey, index: number, field: keyof BundleItem, value: any) => {
     const items = [...getItems(section)];
-    items[index] = { ...items[index], [field]: value };
+    let updatedItem = { ...items[index], [field]: value };
+    if (field === 'itemType' && value === '선택') {
+      updatedItem = { ...updatedItem, components: autoSelectHighestValueComponent(updatedItem) };
+    }
+    items[index] = updatedItem;
     setItems(section, items);
   };
 
@@ -878,32 +882,26 @@ export default function CraftMaterialsClient({
     const items = [...getItems(section)];
     const bundleItem = items[itemIndex];
     const isSelectionType = bundleItem.itemType === '선택';
-    const isFirstComponent = bundleItem.components.length === 0;
     
-    items[itemIndex] = {
-      ...bundleItem,
-      components: [
-        ...bundleItem.components,
-        {
-          itemName: '',
-          quantity: 1,
-          manualPrice: null,
-          manualUnitType: null,
-          probability: isSelectionType ? undefined : 0,
-          selected: isSelectionType ? isFirstComponent : undefined,
-        },
-      ],
+    const newComponent: ComponentItem = {
+      itemName: '',
+      quantity: 1,
+      manualPrice: null,
+      manualUnitType: null,
+      probability: isSelectionType ? undefined : 0,
+      selected: false,
     };
     
-    if (isSelectionType && !isFirstComponent) {
-      items[itemIndex].components = items[itemIndex].components.map((comp, idx) => {
-        if (idx === items[itemIndex].components.length - 1) {
-          return { ...comp, selected: true };
-        }
-        return { ...comp, selected: false };
-      });
+    const updatedItem = {
+      ...bundleItem,
+      components: [...bundleItem.components, newComponent],
+    };
+    
+    if (isSelectionType) {
+      updatedItem.components = autoSelectHighestValueComponent(updatedItem);
     }
     
+    items[itemIndex] = updatedItem;
     setItems(section, items);
   };
 
@@ -937,6 +935,12 @@ export default function CraftMaterialsClient({
           if (idx !== componentIndex) {
             comp.selected = false;
           }
+        });
+      } else if (items[itemIndex].itemType === '선택' && (field === 'itemName' || field === 'quantity' || field === 'manualPrice' || field === 'manualUnitType' || field === 'nestedItem')) {
+        const updatedBundleItem = { ...items[itemIndex], components: newComponents };
+        const autoSelectedComponents = autoSelectHighestValueComponent(updatedBundleItem);
+        autoSelectedComponents.forEach((comp: ComponentItem, idx: number) => {
+          newComponents[idx].selected = comp.selected;
         });
       }
       
@@ -1169,6 +1173,76 @@ export default function CraftMaterialsClient({
     return total;
   }, [resolveUnitPrice, crystalGoldRate, goldToCashPerGold]);
 
+  // 구성요소의 가치 계산 (자동 선택을 위해)
+  const calculateComponentValue = useCallback((component: ComponentItem, bundleItem: BundleItem): number => {
+    let componentValue = 0;
+    if (component.itemName === '__nested__' && component.nestedItem) {
+      componentValue = calculateBundleItemValue(component.nestedItem);
+    } else {
+      const isManual = component.itemName === '__manual__' || component.itemName === '';
+      const resolved = !isManual && component.itemName && component.itemName !== '__nested__' ? resolveUnitPrice(component.itemName) : null;
+      const finalUnitPrice = (component.manualPrice !== null && component.manualPrice !== undefined)
+        ? { unitType: (component.manualUnitType || '골드') as '골드' | '크리스탈' | '현금', unitPrice: component.manualPrice }
+        : resolved;
+      if (finalUnitPrice) {
+        if (finalUnitPrice.unitType === '골드') {
+          componentValue = finalUnitPrice.unitPrice * (component.quantity || 0);
+        } else if (finalUnitPrice.unitType === '크리스탈' && crystalGoldRate && crystalGoldRate > 0) {
+          componentValue = ((finalUnitPrice.unitPrice * crystalGoldRate) / 100) * (component.quantity || 0);
+        } else if (finalUnitPrice.unitType === '현금' && goldToCashPerGold && goldToCashPerGold > 0) {
+          componentValue = (finalUnitPrice.unitPrice / goldToCashPerGold) * (component.quantity || 0);
+        }
+      }
+    }
+    const itemQuantity = bundleItem.quantity || 1;
+    if (bundleItem.itemType === '확정') {
+      componentValue *= itemQuantity;
+    } else if (bundleItem.itemType === '확률') {
+      componentValue *= (component.probability ?? 0) * itemQuantity;
+    }
+    return componentValue;
+  }, [calculateBundleItemValue, resolveUnitPrice, crystalGoldRate, goldToCashPerGold]);
+
+  // 선택 타입 묶음 항목에서 가장 가치가 높은 구성요소 자동 선택
+  const autoSelectHighestValueComponent = useCallback((bundleItem: BundleItem): ComponentItem[] => {
+    if (bundleItem.itemType !== '선택' || bundleItem.components.length === 0) {
+      return bundleItem.components;
+    }
+    const componentValues = bundleItem.components.map((comp, idx) => ({
+      index: idx,
+      value: calculateComponentValue(comp, bundleItem),
+      component: comp,
+    }));
+    const highestValueIndex = componentValues.reduce((maxIdx, curr, idx) => {
+      return curr.value > componentValues[maxIdx].value ? idx : maxIdx;
+    }, 0);
+    return bundleItem.components.map((comp, idx) => ({
+      ...comp,
+      selected: idx === highestValueIndex,
+    }));
+  }, [calculateComponentValue]);
+
+  // 로드 시 선택 타입 묶음 항목 정규화 (가장 높은 가치 구성요소 자동 선택)
+  const normalizeShopDataForSelection = useCallback((data: CraftMaterialsData): CraftMaterialsData => {
+    const normalizeBundleItem = (item: BundleItem): BundleItem => {
+      if (item.itemType !== '선택' || item.components.length === 0) return item;
+      const componentsWithNormalizedNested = item.components.map(comp => {
+        if (comp.itemName === '__nested__' && comp.nestedItem) {
+          return { ...comp, nestedItem: normalizeBundleItem(comp.nestedItem) };
+        }
+        return comp;
+      });
+      const itemWithNormalizedNested = { ...item, components: componentsWithNormalizedNested };
+      return { ...itemWithNormalizedNested, components: autoSelectHighestValueComponent(itemWithNormalizedNested) };
+    };
+    const result = { ...emptyShopData };
+    for (const section of CRAFT_MATERIAL_SECTIONS) {
+      const items = (data[section] ?? []).map(normalizeBundleItem);
+      result[section] = items;
+    }
+    return result;
+  }, [autoSelectHighestValueComponent, emptyShopData]);
+
   // 각 섹션별 묶음 항목 상세 정보 (교환 단위당 가치 = 가치 / 교환 비용)
   const sectionDetails = useMemo(() => {
     const getSectionDetails = (items: BundleItem[], section: SectionKey) => {
@@ -1231,10 +1305,11 @@ export default function CraftMaterialsClient({
     if (firstShop && firstShop.shop_data) {
       console.log('[자동 로드] 상점 데이터 로드 중');
       const loaded = firstShop.shop_data as Partial<CraftMaterialsData>;
-      const normalized: CraftMaterialsData = { ...emptyShopData };
+      const base: CraftMaterialsData = { ...emptyShopData };
       for (const key of CRAFT_MATERIAL_SECTIONS) {
-        if (Array.isArray(loaded[key])) normalized[key] = loaded[key];
+        if (Array.isArray(loaded[key])) base[key] = loaded[key];
       }
+      const normalized = normalizeShopDataForSelection(base);
       setShopData(normalized);
       setSelectedShopId(firstShop.id);
       hasAutoLoaded.current = true;
@@ -1242,7 +1317,7 @@ export default function CraftMaterialsClient({
       console.log('[자동 로드] 상점 데이터가 없습니다.');
       hasAutoLoaded.current = true;
     }
-  }, [initialSavedShops, emptyShopData]);
+  }, [initialSavedShops, emptyShopData, normalizeShopDataForSelection]);
 
   // 저장된 상점 목록 새로고침
   const refreshSavedShops = useCallback(async () => {
@@ -1367,10 +1442,11 @@ export default function CraftMaterialsClient({
       
       if (data.shop && data.shop.shop_data) {
         const loaded = data.shop.shop_data as Partial<CraftMaterialsData>;
-        const normalized: CraftMaterialsData = { ...emptyShopData };
+        const base: CraftMaterialsData = { ...emptyShopData };
         for (const key of CRAFT_MATERIAL_SECTIONS) {
-          if (Array.isArray(loaded[key])) normalized[key] = loaded[key];
+          if (Array.isArray(loaded[key])) base[key] = loaded[key];
         }
+        const normalized = normalizeShopDataForSelection(base);
         setShopData(normalized);
         setSelectedShopId(shopId);
         alert('상점이 불러와졌습니다.');
@@ -1851,8 +1927,18 @@ export default function CraftMaterialsClient({
                                 <div className="mt-2 p-2 bg-gray-800 rounded border border-gray-600 text-[11px] text-gray-300 space-y-1" onClick={(e) => e.stopPropagation()}>
                                   <div className="font-semibold text-gray-400">구성 요소</div>
                                   {bundleItem.components.map((c, i) => (
-                                    <div key={i}>
-                                      {c.itemName === '__nested__' && c.nestedItem ? `묶음: ${c.nestedItem.itemName || '(미입력)'}` : (c.itemName === '__manual__' || c.itemName === '' ? '(직접 입력)' : c.itemName)} × {formatNumberWithSignificantDigits(c.quantity || 0)}
+                                    <div key={i} className="flex items-center gap-2">
+                                      {bundleItem.itemType === '선택' ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => updateComponent(sectionKey, index, i, 'selected', true)}
+                                          className={`flex-shrink-0 w-4 h-4 rounded-full border-2 flex items-center justify-center ${c.selected ? 'border-blue-400 bg-blue-400' : 'border-gray-500 hover:border-gray-400'}`}
+                                          aria-label={c.selected ? '선택됨' : '선택'}
+                                        >
+                                          {c.selected && <span className="w-2 h-2 rounded-full bg-white" />}
+                                        </button>
+                                      ) : null}
+                                      <span>{c.itemName === '__nested__' && c.nestedItem ? `묶음: ${c.nestedItem.itemName || '(미입력)'}` : (c.itemName === '__manual__' || c.itemName === '' ? '(직접 입력)' : c.itemName)} × {formatNumberWithSignificantDigits(c.quantity || 0)}</span>
                                     </div>
                                   ))}
                                 </div>
@@ -1943,6 +2029,16 @@ export default function CraftMaterialsClient({
                                           const hasValue = finalUnitPrice != null;
                                           return (
                                             <div key={compIdx} className="flex items-center gap-2 flex-wrap">
+                                              {bundleItem.itemType === '선택' ? (
+                                                <button
+                                                  type="button"
+                                                  onClick={() => updateComponent(sectionKey, index, compIdx, 'selected', true)}
+                                                  className={`flex-shrink-0 w-4 h-4 rounded-full border-2 flex items-center justify-center ${comp.selected ? 'border-blue-400 bg-blue-400' : 'border-gray-500 hover:border-gray-400'}`}
+                                                  aria-label={comp.selected ? '선택됨' : '선택'}
+                                                >
+                                                  {comp.selected && <span className="w-2 h-2 rounded-full bg-white" />}
+                                                </button>
+                                              ) : null}
                                               <span className="text-gray-300">{displayName}</span>
                                               <span>× {formatNumberWithSignificantDigits(comp.quantity || 0)}</span>
                                               {bundleItem.itemType === '확률' && comp.probability != null && (

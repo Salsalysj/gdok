@@ -176,16 +176,15 @@ export function applyPriceOverride(itemName: string, originalPrice: number | nul
 
   // 하위단계 야금/재봉 미반영
   if (state.ignoreLowTierCrafting) {
-    if (
-      itemName === '야금술 : 업화 [11-14]' ||
-      itemName === '재봉술 : 업화 [11-14]' ||
-      itemName === '야금술 : 업화 [15-18]' ||
-      itemName === '재봉술 : 업화 [15-18]' ||
-      itemName === '장인의 야금술 : 1단계' ||
-      itemName === '장인의 야금술 : 2단계' ||
-      itemName === '장인의 재봉술 : 1단계' ||
-      itemName === '장인의 재봉술 : 2단계'
-    ) {
+    const lowTierCraftItems = [
+      '야금술 : 업화 [11-14]', '재봉술 : 업화 [11-14]',
+      '야금술 : 업화 [15-18]', '재봉술 : 업화 [15-18]',
+      '야금술 : 업화 [19-20]', '재봉술 : 업화 [19-20]',
+      '강화 야금술 : 업화 [19-20]', '강화 재봉술 : 업화 [19-20]',
+      '장인의 야금술 : 1단계', '장인의 야금술 : 2단계', '장인의 야금술 : 3단계', '장인의 야금술 : 4단계',
+      '장인의 재봉술 : 1단계', '장인의 재봉술 : 2단계', '장인의 재봉술 : 3단계', '장인의 재봉술 : 4단계',
+    ];
+    if (lowTierCraftItems.some(base => itemName === base || itemName === `${base} (실제가치)`)) {
       return 0;
     }
   }

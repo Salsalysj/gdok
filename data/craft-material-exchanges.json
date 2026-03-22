@@ -633,6 +633,28 @@
           "bloodstoneCost": 10
         },
         {
+          "itemName": "영웅 젬 선택 상자 (1750렙)",
+          "itemType": "확정",
+          "quantity": 2,
+          "components": [
+            {
+              "itemName": "영웅 젬",
+              "quantity": 1,
+              "manualPrice": null,
+              "manualUnitType": null,
+              "probability": 0
+            },
+            {
+              "itemName": "제작 비용",
+              "quantity": 1,
+              "manualPrice": -10000,
+              "manualUnitType": null,
+              "probability": 0
+            }
+          ],
+          "bloodstoneCost": 10
+        },
+        {
           "itemName": "젬 랜덤 상자",
           "itemType": "확률",
           "quantity": 1,
@@ -692,7 +714,7 @@
         },
         {
           "itemName": "지평의 재봉술 선택 상자",
-          "itemType": "확정",
+          "itemType": "선택",
           "quantity": 3,
           "components": [
             {
@@ -700,21 +722,24 @@
               "quantity": 1,
               "manualPrice": null,
               "manualUnitType": null,
-              "probability": 0
+              "probability": 0,
+              "selected": false
             },
             {
               "itemName": "장인의 재봉술 : 3단계",
               "quantity": 2,
               "manualPrice": null,
               "manualUnitType": null,
-              "probability": 0
+              "probability": 0,
+              "selected": true
             },
             {
               "itemName": "장인의 재봉술 : 4단계",
               "quantity": 1,
               "manualPrice": null,
               "manualUnitType": null,
-              "probability": 0
+              "probability": 0,
+              "selected": false
             }
           ],
           "bloodstoneCost": 10
@@ -758,6 +783,6 @@
       ]
     },
     "created_at": "2026-02-13T12:18:02.950Z",
-    "updated_at": "2026-03-20T13:32:10.023Z"
+    "updated_at": "2026-03-22T13:47:33.376Z"
   }
 ]
