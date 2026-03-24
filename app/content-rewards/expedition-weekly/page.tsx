@@ -81,6 +81,7 @@ async function loadContentEntryRequirements(): Promise<{ base: ExpeditionWeeklyD
     { minLevel: 1700, name: '큐브 3해금' },
     { minLevel: 1720, name: '큐브 4해금' },
     { minLevel: 1730, name: '모래시계 1' },
+    { minLevel: 1730, name: '모래시계 2' },
   ];
 
   const guardian: Omit<ContentEntry, 'tradableValue' | 'totalValue' | 'weeklyCount'>[] = [];
@@ -166,6 +167,7 @@ export default async function ExpeditionWeeklyPage() {
     '큐브 3해금': { key: '3해금', weeklyCount: 1.4 },
     '큐브 4해금': { key: '4해금', weeklyCount: 1.4 },
     '모래시계 1': { key: '모래시계 1', weeklyCount: 2.4 },
+    '모래시계 2': { key: '모래시계 2', weeklyCount: 2.4 },
   };
   const cubeHourglassEnriched: ContentEntry[] = entryData.cubeHourglass.map((e: any) => {
     const cubeData = contentRewardsData['에브니 큐브'];

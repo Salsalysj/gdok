@@ -102,7 +102,7 @@ export default function Navigation() {
     { name: '각종 교환', href: '/bloodstone-shop', hasSubmenu: true },
     { name: '과금', hasSubmenu: true, noLink: true },
     { name: '재련', href: '/refining-simulation', hasSubmenu: true },
-    { name: '커스텀', href: '/custom-calculator', hasSubmenu: true },
+    { name: '시급 계산기', href: '/custom-calculator', hasSubmenu: true },
     { name: '쌀산기', href: '/auction-calculator' },
   ];
 
@@ -130,6 +130,7 @@ export default function Navigation() {
     { name: '혈석 상점 효율', href: '/bloodstone-shop' },
     { name: '제작 재료 교환', href: '/craft-materials' },
     { name: '싱글 상점 교환', href: '/single-shop' },
+    { name: '상자 선택 도우미', href: '/custom-calculator/box-selector' },
   ];
 
   const packageEfficiencySubTabs = [
@@ -137,8 +138,7 @@ export default function Navigation() {
   ];
 
   const customCalcSubTabs = [
-    { name: '상자 선택 도우미', href: '/custom-calculator/box-selector' },
-    { name: '시급 계산기', href: '/custom-calculator/wage-calculator' }
+    { name: '시급 계산기', href: '/custom-calculator/wage-calculator' },
   ];
 
   return (
@@ -201,7 +201,7 @@ export default function Navigation() {
                   (tab.href === '/content-rewards' && pathname.startsWith('/content-rewards')) ||
                   (tab.href === '/refining-simulation' && (pathname.startsWith('/refining-simulation') || pathname.startsWith('/advanced-refining') || pathname.startsWith('/character-simulation'))) ||
                   (tab.href === '/event-efficiency' && pathname.startsWith('/event-efficiency')) ||
-                  (tab.name === '각종 교환효율' && (pathname.startsWith('/bloodstone-shop') || pathname.startsWith('/craft-materials') || pathname.startsWith('/single-shop'))) ||
+                  (tab.name === '각종 교환' && (pathname.startsWith('/bloodstone-shop') || pathname.startsWith('/craft-materials') || pathname.startsWith('/single-shop') || pathname.startsWith('/custom-calculator/box-selector'))) ||
                   (tab.href === '/custom-calculator' && pathname.startsWith('/custom-calculator')) ||
                   (tab.name === '과금' && tab.noLink && pathname.startsWith('/package-efficiency'));
                 
@@ -211,7 +211,7 @@ export default function Navigation() {
                   const isEventEfficiency = tab.name === '이벤트';
                   const isExchangeEfficiency = tab.name === '각종 교환';
                   const isPackageEfficiency = tab.name === '과금' && tab.noLink;
-                  const isCustomCalc = tab.name === '커스텀';
+                  const isCustomCalc = tab.name === '시급 계산기';
                   const isOpen = isContentRewards ? contentRewardsOpen : (isRefining ? refiningOpen : (isEventEfficiency ? eventEfficiencyOpen : (isExchangeEfficiency ? exchangeEfficiencyOpen : (isPackageEfficiency ? packageEfficiencyOpen : (isCustomCalc ? customCalcOpen : false)))));
                   const setIsOpen = isContentRewards ? setContentRewardsOpen : (isRefining ? setRefiningOpen : (isEventEfficiency ? setEventEfficiencyOpen : (isExchangeEfficiency ? setExchangeEfficiencyOpen : (isPackageEfficiency ? setPackageEfficiencyOpen : (isCustomCalc ? setCustomCalcOpen : () => {})))));
                   const subTabs = isContentRewards ? contentRewardsSubTabs : (isRefining ? refiningSubTabs : (isEventEfficiency ? eventEfficiencySubTabs : (isExchangeEfficiency ? exchangeEfficiencySubTabs : (isPackageEfficiency ? packageEfficiencySubTabs : (isCustomCalc ? customCalcSubTabs : [])))));
@@ -371,7 +371,7 @@ export default function Navigation() {
                 (tab.href === '/content-rewards' && pathname.startsWith('/content-rewards')) ||
                 (tab.href === '/refining-simulation' && (pathname.startsWith('/refining-simulation') || pathname.startsWith('/advanced-refining') || pathname.startsWith('/character-simulation'))) ||
                 (tab.href === '/event-efficiency' && pathname.startsWith('/event-efficiency')) ||
-                (tab.name === '각종 교환효율' && (pathname.startsWith('/bloodstone-shop') || pathname.startsWith('/craft-materials') || pathname.startsWith('/single-shop'))) ||
+                (tab.name === '각종 교환' && (pathname.startsWith('/bloodstone-shop') || pathname.startsWith('/craft-materials') || pathname.startsWith('/single-shop') || pathname.startsWith('/custom-calculator/box-selector'))) ||
                 (tab.href === '/custom-calculator' && pathname.startsWith('/custom-calculator')) ||
                 (tab.name === '과금' && tab.noLink && pathname.startsWith('/package-efficiency'));
               

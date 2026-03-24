@@ -3,6 +3,7 @@ const path = require('path');
 
 const cube3tFile = path.join(__dirname, '..', 'cube3t.csv');
 const cube4tFile = path.join(__dirname, '..', 'cube4t.csv');
+const hourglassFile = path.join(__dirname, '..', 'hourglass.csv');
 const tobul3tFile = path.join(__dirname, '..', 'tobul3t.csv');
 const tobul4tFile = path.join(__dirname, '..', 'tobul4t.csv');
 const outputFile = path.join(__dirname, '..', 'data', 'csv-rewards.json');
@@ -65,13 +66,23 @@ function parseCSV(filePath) {
   }
 }
 
+/** hourglass.csv: 단계 1,2 → 모래시계 1, 모래시계 2 */
+function parseHourglass(filePath) {
+  const rows = parseCSV(filePath);
+  return rows.map((row) => ({
+    ...row,
+    stage: `모래시계 ${row.stage}`,
+  }));
+}
+
 try {
   console.log('CSV 파일 파싱 시작...');
   
   const result = {
     '에브니 큐브': {
       '티어3': parseCSV(cube3tFile),
-      '티어4': parseCSV(cube4tFile),
+      '에브니 큐브': parseCSV(cube4tFile),
+      '할의 모래시계': parseHourglass(hourglassFile),
     },
     '가디언 토벌': {
       '티어3': parseCSV(tobul3tFile),
@@ -87,7 +98,8 @@ try {
   
   fs.writeFileSync(outputFile, JSON.stringify(result, null, 2), 'utf-8');
   console.log('\n✅ CSV 파일 파싱 완료:', outputFile);
-  console.log(`에브니 큐브: 티어3 ${result['에브니 큐브']['티어3'].length}개, 티어4 ${result['에브니 큐브']['티어4'].length}개`);
+  const ec = result['에브니 큐브'];
+  console.log(`에브니 큐브: 티어3 ${ec['티어3'].length}개, 큐브 ${ec['에브니 큐브'].length}개, 할의 모래시계 ${ec['할의 모래시계'].length}개`);
   console.log(`가디언 토벌: 티어3 ${result['가디언 토벌']['티어3'].length}개, 티어4 ${result['가디언 토벌']['티어4'].length}개`);
   
 } catch (error) {

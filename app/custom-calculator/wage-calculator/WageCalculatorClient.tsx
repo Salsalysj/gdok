@@ -47,7 +47,13 @@ export type RaidData = {
 
 export type ValueDbEntryMap = Record<string, { itemName: string; unitType: '크리스탈' | '골드' | '현금' | null; unitValue: number | null; note?: string }>;
 
-const KURZAN_LEVELS = ['1640', '1660', '1680', '1700', '1720', '1730'];
+/** 전선&균열 레벨: content 데이터에서 자동 추출 (하드코딩 제거) */
+function getKurzanLevels(kurzanAdjusted: ContentData | undefined): string[] {
+  if (!kurzanAdjusted) return [];
+  return Object.keys(kurzanAdjusted)
+    .filter((l) => /^\d+$/.test(l))
+    .sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+}
 
 function calculateStageTotals(
   stage: Stage,
@@ -296,7 +302,7 @@ export default function WageCalculatorClient({
 
   const kurzanRows = useMemo(() => {
     if (!kurzanAdjusted) return [];
-    return KURZAN_LEVELS.filter((l) => kurzanAdjusted[l]).map((level) => {
+    return getKurzanLevels(kurzanAdjusted).map((level) => {
       const stages = kurzanAdjusted[level];
       let tradable = 0, total = 0;
       stages.forEach((stage) => {

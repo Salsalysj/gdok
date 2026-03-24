@@ -329,7 +329,7 @@
         "rewards": [
           {
             "itemName": "운명의 파괴석 결정",
-            "quantity": 430.7
+            "quantity": 313
           },
           {
             "itemName": "운명의 수호석 결정",
@@ -358,6 +358,49 @@
           {
             "itemName": "고급 젬",
             "quantity": 2
+          },
+          {
+            "itemName": "시련의 모래 (1단계)",
+            "quantity": 0.2
+          }
+        ]
+      }
+    ],
+    "1750": [
+      {
+        "stage": "심연의 역류 II",
+        "rewards": [
+          {
+            "itemName": "운명의 파괴석 결정",
+            "quantity": 369
+          },
+          {
+            "itemName": "운명의 수호석 결정",
+            "quantity": 1229
+          },
+          {
+            "itemName": "위대한 운명의 돌파석",
+            "quantity": 20
+          },
+          {
+            "itemName": "운명의 파편",
+            "quantity": 52600
+          },
+          {
+            "itemName": "실링",
+            "quantity": 230926
+          },
+          {
+            "itemName": "영웅 젬",
+            "quantity": 0.2
+          },
+          {
+            "itemName": "희귀 젬",
+            "quantity": 0.3
+          },
+          {
+            "itemName": "고급 젬",
+            "quantity": 1.2
           },
           {
             "itemName": "시련의 모래 (1단계)",
@@ -455,11 +498,38 @@
     ],
     "1730": [
       {
-        "stage": "가디언의 잔영",
+        "stage": "가디언의 잔영 I",
         "rewards": [
           {
             "itemName": "1레벨 보석 (4T)",
             "quantity": 10.7
+          },
+          {
+            "itemName": "영웅 젬",
+            "quantity": 0.15
+          },
+          {
+            "itemName": "희귀 젬",
+            "quantity": 0.5
+          },
+          {
+            "itemName": "고급 젬",
+            "quantity": 3
+          },
+          {
+            "itemName": "실링",
+            "quantity": 53767
+          }
+        ]
+      }
+    ],
+    "1750": [
+      {
+        "stage": "가디언의 잔영 II",
+        "rewards": [
+          {
+            "itemName": "1레벨 보석 (4T)",
+            "quantity": 12
           },
           {
             "itemName": "영웅 젬",
@@ -475,7 +545,7 @@
           },
           {
             "itemName": "실링",
-            "quantity": 53767
+            "quantity": 59950
           }
         ]
       }

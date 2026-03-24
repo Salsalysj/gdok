@@ -215,6 +215,35 @@
             "quantity": 200000
           }
         ]
+      },
+      {
+        "stage": "모래시계 2",
+        "rewards": [
+          {
+            "itemName": "1레벨 보석 (4T)",
+            "quantity": 54
+          },
+          {
+            "itemName": "위대한 운명의 돌파석",
+            "quantity": 12
+          },
+          {
+            "itemName": "용암의 숨결",
+            "quantity": 12
+          },
+          {
+            "itemName": "빙하의 숨결",
+            "quantity": 12
+          },
+          {
+            "itemName": "카드 경험치",
+            "quantity": 16500
+          },
+          {
+            "itemName": "실링",
+            "quantity": 211689
+          }
+        ]
       }
     ]
   },
